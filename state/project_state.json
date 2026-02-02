@@ -1,0 +1,220 @@
+{
+  "meta": {
+    "project_name": "Livraria Alexandria",
+    "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
+    "current_phase": "implementation",
+    "last_updated": "2026-02-01",
+    "owner": "Leandro Moda",
+    "environment": "local"
+  },
+
+  "objectives": {
+    "primary": "Construir um piloto funcional de livraria afiliada com listas SEO e páginas de livros conectadas ao Supabase.",
+    "secondary": [
+      "Validar arquitetura Next.js + Supabase",
+      "Estabelecer base para SEO programático",
+      "Preparar infraestrutura para monetização por afiliados"
+    ],
+    "non_goals": [
+      "Checkout próprio",
+      "Gestão de estoque",
+      "Autenticação de usuários finais nesta fase"
+    ]
+  },
+
+  "constraints": {
+    "technical": [
+      "Next.js 16 (App Router) com Turbopack",
+      "Params e searchParams tratados como Promise",
+      "Google Fonts incompatível com Turbopack em ambiente local",
+      "Bug do Turbopack no Windows impede propagação de params dinâmicos em API Routes",
+      "Contorno necessário via parsing manual da URL em endpoints /api"
+    ],
+    "business": [
+      "Projeto piloto com baixo custo inicial",
+      "Foco em validação técnica antes de escala"
+    ],
+    "legal_or_regulatory": [
+      "LGPD (uso mínimo de dados)",
+      "Transparência de links afiliados"
+    ],
+    "performance": {
+      "latency_ms_target": 300,
+      "throughput": null
+    }
+  },
+
+  "stack": {
+    "frontend": {
+      "framework": "Next.js 16 (App Router)",
+      "language": "TypeScript",
+      "state_management": "Server Components (sem estado global nesta fase)",
+      "styling": "Tailwind CSS + system fonts"
+    },
+    "backend": {
+      "framework": "Next.js (API Routes)",
+      "language": "TypeScript",
+      "architecture": "monolith",
+      "api_style": "rest"
+    },
+    "database": {
+      "type": "relational",
+      "engine": "PostgreSQL (Supabase)",
+      "orm": "Supabase JS Client"
+    },
+    "infra": {
+      "hosting": "Vercel (planejado)",
+      "ci_cd": "Vercel Git Integration",
+      "containerization": "none"
+    }
+  },
+
+  "architecture": {
+    "high_level_description": "Aplicação monolítica em Next.js consumindo Supabase como backend-as-a-service, com renderização server-side e foco em páginas SEO.",
+    "modules": [
+      {
+        "name": "Listas SEO",
+        "responsibility": "Renderizar listas ranqueadas de livros por slug",
+        "inputs": ["slug"],
+        "outputs": ["HTML SEO-friendly"],
+        "dependencies": ["Supabase", "Next.js App Router"]
+      },
+      {
+        "name": "Páginas de Livro",
+        "responsibility": "Renderizar detalhes do livro e CTAs afiliados",
+        "inputs": ["slug"],
+        "outputs": ["HTML + links afiliados"],
+        "dependencies": ["Supabase", "Next.js App Router"]
+      },
+      {
+        "name": "Click Tracking",
+        "responsibility": "Registrar e redirecionar cliques afiliados",
+        "inputs": ["ofertaId"],
+        "outputs": ["Redirect 302"],
+        "dependencies": ["Supabase", "Next.js API Routes"]
+      }
+    ]
+  },
+
+  "rules": {
+    "coding_standards": [
+      "TypeScript estrito",
+      "Server Components por padrão",
+      "Código sempre enviado completo para copy/paste"
+    ],
+    "naming_conventions": [
+      "slugs em kebab-case",
+      "tabelas no plural",
+      "rotas alinhadas aos slugs"
+    ],
+    "error_handling_policy": "notFound() para ausência de dados; erros de fetch tratados explicitamente",
+    "logging_policy": "Logs apenas temporários para debug, removidos após estabilização"
+  },
+
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "date": "2026-01-30",
+      "decision": "Usar Next.js 16 com App Router e Supabase",
+      "reason": "Velocidade de desenvolvimento, SSR nativo e backend gerenciado",
+      "alternatives_considered": ["Next.js 14", "Remix", "Backend próprio"],
+      "status": "active"
+    },
+    {
+      "id": "DEC-002",
+      "date": "2026-01-30",
+      "decision": "Remover Google Fonts e usar system fonts",
+      "reason": "Conflitos e lentidão com Turbopack em ambiente local",
+      "alternatives_considered": ["Google Fonts", "Fontes auto-hospedadas"],
+      "status": "active"
+    },
+    {
+      "id": "DEC-003",
+      "date": "2026-02-01",
+      "decision": "Aplicar contorno para bug de params dinâmicos em API Routes no Turbopack (Windows)",
+      "reason": "context.params não é propagado corretamente em rotas dinâmicas",
+      "alternatives_considered": ["runtime edge", "forçar revalidação", "retornar ao Webpack"],
+      "status": "active"
+    },
+    {
+      "id": "DEC-004",
+      "date": "2026-02-01",
+      "decision": "Usar ASIN como identificador de redirecionamento afiliado",
+      "reason": "Amazon não garante compatibilidade direta entre ISBN e URL de produto",
+      "alternatives_considered": ["ISBN-10", "ISBN-13"],
+      "status": "active"
+    }
+  ],
+
+  "assumptions": [
+    "Produção na Vercel não terá problemas de DNS",
+    "SEO será o principal canal de aquisição",
+    "Produção não apresentará o bug de params observado no Turbopack local",
+    "Links afiliados devem usar ASIN válido"
+  ],
+
+  "unknowns": [
+    "Comportamento de performance em escala",
+    "EPC médio por lista",
+    "Impacto real de interlinkagem automática"
+  ],
+
+  "open_tasks": [
+    {
+      "id": "TASK-001",
+      "description": "Resolver definitivamente problema de DNS no ambiente Windows local",
+      "priority": "high",
+      "status": "blocked"
+    },
+    {
+      "id": "TASK-002",
+      "description": "Implementar endpoint /api/click/[ofertaId]",
+      "priority": "high",
+      "status": "done_with_workaround"
+    },
+    {
+      "id": "TASK-003",
+      "description": "Adicionar Schema.org (Book, ItemList, Offer)",
+      "priority": "medium",
+      "status": "todo"
+    },
+    {
+      "id": "TASK-004",
+      "description": "Garantir campo ASIN válido nas ofertas e ajustar front-end",
+      "priority": "high",
+      "status": "todo"
+    }
+  ],
+
+  "risks": [
+    {
+      "description": "Bloqueio de DNS em redes locais impede SSR com Supabase",
+      "impact": "high",
+      "mitigation": "Ajustar DNS, usar DoH ou desenvolver localmente sem SSR"
+    },
+    {
+      "description": "Dependência excessiva de SEO orgânico",
+      "impact": "medium",
+      "mitigation": "Diversificar canais após MVP"
+    },
+    {
+      "description": "Dados incorretos (ISBN no lugar de ASIN) gerarem links afiliados quebrados",
+      "impact": "high",
+      "mitigation": "Validação de ASIN no pipeline de ingestão"
+    }
+  ],
+
+  "implementation_notes": {
+    "api_click": {
+      "route": "/api/click/[id]",
+      "runtime": "nodejs",
+      "dynamic": "force-dynamic",
+      "param_strategy": "extração manual do id via request.url",
+      "status": "funcional_em_dev"
+    },
+    "known_dev_limitations": [
+      "Turbopack no Windows apresenta comportamento inconsistente em rotas dinâmicas de API",
+      "Erros observados não representam comportamento esperado em produção"
+    ]
+  }
+}
