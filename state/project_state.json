@@ -184,5 +184,38 @@
       "impact": "medium",
       "mitigation": "Diversificar canais após MVP"
     }
-  ]
+  ],
+  "rules": {
+    "code_generation": {
+      "allowed": true,
+      "principles": [
+        "Não gerar código fora do escopo explicitamente solicitado",
+        "Não criar novos módulos sem task aprovada",
+        "Não alterar decisões registradas sem STATE_UPDATE",
+        "Preferir soluções simples e explícitas",
+        "Não introduzir dependências novas sem autorização explícita"
+      ]
+    },
+    "state_management": {
+      "source_of_truth": "state/project_state.json",
+      "mutation_policy": "Somente via STATE_UPDATE",
+      "forbidden_actions": [
+        "Inferir requisitos não documentados",
+        "Inventar integrações",
+        "Alterar stack definida"
+      ]
+    },
+    "workflow": {
+      "required_steps": [
+        "TASK definida",
+        "Plano aprovado",
+        "Implementação incremental",
+        "Revisão obrigatória"
+      ],
+      "forbidden": [
+        "Code generation direta sem plano",
+        "Mudanças grandes em um único commit"
+      ]
+    }
+  }
 }
