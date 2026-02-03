@@ -1,0 +1,1 @@
+Tarefa: Adicionar Schema.org Book e ItemList nas páginas de livros e listas.
