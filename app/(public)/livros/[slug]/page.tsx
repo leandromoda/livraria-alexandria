@@ -46,8 +46,27 @@ export default async function LivroPage({
     .eq("livro_id", livro.id)
     .eq("ativa", true);
 
+  /**
+   * Listas onde o livro aparece
+   */
+  const { data: listasPivot } = await supabase
+    .from("lista_livros")
+    .select(`
+      listas (
+        titulo,
+        slug
+      )
+    `)
+    .eq("livro_id", livro.id);
+
+  const listas =
+    listasPivot?.map((l: any) => l.listas) ?? [];
+
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+      {/* =========================
+          Livro
+      ========================== */}
       <section className="space-y-4">
         <h1 className="text-3xl font-bold">
           {livro.titulo}
@@ -66,6 +85,37 @@ export default async function LivroPage({
         )}
       </section>
 
+      {/* =========================
+          Listas relacionadas
+      ========================== */}
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">
+          Este livro aparece nas listas
+        </h2>
+
+        {!listas.length && (
+          <p className="text-gray-500">
+            Ainda não vinculado a listas editoriais.
+          </p>
+        )}
+
+        <ul className="list-disc list-inside space-y-1">
+          {listas.map((lista) => (
+            <li key={lista.slug}>
+              <a
+                href={`/listas/${lista.slug}`}
+                className="text-blue-600 hover:underline"
+              >
+                {lista.titulo}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* =========================
+          Ofertas
+      ========================== */}
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">
           Onde comprar

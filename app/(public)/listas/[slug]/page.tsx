@@ -26,7 +26,30 @@ export default async function ListaPage({ params }: PageProps) {
   }
 
   /**
-   * 2) Buscar os livros da lista (ordenados por posição)
+   * 2) Buscar listas relacionadas (pivot → ids → listas)
+   */
+  const { data: relacionadasPivot } = await supabase
+    .from("listas_relacionadas")
+    .select("lista_destino_id")
+    .eq("lista_origem_id", lista.id);
+
+  let listasRelacionadas: any[] = [];
+
+  if (relacionadasPivot?.length) {
+    const ids = relacionadasPivot.map(
+      (r) => r.lista_destino_id
+    );
+
+    const { data } = await supabase
+      .from("listas")
+      .select("titulo, slug")
+      .in("id", ids);
+
+    listasRelacionadas = data ?? [];
+  }
+
+  /**
+   * 3) Buscar livros da lista
    */
   const { data: livros } = await supabase
     .from("lista_livros")
@@ -45,17 +68,50 @@ export default async function ListaPage({ params }: PageProps) {
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-      {/* Cabeçalho da lista */}
+      {/* =========================
+          Cabeçalho
+      ========================== */}
       <header className="space-y-4">
         <h1 className="text-3xl font-bold">
           {lista.titulo}
         </h1>
+
         <p className="text-lg text-gray-700">
           {lista.introducao}
         </p>
       </header>
 
-      {/* Ranking */}
+      {/* =========================
+          Listas relacionadas
+      ========================== */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">
+          Veja também
+        </h2>
+
+        {!listasRelacionadas.length && (
+          <p className="text-gray-500 text-sm">
+            Ainda não há listas relacionadas.
+          </p>
+        )}
+
+        <ul className="list-disc list-inside space-y-1">
+          {listasRelacionadas.map((l) => (
+            <li key={l.slug}>
+              <a
+                href={`/listas/${l.slug}`}
+                className="text-blue-600 hover:underline"
+              >
+                {l.titulo}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* =========================
+          Ranking
+      ========================== */}
       <section className="space-y-6">
         {livros?.map((item: any) => (
           <article key={item.livros.id} className="space-y-2">
@@ -82,7 +138,9 @@ export default async function ListaPage({ params }: PageProps) {
         ))}
       </section>
 
-      {/* Aviso legal */}
+      {/* =========================
+          Aviso legal
+      ========================== */}
       <footer className="pt-10 text-sm text-gray-500">
         Este site pode receber comissões por compras realizadas
         através dos links, sem custo adicional para você.
