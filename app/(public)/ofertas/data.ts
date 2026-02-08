@@ -6,7 +6,7 @@ type Oferta = {
   titulo: string;
   slug: string;
   preco: number;
-  preco_original: number | null;
+  url_afiliada: string;
 };
 
 export async function getOfertas(): Promise<Oferta[]> {
@@ -23,12 +23,32 @@ export async function getOfertas(): Promise<Oferta[]> {
 
   const { data, error } = await supabase
     .from("ofertas")
-    .select("id, titulo, slug, preco, preco_original")
-    .order("updated_at", { ascending: false });
+    .select(`
+      id,
+      preco,
+      url_afiliada,
+      livros (
+        titulo,
+        slug
+      )
+    `)
+    .order("id", { ascending: false });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  /**
+   * Flatten do JOIN
+   */
+  const parsed: Oferta[] =
+    data?.map((o: any) => ({
+      id: o.id,
+      preco: o.preco,
+      url_afiliada: o.url_afiliada,
+      titulo: o.livros?.titulo ?? "Sem título",
+      slug: o.livros?.slug ?? "#",
+    })) ?? [];
+
+  return parsed;
 }

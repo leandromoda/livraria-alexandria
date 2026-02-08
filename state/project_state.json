@@ -2,17 +2,19 @@
   "meta": {
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
-    "current_phase": "implementation",
-    "last_updated": "2026-02-02",
+    "current_phase": "pilot_functional",
+    "last_updated": "2026-02-08",
     "owner": "Leandro Moda",
     "environment": "local"
   },
+
   "objectives": {
-    "primary": "Construir um piloto funcional de livraria afiliada com listas SEO e páginas de livros conectadas ao Supabase.",
+    "primary": "Piloto funcional monetizável com interlinking entre listas, livros e ofertas.",
     "secondary": [
-      "Validar arquitetura Next.js + Supabase",
-      "Estabelecer base para SEO programático",
-      "Preparar infraestrutura para monetização por afiliados"
+      "Validar funil Lista → Livro → Oferta → Afiliado",
+      "Validar JOIN ofertas ↔ livros",
+      "Estabelecer malha mínima de interlinking",
+      "Preparar base para tracking afiliado"
     ],
     "non_goals": [
       "Checkout próprio",
@@ -20,202 +22,152 @@
       "Autenticação de usuários finais nesta fase"
     ]
   },
-  "constraints": {
-    "technical": [
-      "Projeto já existente em Next.js usando App Router",
-      "Uso de Turbopack em ambiente local",
-      "Bug do Turbopack no Windows impede propagação correta de params dinâmicos em API Routes",
-      "Contorno necessário via parsing manual da URL em endpoints /api",
-      "Google Fonts incompatível com Turbopack em ambiente local"
-    ],
-    "business": [
-      "Projeto piloto com baixo custo inicial",
-      "Foco em validação técnica antes de escala"
-    ],
-    "legal_or_regulatory": [
-      "LGPD (uso mínimo de dados)",
-      "Transparência de links afiliados"
-    ],
-    "performance": {
-      "latency_ms_target": 600,
-      "throughput": null
-    }
-  },
-  "stack": {
-    "frontend": {
-      "framework": "Next.js (App Router)",
-      "language": "TypeScript",
-      "state_management": "Server-driven (no client state layer)",
-      "styling": "Tailwind CSS + system fonts"
-    },
-    "backend": {
-      "framework": "Next.js (API Routes)",
-      "language": "TypeScript",
-      "architecture": "monolith",
-      "api_style": "rest"
-    },
-    "database": {
-      "type": "relational",
-      "engine": "PostgreSQL (Supabase)",
-      "orm": "Supabase JS Client"
-    },
-    "infra": {
-      "hosting": "Vercel (planejado)",
-      "ci_cd": "Vercel Git Integration",
-      "containerization": "none"
-    }
-  },
+
   "architecture": {
-    "high_level_description": "Aplicação monolítica em Next.js (App Router) com páginas SEO e endpoints de API, utilizando Supabase como backend-as-a-service.",
+    "high_level_description": "Aplicação monolítica em Next.js (App Router) com route groups segmentando camadas públicas e internas.",
+
+    "route_groups": {
+      "public": "Páginas indexáveis e SEO",
+      "internal": "Infraestrutura e APIs"
+    },
+
     "modules": [
       {
-        "name": "Click Tracking",
-        "responsibility": "Registrar e redirecionar cliques afiliados",
-        "inputs": ["id"],
-        "outputs": ["Redirect 302"],
-        "path": "app/api/click/[id]"
+        "name": "Páginas de Livro",
+        "status": "operational",
+        "responsibility": "Renderizar páginas individuais com conteúdo editorial e ofertas vinculadas",
+        "monetization": "embedded_offers",
+        "path": "app/(public)/livros/[slug]"
       },
       {
         "name": "Listas SEO",
-        "responsibility": "Renderizar páginas de listas SEO",
-        "inputs": ["slug"],
-        "outputs": ["HTML SEO-friendly"],
-        "path": "app/listas/[slug]"
+        "status": "operational",
+        "responsibility": "Renderizar rankings e interlinkar para livros",
+        "path": "app/(public)/listas/[slug]"
       },
       {
-        "name": "Páginas de Livro",
-        "responsibility": "Renderizar páginas individuais de livros",
-        "inputs": ["slug"],
-        "outputs": ["HTML SEO-friendly + CTAs afiliados"],
-        "path": "app/livros/[slug]"
+        "name": "Página de Ofertas",
+        "status": "operational",
+        "responsibility": "Hub agregador de ofertas com JOIN em livros",
+        "path": "app/(public)/ofertas"
       },
       {
-        "name": "Páginas de Ofertas",
-        "responsibility": "Exibir ofertas associadas",
-        "inputs": ["slug (opcional)", "query params"],
-        "outputs": ["HTML"],
-        "path": "app/ofertas"
-      },
-      {
-        "name": "Supabase Client",
-        "responsibility": "Cliente Supabase padrão",
-        "inputs": [],
-        "outputs": [],
-        "path": "lib/supabase.ts"
-      },
-      {
-        "name": "Supabase Admin Client",
-        "responsibility": "Cliente Supabase com privilégios administrativos",
-        "inputs": [],
-        "outputs": [],
-        "path": "lib/supabase-admin.ts"
-      },
-      {
-        "name": "Supabase Edge Client",
-        "responsibility": "Cliente Supabase para Edge Functions",
-        "inputs": [],
-        "outputs": [],
-        "path": "lib/supabase/edge.ts"
+        "name": "Click Tracking",
+        "status": "structure_ready",
+        "responsibility": "Registrar e redirecionar cliques afiliados",
+        "path": "app/(internal)/api/click/[id]"
       }
     ]
   },
+
+  "monetization": {
+    "model": "affiliate_redirect",
+    "status": "functional",
+
+    "flows": [
+      "Lista → Livro",
+      "Livro → Oferta",
+      "Oferta → Afiliado"
+    ],
+
+    "offer_rendering": {
+      "location": "inside_book_page",
+      "join": "ofertas.livro_id → livros.id",
+      "filters": ["ativa = true"]
+    }
+  },
+
+  "interlinking": {
+    "implemented": [
+      "Lista → Livro",
+      "Oferta → Livro",
+      "Livro → Oferta"
+    ],
+    "pending": [
+      "Livro → Listas",
+      "Lista → Listas",
+      "Autor → Livro",
+      "Categoria → Livro"
+    ]
+  },
+
+  "data_layer": {
+    "supabase": {
+      "status": "connected",
+      "joins_validated": [
+        "ofertas ↔ livros"
+      ],
+      "rls_public_read": true
+    }
+  },
+
+  "validated_routes": [
+    "/",
+    "/livros/[slug]",
+    "/listas/[slug]",
+    "/ofertas"
+  ],
+
+  "infrastructure": {
+    "routing": "operational",
+    "dynamic_routes": "operational",
+    "edge_runtime": "active",
+    "route_groups": "active"
+  },
+
   "decisions": [
     {
-      "id": "DEC-001",
-      "date": "2026-01-30",
-      "decision": "Usar Next.js com App Router e Supabase",
-      "reason": "Velocidade de desenvolvimento e SSR nativo",
-      "alternatives_considered": ["Backend próprio", "Remix"],
-      "status": "active"
-    },
-    {
-      "id": "DEC-002",
-      "date": "2026-01-30",
-      "decision": "Remover Google Fonts e usar system fonts",
-      "reason": "Incompatibilidade com Turbopack local",
-      "alternatives_considered": ["Fontes auto-hospedadas"],
-      "status": "active"
-    },
-    {
-      "id": "DEC-003",
-      "date": "2026-02-01",
-      "decision": "Aplicar contorno para bug de params dinâmicos em API Routes no Turbopack (Windows)",
-      "reason": "Params não propagados corretamente em rotas dinâmicas",
-      "alternatives_considered": ["Retornar ao Webpack", "Edge runtime"],
-      "status": "active"
-    },
-    {
       "id": "DEC-004",
-      "date": "2026-02-01",
-      "decision": "Usar ASIN como identificador de redirecionamento afiliado",
-      "reason": "ISBN não garante compatibilidade com URLs da Amazon",
-      "alternatives_considered": ["ISBN-10", "ISBN-13"],
+      "date": "2026-02-08",
+      "decision": "Implementar ofertas dentro da página do livro",
+      "reason": "Fechamento do funil de monetização",
+      "status": "active"
+    },
+    {
+      "id": "DEC-005",
+      "date": "2026-02-08",
+      "decision": "Criar página agregadora /ofertas",
+      "reason": "SEO long tail + discovery + campanhas",
+      "status": "active"
+    },
+    {
+      "id": "DEC-006",
+      "date": "2026-02-08",
+      "decision": "Segregar rotas via route groups (public/internal)",
+      "reason": "Escalabilidade e governança arquitetural",
       "status": "active"
     }
   ],
-  "assumptions": [],
-  "unknowns": [
-    "Comportamento de performance em escala",
-    "EPC médio por lista",
-    "Impacto real de interlinkagem automática"
-  ],
+
   "open_tasks": [
     {
-      "id": "OPS-001",
-      "description": "Resolver definitivamente problema de DNS no ambiente Windows local",
+      "id": "TASK-TRACK-001",
+      "description": "Implementar tracking de cliques afiliados via /api/click",
       "priority": "high",
-      "status": "blocked"
+      "status": "todo"
     },
     {
-      "id": "TASK-002",
-      "description": "Adicionar Schema.org (Book, ItemList, Offer)",
+      "id": "TASK-SEO-001",
+      "description": "Expandir páginas de livro para estrutura SEO completa",
+      "priority": "medium",
+      "status": "todo"
+    },
+    {
+      "id": "TASK-SEO-002",
+      "description": "Adicionar Schema.org (Book, Offer)",
       "priority": "medium",
       "status": "todo"
     }
   ],
+
   "risks": [
     {
-      "description": "Bug do Turbopack no Windows afeta confiabilidade do ambiente local",
-      "impact": "high",
-      "mitigation": "Workarounds manuais e validação posterior em produção"
+      "description": "Dependência de SEO orgânico",
+      "impact": "medium"
     },
     {
-      "description": "Dependência excessiva de SEO orgânico",
-      "impact": "medium",
-      "mitigation": "Diversificar canais após MVP"
+      "description": "Links afiliados sem tracking interno",
+      "impact": "medium"
     }
-  ],
-  "rules": {
-    "code_generation": {
-      "allowed": true,
-      "principles": [
-        "Não gerar código fora do escopo explicitamente solicitado",
-        "Não criar novos módulos sem task aprovada",
-        "Não alterar decisões registradas sem STATE_UPDATE",
-        "Preferir soluções simples e explícitas",
-        "Não introduzir dependências novas sem autorização explícita"
-      ]
-    },
-    "state_management": {
-      "source_of_truth": "state/project_state.json",
-      "mutation_policy": "Somente via STATE_UPDATE",
-      "forbidden_actions": [
-        "Inferir requisitos não documentados",
-        "Inventar integrações",
-        "Alterar stack definida"
-      ]
-    },
-    "workflow": {
-      "required_steps": [
-        "TASK definida",
-        "Plano aprovado",
-        "Implementação incremental",
-        "Revisão obrigatória"
-      ],
-      "forbidden": [
-        "Code generation direta sem plano",
-        "Mudanças grandes em um único commit"
-      ]
-    }
-  }
+  ]
 }
