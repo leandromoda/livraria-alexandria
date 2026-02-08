@@ -158,7 +158,197 @@
     },
     {
       "id": "TASK-SEO-002",
-      "description": "Adicionar Schema.org (Book, Offer)",
+      "description": "Adicionar Schema.org (Book, Offer)",{
+  "meta": {
+    "project_name": "Livraria Alexandria",
+    "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
+    "current_phase": "pilot_functional_interlinked",
+    "last_updated": "2026-02-08",
+    "owner": "Leandro Moda",
+    "environment": "local"
+  },
+
+  "objectives": {
+    "primary": "Piloto funcional monetizável com interlinking entre listas, livros e ofertas.",
+    "secondary": [
+      "Validar funil Lista → Livro → Oferta → Afiliado",
+      "Validar JOIN ofertas ↔ livros",
+      "Estabelecer malha mínima de interlinking",
+      "Preparar base para tracking afiliado"
+    ],
+    "non_goals": [
+      "Checkout próprio",
+      "Gestão de estoque",
+      "Autenticação de usuários finais nesta fase"
+    ]
+  },
+
+  "architecture": {
+    "high_level_description": "Aplicação monolítica em Next.js (App Router) com route groups segmentando camadas públicas e internas.",
+
+    "route_groups": {
+      "public": "Páginas indexáveis e SEO",
+      "internal": "Infraestrutura e APIs"
+    },
+
+    "modules": [
+      {
+        "name": "Páginas de Livro",
+        "status": "operational",
+        "responsibility": "Renderizar páginas individuais com conteúdo editorial e ofertas vinculadas",
+        "monetization": "embedded_offers",
+        "schema_org": "Product + Offer",
+        "path": "app/(public)/livros/[slug]"
+      },
+      {
+        "name": "Listas SEO",
+        "status": "operational",
+        "responsibility": "Renderizar rankings e interlinkar para livros",
+        "schema_org": "ItemList + Book",
+        "path": "app/(public)/listas/[slug]"
+      },
+      {
+        "name": "Página de Ofertas",
+        "status": "operational",
+        "responsibility": "Hub agregador de ofertas com JOIN em livros",
+        "schema_org": "ItemList + Product + Offer",
+        "rich_results": "eligible_carousel",
+        "path": "app/(public)/ofertas"
+      },
+      {
+        "name": "Click Tracking",
+        "status": "operational",
+        "responsibility": "Registrar e redirecionar cliques afiliados",
+        "path": "app/(internal)/api/click/[id]"
+      }
+    ]
+  },
+
+  "monetization": {
+    "model": "affiliate_redirect",
+    "status": "functional",
+
+    "flows": [
+      "Lista → Livro",
+      "Livro → Oferta",
+      "Oferta → Afiliado"
+    ],
+
+    "offer_rendering": {
+      "location": "inside_book_page",
+      "join": "ofertas.livro_id → livros.id",
+      "filters": ["ativa = true"]
+    }
+  },
+
+  "tracking": {
+    "status": "implemented",
+    "table": "oferta_clicks",
+    "fields": [
+      "oferta_id",
+      "livro_id",
+      "user_agent",
+      "referer",
+      "ip_hash",
+      "created_at"
+    ]
+  },
+
+  "interlinking": {
+    "implemented": [
+      "Lista → Livro",
+      "Livro → Lista",
+      "Livro → Oferta",
+      "Oferta → Livro",
+      "Lista ↔ Lista",
+      "Main → Listas",
+      "Main → Livros",
+      "Main → Ofertas"
+    ],
+    "pending": [
+      "Livro → Livros relacionados",
+      "Autor → Livro",
+      "Categoria → Livro"
+    ]
+  },
+
+  "data_layer": {
+    "supabase": {
+      "status": "connected",
+      "joins_validated": [
+        "ofertas ↔ livros"
+      ],
+      "rls_public_read": true
+    }
+  },
+
+  "validated_routes": [
+    "/",
+    "/livros/[slug]",
+    "/listas/[slug]",
+    "/ofertas"
+  ],
+
+  "infrastructure": {
+    "routing": "operational",
+    "dynamic_routes": "operational",
+    "edge_runtime": "active",
+    "route_groups": "active"
+  },
+
+  "decisions": [
+    {
+      "id": "DEC-004",
+      "date": "2026-02-08",
+      "decision": "Implementar ofertas dentro da página do livro",
+      "reason": "Fechamento do funil de monetização",
+      "status": "active"
+    },
+    {
+      "id": "DEC-005",
+      "date": "2026-02-08",
+      "decision": "Criar página agregadora /ofertas",
+      "reason": "SEO long tail + discovery + campanhas",
+      "status": "active"
+    },
+    {
+      "id": "DEC-006",
+      "date": "2026-02-08",
+      "decision": "Segregar rotas via route groups (public/internal)",
+      "reason": "Escalabilidade e governança arquitetural",
+      "status": "active"
+    }
+  ],
+
+  "open_tasks": [
+    {
+      "id": "TASK-TRACK-001",
+      "description": "Implementar deduplicação básica de cliques",
+      "priority": "medium",
+      "status": "todo"
+    },
+    {
+      "id": "TASK-SEO-001",
+      "description": "Expandir páginas de livro para estrutura SEO completa",
+      "priority": "medium",
+      "status": "todo"
+    },
+    {
+      "id": "TASK-SEO-003",
+      "description": "Implementar AggregateOffer por livro",
+      "priority": "medium",
+      "status": "todo"
+    }
+  ],
+
+  "risks": [
+    {
+      "description": "Dependência de SEO orgânico",
+      "impact": "medium"
+    }
+  ]
+}
+
       "priority": "medium",
       "status": "todo"
     }

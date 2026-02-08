@@ -1,89 +1,107 @@
-"use client";
+export const runtime = "edge";
 
-import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-type Oferta = {
-  id: number;
-  titulo: string;
-  slug: string;
-  preco: number;
-  url_afiliada: string;
-};
+export default async function OfertasPage() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-export default function OfertasPage() {
-  const [data, setData] = useState<Oferta[]>([]);
-  const [erro, setErro] = useState<string | null>(null);
+  /**
+   * Ofertas + Livro
+   */
+  const { data: ofertas } = await supabase
+    .from("ofertas")
+    .select(`
+      id,
+      preco,
+      marketplace,
+      livros (
+        titulo,
+        slug,
+        autor,
+        imagem_url,
+        isbn
+      )
+    `)
+    .eq("ativa", true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const supabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000";
 
-        const { data, error } = await supabase
-          .from("ofertas")
-          .select(`
-            id,
-            preco,
-            url_afiliada,
-            livros (
-              titulo,
-              slug
-            )
-          `)
-          .eq("ativa", true);
-
-        if (error) throw error;
-
-        const parsed: Oferta[] =
-          data?.map((o: any) => ({
-            id: o.id,
-            titulo: o.livros.titulo,
-            slug: o.livros.slug,
-            preco: o.preco,
-            url_afiliada: o.url_afiliada,
-          })) ?? [];
-
-        setData(parsed);
-      } catch (e: any) {
-        setErro(e.message);
-      }
-    }
-
-    load();
-  }, []);
-
-  if (erro) return <pre>{erro}</pre>;
-  if (!data.length) return <p>Carregando ofertas…</p>;
+  /**
+   * =========================
+   * Schema.org
+   * =========================
+   */
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Ofertas de livros",
+    itemListElement: ofertas?.map(
+      (o: any, index: number) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "Product",
+          name: o.livros.titulo,
+          image:
+            o.livros.imagem_url || undefined,
+          sku: o.livros.isbn,
+          brand: {
+            "@type": "Brand",
+            name: o.livros.autor,
+          },
+          offers: {
+            "@type": "Offer",
+            price: o.preco,
+            priceCurrency: "BRL",
+            availability:
+              "https://schema.org/InStock",
+            url: `${baseUrl}/api/click/${o.id}`,
+            seller: {
+              "@type": "Organization",
+              name: o.marketplace,
+            },
+          },
+        },
+      })
+    ),
+  };
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+      {/* Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(schema),
+        }}
+      />
+
       <h1 className="text-3xl font-bold">
         Ofertas de Livros
       </h1>
 
       <ul className="space-y-4">
-        {data.map((o) => (
+        {ofertas?.map((o: any) => (
           <li
             key={o.id}
             className="border p-4 rounded-lg"
           >
-            {/* Link interno → Livro */}
             <a
-              href={`/livros/${o.slug}`}
+              href={`/livros/${o.livros.slug}`}
               className="text-lg font-semibold text-blue-600 hover:underline block"
             >
-              {o.titulo}
+              {o.livros.titulo}
             </a>
 
             <p className="text-gray-700">
               R$ {o.preco}
             </p>
 
-            {/* Link afiliado */}
             <a
               href={`/api/click/${o.id}`}
               target="_blank"

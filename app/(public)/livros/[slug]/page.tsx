@@ -40,14 +40,13 @@ export default async function LivroPage({
     .select(`
       id,
       preco,
-      url_afiliada,
       marketplace
     `)
     .eq("livro_id", livro.id)
     .eq("ativa", true);
 
   /**
-   * Listas onde o livro aparece
+   * Listas relacionadas
    */
   const { data: listasPivot } = await supabase
     .from("lista_livros")
@@ -62,8 +61,57 @@ export default async function LivroPage({
   const listas =
     listasPivot?.map((l: any) => l.listas) ?? [];
 
+  /**
+   * =========================
+   * Schema.org Product-first
+   * =========================
+   */
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: livro.titulo,
+    description: livro.descricao,
+    image: livro.imagem_url || undefined,
+    sku: livro.isbn,
+    brand: {
+      "@type": "Brand",
+      name: livro.autor,
+    },
+    additionalProperty: [
+      {
+        "@type": "PropertyValue",
+        name: "Autor",
+        value: livro.autor,
+      },
+      {
+        "@type": "PropertyValue",
+        name: "Ano de publicação",
+        value: livro.ano_publicacao,
+      },
+    ],
+    offers: ofertas?.map((o: any) => ({
+      "@type": "Offer",
+      price: o.preco,
+      priceCurrency: "BRL",
+      availability: "https://schema.org/InStock",
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/click/${o.id}`,
+      seller: {
+        "@type": "Organization",
+        name: o.marketplace,
+      },
+    })),
+  };
+
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+      {/* Schema JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(schema),
+        }}
+      />
+
       {/* =========================
           Livro
       ========================== */}
@@ -100,7 +148,7 @@ export default async function LivroPage({
         )}
 
         <ul className="list-disc list-inside space-y-1">
-          {listas.map((lista) => (
+          {listas.map((lista: any) => (
             <li key={lista.slug}>
               <a
                 href={`/listas/${lista.slug}`}
@@ -128,7 +176,7 @@ export default async function LivroPage({
         )}
 
         <ul className="space-y-3">
-          {ofertas?.map((o) => (
+          {ofertas?.map((o: any) => (
             <li
               key={o.id}
               className="border p-4 rounded-lg flex items-center justify-between"

@@ -165,6 +165,7 @@ Quando for solicitada a alteração de código:
 - enviar código completo, pronto para copiar
 - não enviar patch parcial
 - no caso de dúvida sobre o arquivo base, solicitar o envio do mesmo
+- sempre explicar onde alterar (caminho e nome do arquivo)
 
 
 # LEMBRETE FINAL

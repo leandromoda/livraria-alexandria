@@ -9,11 +9,13 @@ type PageProps = {
   }>;
 };
 
-export default async function ListaPage({ params }: PageProps) {
+export default async function ListaPage({
+  params,
+}: PageProps) {
   const { slug } = await params;
 
   /**
-   * 1) Buscar a lista pelo slug
+   * Lista
    */
   const { data: lista } = await supabase
     .from("listas")
@@ -26,51 +28,62 @@ export default async function ListaPage({ params }: PageProps) {
   }
 
   /**
-   * 2) Buscar listas relacionadas (pivot → ids → listas)
-   */
-  const { data: relacionadasPivot } = await supabase
-    .from("listas_relacionadas")
-    .select("lista_destino_id")
-    .eq("lista_origem_id", lista.id);
-
-  let listasRelacionadas: any[] = [];
-
-  if (relacionadasPivot?.length) {
-    const ids = relacionadasPivot.map(
-      (r) => r.lista_destino_id
-    );
-
-    const { data } = await supabase
-      .from("listas")
-      .select("titulo, slug")
-      .in("id", ids);
-
-    listasRelacionadas = data ?? [];
-  }
-
-  /**
-   * 3) Buscar livros da lista
+   * Livros
    */
   const { data: livros } = await supabase
     .from("lista_livros")
     .select(`
       posicao,
-      nota_editorial,
       livros (
         id,
         titulo,
         slug,
-        autor
+        autor,
+        imagem_url
       )
     `)
     .eq("lista_id", lista.id)
     .order("posicao", { ascending: true });
 
+  /**
+   * =========================
+   * Schema.org ItemList
+   * =========================
+   */
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: lista.titulo,
+    description: lista.introducao,
+    itemListElement: livros?.map(
+      (item: any, index: number) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "Book",
+          name: item.livros.titulo,
+          image:
+            item.livros.imagem_url || undefined,
+          author: {
+            "@type": "Person",
+            name: item.livros.autor,
+          },
+        },
+      })
+    ),
+  };
+
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
-      {/* =========================
-          Cabeçalho
-      ========================== */}
+      {/* Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(schema),
+        }}
+      />
+
+      {/* Header */}
       <header className="space-y-4">
         <h1 className="text-3xl font-bold">
           {lista.titulo}
@@ -81,40 +94,13 @@ export default async function ListaPage({ params }: PageProps) {
         </p>
       </header>
 
-      {/* =========================
-          Listas relacionadas
-      ========================== */}
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">
-          Veja também
-        </h2>
-
-        {!listasRelacionadas.length && (
-          <p className="text-gray-500 text-sm">
-            Ainda não há listas relacionadas.
-          </p>
-        )}
-
-        <ul className="list-disc list-inside space-y-1">
-          {listasRelacionadas.map((l) => (
-            <li key={l.slug}>
-              <a
-                href={`/listas/${l.slug}`}
-                className="text-blue-600 hover:underline"
-              >
-                {l.titulo}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* =========================
-          Ranking
-      ========================== */}
+      {/* Ranking */}
       <section className="space-y-6">
         {livros?.map((item: any) => (
-          <article key={item.livros.id} className="space-y-2">
+          <article
+            key={item.livros.id}
+            className="space-y-2"
+          >
             <h2 className="text-xl font-semibold">
               {item.posicao}.{" "}
               <a
@@ -128,23 +114,9 @@ export default async function ListaPage({ params }: PageProps) {
             <p className="text-sm text-gray-600">
               por {item.livros.autor}
             </p>
-
-            {item.nota_editorial && (
-              <p className="text-gray-800">
-                {item.nota_editorial}
-              </p>
-            )}
           </article>
         ))}
       </section>
-
-      {/* =========================
-          Aviso legal
-      ========================== */}
-      <footer className="pt-10 text-sm text-gray-500">
-        Este site pode receber comissões por compras realizadas
-        através dos links, sem custo adicional para você.
-      </footer>
     </main>
   );
 }
