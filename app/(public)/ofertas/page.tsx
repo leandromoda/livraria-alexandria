@@ -85,7 +85,7 @@ export default function OfertasPage() {
 
             {/* Link afiliado */}
             <a
-              href={o.url_afiliada}
+              href={`/api/click/${o.id}`}
               target="_blank"
               className="text-sm text-green-600 hover:underline"
             >

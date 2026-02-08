@@ -4,26 +4,28 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 type PageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 export default async function LivroPage({
   params,
 }: PageProps) {
+  const { slug } = await params;
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
   /**
-   * Buscar livro
+   * Livro
    */
   const { data: livro } = await supabase
     .from("livros")
     .select("*")
-    .eq("slug", params.slug)
+    .eq("slug", slug)
     .single();
 
   if (!livro) {
@@ -31,7 +33,7 @@ export default async function LivroPage({
   }
 
   /**
-   * Buscar ofertas vinculadas
+   * Ofertas
    */
   const { data: ofertas } = await supabase
     .from("ofertas")
@@ -46,8 +48,6 @@ export default async function LivroPage({
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
-      {/* ===== Livro ===== */}
-
       <section className="space-y-4">
         <h1 className="text-3xl font-bold">
           {livro.titulo}
@@ -65,8 +65,6 @@ export default async function LivroPage({
           </p>
         )}
       </section>
-
-      {/* ===== Ofertas ===== */}
 
       <section className="space-y-4">
         <h2 className="text-2xl font-semibold">
@@ -96,7 +94,7 @@ export default async function LivroPage({
               </div>
 
               <a
-                href={o.url_afiliada}
+                href={`/api/click/${o.id}`}
                 target="_blank"
                 className="text-sm text-green-600 hover:underline"
               >

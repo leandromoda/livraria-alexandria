@@ -1,26 +1,47 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const parts = url.pathname.split("/");
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-  const id = parts.at(-1);
+  /**
+   * Buscar oferta
+   */
+  const { data: oferta, error: ofertaError } =
+    await supabase
+      .from("ofertas")
+      .select("id, url_afiliada")
+      .eq("id", id)
+      .single();
 
-  if (!id || id === "click") {
-    return NextResponse.json(
-      {
-        error: "id ausente",
-        pathname: url.pathname,
-      },
-      { status: 400 }
-    );
+  console.log("Oferta:", oferta);
+  console.log("Oferta error:", ofertaError);
+
+  if (ofertaError || !oferta) {
+    return new NextResponse("Oferta não encontrada", {
+      status: 404,
+    });
   }
 
-  return NextResponse.redirect(
-    `https://www.amazon.com.br/dp/${id}`,
-    302
-  );
+  /**
+   * Insert click
+   */
+  const { data: click, error: clickError } =
+    await supabase.from("clicks").insert({
+      oferta_id: oferta.id,
+      user_agent: req.headers.get("user-agent"),
+    });
+
+  console.log("Click insert:", click);
+  console.log("Click error:", clickError);
+
+  return NextResponse.redirect(oferta.url_afiliada);
 }
