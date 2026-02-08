@@ -5,167 +5,15 @@
     "current_phase": "pilot_functional_interlinked",
     "last_updated": "2026-02-08",
     "owner": "Leandro Moda",
-    "environment": "local"
-  },
-
-  "objectives": {
-    "primary": "Piloto funcional monetizável com interlinking entre listas, livros e ofertas.",
-    "secondary": [
-      "Validar funil Lista → Livro → Oferta → Afiliado",
-      "Validar JOIN ofertas ↔ livros",
-      "Estabelecer malha mínima de interlinking",
-      "Preparar base para tracking afiliado"
-    ],
-    "non_goals": [
-      "Checkout próprio",
-      "Gestão de estoque",
-      "Autenticação de usuários finais nesta fase"
-    ]
-  },
-
-  "architecture": {
-    "high_level_description": "Aplicação monolítica em Next.js (App Router) com route groups segmentando camadas públicas e internas.",
-
-    "route_groups": {
-      "public": "Páginas indexáveis e SEO",
-      "internal": "Infraestrutura e APIs"
-    },
-
-    "modules": [
-      {
-        "name": "Páginas de Livro",
-        "status": "operational",
-        "responsibility": "Renderizar páginas individuais com conteúdo editorial e ofertas vinculadas",
-        "monetization": "embedded_offers",
-        "path": "app/(public)/livros/[slug]"
-      },
-      {
-        "name": "Listas SEO",
-        "status": "operational",
-        "responsibility": "Renderizar rankings e interlinkar para livros",
-        "path": "app/(public)/listas/[slug]"
-      },
-      {
-        "name": "Página de Ofertas",
-        "status": "operational",
-        "responsibility": "Hub agregador de ofertas com JOIN em livros",
-        "path": "app/(public)/ofertas"
-      },
-      {
-        "name": "Click Tracking",
-        "status": "structure_ready",
-        "responsibility": "Registrar e redirecionar cliques afiliados",
-        "path": "app/(internal)/api/click/[id]"
-      }
-    ]
-  },
-
-  "monetization": {
-    "model": "affiliate_redirect",
-    "status": "functional",
-
-    "flows": [
-      "Lista → Livro",
-      "Livro → Oferta",
-      "Oferta → Afiliado"
-    ],
-
-    "offer_rendering": {
-      "location": "inside_book_page",
-      "join": "ofertas.livro_id → livros.id",
-      "filters": ["ativa = true"]
+    "environment": "local",
+    "runtime_stack": {
+      "node": "Next.js App Router (Edge Runtime ativo)",
+      "database": "Supabase",
+      "llm_local": "Ollama",
+      "llm_model": "phi3:mini",
+      "python_env": "venv (Windows)",
+      "ingest_language": "Python 3.14"
     }
-  },
-
-  "interlinking": {
-    "implemented": [
-      "Lista → Livro",
-      "Livro → Lista",
-      "Livro → Oferta",
-      "Oferta → Livro",
-      "Lista ↔ Lista",
-      "Main → Listas",
-      "Main → Livros",
-      "Main → Ofertas"
-    ],
-    "pending": [
-      "Livro → Livros relacionados",
-      "Autor → Livro",
-      "Categoria → Livro"
-    ]
-  },
-
-  "data_layer": {
-    "supabase": {
-      "status": "connected",
-      "joins_validated": [
-        "ofertas ↔ livros"
-      ],
-      "rls_public_read": true
-    }
-  },
-
-  "validated_routes": [
-    "/",
-    "/livros/[slug]",
-    "/listas/[slug]",
-    "/ofertas"
-  ],
-
-  "infrastructure": {
-    "routing": "operational",
-    "dynamic_routes": "operational",
-    "edge_runtime": "active",
-    "route_groups": "active"
-  },
-
-  "decisions": [
-    {
-      "id": "DEC-004",
-      "date": "2026-02-08",
-      "decision": "Implementar ofertas dentro da página do livro",
-      "reason": "Fechamento do funil de monetização",
-      "status": "active"
-    },
-    {
-      "id": "DEC-005",
-      "date": "2026-02-08",
-      "decision": "Criar página agregadora /ofertas",
-      "reason": "SEO long tail + discovery + campanhas",
-      "status": "active"
-    },
-    {
-      "id": "DEC-006",
-      "date": "2026-02-08",
-      "decision": "Segregar rotas via route groups (public/internal)",
-      "reason": "Escalabilidade e governança arquitetural",
-      "status": "active"
-    }
-  ],
-
-  "open_tasks": [
-    {
-      "id": "TASK-TRACK-001",
-      "description": "Implementar tracking de cliques afiliados via /api/click",
-      "priority": "high",
-      "status": "todo"
-    },
-    {
-      "id": "TASK-SEO-001",
-      "description": "Expandir páginas de livro para estrutura SEO completa",
-      "priority": "medium",
-      "status": "todo"
-    },
-    {
-      "id": "TASK-SEO-002",
-      "description": "Adicionar Schema.org (Book, Offer)",{
-  "meta": {
-    "project_name": "Livraria Alexandria",
-    "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
-    "current_phase": "pilot_functional_interlinked",
-    "last_updated": "2026-02-08",
-    "owner": "Leandro Moda",
-    "environment": "local"
   },
 
   "objectives": {
@@ -227,13 +75,11 @@
   "monetization": {
     "model": "affiliate_redirect",
     "status": "functional",
-
     "flows": [
       "Lista → Livro",
       "Livro → Oferta",
       "Oferta → Afiliado"
     ],
-
     "offer_rendering": {
       "location": "inside_book_page",
       "join": "ofertas.livro_id → livros.id",
@@ -251,7 +97,9 @@
       "referer",
       "ip_hash",
       "created_at"
-    ]
+    ],
+    "redirect_flow": "/api/click/[id] → afiliado",
+    "deduplication": "pending"
   },
 
   "interlinking": {
@@ -275,10 +123,10 @@
   "data_layer": {
     "supabase": {
       "status": "connected",
+      "rls_public_read": true,
       "joins_validated": [
         "ofertas ↔ livros"
-      ],
-      "rls_public_read": true
+      ]
     }
   },
 
@@ -294,6 +142,32 @@
     "dynamic_routes": "operational",
     "edge_runtime": "active",
     "route_groups": "active"
+  },
+
+  "seo_structured_data": {
+    "livro_page": "Product + Offer",
+    "listas_page": "ItemList + Book",
+    "ofertas_page": "ItemList + Product + Offer",
+    "aggregate_offer": "pending"
+  },
+
+  "ingest_pipeline": {
+    "status": "operational",
+    "language": "Python",
+    "environment": "venv",
+    "source_primary": "OpenLibrary",
+    "source_fallback": "Google Books (quota-limited)",
+    "llm_enrichment": "Ollama local",
+    "model": "phi3:mini",
+    "generated_fields": [
+      "descricao"
+    ],
+    "slug_strategy": "SEO safe slugify",
+    "logging": {
+      "terminal": true,
+      "heartbeat_30s": true,
+      "timestamp": "HH:MM:SS"
+    }
   },
 
   "decisions": [
@@ -344,23 +218,6 @@
   "risks": [
     {
       "description": "Dependência de SEO orgânico",
-      "impact": "medium"
-    }
-  ]
-}
-
-      "priority": "medium",
-      "status": "todo"
-    }
-  ],
-
-  "risks": [
-    {
-      "description": "Dependência de SEO orgânico",
-      "impact": "medium"
-    },
-    {
-      "description": "Links afiliados sem tracking interno",
       "impact": "medium"
     }
   ]
