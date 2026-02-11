@@ -2,13 +2,14 @@
   "meta": {
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
-    "current_phase": "pilot_functional_interlinked",
-    "last_updated": "2026-02-08",
+    "current_phase": "pilot_functional_interlinked_with_ingest_pipeline",
+    "last_updated": "2026-02-11",
     "owner": "Leandro Moda",
     "environment": "local",
     "runtime_stack": {
       "node": "Next.js App Router (Edge Runtime ativo)",
-      "database": "Supabase",
+      "database_primary": "Supabase",
+      "database_staging": "SQLite (pipeline local)",
       "llm_local": "Ollama",
       "llm_model": "phi3:mini",
       "python_env": "venv (Windows)",
@@ -22,7 +23,8 @@
       "Validar funil Lista → Livro → Oferta → Afiliado",
       "Validar JOIN ofertas ↔ livros",
       "Estabelecer malha mínima de interlinking",
-      "Preparar base para tracking afiliado"
+      "Preparar base para tracking afiliado",
+      "Escalar geração programática de páginas via ingest automatizado"
     ],
     "non_goals": [
       "Checkout próprio",
@@ -32,7 +34,7 @@
   },
 
   "architecture": {
-    "high_level_description": "Aplicação monolítica em Next.js (App Router) com route groups segmentando camadas públicas e internas.",
+    "high_level_description": "Aplicação monolítica em Next.js (App Router) com pipeline externo de ingestão modular em Python.",
 
     "route_groups": {
       "public": "Páginas indexáveis e SEO",
@@ -43,30 +45,24 @@
       {
         "name": "Páginas de Livro",
         "status": "operational",
-        "responsibility": "Renderizar páginas individuais com conteúdo editorial e ofertas vinculadas",
-        "monetization": "embedded_offers",
         "schema_org": "Product + Offer",
         "path": "app/(public)/livros/[slug]"
       },
       {
         "name": "Listas SEO",
         "status": "operational",
-        "responsibility": "Renderizar rankings e interlinkar para livros",
         "schema_org": "ItemList + Book",
         "path": "app/(public)/listas/[slug]"
       },
       {
         "name": "Página de Ofertas",
         "status": "operational",
-        "responsibility": "Hub agregador de ofertas com JOIN em livros",
         "schema_org": "ItemList + Product + Offer",
-        "rich_results": "eligible_carousel",
         "path": "app/(public)/ofertas"
       },
       {
         "name": "Click Tracking",
         "status": "operational",
-        "responsibility": "Registrar e redirecionar cliques afiliados",
         "path": "app/(internal)/api/click/[id]"
       }
     ]
@@ -79,26 +75,12 @@
       "Lista → Livro",
       "Livro → Oferta",
       "Oferta → Afiliado"
-    ],
-    "offer_rendering": {
-      "location": "inside_book_page",
-      "join": "ofertas.livro_id → livros.id",
-      "filters": ["ativa = true"]
-    }
+    ]
   },
 
   "tracking": {
     "status": "implemented",
     "table": "oferta_clicks",
-    "fields": [
-      "oferta_id",
-      "livro_id",
-      "user_agent",
-      "referer",
-      "ip_hash",
-      "created_at"
-    ],
-    "redirect_flow": "/api/click/[id] → afiliado",
     "deduplication": "pending"
   },
 
@@ -108,40 +90,13 @@
       "Livro → Lista",
       "Livro → Oferta",
       "Oferta → Livro",
-      "Lista ↔ Lista",
-      "Main → Listas",
-      "Main → Livros",
-      "Main → Ofertas"
+      "Lista ↔ Lista"
     ],
     "pending": [
       "Livro → Livros relacionados",
       "Autor → Livro",
       "Categoria → Livro"
     ]
-  },
-
-  "data_layer": {
-    "supabase": {
-      "status": "connected",
-      "rls_public_read": true,
-      "joins_validated": [
-        "ofertas ↔ livros"
-      ]
-    }
-  },
-
-  "validated_routes": [
-    "/",
-    "/livros/[slug]",
-    "/listas/[slug]",
-    "/ofertas"
-  ],
-
-  "infrastructure": {
-    "routing": "operational",
-    "dynamic_routes": "operational",
-    "edge_runtime": "active",
-    "route_groups": "active"
   },
 
   "seo_structured_data": {
@@ -151,74 +106,168 @@
     "aggregate_offer": "pending"
   },
 
-  "ingest_pipeline": {
-    "status": "operational",
-    "language": "Python",
-    "environment": "venv",
-    "source_primary": "OpenLibrary",
-    "source_fallback": "Google Books (quota-limited)",
-    "llm_enrichment": "Ollama local",
-    "model": "phi3:mini",
-    "generated_fields": [
-      "descricao"
-    ],
-    "slug_strategy": "SEO safe slugify",
-    "logging": {
-      "terminal": true,
-      "heartbeat_30s": true,
-      "timestamp": "HH:MM:SS"
+  "data_layer": {
+    "production": {
+      "provider": "Supabase",
+      "status": "connected",
+      "rls_public_read": true
+    },
+    "staging": {
+      "provider": "SQLite",
+      "role": "Ingest + Enrichment + QA + Dedup",
+      "status": "operational"
     }
   },
 
-  "decisions": [
-    {
-      "id": "DEC-004",
-      "date": "2026-02-08",
-      "decision": "Implementar ofertas dentro da página do livro",
-      "reason": "Fechamento do funil de monetização",
-      "status": "active"
+  "ingest_pipeline": {
+
+    "status": "operational_incremental",
+
+    "execution": {
+      "entrypoint": "scripts/main.py",
+      "mode": "menu_driven",
+      "interrupt_resume": true,
+      "heartbeat": "30s",
+      "logging": "timestamped_terminal"
     },
-    {
-      "id": "DEC-005",
-      "date": "2026-02-08",
-      "decision": "Criar página agregadora /ofertas",
-      "reason": "SEO long tail + discovery + campanhas",
-      "status": "active"
+
+    "state_management": {
+      "progress_storage": "SQLite",
+      "granularity": [
+        "per_step",
+        "per_record",
+        "per_batch"
+      ],
+      "resume_strategy": "auto_continue_from_last_offset"
     },
-    {
-      "id": "DEC-006",
-      "date": "2026-02-08",
-      "decision": "Segregar rotas via route groups (public/internal)",
-      "reason": "Escalabilidade e governança arquitetural",
-      "status": "active"
-    }
+
+    "cluster_strategy": {
+      "type": "library_grade_taxonomy",
+      "scope": "expanded_exhaustive",
+      "languages_supported": [
+        "Portuguese",
+        "English",
+        "Spanish",
+        "Italian"
+      ]
+    },
+
+    "steps": [
+
+      {
+        "order": 1,
+        "name": "Prospect",
+        "script": "steps/prospect.py",
+        "status": "operational",
+        "sources": [
+          "OpenLibrary",
+          "Google Books",
+          "ISBNdb (planned)"
+        ],
+        "extracted_fields": [
+          "titulo",
+          "autor",
+          "isbn",
+          "first_publish_year"
+        ],
+        "batch_sizes": [10,20,50,100,500,1000]
+      },
+
+      {
+        "order": 2,
+        "name": "Slugify",
+        "script": "steps/slugify.py",
+        "status": "operational",
+        "features": [
+          "Unicode normalize",
+          "SEO safe",
+          "collision incremental"
+        ]
+      },
+
+      {
+        "order": 3,
+        "name": "Deduplicate",
+        "script": "steps/deduplicate.py",
+        "status": "operational",
+        "match_rules": [
+          "titulo",
+          "isbn",
+          "slug"
+        ]
+      },
+
+      {
+        "order": 4,
+        "name": "Synopsis Generation",
+        "script": "steps/synopsis.py",
+        "status": "operational",
+        "llm": "Ollama",
+        "model": "phi3:mini"
+      },
+
+      {
+        "order": 5,
+        "name": "Synopsis Review",
+        "script": "steps/review.py",
+        "status": "operational",
+        "features": [
+          "Grammar fix",
+          "Editorial tone",
+          "Slug review"
+        ]
+      },
+
+      {
+        "order": 6,
+        "name": "Cover Enrichment",
+        "script": "steps/covers.py",
+        "status": "operational",
+        "sources": [
+          "OpenLibrary Covers",
+          "Google Books Covers"
+        ]
+      },
+
+      {
+        "order": 7,
+        "name": "Publish",
+        "script": "steps/publish.py",
+        "status": "operational",
+        "target": "Supabase",
+        "mode": "batch_upsert"
+      }
+    ]
+  },
+
+  "validated_routes": [
+    "/",
+    "/livros/[slug]",
+    "/listas/[slug]",
+    "/ofertas"
   ],
 
   "open_tasks": [
     {
       "id": "TASK-TRACK-001",
-      "description": "Implementar deduplicação básica de cliques",
-      "priority": "medium",
-      "status": "todo"
-    },
-    {
-      "id": "TASK-SEO-001",
-      "description": "Expandir páginas de livro para estrutura SEO completa",
-      "priority": "medium",
-      "status": "todo"
+      "description": "Deduplicação de cliques afiliados",
+      "priority": "medium"
     },
     {
       "id": "TASK-SEO-003",
-      "description": "Implementar AggregateOffer por livro",
-      "priority": "medium",
-      "status": "todo"
+      "description": "AggregateOffer por livro",
+      "priority": "medium"
+    },
+    {
+      "id": "TASK-INGEST-002",
+      "description": "Expandir fontes (ISBNdb, Amazon, Goodreads)",
+      "priority": "low"
     }
   ],
 
-  "risks": [
-    {
-      "description": "Dependência de SEO orgânico",
-      "impact": "medium"
-    }
-  ]
+  "next_scaling_targets": {
+    "books": 500,
+    "listas": 50,
+    "offers_per_book_avg": 3
+  }
 }
