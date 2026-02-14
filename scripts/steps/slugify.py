@@ -1,8 +1,35 @@
 import re
 import unicodedata
+import os
+import sqlite3
 
-from core.db import get_conn
-from core.logger import log
+from datetime import datetime
+
+
+# =========================
+# DB PATH (ALINHADO PROSPECT)
+# =========================
+
+DB_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "data",
+    "books.db"
+)
+
+
+def get_conn():
+    return sqlite3.connect(DB_PATH)
+
+
+# =========================
+# LOGGER SIMPLES
+# =========================
+
+def log(msg):
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}")
+
 
 # =========================
 # SLUG BASE
@@ -30,7 +57,7 @@ def slug_exists(slug):
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT 1 FROM books WHERE slug = ? LIMIT 1",
+        "SELECT 1 FROM livros WHERE slug = ? LIMIT 1",
         (slug,)
     )
 
@@ -49,7 +76,6 @@ def generate_unique_slug(titulo):
     counter = 2
 
     while slug_exists(slug):
-
         slug = f"{base}-{counter}"
         counter += 1
 
@@ -67,8 +93,8 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT id, titulo
-        FROM books
-        WHERE slugger = 0
+        FROM livros
+        WHERE status_slug = 0
         LIMIT ?
     """, (limit,))
 
@@ -87,12 +113,15 @@ def update_slug(book_id, slug):
     conn = get_conn()
     cur = conn.cursor()
 
+    now = datetime.utcnow()
+
     cur.execute("""
-        UPDATE books
+        UPDATE livros
         SET slug = ?,
-            slugger = 1
+            status_slug = 1,
+            updated_at = ?
         WHERE id = ?
-    """, (slug, book_id))
+    """, (slug, now, book_id))
 
     conn.commit()
     conn.close()

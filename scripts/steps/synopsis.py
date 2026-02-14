@@ -1,8 +1,31 @@
 import requests
 import time
+import os
+import sqlite3
 
-from core.db import get_conn
-from core.logger import log
+from datetime import datetime
+
+
+# =========================
+# DB PATH
+# =========================
+
+DB_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "data",
+    "books.db"
+)
+
+
+def get_conn():
+    return sqlite3.connect(DB_PATH, timeout=30)
+
+
+def log(msg):
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}")
+
 
 # =========================
 # CONFIG
@@ -19,6 +42,8 @@ MAX_RETRIES = 3
 # =========================
 
 def build_prompt(titulo, autor):
+
+    autor = autor or "Autor não informado"
 
     return f"""
 Escreva uma sinopse editorial curta (até 80 palavras)
@@ -65,7 +90,7 @@ def generate_synopsis(titulo, autor):
             if len(text) > 30:
                 return text
 
-        except Exception as e:
+        except Exception:
             log(f"Retry LLM ({attempt+1}) → {titulo}")
             time.sleep(2)
 
@@ -83,8 +108,8 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT id, titulo, autor
-        FROM books
-        WHERE sinopse = 0
+        FROM livros
+        WHERE status_synopsis = 0
         LIMIT ?
     """, (limit,))
 
@@ -104,12 +129,17 @@ def update_synopsis(book_id, text):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE books
+        UPDATE livros
         SET
             descricao = ?,
-            sinopse = 1
+            status_synopsis = 1,
+            updated_at = ?
         WHERE id = ?
-    """, (text, book_id))
+    """, (
+        text,
+        datetime.utcnow(),
+        book_id
+    ))
 
     conn.commit()
     conn.close()

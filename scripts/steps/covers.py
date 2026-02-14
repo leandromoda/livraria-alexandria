@@ -90,8 +90,8 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT id, titulo, autor, isbn
-        FROM books
-        WHERE capa = 0
+        FROM livros
+        WHERE status_cover = 0
         LIMIT ?
     """, (limit,))
 
@@ -111,10 +111,11 @@ def update_cover(book_id, url):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE books
+        UPDATE livros
         SET
             imagem_url = ?,
-            capa = 1
+            status_cover = 1,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     """, (url, book_id))
 

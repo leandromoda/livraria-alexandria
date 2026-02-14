@@ -1,0 +1,233 @@
+{
+  "database": {
+    "name": "books.db",
+    "path": "scripts/data/books.db",
+    "engine": "SQLite",
+    "purpose": "Staging local para ingest, enriquecimento, revisão e preparação antes de publicação no Supabase",
+    "resume_capability": true,
+    "created_at_strategy": "pipeline_timestamp",
+    "updated_at_strategy": "pipeline_timestamp",
+    "uuid_strategy": "hex_24_non_uuid",
+    "publish_blocker": "uuid_format_mismatch"
+  },
+
+  "tables": [
+    {
+      "name": "livros",
+      "description": "Tabela central de staging com dados consolidados dos livros",
+      "primary_key": "id",
+      "fields": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "description": "Pseudo-UUID hexadecimal 24 chars (não compatível com UUID Supabase)"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "nullable": true,
+          "unique": true
+        },
+        {
+          "name": "autor",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "nullable": true,
+          "description": "Sinopse gerada + revisada (overwrite no review step)"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT",
+          "nullable": true,
+          "index": true
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER",
+          "nullable": true
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER",
+          "default": 0,
+          "description": "0 pendente | 1 gerado"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true
+        }
+      ]
+    },
+
+    {
+      "name": "dedup_log",
+      "description": "Registro de duplicidades detectadas",
+      "primary_key": "id",
+      "fields": [
+        { "name": "id", "type": "TEXT" },
+        { "name": "livro_id_origem", "type": "TEXT" },
+        { "name": "livro_id_duplicado", "type": "TEXT" },
+        {
+          "name": "criterio",
+          "type": "TEXT",
+          "description": "slug | isbn | titulo_similar"
+        },
+        {
+          "name": "acao",
+          "type": "TEXT",
+          "description": "removido | mesclado | ignorado"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+
+    {
+      "name": "ingest_runs",
+      "description": "Histórico de execuções de prospecção",
+      "primary_key": "id",
+      "fields": [
+        { "name": "id", "type": "TEXT" },
+        { "name": "idioma", "type": "TEXT" },
+        { "name": "pacote", "type": "INTEGER" },
+        {
+          "name": "clusters_usados",
+          "type": "TEXT",
+          "description": "JSON string"
+        },
+        { "name": "inseridos", "type": "INTEGER" },
+        { "name": "skips", "type": "INTEGER" },
+        { "name": "created_at", "type": "DATETIME" }
+      ]
+    },
+
+    {
+      "name": "pipeline_state",
+      "description": "Estado global resumível do pipeline",
+      "primary_key": "key",
+      "fields": [
+        { "name": "key", "type": "TEXT" },
+        { "name": "value", "type": "TEXT" },
+        { "name": "updated_at", "type": "DATETIME" }
+      ],
+      "examples": [
+        {
+          "key": "last_cluster_index",
+          "value": "12"
+        },
+        {
+          "key": "last_run_id",
+          "value": "uuid"
+        }
+      ]
+    }
+  ],
+
+  "indexes": [
+    {
+      "table": "livros",
+      "fields": ["slug"],
+      "unique": true
+    },
+    {
+      "table": "livros",
+      "fields": ["isbn"]
+    },
+    {
+      "table": "livros",
+      "fields": ["cluster"]
+    },
+    {
+      "table": "livros",
+      "fields": ["status_publish"]
+    }
+  ],
+
+  "relationships": [],
+
+  "publish_layer": {
+    "target": "Supabase.livros",
+    "mode": "REST upsert",
+    "status": "blocked",
+    "blocking_issue": "invalid input syntax for type uuid",
+    "root_cause": "staging IDs não seguem UUID v4",
+    "resolution_path": [
+      "Gerar UUID v4 no publish",
+      "Ou migrar staging IDs",
+      "Ou alterar schema Supabase para TEXT"
+    ]
+  },
+
+  "data_flow": [
+    "prospect → livros (insert)",
+    "slugify → livros.slug",
+    "dedup → dedup_log + status_dedup",
+    "synopsis → livros.descricao",
+    "review → overwrite descricao",
+    "cover → livros.imagem_url",
+    "publish → status_publish = 1"
+  ]
+}

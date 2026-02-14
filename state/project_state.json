@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_interlinked_with_ingest_pipeline",
-    "last_updated": "2026-02-11",
+    "last_updated": "2026-02-14",
     "owner": "Leandro Moda",
     "environment": "local",
     "runtime_stack": {
@@ -170,7 +170,7 @@
           "isbn",
           "first_publish_year"
         ],
-        "batch_sizes": [10,20,50,100,500,1000]
+        "batch_sizes": [10, 20, 50, 100, 500, 1000]
       },
 
       {
@@ -188,7 +188,7 @@
       {
         "order": 3,
         "name": "Deduplicate",
-        "script": "steps/deduplicate.py",
+        "script": "steps/dedup.py",
         "status": "operational",
         "match_rules": [
           "titulo",
@@ -233,9 +233,20 @@
         "order": 7,
         "name": "Publish",
         "script": "steps/publish.py",
-        "status": "operational",
+        "status": "operational_with_blocker",
         "target": "Supabase",
-        "mode": "batch_upsert"
+        "mode": "batch_upsert",
+        "blockers": [
+          {
+            "type": "uuid_format_mismatch",
+            "description": "IDs locais não estão no formato UUID aceito pelo Supabase",
+            "impact": "Falha HTTP 400 no upsert",
+            "resolution_strategy": [
+              "Gerar UUID v4 no ingest",
+              "Ou mapear UUID no publish"
+            ]
+          }
+        ]
       }
     ]
   },
@@ -262,6 +273,11 @@
       "id": "TASK-INGEST-002",
       "description": "Expandir fontes (ISBNdb, Amazon, Goodreads)",
       "priority": "low"
+    },
+    {
+      "id": "TASK-INGEST-UUID-004",
+      "description": "Normalizar UUID entre SQLite e Supabase",
+      "priority": "high"
     }
   ],
 

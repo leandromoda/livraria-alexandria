@@ -1,7 +1,29 @@
 from difflib import SequenceMatcher
+from datetime import datetime
+import os
+import sqlite3
 
-from core.db import get_conn
-from core.logger import log
+
+# =========================
+# DB PATH
+# =========================
+
+DB_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "data",
+    "books.db"
+)
+
+
+def get_conn():
+    return sqlite3.connect(DB_PATH, timeout=30)
+
+
+def log(msg):
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}")
+
 
 SIMILARITY_THRESHOLD = 0.92
 
@@ -25,8 +47,8 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT id, titulo, slug, isbn
-        FROM books
-        WHERE dedup = 0
+        FROM livros
+        WHERE status_dedup = 0
         LIMIT ?
     """, (limit,))
 
@@ -37,7 +59,7 @@ def fetch_pending(limit):
 
 
 # =========================
-# BUSCAR POSSÍVEIS DUPES
+# BUSCAR DUPLICADOS
 # =========================
 
 def find_duplicates(book):
@@ -49,7 +71,7 @@ def find_duplicates(book):
         SELECT id, titulo, slug, isbn,
                descricao, imagem_url,
                ano_publicacao
-        FROM books
+        FROM livros
         WHERE id != ?
     """, (book["id"],))
 
@@ -60,17 +82,14 @@ def find_duplicates(book):
 
     for r in rows:
 
-        # ISBN match
         if book["isbn"] and r[3] == book["isbn"]:
             duplicates.append(r)
             continue
 
-        # slug match
         if book["slug"] and r[2] == book["slug"]:
             duplicates.append(r)
             continue
 
-        # título similar
         if similar(book["titulo"], r[1]) >= SIMILARITY_THRESHOLD:
             duplicates.append(r)
 
@@ -88,24 +107,24 @@ def merge_books(master_id, dup_row):
 
     dup_id = dup_row[0]
 
-    # copia campos faltantes
     cur.execute("""
-        UPDATE books
+        UPDATE livros
         SET
             descricao = COALESCE(descricao, ?),
             imagem_url = COALESCE(imagem_url, ?),
-            ano_publicacao = COALESCE(ano_publicacao, ?)
+            ano_publicacao = COALESCE(ano_publicacao, ?),
+            updated_at = ?
         WHERE id = ?
     """, (
         dup_row[4],
         dup_row[5],
         dup_row[6],
+        datetime.utcnow(),
         master_id
     ))
 
-    # deleta duplicado
     cur.execute(
-        "DELETE FROM books WHERE id = ?",
+        "DELETE FROM livros WHERE id = ?",
         (dup_id,)
     )
 
@@ -125,10 +144,14 @@ def mark_processed(book_id):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE books
-        SET dedup = 1
+        UPDATE livros
+        SET status_dedup = 1,
+            updated_at = ?
         WHERE id = ?
-    """, (book_id,))
+    """, (
+        datetime.utcnow(),
+        book_id
+    ))
 
     conn.commit()
     conn.close()
@@ -161,7 +184,6 @@ def run(pacote=10):
         duplicates = find_duplicates(book)
 
         for dup in duplicates:
-
             merge_books(book["id"], dup)
             removed += 1
 

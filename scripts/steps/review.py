@@ -1,6 +1,7 @@
 import requests
 import re
 import unicodedata
+import time
 
 from core.db import get_conn
 from core.logger import log
@@ -12,8 +13,12 @@ from core.logger import log
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "phi3:mini"
 
+TIMEOUT = 300
+MAX_RETRIES = 3
+
+
 # =========================
-# PROMPT REVISÃO
+# PROMPT
 # =========================
 
 def build_prompt(texto):
@@ -27,7 +32,7 @@ Objetivos:
 - Corrigir concordância
 - Melhorar fluidez
 - Remover repetições
-- Manter até 80 palavras
+- Máx 80 palavras
 - Não adicionar conteúdo novo
 
 Sinopse:
@@ -37,30 +42,43 @@ Sinopse:
 
 
 # =========================
-# LLM REVIEW
+# LLM CALL
 # =========================
 
 def review_text(texto):
 
-    res = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL,
-            "prompt": build_prompt(texto),
-            "stream": False,
-            "options": {
-                "temperature": 0.2,
-                "num_predict": 180
-            }
-        },
-        timeout=120
-    )
+    for attempt in range(MAX_RETRIES):
 
-    return res.json()["response"].strip()
+        try:
+
+            res = requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": MODEL,
+                    "prompt": build_prompt(texto),
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.2,
+                        "num_predict": 180
+                    }
+                },
+                timeout=TIMEOUT
+            )
+
+            text = res.json()["response"].strip()
+
+            if len(text) > 30:
+                return text
+
+        except Exception:
+            log(f"Retry Review ({attempt+1})")
+            time.sleep(2)
+
+    return None
 
 
 # =========================
-# SLUG NORMALIZAÇÃO
+# SLUG
 # =========================
 
 def base_slug(text):
@@ -81,7 +99,8 @@ def slug_exists(slug, book_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT 1 FROM books
+        SELECT 1
+        FROM livros
         WHERE slug = ?
         AND id != ?
         LIMIT 1
@@ -117,9 +136,9 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT id, titulo, descricao
-        FROM books
-        WHERE sinopse = 1
-        AND revisado = 0
+        FROM livros
+        WHERE status_synopsis = 1
+        AND status_review = 0
         LIMIT ?
     """, (limit,))
 
@@ -139,11 +158,12 @@ def update_review(book_id, texto, slug):
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE books
+        UPDATE livros
         SET
-            descricao_revisada = ?,
+            descricao = ?,
             slug = ?,
-            revisado = 1
+            status_review = 1,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
     """, (texto, slug, book_id))
 
@@ -164,12 +184,18 @@ def run(pacote=10):
         return
 
     processed = 0
+    failed = 0
 
     for book_id, titulo, descricao in rows:
 
         log(f"REVISANDO → {titulo}")
 
         texto_revisto = review_text(descricao)
+
+        if not texto_revisto:
+            failed += 1
+            log(f"FALHA REVIEW → {titulo}")
+            continue
 
         slug_revisto = revise_slug(titulo, book_id)
 
@@ -183,4 +209,6 @@ def run(pacote=10):
 
         log(f"REVISADO → {titulo}")
 
-    log(f"REVISÃO CONCLUÍDA → {processed}")
+    log(
+        f"REVISÃO CONCLUÍDA → {processed} | falhas {failed}"
+    )

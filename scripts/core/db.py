@@ -1,51 +1,59 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("scripts/data/books.db")
+# path absoluto garantido
+DB_PATH = Path(__file__).resolve().parent.parent / "data" / "books.db"
 
 
 def get_conn():
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+
+    conn = sqlite3.connect(DB_PATH)
+
+    ensure_schema(conn)
+
+    return conn
 
 
-def init_db():
+# =========================
+# SCHEMA
+# =========================
 
-    conn = get_conn()
+def ensure_schema(conn):
+
     cur = conn.cursor()
 
     cur.execute("""
-    CREATE TABLE IF NOT EXISTS books (
+    CREATE TABLE IF NOT EXISTS livros (
 
         id TEXT PRIMARY KEY,
 
         titulo TEXT,
+        slug TEXT,
+
         autor TEXT,
+        descricao TEXT,
 
         isbn TEXT,
         ano_publicacao INTEGER,
 
-        descricao TEXT,
-        descricao_revisada TEXT,
-
-        slug TEXT,
-
         imagem_url TEXT,
 
         idioma TEXT,
+        cluster TEXT,
+        fonte TEXT,
 
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status_slug INTEGER DEFAULT 0,
+        status_dedup INTEGER DEFAULT 0,
+        status_synopsis INTEGER DEFAULT 0,
+        status_review INTEGER DEFAULT 0,
+        status_cover INTEGER DEFAULT 0,
+        status_publish INTEGER DEFAULT 0,
 
-        -- estado pipeline
-        prospectado INTEGER DEFAULT 0,
-        slugger INTEGER DEFAULT 0,
-        dedup INTEGER DEFAULT 0,
-        sinopse INTEGER DEFAULT 0,
-        revisado INTEGER DEFAULT 0,
-        capa INTEGER DEFAULT 0,
-        publicado INTEGER DEFAULT 0
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
 
     conn.commit()
-    conn.close()

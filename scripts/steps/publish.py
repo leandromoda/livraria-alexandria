@@ -9,8 +9,8 @@ from core.logger import log
 # CONFIG
 # =========================
 
-SUPABASE_URL = "https://SEU-PROJETO.supabase.co"
-SUPABASE_KEY = "SUA_SERVICE_ROLE_KEY"
+SUPABASE_URL = "https://ncnexkuiiuzwujqurtsa.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbmV4a3VpaXV6d3VqcXVydHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTU0MTY2MCwiZXhwIjoyMDg1MTE3NjYwfQ.CacLDlVd0noDzcuVJnxjx3eMr7SjI_19rAsDZeQh6S8"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -23,7 +23,7 @@ TABLE_URL = f"{SUPABASE_URL}/rest/v1/livros"
 
 
 # =========================
-# FETCH PENDENTES
+# FETCH
 # =========================
 
 def fetch_pending(limit):
@@ -33,16 +33,17 @@ def fetch_pending(limit):
 
     cur.execute("""
         SELECT
-            id,
             titulo,
             slug,
             autor,
-            descricao_revisada,
+            descricao,
             isbn,
             ano_publicacao,
-            imagem_url
-        FROM books
-        WHERE publicado = 0
+            imagem_url,
+            id
+        FROM livros
+        WHERE status_publish = 0
+        AND status_review = 1
         LIMIT ?
     """, (limit,))
 
@@ -58,17 +59,19 @@ def fetch_pending(limit):
 
 def build_payload(row):
 
+    now = datetime.utcnow().isoformat()
+
     return {
-        "id": row[0],
-        "titulo": row[1],
-        "slug": row[2],
-        "autor": row[3],
-        "descricao": row[4],
-        "isbn": row[5],
-        "ano_publicacao": row[6],
-        "imagem_url": row[7],
-        "created_at": datetime.utcnow().isoformat(),
-        "updated_at": datetime.utcnow().isoformat(),
+        "id": str(uuid.uuid4()),   # ← UUID válido
+        "titulo": row[0],
+        "slug": row[1],
+        "autor": row[2],
+        "descricao": row[3],
+        "isbn": row[4],
+        "ano_publicacao": row[5],
+        "imagem_url": row[6],
+        "created_at": now,
+        "updated_at": now,
     }
 
 
@@ -84,23 +87,29 @@ def upsert_book(payload):
         json=payload
     )
 
+    if res.status_code not in [200, 201]:
+        print("STATUS:", res.status_code)
+        print("BODY:", res.text)
+
     return res.status_code in [200, 201]
 
 
 # =========================
-# FLAG PUBLICADO
+# FLAG
 # =========================
 
-def mark_published(book_id):
+def mark_published(local_id):
 
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
-        UPDATE books
-        SET publicado = 1
+        UPDATE livros
+        SET
+            status_publish = 1,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (book_id,))
+    """, (local_id,))
 
     conn.commit()
     conn.close()
@@ -129,13 +138,13 @@ def run(pacote=10):
 
         if not ok:
             failed += 1
-            log(f"FALHA → {row[1]}")
+            log(f"FALHA → {row[0]}")
             continue
 
-        mark_published(row[0])
+        mark_published(row[7])
 
         inserted += 1
-        log(f"PUBLICADO → {row[1]}")
+        log(f"PUBLICADO → {row[0]}")
 
     log(
         f"PUBLICAÇÃO CONCLUÍDA → {inserted} | falhas {failed}"

@@ -1,15 +1,17 @@
 # ============================================
-# LIVRARIA ALEXANDRIA — SCRIPT 1
-# PROSPECÇÃO MULTI-FONTE INCREMENTAL
-# Estratégia B + Estado Salvável
+# LIVRARIA ALEXANDRIA — PROSPECT
+# Compatível com books.db (schema staging)
+# ID Strategy: UUID v4 + fallback hash título
 # ============================================
 
 import os
 import time
+import uuid
+import hashlib
 import sqlite3
 import requests
-from datetime import datetime
 
+from datetime import datetime
 from steps._clusters import CLUSTERS
 
 
@@ -17,7 +19,12 @@ from steps._clusters import CLUSTERS
 # CONFIG
 # ============================================
 
-DB_PATH = os.path.join("data", "livros.db")
+DB_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "data",
+    "books.db"
+)
 
 OPENLIBRARY_URL = "https://openlibrary.org/search.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
@@ -32,18 +39,21 @@ HEARTBEAT_INTERVAL = 30
 _last_event = time.time()
 
 
-def beat(msg="Script ativo…"):
-    global _last_event
-    now = time.time()
-
-    if now - _last_event >= HEARTBEAT_INTERVAL:
-        print(f"[{ts()}] {msg} último evento há {int(now - _last_event)}s")
-
-    _last_event = now()
-
-
 def ts():
     return datetime.now().strftime("%H:%M:%S")
+
+
+def beat(msg="Script ativo…"):
+    global _last_event
+
+    now_ts = time.time()
+
+    if now_ts - _last_event >= HEARTBEAT_INTERVAL:
+        print(
+            f"[{ts()}] {msg} último evento há {int(now_ts - _last_event)}s"
+        )
+
+    _last_event = now_ts
 
 
 # ============================================
@@ -51,25 +61,35 @@ def ts():
 # ============================================
 
 def get_conn():
-    os.makedirs("data", exist_ok=True)
-
     return sqlite3.connect(DB_PATH)
 
 
 def ensure_schema():
+
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS livros (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulo TEXT,
+        id TEXT PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        slug TEXT UNIQUE,
         autor TEXT,
+        descricao TEXT,
         isbn TEXT,
-        ano INTEGER,
+        ano_publicacao INTEGER,
+        imagem_url TEXT,
         idioma TEXT,
+        cluster TEXT,
         fonte TEXT,
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        status_slug INTEGER DEFAULT 0,
+        status_dedup INTEGER DEFAULT 0,
+        status_synopsis INTEGER DEFAULT 0,
+        status_review INTEGER DEFAULT 0,
+        status_cover INTEGER DEFAULT 0,
+        status_publish INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
     )
     """)
 
@@ -77,18 +97,30 @@ def ensure_schema():
     conn.close()
 
 
-def count_books():
-    conn = get_conn()
-    cur = conn.cursor()
+# ============================================
+# ID STRATEGY
+# ============================================
 
-    cur.execute("SELECT COUNT(*) FROM livros")
-    total = cur.fetchone()[0]
+def generate_id(titulo, isbn):
 
-    conn.close()
-    return total
+    if isbn:
+        base = isbn
+    else:
+        base = titulo
 
+    hash_id = hashlib.sha1(
+        base.encode("utf-8")
+    ).hexdigest()
+
+    return str(uuid.uuid4())[:8] + hash_id[:16]
+
+
+# ============================================
+# INSERT
+# ============================================
 
 def exists(titulo):
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -103,26 +135,47 @@ def exists(titulo):
     return res is not None
 
 
-def insert_book(data):
+def insert_book(data, cluster):
 
     if exists(data["titulo"]):
         print(f"[{ts()}] SKIP duplicado → {data['titulo']}")
         return False
 
+    livro_id = generate_id(
+        data["titulo"],
+        data["isbn"]
+    )
+
+    now = datetime.utcnow()
+
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO livros
-        (titulo, autor, isbn, ano, idioma, fonte)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO livros (
+            id,
+            titulo,
+            autor,
+            isbn,
+            ano_publicacao,
+            idioma,
+            cluster,
+            fonte,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
+        livro_id,
         data["titulo"],
         data["autor"],
         data["isbn"],
         data["ano"],
         data["idioma"],
-        data["fonte"]
+        cluster,
+        data["fonte"],
+        now,
+        now
     ))
 
     conn.commit()
@@ -246,13 +299,7 @@ def run(idioma, pacote):
 
     ensure_schema()
 
-    inseridos_total = count_books()
-    meta_execucao = inseridos_total + pacote
-
-    print(f"[{ts()}] Já inseridos → {inseridos_total}")
-    print(f"[{ts()}] Meta desta execução → {meta_execucao}")
-
-    inseridos_exec = inseridos_total
+    inseridos = 0
 
     for cluster, queries in CLUSTERS.items():
 
@@ -260,7 +307,7 @@ def run(idioma, pacote):
 
         for query in queries:
 
-            if inseridos_exec >= meta_execucao:
+            if inseridos >= pacote:
                 print(f"[{ts()}] Pacote atingido — STOP.")
                 return
 
@@ -271,22 +318,22 @@ def run(idioma, pacote):
 
             for book in ol_books + g_books:
 
-                if inseridos_exec >= meta_execucao:
+                if inseridos >= pacote:
                     print(f"[{ts()}] Pacote atingido — STOP.")
                     return
 
-                if insert_book(book):
-                    inseridos_exec += 1
+                if insert_book(book, cluster):
+                    inseridos += 1
                     print(
-                        f"[{ts()}] INSERT {inseridos_exec}/{meta_execucao} → {book['titulo']}"
+                        f"[{ts()}] INSERT {inseridos}/{pacote} → {book['titulo']}"
                     )
 
     print(f"[{ts()}] Fim da prospecção.")
 
 
 # ============================================
-# ENTRYPOINT TESTE DIRETO
+# ENTRYPOINT
 # ============================================
 
 if __name__ == "__main__":
-    run("por", 10)
+    run("pt", 10)

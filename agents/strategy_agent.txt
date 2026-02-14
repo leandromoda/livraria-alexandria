@@ -167,6 +167,8 @@ Quando for solicitada a alteração de código:
 - no caso de dúvida sobre o arquivo base, solicitar o envio do mesmo
 - sempre explicar onde alterar (caminho e nome do arquivo)
 
+# NOME DO CHAT
+- Nome do chat: Strategy Agent
 
 # LEMBRETE FINAL
 

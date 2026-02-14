@@ -2,6 +2,12 @@ import time
 import threading
 
 from steps import prospect
+from steps import slugify
+from steps import dedup
+from steps import synopsis
+from steps import review
+from steps import covers
+from steps import publish   # ← STEP 7
 
 # =========================
 # INPUT CONTROL
@@ -122,6 +128,30 @@ def main():
         if op == "1":
             pacote = escolher_pacote()
             prospect.run(idioma, pacote)
+
+        elif op == "2":
+            pacote = escolher_pacote()
+            slugify.run(pacote)
+
+        elif op == "3":
+            pacote = escolher_pacote()
+            dedup.run(pacote)
+
+        elif op == "4":
+            pacote = escolher_pacote()
+            synopsis.run(pacote)
+
+        elif op == "5":
+            pacote = escolher_pacote()
+            review.run(pacote)
+
+        elif op == "6":
+            pacote = escolher_pacote()
+            covers.run(pacote)
+
+        elif op == "7":
+            pacote = escolher_pacote()
+            publish.run(pacote)
 
 
 # =========================
