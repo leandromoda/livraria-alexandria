@@ -41,18 +41,31 @@ export default async function Home() {
 
   return (
     <main className="p-10 max-w-3xl mx-auto space-y-10">
+
       {/* =========================
-          Header
+          Header + Nav
       ========================== */}
       <header className="space-y-4">
+
         <h1 className="text-3xl font-bold">
           Livraria Alexandria
         </h1>
 
         <p className="text-lg text-gray-700">
-          Curadoria de livros para decisão, estratégia,
-          dinheiro e aprendizado contínuo.
+          [livros].
         </p>
+
+        {/* NAV PRIMÁRIA */}
+        <nav className="flex gap-6 pt-2 text-blue-600 font-medium">
+          <a href="/listas" className="hover:underline">
+            Ver todas as listas →
+          </a>
+
+          <a href="/livros" className="hover:underline">
+            Ver todos os livros →
+          </a>
+        </nav>
+
       </header>
 
       {/* =========================
@@ -120,6 +133,7 @@ export default async function Home() {
           ))}
         </ul>
       </section>
+
     </main>
   );
 }

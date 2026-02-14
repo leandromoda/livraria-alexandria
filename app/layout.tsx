@@ -1,9 +1,6 @@
-import "./globals.css";
+export const runtime = "edge";
 
-export const metadata = {
-  title: "Livraria Alexandria",
-  description: "Curadoria de livros para decisão e aprendizado",
-};
+import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -12,13 +9,40 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body
-        style={{
-          fontFamily:
-            "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif",
-        }}
-      >
-        {children}
+      <body>
+
+        {/* =========================
+            NAVBAR GLOBAL
+        ========================== */}
+        <header className="border-b bg-white">
+
+          <nav className="max-w-6xl mx-auto px-6 py-4 flex gap-6 text-sm font-medium">
+
+            <a href="/" className="hover:text-blue-600">
+              Home
+            </a>
+
+            <a href="/listas" className="hover:text-blue-600">
+              Listas
+            </a>
+
+            <a href="/livros" className="hover:text-blue-600">
+              Livros
+            </a>
+
+            <a href="/ofertas" className="hover:text-blue-600">
+              Ofertas
+            </a>
+
+          </nav>
+
+        </header>
+
+        {/* PAGE */}
+        <main>
+          {children}
+        </main>
+
       </body>
     </html>
   );

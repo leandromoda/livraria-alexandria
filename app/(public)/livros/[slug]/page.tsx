@@ -20,11 +20,19 @@ export default async function LivroPage({
   );
 
   /**
-   * Livro
+   * Livro + Categorias
    */
   const { data: livro } = await supabase
     .from("livros")
-    .select("*")
+    .select(`
+      *,
+      livros_categorias (
+        categorias (
+          nome,
+          slug
+        )
+      )
+    `)
     .eq("slug", slug)
     .single();
 
@@ -62,9 +70,7 @@ export default async function LivroPage({
     listasPivot?.map((l: any) => l.listas) ?? [];
 
   /**
-   * =========================
-   * Schema.org Product-first
-   * =========================
+   * Schema.org
    */
   const schema = {
     "@context": "https://schema.org",
@@ -104,6 +110,7 @@ export default async function LivroPage({
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+
       {/* Schema JSON-LD */}
       <script
         type="application/ld+json"
@@ -116,6 +123,7 @@ export default async function LivroPage({
           Livro
       ========================== */}
       <section className="space-y-4">
+
         <h1 className="text-3xl font-bold">
           {livro.titulo}
         </h1>
@@ -126,17 +134,64 @@ export default async function LivroPage({
           </p>
         )}
 
+        {/* CAPA */}
+        {livro.imagem_url && (
+          <img
+            src={livro.imagem_url}
+            alt={livro.titulo}
+            className="w-48 rounded"
+          />
+        )}
+
         {livro.descricao && (
           <p className="text-gray-800 leading-relaxed">
             {livro.descricao}
           </p>
         )}
+
+      </section>
+
+      {/* =========================
+          Categorias
+      ========================== */}
+      <section className="space-y-3">
+
+        <h2 className="text-xl font-semibold">
+          Categorias
+        </h2>
+
+        {!livro.livros_categorias?.length && (
+          <p className="text-gray-500">
+            Ainda não categorizado.
+          </p>
+        )}
+
+        <ul className="list-disc list-inside text-sm space-y-1">
+
+          {livro.livros_categorias?.map((rel: any) => (
+
+            <li key={rel.categorias.slug}>
+
+              <a
+                href={`/categorias/${rel.categorias.slug}`}
+                className="text-blue-600 hover:underline"
+              >
+                {rel.categorias.nome}
+              </a>
+
+            </li>
+
+          ))}
+
+        </ul>
+
       </section>
 
       {/* =========================
           Listas relacionadas
       ========================== */}
       <section className="space-y-4">
+
         <h2 className="text-2xl font-semibold">
           Este livro aparece nas listas
         </h2>
@@ -148,7 +203,9 @@ export default async function LivroPage({
         )}
 
         <ul className="list-disc list-inside space-y-1">
+
           {listas.map((lista: any) => (
+
             <li key={lista.slug}>
               <a
                 href={`/listas/${lista.slug}`}
@@ -157,14 +214,18 @@ export default async function LivroPage({
                 {lista.titulo}
               </a>
             </li>
+
           ))}
+
         </ul>
+
       </section>
 
       {/* =========================
           Ofertas
       ========================== */}
       <section className="space-y-4">
+
         <h2 className="text-2xl font-semibold">
           Onde comprar
         </h2>
@@ -176,11 +237,14 @@ export default async function LivroPage({
         )}
 
         <ul className="space-y-3">
+
           {ofertas?.map((o: any) => (
+
             <li
               key={o.id}
               className="border p-4 rounded-lg flex items-center justify-between"
             >
+
               <div>
                 <p className="font-medium">
                   {o.marketplace}
@@ -198,10 +262,15 @@ export default async function LivroPage({
               >
                 Ver oferta →
               </a>
+
             </li>
+
           ))}
+
         </ul>
+
       </section>
+
     </main>
   );
 }
