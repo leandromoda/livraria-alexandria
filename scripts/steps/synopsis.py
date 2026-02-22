@@ -1,30 +1,15 @@
+# ============================================
+# LIVRARIA ALEXANDRIA — SYNOPSIS
+# LLM (Ollama) + Path Safe + Retry Safe
+# ============================================
+
 import requests
 import time
-import os
-import sqlite3
 
 from datetime import datetime
 
-
-# =========================
-# DB PATH
-# =========================
-
-DB_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
-    "books.db"
-)
-
-
-def get_conn():
-    return sqlite3.connect(DB_PATH, timeout=30)
-
-
-def log(msg):
-    now = datetime.now().strftime("%H:%M:%S")
-    print(f"[{now}] {msg}")
+from core.db import get_conn
+from core.logger import log
 
 
 # =========================
@@ -101,7 +86,7 @@ def generate_synopsis(titulo, autor):
 # FETCH PENDENTES
 # =========================
 
-def fetch_pending(limit):
+def fetch_pending(idioma, limit):
 
     conn = get_conn()
     cur = conn.cursor()
@@ -110,8 +95,9 @@ def fetch_pending(limit):
         SELECT id, titulo, autor
         FROM livros
         WHERE status_synopsis = 0
+        AND idioma = ?
         LIMIT ?
-    """, (limit,))
+    """, (idioma, limit))
 
     rows = cur.fetchall()
     conn.close()
@@ -137,7 +123,7 @@ def update_synopsis(book_id, text):
         WHERE id = ?
     """, (
         text,
-        datetime.utcnow(),
+        datetime.utcnow().isoformat(),
         book_id
     ))
 
@@ -149,12 +135,15 @@ def update_synopsis(book_id, text):
 # RUN
 # =========================
 
-def run(pacote=10):
+def run(idioma, pacote=10):
 
-    rows = fetch_pending(pacote)
+    rows = fetch_pending(idioma, pacote)
 
     if not rows:
-        log("Nada pendente para sinopse.")
+        log(
+            f"Nada pendente para sinopse "
+            f"no idioma [{idioma}]."
+        )
         return
 
     processed = 0
@@ -177,5 +166,6 @@ def run(pacote=10):
         log(f"SINOPSE OK → {titulo}")
 
     log(
-        f"SINOPSE CONCLUÍDO → {processed} | falhas {failed}"
+        f"SINOPSE CONCLUÍDA [{idioma}] → "
+        f"{processed} | falhas {failed}"
     )

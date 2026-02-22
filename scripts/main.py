@@ -7,7 +7,11 @@ from steps import dedup
 from steps import synopsis
 from steps import review
 from steps import covers
-from steps import publish   # ← STEP 7
+from steps import publish
+from steps import quality_gate
+
+from steps.export_state_transcript import export_state_transcript
+
 
 # =========================
 # INPUT CONTROL
@@ -47,17 +51,19 @@ threading.Thread(target=heartbeat, daemon=True).start()
 
 def input_safe(text):
 
-    global INPUT_MODE
+    global INPUT_MODE, last_activity
 
     INPUT_MODE = True
     val = input(text)
     INPUT_MODE = False
 
+    last_activity = time.time()
+
     return val
 
 
 # =========================
-# IDIOMA
+# IDIOMA (ISO NORMALIZADO)
 # =========================
 
 def escolher_idioma():
@@ -74,11 +80,11 @@ Escolha o idioma base:
     op = input_safe("Idioma: ")
 
     return {
-        "1": "pt",
-        "2": "en",
-        "3": "es",
-        "4": "it"
-    }.get(op, "pt")
+        "1": "PT",
+        "2": "EN",
+        "3": "ES",
+        "4": "IT"
+    }.get(op, "PT")
 
 
 # =========================
@@ -115,7 +121,12 @@ def main():
 4 → Gerar sinopses
 5 → Revisar sinopses
 6 → Gerar capas
-7 → Publicar Supabase
+7 → Quality Gate
+8 → Publicar Supabase
+
+9 → Export Site Transcript
+10 → Export Pipeline Transcript
+11 → Export Full Transcript
 
 0 → Sair
 """)
@@ -125,33 +136,57 @@ def main():
         if op == "0":
             break
 
-        if op == "1":
+        elif op == "1":
             pacote = escolher_pacote()
             prospect.run(idioma, pacote)
 
         elif op == "2":
             pacote = escolher_pacote()
-            slugify.run(pacote)
+            slugify.run(idioma, pacote)
 
         elif op == "3":
             pacote = escolher_pacote()
-            dedup.run(pacote)
+            dedup.run(idioma, pacote)
 
         elif op == "4":
             pacote = escolher_pacote()
-            synopsis.run(pacote)
+            synopsis.run(idioma, pacote)
 
         elif op == "5":
             pacote = escolher_pacote()
-            review.run(pacote)
+            review.run(idioma, pacote)
 
         elif op == "6":
             pacote = escolher_pacote()
-            covers.run(pacote)
+            covers.run(idioma, pacote)
 
         elif op == "7":
             pacote = escolher_pacote()
-            publish.run(pacote)
+            log("Executando Quality Gate…")
+            quality_gate.evaluate_quality(idioma, pacote)
+            log("Quality Gate concluído.")
+
+        elif op == "8":
+            pacote = escolher_pacote()
+            publish.run(idioma, pacote)
+
+        elif op == "9":
+            log("Exportando Site Transcript…")
+            export_state_transcript("site")
+            log("Concluído.")
+
+        elif op == "10":
+            log("Exportando Pipeline Transcript…")
+            export_state_transcript("pipeline")
+            log("Concluído.")
+
+        elif op == "11":
+            log("Exportando Full Transcript…")
+            export_state_transcript("full")
+            log("Concluído.")
+
+        else:
+            print("Opção inválida.\n")
 
 
 # =========================

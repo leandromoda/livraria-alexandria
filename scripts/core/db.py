@@ -1,13 +1,21 @@
 import sqlite3
 from pathlib import Path
 
-# path absoluto garantido
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "books.db"
+# ============================================
+# PATH CORRIGIDO — SCRIPTS/DATA
+# ============================================
+
+CURRENT_DIR = Path(__file__).resolve()
+
+SCRIPTS_ROOT = CURRENT_DIR.parent.parent   # /scripts
+
+DATA_DIR = SCRIPTS_ROOT / "data"
+DB_PATH = DATA_DIR / "books.db"
 
 
 def get_conn():
 
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(DB_PATH)
 

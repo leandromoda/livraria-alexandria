@@ -1,0 +1,3 @@
+RACK-001\",\n      \"description\": \"Deduplicação de cliques afiliados\",\n      \"priority\": \"medium\"\n    },\n    {\n      \"id\": \"TASK-SEO-003\",\n      \"description\": \"AggregateOffer por livro\",\n      \"priority\": \"medium\"\n    },\n    {\n      \"id\": \"TASK-INGEST-UUID-004\",\n      \"description\": \"Normalizar UUID entre SQLite e Supabase\"\n"
+  }
+}

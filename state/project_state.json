@@ -2,18 +2,31 @@
   "meta": {
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
-    "current_phase": "pilot_functional_interlinked_taxonomy_active",
-    "last_updated": "2026-02-14",
+    "current_phase": "pilot_functional_interlinked_taxonomy_active_idioma_aware_editorial_gate",
+    "last_updated": "2026-02-22",
     "owner": "Leandro Moda",
     "environment": "local",
     "runtime_stack": {
       "node": "Next.js App Router (Edge Runtime ativo)",
       "database_primary": "Supabase",
       "database_staging": "SQLite (pipeline local)",
+      "database_staging_path": "scripts/data/books.db",
       "llm_local": "Ollama",
       "llm_model": "phi3:mini",
       "python_env": "venv (Windows)",
       "ingest_language": "Python 3.14"
+    },
+    "version_control": {
+      "provider": "GitHub",
+      "client": "GitHub Desktop",
+      "branch_strategy": "single-main",
+      "commit_mode": "manual_curated",
+      "database_versioning": "excluded",
+      "gitignore_rules": [
+        "scripts/data/books.db",
+        "scripts/data/*.db-wal",
+        "scripts/data/*.db-shm"
+      ]
     }
   },
 
@@ -36,12 +49,10 @@
 
   "architecture": {
     "high_level_description": "Aplicação monolítica em Next.js (App Router) com pipeline externo modular em Python.",
-
     "route_groups": {
       "public": "Páginas indexáveis e SEO",
       "internal": "Infraestrutura e APIs"
     },
-
     "modules": [
       {
         "name": "Páginas de Livro",
@@ -145,54 +156,178 @@
     "staging": {
       "provider": "SQLite",
       "role": "Ingest + Enrichment + QA + Dedup",
-      "status": "operational"
+      "status": "operational",
+      "path": "scripts/data/books.db",
+      "resume_capability": true,
+      "editorial_fields": [
+        "is_book",
+        "editorial_score"
+      ]
     }
   },
 
   "ingest_pipeline": {
-    "status": "operational_incremental",
+    "status": "operational_idioma_editorial_aware",
 
     "execution": {
       "entrypoint": "scripts/main.py",
       "mode": "menu_driven",
       "interrupt_resume": true,
       "heartbeat": "30s",
-      "logging": "timestamped_terminal"
+      "logging": "timestamped_terminal",
+      "idioma_partitioning": true
     },
 
     "state_management": {
       "progress_storage": "SQLite",
+      "storage_path": "scripts/data/books.db",
       "granularity": [
         "per_step",
         "per_record",
         "per_batch"
       ],
-      "resume_strategy": "auto_continue_from_last_offset"
+      "resume_strategy": "auto_continue_from_last_offset",
+      "segmented_by_language": true
     },
 
     "cluster_strategy": {
       "type": "library_grade_taxonomy",
       "scope": "expanded_exhaustive",
+      "language_model": "idioma_aware_queries",
+      "rotation": "random_balanced",
       "languages_supported": [
         "Portuguese",
         "English",
         "Spanish",
         "Italian"
+      ],
+      "language_isolation": true
+    },
+
+    "language_resolution": {
+      "strategy": "hybrid",
+      "sources": [
+        "API language",
+        "ISBN prefix heuristic",
+        "Title linguistic heuristic"
+      ],
+      "fallback": "UNKNOWN",
+      "retry_on_unknown": false
+    },
+
+    "editorial_classification": {
+      "layer": "review_step",
+      "classifier_type": "LLM + heuristic hybrid",
+      "llm_model": "phi3:mini",
+      "fields_generated": [
+        "is_book",
+        "editorial_score"
+      ],
+      "targets_filtered": [
+        "magazines",
+        "journals",
+        "reports",
+        "proceedings",
+        "legislation",
+        "directories",
+        "census",
+        "academic_periodicals"
       ]
     },
 
     "steps": [
-      { "order": 1, "name": "Prospect", "status": "operational" },
-      { "order": 2, "name": "Slugify", "status": "operational" },
-      { "order": 3, "name": "Deduplicate", "status": "operational" },
-      { "order": 4, "name": "Synopsis Generation", "status": "operational" },
-      { "order": 5, "name": "Synopsis Review", "status": "operational" },
-      { "order": 6, "name": "Cover Enrichment", "status": "operational" },
+      {
+        "order": 1,
+        "name": "Prospect",
+        "status": "operational",
+        "idioma_aware": true,
+        "cluster_rotation": "random_balanced",
+        "query_language_isolated": true,
+        "persistence": "scripts/data/books.db",
+        "source_filters": [
+          "OpenLibrary.language",
+          "GoogleBooks.langRestrict"
+        ]
+      },
+      {
+        "order": 2,
+        "name": "Slugify",
+        "status": "operational",
+        "idioma_aware": true
+      },
+      {
+        "order": 3,
+        "name": "Deduplicate",
+        "status": "operational",
+        "idioma_aware": true,
+        "merge_scope": "intra-language"
+      },
+      {
+        "order": 4,
+        "name": "Synopsis Generation",
+        "status": "operational",
+        "idioma_aware": true,
+        "llm": "phi3:mini"
+      },
+      {
+        "order": 5,
+        "name": "Synopsis Review",
+        "status": "operational_editorial_classifier",
+        "idioma_aware": true,
+        "llm": "phi3:mini",
+        "outputs": [
+          "idioma_resolved",
+          "is_book",
+          "editorial_score"
+        ]
+      },
+      {
+        "order": 6,
+        "name": "Cover Enrichment",
+        "status": "operational",
+        "idioma_aware": true,
+        "fallback": "Google Books"
+      },
       {
         "order": 7,
+        "name": "Quality Gate",
+        "status": "operational_hard_validation",
+        "idioma_aware": true,
+        "hard_blocks": [
+          "idioma UNKNOWN",
+          "idioma divergente",
+          "is_book = 0",
+          "editorial_score < 0"
+        ],
+        "scoring_model": {
+          "fields": [
+            "slug",
+            "descricao",
+            "imagem_url",
+            "status_review"
+          ],
+          "min_score_publish": 3
+        }
+      },
+      {
+        "order": 8,
         "name": "Publish",
-        "status": "operational_with_blocker",
-        "blocker": "uuid_format_mismatch"
+        "status": "operational",
+        "idioma_aware": true,
+        "id_strategy": "uuid_v4_on_publish",
+        "round_trip_id": true,
+        "target": "Supabase.livros",
+        "blockers": [
+          "quality_gate_fail"
+        ]
+      }
+    ],
+
+    "deprecated_steps": [
+      {
+        "name": "Reset + Reprospect",
+        "status": "removed",
+        "reason": "Instabilidade de import path + desnecessário após rebuild manual do staging"
       }
     ]
   },
@@ -219,5 +354,9 @@
       "priority": "medium"
     },
     {
-      "id": "TASK-INGEST-UUID-004",
-      "description": "Normalizar UUID entre SQLite e Supabase"
+      "id": "TASK-INGEST-007",
+      "description": "Refinar editorial_score com dataset supervisionado",
+      "priority": "low"
+    }
+  ]
+}

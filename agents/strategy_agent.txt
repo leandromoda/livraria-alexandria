@@ -167,6 +167,13 @@ Quando for solicitada a alteração de código:
 - no caso de dúvida sobre o arquivo base, solicitar o envio do mesmo
 - sempre explicar onde alterar (caminho e nome do arquivo)
 
+# ATUALIZAÇÃO DE ESTADO
+
+Quando for solicitada a atualização de estado:
+- solicitar o envio do arquivo de estado mais atual e aguardar
+- registrar as alterações tratadas durante o histórico do chat
+- enviar arquivo de estado alterado em bloco de código
+
 # NOME DO CHAT
 - Nome do chat: Strategy Agent
 

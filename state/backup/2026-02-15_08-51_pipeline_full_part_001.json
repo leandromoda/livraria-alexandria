@@ -1,0 +1,323 @@
+{
+  "sqlite_dump": {
+    "livros": [
+      {
+        "name": "id",
+        "type": "TEXT"
+      },
+      {
+        "name": "titulo",
+        "type": "TEXT"
+      },
+      {
+        "name": "slug",
+        "type": "TEXT"
+      },
+      {
+        "name": "autor",
+        "type": "TEXT"
+      },
+      {
+        "name": "descricao",
+        "type": "TEXT"
+      },
+      {
+        "name": "isbn",
+        "type": "TEXT"
+      },
+      {
+        "name": "ano_publicacao",
+        "type": "INTEGER"
+      },
+      {
+        "name": "imagem_url",
+        "type": "TEXT"
+      },
+      {
+        "name": "idioma",
+        "type": "TEXT"
+      },
+      {
+        "name": "cluster",
+        "type": "TEXT"
+      },
+      {
+        "name": "fonte",
+        "type": "TEXT"
+      },
+      {
+        "name": "status_slug",
+        "type": "INTEGER"
+      },
+      {
+        "name": "status_dedup",
+        "type": "INTEGER"
+      },
+      {
+        "name": "status_synopsis",
+        "type": "INTEGER"
+      },
+      {
+        "name": "status_review",
+        "type": "INTEGER"
+      },
+      {
+        "name": "status_cover",
+        "type": "INTEGER"
+      },
+      {
+        "name": "status_publish",
+        "type": "INTEGER"
+      },
+      {
+        "name": "created_at",
+        "type": "DATETIME"
+      },
+      {
+        "name": "updated_at",
+        "type": "DATETIME"
+      }
+    ]
+  },
+  "files": {
+    "scripts\\main.py": "import time\nimport threading\n\nfrom steps import prospect\nfrom steps import slugify\nfrom steps import dedup\nfrom steps import synopsis\nfrom steps import review\nfrom steps import covers\nfrom steps import publish\n\nfrom steps.export_state_transcript import export_state_transcript  # ← NOVO\n\n\n# =========================\n# INPUT CONTROL\n# =========================\n\nINPUT_MODE = False\nlast_activity = time.time()\n\n\ndef log(msg):\n    now = time.strftime(\"%H:%M:%S\")\n    print(f\"[{now}] {msg}\")\n\n\n# =========================\n# HEARTBEAT\n# =========================\n\ndef heartbeat():\n    global INPUT_MODE\n\n    while True:\n\n        if not INPUT_MODE:\n            elapsed = int(time.time() - last_activity)\n            log(f\"Script ativo… último evento há {elapsed}s\")\n\n        time.sleep(30)\n\n\nthreading.Thread(target=heartbeat, daemon=True).start()\n\n\n# =========================\n# INPUT SAFE\n# =========================\n\ndef input_safe(text):\n\n    global INPUT_MODE, last_activity\n\n    INPUT_MODE = True\n    val = input(text)\n    INPUT_MODE = False\n\n    last_activity = time.time()\n\n    return val\n\n\n# =========================\n# IDIOMA\n# =========================\n\ndef escolher_idioma():\n\n    print(\"\"\"\nEscolha o idioma base:\n\n1 → Português (padrão)\n2 → Inglês\n3 → Espanhol\n4 → Italiano\n\"\"\")\n\n    op = input_safe(\"Idioma: \")\n\n    return {\n        \"1\": \"pt\",\n        \"2\": \"en\",\n        \"3\": \"es\",\n        \"4\": \"it\"\n    }.get(op, \"pt\")\n\n\n# =========================\n# PACOTE\n# =========================\n\ndef escolher_pacote():\n\n    print(\"\"\"\nEscolha tamanho do pacote:\n\n10 | 20 | 50 | 100 | 500 | 1000\n\"\"\")\n\n    return int(input_safe(\"Pacote: \"))\n\n\n# =========================\n# MAIN LOOP\n# =========================\n\ndef main():\n\n    idioma = escolher_idioma()\n\n    while True:\n\n        print(\"\"\"\n=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===\n\n1 → Prospectar livros\n2 → Gerar slugs\n3 → Deduplicar\n4 → Gerar sinopses\n5 → Revisar sinopses\n6 → Gerar capas\n7 → Publicar Supabase\n\n8 → Exportar State Transcript   ← NOVO\n\n0 → Sair\n\"\"\")\n\n        op = input_safe(\"Opção: \")\n\n        if op == \"0\":\n            break\n\n        if op == \"1\":\n            pacote = escolher_pacote()\n            prospect.run(idioma, pacote)\n\n        elif op == \"2\":\n            pacote = escolher_pacote()\n            slugify.run(pacote)\n\n        elif op == \"3\":\n            pacote = escolher_pacote()\n            dedup.run(pacote)\n\n        elif op == \"4\":\n            pacote = escolher_pacote()\n            synopsis.run(pacote)\n\n        elif op == \"5\":\n            pacote = escolher_pacote()\n            review.run(pacote)\n\n        elif op == \"6\":\n            pacote = escolher_pacote()\n            covers.run(pacote)\n\n        elif op == \"7\":\n            pacote = escolher_pacote()\n            publish.run(pacote)\n\n        elif op == \"8\":\n            log(\"Gerando state transcript…\")\n            export_state_transcript()\n            log(\"Transcript concluído.\")\nimport time\nimport threading\n\nfrom steps import prospect\nfrom steps import slugify\nfrom steps import dedup\nfrom steps import synopsis\nfrom steps import review\nfrom steps import covers\nfrom steps import publish\n\nfrom steps.export_state_transcript import export_state_transcript\n\n\n# =========================\n# INPUT CONTROL\n# =========================\n\nINPUT_MODE = False\nlast_activity = time.time()\n\n\ndef log(msg):\n    now = time.strftime(\"%H:%M:%S\")\n    print(f\"[{now}] {msg}\")\n\n\n# =========================\n# HEARTBEAT\n# =========================\n\ndef heartbeat():\n    global INPUT_MODE\n\n    while True:\n\n        if not INPUT_MODE:\n            elapsed = int(time.time() - last_activity)\n            log(f\"Script ativo… último evento há {elapsed}s\")\n\n        time.sleep(30)\n\n\nthreading.Thread(target=heartbeat, daemon=True).start()\n\n\n# =========================\n# INPUT SAFE\n# =========================\n\ndef input_safe(text):\n\n    global INPUT_MODE, last_activity\n\n    INPUT_MODE = True\n    val = input(text)\n    INPUT_MODE = False\n\n    last_activity = time.time()\n\n    return val\n\n\n# =========================\n# IDIOMA\n# =========================\n\ndef escolher_idioma():\n\n    print(\"\"\"\nEscolha o idioma base:\n\n1 → Português (padrão)\n2 → Inglês\n3 → Espanhol\n4 → Italiano\n\"\"\")\n\n    op = input_safe(\"Idioma: \")\n\n    return {\n        \"1\": \"pt\",\n        \"2\": \"en\",\n        \"3\": \"es\",\n        \"4\": \"it\"\n    }.get(op, \"pt\")\n\n\n# =========================\n# PACOTE\n# =========================\n\ndef escolher_pacote():\n\n    print(\"\"\"\nEscolha tamanho do pacote:\n\n10 | 20 | 50 | 100 | 500 | 1000\n\"\"\")\n\n    return int(input_safe(\"Pacote: \"))\n\n\n# =========================\n# MAIN LOOP\n# =========================\n\ndef main():\n\n    idioma = escolher_idioma()\n\n    while True:\n\n        print(\"\"\"\n=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===\n\n1 → Prospectar livros\n2 → Gerar slugs\n3 → Deduplicar\n4 → Gerar sinopses\n5 → Revisar sinopses\n6 → Gerar capas\n7 → Publicar Supabase\n\n8 → Export Site Transcript\n9 → Export Pipeline Transcript\n10 → Export Full Transcript\n\n0 → Sair\n\"\"\")\n\n        op = input_safe(\"Opção: \")\n\n        if op == \"0\":\n            break\n\n        elif op == \"1\":\n            pacote = escolher_pacote()\n            prospect.run(idioma, pacote)\n\n        elif op == \"2\":\n            pacote = escolher_pacote()\n            slugify.run(pacote)\n\n        elif op == \"3\":\n            pacote = escolher_pacote()\n            dedup.run(pacote)\n\n        elif op == \"4\":\n            pacote = escolher_pacote()\n            synopsis.run(pacote)\n\n        elif op == \"5\":\n            pacote = escolher_pacote()\n            review.run(pacote)\n\n        elif op == \"6\":\n            pacote = escolher_pacote()\n            covers.run(pacote)\n\n        elif op == \"7\":\n            pacote = escolher_pacote()\n            publish.run(pacote)\n\n        elif op == \"8\":\n            log(\"Exportando Site Transcript…\")\n            export_state_transcript(\"site\")\n            log(\"Concluído.\")\n\n        elif op == \"9\":\n            log(\"Exportando Pipeline Transcript…\")\n            export_state_transcript(\"pipeline\")\n            log(\"Concluído.\")\n\n        elif op == \"10\":\n            log(\"Exportando Full Transcript…\")\n            export_state_transcript(\"full\")\n            log(\"Concluído.\")\n\n        else:\n            print(\"Opção inválida.\\n\")\n\n\n# =========================\n# BOOTSTRAP\n# =========================\n\nif __name__ == \"__main__\":\n    main()\n\n\n# =========================\n# BOOTSTRAP\n# =========================\n\nif __name__ == \"__main__\":\n    main()\n",
+    "scripts\\core\\db.py": "import sqlite3\nfrom pathlib import Path\n\n# path absoluto garantido\nDB_PATH = Path(__file__).resolve().parent.parent / \"data\" / \"books.db\"\n\n\ndef get_conn():\n\n    DB_PATH.parent.mkdir(parents=True, exist_ok=True)\n\n    conn = sqlite3.connect(DB_PATH)\n\n    ensure_schema(conn)\n\n    return conn\n\n\n# =========================\n# SCHEMA\n# =========================\n\ndef ensure_schema(conn):\n\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n    CREATE TABLE IF NOT EXISTS livros (\n\n        id TEXT PRIMARY KEY,\n\n        titulo TEXT,\n        slug TEXT,\n\n        autor TEXT,\n        descricao TEXT,\n\n        isbn TEXT,\n        ano_publicacao INTEGER,\n\n        imagem_url TEXT,\n\n        idioma TEXT,\n        cluster TEXT,\n        fonte TEXT,\n\n        status_slug INTEGER DEFAULT 0,\n        status_dedup INTEGER DEFAULT 0,\n        status_synopsis INTEGER DEFAULT 0,\n        status_review INTEGER DEFAULT 0,\n        status_cover INTEGER DEFAULT 0,\n        status_publish INTEGER DEFAULT 0,\n\n        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP\n    );\n    \"\"\")\n\n    conn.commit()\n",
+    "scripts\\core\\logger.py": "import time\nimport threading\nfrom datetime import datetime\n\nlast_activity = time.time()\n\n\ndef log(msg):\n\n    global last_activity\n\n    now = datetime.now().strftime(\"%H:%M:%S\")\n    print(f\"[{now}] {msg}\")\n\n    last_activity = time.time()\n\n\ndef start_heartbeat():\n\n    def beat():\n\n        while True:\n\n            elapsed = int(time.time() - last_activity)\n\n            now = datetime.now().strftime(\"%H:%M:%S\")\n            print(f\"[{now}] Script ativo… último evento há {elapsed}s\")\n\n            time.sleep(30)\n\n    threading.Thread(target=beat, daemon=True).start()\n",
+    "scripts\\core\\state.py": "import json\nfrom pathlib import Path\n\nSTATE_PATH = Path(\"scripts/data/state.json\")\n\n\ndef load_state():\n\n    if not STATE_PATH.exists():\n        return {}\n\n    with open(STATE_PATH, \"r\", encoding=\"utf-8\") as f:\n        return json.load(f)\n\n\ndef save_state(data):\n\n    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)\n\n    with open(STATE_PATH, \"w\", encoding=\"utf-8\") as f:\n        json.dump(data, f, indent=2)\n",
+    "scripts\\dashboard\\dashboard.py": "import sqlite3\nimport streamlit as st\nimport pandas as pd\n\nDB_PATH = \"scripts/data/books.db\"\n\n# =========================\n# DB\n# =========================\n\ndef get_conn():\n    return sqlite3.connect(DB_PATH)\n\n\ndef load_data():\n    conn = get_conn()\n    df = pd.read_sql_query(\"SELECT * FROM books\", conn)\n    conn.close()\n    return df\n\n\n# =========================\n# PAGE CONFIG\n# =========================\n\nst.set_page_config(\n    page_title=\"Dashboard — Ingest Livros\",\n    layout=\"wide\"\n)\n\nst.title(\"📚 Dashboard de Progresso — Ingest Pipeline\")\n\n# =========================\n# LOAD\n# =========================\n\ndf = load_data()\n\nif df.empty:\n    st.warning(\"Banco local vazio.\")\n    st.stop()\n\n\n# =========================\n# METRICS\n# =========================\n\ncol1, col2, col3, col4 = st.columns(4)\n\ncol1.metric(\"Total livros\", len(df))\ncol2.metric(\"Com sinopse\", df['sinopse'].sum())\ncol3.metric(\"Com capa\", df['capa'].sum())\ncol4.metric(\"Publicados\", df['publicado'].sum())\n\n\n# =========================\n# PIPELINE STATUS\n# =========================\n\nst.subheader(\"Status por etapa\")\n\nstatus_data = {\n    \"Etapa\": [\n        \"Prospectado\",\n        \"Slug\",\n        \"Deduplicado\",\n        \"Sinopse\",\n        \"Revisado\",\n        \"Capa\",\n        \"Publicado\"\n    ],\n    \"Concluídos\": [\n        df['prospectado'].sum(),\n        df['slugger'].sum(),\n        df['dedup'].sum(),\n        df['sinopse'].sum(),\n        df['revisado'].sum(),\n        df['capa'].sum(),\n        df['publicado'].sum(),\n    ]\n}\n\nstatus_df = pd.DataFrame(status_data)\n\nst.bar_chart(status_df.set_index(\"Etapa\"))\n\n\n# =========================\n# IDIOMA DISTRIBUIÇÃO\n# =========================\n\nst.subheader(\"Distribuição por idioma\")\n\nif 'idioma' in df.columns:\n    idioma_counts = df['idioma'].value_counts()\n    st.bar_chart(idioma_counts)\n\n\n# =========================\n# TABELA DETALHADA\n# =========================\n\nst.subheader(\"Base local\")\n\nst.dataframe(\n    df[[\n        \"titulo\",\n        \"autor\",\n        \"isbn\",\n        \"slug\",\n        \"sinopse\",\n        \"revisado\",\n        \"capa\",\n        \"publicado\"\n    ]],\n    use_container_width=True\n)\n\n\n# =========================\n# FILTROS\n# =========================\n\nst.subheader(\"Filtrar pendências\")\n\nfiltro = st.selectbox(\n    \"Etapa pendente\",\n    [\n        \"Sinopse\",\n        \"Revisão\",\n        \"Capa\",\n        \"Publicação\"\n    ]\n)\n\nif filtro == \"Sinopse\":\n    pend = df[df['sinopse'] == 0]\n\nelif filtro == \"Revisão\":\n    pend = df[df['revisado'] == 0]\n\nelif filtro == \"Capa\":\n    pend = df[df['capa'] == 0]\n\nelif filtro == \"Publicação\":\n    pend = df[df['publicado'] == 0]\n\nst.write(f\"Pendentes: {len(pend)}\")\n\nst.dataframe(\n    pend[[\"titulo\", \"autor\", \"slug\"]],\n    use_container_width=True\n)\n\n\n# =========================\n# AUTO REFRESH\n# =========================\n\nst.caption(\"Atualize a página para refletir progresso em tempo real.\")\n",
+    "scripts\\data\\books.db": {
+      "livros": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT"
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT"
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "scripts\\scripts\\data\\books.db": {
+      "books": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT"
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao_revisada",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "prospectado",
+          "type": "INTEGER"
+        },
+        {
+          "name": "slugger",
+          "type": "INTEGER"
+        },
+        {
+          "name": "dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "sinopse",
+          "type": "INTEGER"
+        },
+        {
+          "name": "revisado",
+          "type": "INTEGER"
+        },
+        {
+          "name": "capa",
+          "type": "INTEGER"
+        },
+        {
+          "name": "publicado",
+          "type": "INTEGER"
+        }
+      ],
+      "livros": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT"
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT"
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "scripts\\steps\\covers.py": "import requests\nimport time\n\nfrom core.db import get_conn\nfrom core.logger import log\n\n# =========================\n# CONFIG\n# =========================\n\nOPENLIBRARY_COVER = \"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg\"\nGOOGLE_BOOKS_URL = \"https://www.googleapis.com/books/v1/volumes\"\n\nTIMEOUT = 60\n\n\n# =========================\n# OPENLIBRARY\n# =========================\n\ndef fetch_openlibrary_cover(isbn):\n\n    if not isbn:\n        return None\n\n    url = OPENLIBRARY_COVER.format(isbn=isbn)\n\n    try:\n        res = requests.get(url, timeout=TIMEOUT)\n\n        if res.status_code == 200 and res.content:\n            return url\n\n    except:\n        pass\n\n    return None\n\n\n# =========================\n# GOOGLE\n# =========================\n\ndef fetch_google_cover(titulo, autor):\n\n    query = f\"{titulo} {autor}\"\n\n    try:\n\n        res = requests.get(\n            GOOGLE_BOOKS_URL,\n            params={\"q\": query, \"maxResults\": 1},\n            timeout=TIMEOUT\n        )\n\n        items = res.json().get(\"items\")\n\n        if not items:\n            return None\n\n        links = items[0][\"volumeInfo\"].get(\n            \"imageLinks\", {}\n        )\n\n        thumb = (\n            links.get(\"thumbnail\")\n            or links.get(\"smallThumbnail\")\n        )\n\n        if thumb:\n            return thumb.replace(\n                \"http://\",\n                \"https://\"\n            )\n\n    except:\n        pass\n\n    return None\n\n\n# =========================\n# FETCH PENDENTES\n# =========================\n\ndef fetch_pending(limit):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n        SELECT id, titulo, autor, isbn\n        FROM livros\n        WHERE status_cover = 0\n        LIMIT ?\n    \"\"\", (limit,))\n\n    rows = cur.fetchall()\n    conn.close()\n\n    return rows\n\n\n# =========================\n# UPDATE\n# =========================\n\ndef update_cover(book_id, url):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n        UPDATE livros\n        SET\n            imagem_url = ?,\n            status_cover = 1,\n            updated_at = CURRENT_TIMESTAMP\n        WHERE id = ?\n    \"\"\", (url, book_id))\n\n    conn.commit()\n    conn.close()\n\n\n# =========================\n# RUN\n# =========================\n\ndef run(pacote=10):\n\n    rows = fetch_pending(pacote)\n\n    if not rows:\n        log(\"Nada pendente para capas.\")\n        return\n\n    processed = 0\n    fallback_used = 0\n    failed = 0\n\n    for book_id, titulo, autor, isbn in rows:\n\n        log(f\"CAPA → {titulo}\")\n\n        # 1️⃣ OpenLibrary\n        cover = fetch_openlibrary_cover(isbn)\n\n        # 2️⃣ Google fallback\n        if not cover:\n\n            cover = fetch_google_cover(\n                titulo,\n                autor\n            )\n\n            if cover:\n                fallback_used += 1\n\n        # 3️⃣ Falha\n        if not cover:\n\n            failed += 1\n            log(f\"SEM CAPA → {titulo}\")\n            continue\n\n        update_cover(book_id, cover)\n\n        processed += 1\n        log(f\"CAPA OK → {titulo}\")\n\n        time.sleep(0.2)\n\n    log(\n        f\"CAPAS CONCLUÍDO → {processed} | fallback {fallback_used} | falhas {failed}\"\n    )\n",
+    "scripts\\steps\\dedup.py": "from difflib import SequenceMatcher\nfrom datetime import datetime\nimport os\nimport sqlite3\n\n\n# =========================\n# DB PATH\n# =========================\n\nDB_PATH = os.path.join(\n    os.path.dirname(__file__),\n    \"..\",\n    \"data\",\n    \"books.db\"\n)\n\n\ndef get_conn():\n    return sqlite3.connect(DB_PATH, timeout=30)\n\n\ndef log(msg):\n    now = datetime.now().strftime(\"%H:%M:%S\")\n    print(f\"[{now}] {msg}\")\n\n\nSIMILARITY_THRESHOLD = 0.92\n\n\n# =========================\n# SIMILARIDADE\n# =========================\n\ndef similar(a, b):\n    return SequenceMatcher(None, a, b).ratio()\n\n\n# =========================\n# FETCH PENDENTES\n# =========================\n\ndef fetch_pending(limit):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n        SELECT id, titulo, slug, isbn\n        FROM livros\n        WHERE status_dedup = 0\n        LIMIT ?\n    \"\"\", (limit,))\n\n    rows = cur.fetchall()\n    conn.close()\n\n    return rows\n\n\n# =========================\n# BUSCAR DUPLICADOS\n# =========================\n\ndef find_duplicates(book):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n        SELECT id, titulo, slug, isbn,\n               descricao, imagem_url,\n               ano_publicacao\n        FROM livros\n        WHERE id != ?\n    \"\"\", (book[\"id\"],))\n\n    rows = cur.fetchall()\n    conn.close()\n\n    duplicates = []\n\n    for r in rows:\n\n        if book[\"isbn\"] and r[3] == book[\"isbn\"]:\n            duplicates.append(r)\n            continue\n\n        if book[\"slug\"] and r[2] == book[\"slug\"]:\n            duplicates.append(r)\n            continue\n\n        if similar(book[\"titulo\"], r[1]) >= SIMILARITY_THRESHOLD:\n            duplicates.append(r)\n\n    return duplicates\n\n\n# =========================\n# MERGE\n# =========================\n\ndef merge_books(master_id, dup_row):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    dup_id = dup_row[0]\n\n    cur.execute(\"\"\"\n        UPDATE livros\n        SET\n            descricao = COALESCE(descricao, ?),\n            imagem_url = COALESCE(imagem_url, ?),\n            ano_publicacao = COALESCE(ano_publicacao, ?),\n            updated_at = ?\n        WHERE id = ?\n    \"\"\", (\n        dup_row[4],\n        dup_row[5],\n        dup_row[6],\n        datetime.utcnow(),\n        master_id\n    ))\n\n    cur.execute(\n        \"DELETE FROM livros WHERE id = ?\",\n        (dup_id,)\n    )\n\n    conn.commit()\n    conn.close()\n\n    log(f\"MERGE → {dup_id} → {master_id}\")\n\n\n# =========================\n# FLAG PROCESSADO\n# =========================\n\ndef mark_processed(book_id):\n\n    conn = get_conn()\n    cur = conn.cursor()\n\n    cur.execute(\"\"\"\n        UPDATE livros\n        SET status_dedup = 1,\n            updated_at = ?\n        WHERE id = ?\n    \"\"\", (\n        datetime.utcnow(),\n        book_id\n    ))\n\n    conn.commit()\n    conn.close()\n\n\n# =========================\n# RUN\n# =========================\n\ndef run(pacote=10):\n\n    rows = fetch_pending(pacot

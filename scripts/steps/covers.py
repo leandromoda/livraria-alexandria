@@ -1,8 +1,53 @@
+import os
 import requests
 import time
+import sqlite3
 
-from core.db import get_conn
-from core.logger import log
+from datetime import datetime
+
+
+# =========================
+# PATH SAFE — CORRIGIDO
+# =========================
+
+CURRENT_DIR = os.path.dirname(__file__)
+
+SCRIPTS_DIR = os.path.abspath(
+    os.path.join(CURRENT_DIR, "..")
+)
+
+DATA_DIR = os.path.join(SCRIPTS_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+DB_PATH = os.path.join(DATA_DIR, "books.db")
+
+
+# =========================
+# DB
+# =========================
+
+def get_conn():
+
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=60,
+        isolation_level=None
+    )
+
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+
+    return conn
+
+
+# =========================
+# LOGGER SAFE
+# =========================
+
+def log(msg):
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}")
+
 
 # =========================
 # CONFIG
@@ -49,7 +94,10 @@ def fetch_google_cover(titulo, autor):
 
         res = requests.get(
             GOOGLE_BOOKS_URL,
-            params={"q": query, "maxResults": 1},
+            params={
+                "q": query,
+                "maxResults": 1
+            },
             timeout=TIMEOUT
         )
 
@@ -83,7 +131,7 @@ def fetch_google_cover(titulo, autor):
 # FETCH PENDENTES
 # =========================
 
-def fetch_pending(limit):
+def fetch_pending(idioma, limit):
 
     conn = get_conn()
     cur = conn.cursor()
@@ -92,8 +140,9 @@ def fetch_pending(limit):
         SELECT id, titulo, autor, isbn
         FROM livros
         WHERE status_cover = 0
+        AND idioma = ?
         LIMIT ?
-    """, (limit,))
+    """, (idioma, limit))
 
     rows = cur.fetchall()
     conn.close()
@@ -127,12 +176,12 @@ def update_cover(book_id, url):
 # RUN
 # =========================
 
-def run(pacote=10):
+def run(idioma, pacote=10):
 
-    rows = fetch_pending(pacote)
+    rows = fetch_pending(idioma, pacote)
 
     if not rows:
-        log("Nada pendente para capas.")
+        log(f"Nada pendente para capas no idioma [{idioma}].")
         return
 
     processed = 0
@@ -143,10 +192,8 @@ def run(pacote=10):
 
         log(f"CAPA → {titulo}")
 
-        # 1️⃣ OpenLibrary
         cover = fetch_openlibrary_cover(isbn)
 
-        # 2️⃣ Google fallback
         if not cover:
 
             cover = fetch_google_cover(
@@ -157,7 +204,6 @@ def run(pacote=10):
             if cover:
                 fallback_used += 1
 
-        # 3️⃣ Falha
         if not cover:
 
             failed += 1
@@ -172,5 +218,6 @@ def run(pacote=10):
         time.sleep(0.2)
 
     log(
-        f"CAPAS CONCLUÍDO → {processed} | fallback {fallback_used} | falhas {failed}"
+        f"CAPAS CONCLUÍDO [{idioma}] → "
+        f"{processed} | fallback {fallback_used} | falhas {failed}"
     )

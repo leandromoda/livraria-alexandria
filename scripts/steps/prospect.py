@@ -1,35 +1,165 @@
 # ============================================
-# LIVRARIA ALEXANDRIA — PROSPECT
-# Compatível com books.db (schema staging)
-# ID Strategy: UUID v4 + fallback hash título
+# LIVRARIA ALEXANDRIA — PROSPECT (FULL SAFE)
+# Language Aware + Cluster Rotation + Editorial Filter
 # ============================================
 
 import os
+import sys
 import time
 import uuid
 import hashlib
 import sqlite3
 import requests
+import importlib.util
+import random
+import re
 
 from datetime import datetime
-from steps._clusters import CLUSTERS
+
+
+# ============================================
+# LOAD CLUSTERS
+# ============================================
+
+CURRENT_DIR = os.path.dirname(__file__)
+
+CLUSTERS_PATH = os.path.join(
+    CURRENT_DIR,
+    "_clusters.py"
+)
+
+spec = importlib.util.spec_from_file_location(
+    "clusters_module",
+    CLUSTERS_PATH
+)
+
+clusters_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(clusters_module)
+
+CLUSTERS = clusters_module.CLUSTERS
+
+
+# ============================================
+# DB
+# ============================================
+
+SCRIPTS_DIR = os.path.abspath(
+    os.path.join(CURRENT_DIR, "..")
+)
+
+DATA_DIR = os.path.join(SCRIPTS_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+DB_PATH = os.path.join(DATA_DIR, "books.db")
 
 
 # ============================================
 # CONFIG
 # ============================================
 
-DB_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
-    "books.db"
-)
-
 OPENLIBRARY_URL = "https://openlibrary.org/search.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 
 HEARTBEAT_INTERVAL = 30
+
+
+# ============================================
+# EDITORIAL FILTER
+# ============================================
+
+EXCLUDED_TERMS = [
+    "journal",
+    "report",
+    "census",
+    "proceedings",
+    "transactions",
+    "bulletin",
+    "review",
+    "minutes",
+    "laws",
+    "legislation",
+    "court",
+    "committee",
+    "annual report",
+    "executive summary",
+    "documents",
+]
+
+
+def is_editorial(title):
+
+    if not title:
+        return False
+
+    t = title.lower()
+
+    for term in EXCLUDED_TERMS:
+        if term in t:
+            return False
+
+    return True
+
+
+# ============================================
+# LANGUAGE HEURISTICS
+# ============================================
+
+ISBN_PREFIX_LANG = {
+    ("85", "65", "972"): "PT",
+    ("84",): "ES",
+    ("88",): "IT",
+    ("0", "1"): "EN",
+}
+
+
+def detect_lang_by_title(title):
+
+    if not title:
+        return None
+
+    t = title.lower()
+
+    patterns = {
+        "PT": r"(ção|ções|lh|nh|ã|õ)",
+        "ES": r"(ñ|¿|¡)",
+        "IT": r"(gli|zione)",
+        "FR": r"(é|à|è)",
+        "DE": r"\b(der|die|das)\b",
+    }
+
+    for lang, pattern in patterns.items():
+        if re.search(pattern, t):
+            return lang
+
+    return None
+
+
+def detect_lang_by_isbn(isbn):
+
+    if not isbn:
+        return None
+
+    for prefixes, lang in ISBN_PREFIX_LANG.items():
+        if isbn.startswith(prefixes):
+            return lang
+
+    return None
+
+
+def resolve_language(api_lang, isbn, title):
+
+    if api_lang:
+        return api_lang.upper()
+
+    isbn_lang = detect_lang_by_isbn(isbn)
+    if isbn_lang:
+        return isbn_lang
+
+    title_lang = detect_lang_by_title(title)
+    if title_lang:
+        return title_lang
+
+    return "UNKNOWN"
 
 
 # ============================================
@@ -44,6 +174,7 @@ def ts():
 
 
 def beat(msg="Script ativo…"):
+
     global _last_event
 
     now_ts = time.time()
@@ -57,11 +188,21 @@ def beat(msg="Script ativo…"):
 
 
 # ============================================
-# DB
+# DB SAFE
 # ============================================
 
 def get_conn():
-    return sqlite3.connect(DB_PATH)
+
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=60,
+        isolation_level=None
+    )
+
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+
+    return conn
 
 
 def ensure_schema():
@@ -97,16 +238,14 @@ def ensure_schema():
     conn.close()
 
 
+
 # ============================================
-# ID STRATEGY
+# ID
 # ============================================
 
 def generate_id(titulo, isbn):
 
-    if isbn:
-        base = isbn
-    else:
-        base = titulo
+    base = isbn if isbn else titulo
 
     hash_id = hashlib.sha1(
         base.encode("utf-8")
@@ -119,26 +258,28 @@ def generate_id(titulo, isbn):
 # INSERT
 # ============================================
 
-def exists(titulo):
+def insert_book(data, cluster, idioma_base):
+
+    if not data["titulo"]:
+        return False
+
+    if not is_editorial(data["titulo"]):
+        return False
+
+    # idioma hard filter
+    if data["idioma"] not in [idioma_base, "UNKNOWN"]:
+        return False
 
     conn = get_conn()
     cur = conn.cursor()
 
     cur.execute(
-        "SELECT 1 FROM livros WHERE titulo = ? LIMIT 1",
-        (titulo,)
+        "SELECT 1 FROM livros WHERE titulo = ?",
+        (data["titulo"],)
     )
 
-    res = cur.fetchone()
-    conn.close()
-
-    return res is not None
-
-
-def insert_book(data, cluster):
-
-    if exists(data["titulo"]):
-        print(f"[{ts()}] SKIP duplicado → {data['titulo']}")
+    if cur.fetchone():
+        conn.close()
         return False
 
     livro_id = generate_id(
@@ -148,21 +289,12 @@ def insert_book(data, cluster):
 
     now = datetime.utcnow()
 
-    conn = get_conn()
-    cur = conn.cursor()
-
     cur.execute("""
         INSERT INTO livros (
-            id,
-            titulo,
-            autor,
-            isbn,
-            ano_publicacao,
-            idioma,
-            cluster,
-            fonte,
-            created_at,
-            updated_at
+            id, titulo, autor, isbn,
+            ano_publicacao, idioma,
+            cluster, fonte,
+            created_at, updated_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
@@ -180,7 +312,6 @@ def insert_book(data, cluster):
 
     conn.commit()
     conn.close()
-
     return True
 
 
@@ -188,71 +319,22 @@ def insert_book(data, cluster):
 # FETCHERS
 # ============================================
 
-def fetch_openlibrary(query, idioma, limit=20):
+def fetch_google(query):
 
     beat()
 
     try:
-        res = requests.get(
-            OPENLIBRARY_URL,
-            params={
-                "q": query,
-                "language": idioma,
-                "limit": limit
-            },
-            timeout=20
-        )
 
-        docs = res.json().get("docs", [])
-
-        books = []
-
-        for d in docs:
-
-            titulo = d.get("title")
-            autores = ", ".join(d.get("author_name", []))
-
-            isbn_list = d.get("isbn", [])
-            isbn = isbn_list[0] if isbn_list else None
-
-            ano = d.get("first_publish_year")
-
-            if not titulo:
-                continue
-
-            books.append({
-                "titulo": titulo,
-                "autor": autores,
-                "isbn": isbn,
-                "ano": ano,
-                "idioma": idioma,
-                "fonte": "openlibrary"
-            })
-
-        return books
-
-    except Exception as e:
-        print(f"[{ts()}] ERRO OL → {e}")
-        return []
-
-
-def fetch_google(query, idioma, limit=20):
-
-    beat()
-
-    try:
         res = requests.get(
             GOOGLE_BOOKS_URL,
             params={
                 "q": query,
-                "maxResults": limit,
-                "langRestrict": idioma
+                "maxResults": 20
             },
             timeout=20
         )
 
         items = res.json().get("items", [])
-
         books = []
 
         for item in items:
@@ -261,34 +343,123 @@ def fetch_google(query, idioma, limit=20):
 
             titulo = info.get("title")
             autores = ", ".join(info.get("authors", []))
+            api_lang = info.get("language")
 
-            industry = info.get("industryIdentifiers", [])
+            industry = info.get(
+                "industryIdentifiers", []
+            )
 
             isbn = None
+
             for i in industry:
                 if "ISBN" in i["type"]:
                     isbn = i["identifier"]
                     break
 
-            ano = info.get("publishedDate", "")[:4]
+            ano = info.get(
+                "publishedDate", ""
+            )[:4]
 
-            if not titulo:
-                continue
+            lang_final = resolve_language(
+                api_lang,
+                isbn,
+                titulo
+            )
 
             books.append({
                 "titulo": titulo,
                 "autor": autores,
                 "isbn": isbn,
                 "ano": ano,
-                "idioma": idioma,
+                "idioma": lang_final,
                 "fonte": "google"
             })
 
         return books
 
     except Exception as e:
-        print(f"[{ts()}] ERRO GOOGLE → {e}")
+        print(f"[{ts()}] GOOGLE FAIL → {e}")
         return []
+
+
+def fetch_openlibrary(query):
+
+    beat()
+
+    try:
+
+        res = requests.get(
+            OPENLIBRARY_URL,
+            params={"q": query, "limit": 20},
+            timeout=20
+        )
+
+        docs = res.json().get("docs", [])
+        books = []
+
+        for d in docs:
+
+            titulo = d.get("title")
+            autores = ", ".join(
+                d.get("author_name", [])
+            )
+
+            langs = d.get("language", [])
+            api_lang = langs[0] if langs else None
+
+            isbn_list = d.get("isbn", [])
+            isbn = isbn_list[0] if isbn_list else None
+
+            ano = d.get(
+                "first_publish_year"
+            )
+
+            lang_final = resolve_language(
+                api_lang,
+                isbn,
+                titulo
+            )
+
+            books.append({
+                "titulo": titulo,
+                "autor": autores,
+                "isbn": isbn,
+                "ano": ano,
+                "idioma": lang_final,
+                "fonte": "openlibrary"
+            })
+
+        return books
+
+    except Exception as e:
+        print(f"[{ts()}] OPENLIB FAIL → {e}")
+        return []
+
+
+# ============================================
+# CLUSTER ROTATION
+# ============================================
+
+def rotate_clusters(idioma):
+
+    idioma = idioma.upper()
+
+    items = list(CLUSTERS.items())
+    random.shuffle(items)
+
+    rotated = {}
+
+    for cluster, lang_map in items:
+
+        if idioma not in lang_map:
+            continue
+
+        queries = lang_map[idioma].copy()
+        random.shuffle(queries)
+
+        rotated[cluster] = queries
+
+    return rotated
 
 
 # ============================================
@@ -297,11 +468,15 @@ def fetch_google(query, idioma, limit=20):
 
 def run(idioma, pacote):
 
+    idioma = idioma.upper()
+
     ensure_schema()
+
+    clusters_rotated = rotate_clusters(idioma)
 
     inseridos = 0
 
-    for cluster, queries in CLUSTERS.items():
+    for cluster, queries in clusters_rotated.items():
 
         print(f"[{ts()}] CLUSTER → {cluster}")
 
@@ -313,16 +488,18 @@ def run(idioma, pacote):
 
             print(f"[{ts()}] QUERY → {query}")
 
-            ol_books = fetch_openlibrary(query, idioma)
-            g_books = fetch_google(query, idioma)
+            books = (
+                fetch_google(query) +
+                fetch_openlibrary(query)
+            )
 
-            for book in ol_books + g_books:
+            for book in books:
 
                 if inseridos >= pacote:
                     print(f"[{ts()}] Pacote atingido — STOP.")
                     return
 
-                if insert_book(book, cluster):
+                if insert_book(book, cluster, idioma):
                     inseridos += 1
                     print(
                         f"[{ts()}] INSERT {inseridos}/{pacote} → {book['titulo']}"
@@ -332,8 +509,16 @@ def run(idioma, pacote):
 
 
 # ============================================
-# ENTRYPOINT
+# CLI
 # ============================================
 
 if __name__ == "__main__":
-    run("pt", 10)
+
+    if len(sys.argv) < 3:
+        print("Uso: prospect.py <idioma> <pacote>")
+        sys.exit(1)
+
+    idioma = sys.argv[1]
+    pacote = int(sys.argv[2])
+
+    run(idioma, pacote)

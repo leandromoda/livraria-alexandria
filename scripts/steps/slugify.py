@@ -1,34 +1,15 @@
+# ============================================
+# LIVRARIA ALEXANDRIA — SLUGIFY
+# Path Safe + Collision Safe
+# ============================================
+
 import re
 import unicodedata
-import os
-import sqlite3
 
 from datetime import datetime
 
-
-# =========================
-# DB PATH (ALINHADO PROSPECT)
-# =========================
-
-DB_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
-    "books.db"
-)
-
-
-def get_conn():
-    return sqlite3.connect(DB_PATH)
-
-
-# =========================
-# LOGGER SIMPLES
-# =========================
-
-def log(msg):
-    now = datetime.now().strftime("%H:%M:%S")
-    print(f"[{now}] {msg}")
+from core.db import get_conn
+from core.logger import log
 
 
 # =========================
@@ -86,7 +67,7 @@ def generate_unique_slug(titulo):
 # FETCH PENDENTES
 # =========================
 
-def fetch_pending(limit):
+def fetch_pending(idioma, limit):
 
     conn = get_conn()
     cur = conn.cursor()
@@ -95,8 +76,9 @@ def fetch_pending(limit):
         SELECT id, titulo
         FROM livros
         WHERE status_slug = 0
+        AND idioma = ?
         LIMIT ?
-    """, (limit,))
+    """, (idioma, limit))
 
     rows = cur.fetchall()
     conn.close()
@@ -113,7 +95,7 @@ def update_slug(book_id, slug):
     conn = get_conn()
     cur = conn.cursor()
 
-    now = datetime.utcnow()
+    now = datetime.utcnow().isoformat()
 
     cur.execute("""
         UPDATE livros
@@ -131,12 +113,15 @@ def update_slug(book_id, slug):
 # RUN
 # =========================
 
-def run(pacote=10):
+def run(idioma, pacote=10):
 
-    rows = fetch_pending(pacote)
+    rows = fetch_pending(idioma, pacote)
 
     if not rows:
-        log("Nada pendente para slug.")
+        log(
+            f"Nada pendente para slug "
+            f"no idioma [{idioma}]."
+        )
         return
 
     processed = 0
@@ -151,4 +136,7 @@ def run(pacote=10):
 
         log(f"SLUG → {titulo} → {slug}")
 
-    log(f"SLUG CONCLUÍDO → {processed}")
+    log(
+        f"SLUG CONCLUÍDO [{idioma}] → "
+        f"{processed}"
+    )

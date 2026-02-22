@@ -5,20 +5,45 @@ import sqlite3
 
 
 # =========================
-# DB PATH
+# PATH SAFE (CORRIGIDO)
 # =========================
 
+CURRENT_DIR = os.path.dirname(__file__)
+
+SCRIPTS_DIR = os.path.abspath(
+    os.path.join(CURRENT_DIR, "..")
+)
+
+DATA_DIR = os.path.join(SCRIPTS_DIR, "data")
+os.makedirs(DATA_DIR, exist_ok=True)
+
 DB_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "data",
+    DATA_DIR,
     "books.db"
 )
 
 
-def get_conn():
-    return sqlite3.connect(DB_PATH, timeout=30)
+# =========================
+# DB
+# =========================
 
+def get_conn():
+
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=60,
+        isolation_level=None
+    )
+
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+
+    return conn
+
+
+# =========================
+# LOGGER
+# =========================
 
 def log(msg):
     now = datetime.now().strftime("%H:%M:%S")
@@ -40,7 +65,7 @@ def similar(a, b):
 # FETCH PENDENTES
 # =========================
 
-def fetch_pending(limit):
+def fetch_pending(idioma, limit):
 
     conn = get_conn()
     cur = conn.cursor()
@@ -49,8 +74,9 @@ def fetch_pending(limit):
         SELECT id, titulo, slug, isbn
         FROM livros
         WHERE status_dedup = 0
+        AND idioma = ?
         LIMIT ?
-    """, (limit,))
+    """, (idioma, limit))
 
     rows = cur.fetchall()
     conn.close()
@@ -62,7 +88,7 @@ def fetch_pending(limit):
 # BUSCAR DUPLICADOS
 # =========================
 
-def find_duplicates(book):
+def find_duplicates(book, idioma):
 
     conn = get_conn()
     cur = conn.cursor()
@@ -73,7 +99,8 @@ def find_duplicates(book):
                ano_publicacao
         FROM livros
         WHERE id != ?
-    """, (book["id"],))
+        AND idioma = ?
+    """, (book["id"], idioma))
 
     rows = cur.fetchall()
     conn.close()
@@ -161,12 +188,12 @@ def mark_processed(book_id):
 # RUN
 # =========================
 
-def run(pacote=10):
+def run(idioma, pacote=10):
 
-    rows = fetch_pending(pacote)
+    rows = fetch_pending(idioma, pacote)
 
     if not rows:
-        log("Nada pendente para dedup.")
+        log(f"Nada pendente para dedup no idioma [{idioma}].")
         return
 
     processed = 0
@@ -181,7 +208,7 @@ def run(pacote=10):
             "isbn": r[3],
         }
 
-        duplicates = find_duplicates(book)
+        duplicates = find_duplicates(book, idioma)
 
         for dup in duplicates:
             merge_books(book["id"], dup)
@@ -193,5 +220,6 @@ def run(pacote=10):
         log(f"DEDUP OK → {book['titulo']}")
 
     log(
-        f"DEDUP CONCLUÍDO → processados {processed} | removidos {removed}"
+        f"DEDUP CONCLUÍDO [{idioma}] → "
+        f"processados {processed} | removidos {removed}"
     )
