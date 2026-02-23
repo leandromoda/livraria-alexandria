@@ -1,0 +1,249 @@
+{
+  "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
+  "sqlite_summary": {
+    "livros": {
+      "rows": 50,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT"
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT"
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "is_book",
+          "type": "INTEGER"
+        }
+      ]
+    }
+  },
+  "sqlite_schema": {
+    "livros": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT",
+          "notnull": true,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "autor",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "is_book",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "1",
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_livros_2",
+          "unique": true
+        },
+        {
+          "name": "sqlite_autoindex_livros_1",
+          "unique": true
+        }
+      ]
+    }
+  },
+  "supabase_schema": {
+    "error": "supabase env vars missing"
+  }
+}

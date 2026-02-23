@@ -1,8 +1,68 @@
 import os
 import json
 import sqlite3
+import requests
 from datetime import datetime
 from pathlib import Path
+
+
+# =========================
+# ENV LOADER (NOVO BLOCO)
+# =========================
+
+# =========================
+# ENV LOADER (NOVO BLOCO) — PATCH CONSERVADOR EXPANDIDO
+# =========================
+
+try:
+    from dotenv import load_dotenv
+
+    CURRENT_FILE = Path(__file__).resolve()
+
+    ROOT_DIR = CURRENT_FILE.parents[2]
+    SCRIPTS_DIR_ENV = CURRENT_FILE.parents[1]
+
+    ENV_PATHS = [
+
+        # raiz
+        ROOT_DIR / ".env",
+        ROOT_DIR / ".env.local",
+
+        # scripts
+        SCRIPTS_DIR_ENV / ".env",
+        SCRIPTS_DIR_ENV / ".env.local",
+    ]
+
+    print("\n[ENV] Iniciando carregamento de variáveis...")
+
+    for env_path in ENV_PATHS:
+
+        if env_path.exists():
+
+            load_dotenv(env_path)
+
+            print(f"[ENV] Carregado: {env_path}")
+
+        else:
+
+            print(f"[ENV] Não encontrado: {env_path}")
+
+    # LOG FINAL DE DETECÇÃO
+    print("\n[ENV] Variáveis críticas:")
+
+    print(
+        "NEXT_PUBLIC_SUPABASE_URL:",
+        bool(os.getenv("NEXT_PUBLIC_SUPABASE_URL"))
+    )
+
+    print(
+        "SUPABASE_SERVICE_ROLE_KEY:",
+        bool(os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+    )
+
+except Exception as e:
+
+    print(f"[ENV] ERRO ao carregar .env: {str(e)}")
 
 
 # =========================
@@ -30,10 +90,10 @@ SQLITE_DB_PATH = DATA_DIR / "books.db"
 MAX_CHARS = 25000
 
 SITE_EXTENSIONS = [".tsx", ".ts", ".css", ".json"]
-PIPELINE_EXTENSIONS = [".py", ".json", ".db"]
+PIPELINE_EXTENSIONS = [".py", ".json"]
 
 SITE_FOLDERS = ["app", "lib", "public"]
-PIPELINE_FOLDERS = ["scripts", "state"]
+PIPELINE_FOLDERS = ["scripts"]
 
 EXCLUDE_DIRS = {
     "node_modules",
@@ -50,10 +110,6 @@ EXCLUDE_DIRS = {
 def now():
     return datetime.now().strftime("%Y-%m-%d_%H-%M")
 
-
-# =========================
-# SPLIT
-# =========================
 
 def split_text(text):
 
@@ -92,7 +148,7 @@ def write_parts(name, data):
 
 
 # =========================
-# TREE
+# TREE — SITE
 # =========================
 
 def build_site_tree():
@@ -119,15 +175,11 @@ def build_site_tree():
     return "\n".join(lines)
 
 
-# =========================
-# FILE COLLECT
-# =========================
+def build_site_tree_full():
 
-def collect_files(folders, extensions=None):
+    lines = []
 
-    collected = {}
-
-    for folder in folders:
+    for folder in SITE_FOLDERS:
 
         base = PROJECT_ROOT / folder
 
@@ -141,85 +193,291 @@ def collect_files(folders, extensions=None):
                 if d not in EXCLUDE_DIRS
             ]
 
+            rel = Path(root).relative_to(PROJECT_ROOT)
+            lines.append(str(rel))
+
             for file in files:
+                rel_file = rel / file
+                lines.append(str(rel_file))
 
-                if extensions and not any(
-                    file.endswith(ext)
-                    for ext in extensions
-                ):
-                    continue
-
-                path = Path(root) / file
-                rel = str(path.relative_to(PROJECT_ROOT))
-
-                if file.endswith(".db"):
-                    collected[rel] = dump_sqlite(path)
-                else:
-                    collected[rel] = read_file(path)
-
-    return collected
+    return "\n".join(lines)
 
 
 # =========================
-# FILE READ
+# TREE — PIPELINE
 # =========================
 
-def read_file(path):
+def build_pipeline_tree():
 
-    try:
-        return path.read_text(encoding="utf-8")
-    except:
-        return "[binary or unreadable]"
+    lines = []
+
+    for folder in PIPELINE_FOLDERS:
+
+        base = PROJECT_ROOT / folder
+
+        if not base.exists():
+            continue
+
+        for root, dirs, files in os.walk(base):
+
+            dirs[:] = [
+                d for d in dirs
+                if d not in EXCLUDE_DIRS
+            ]
+
+            rel = Path(root).relative_to(PROJECT_ROOT)
+            lines.append(str(rel))
+
+            for file in files:
+                rel_file = rel / file
+                lines.append(str(rel_file))
+
+    return "\n".join(lines)
 
 
 # =========================
-# SQLITE DUMP
+# SQLITE SUMMARY
 # =========================
 
-def dump_sqlite(path):
+def summarize_sqlite(path):
 
     if not path.exists():
         return {"error": "db not found"}
 
-    try:
+    conn = sqlite3.connect(path)
+    cursor = conn.cursor()
 
-        conn = sqlite3.connect(path)
-        cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table';"
+    )
 
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table';"
-        )
+    tables = [t[0] for t in cursor.fetchall()]
 
-        tables = [t[0] for t in cursor.fetchall()]
+    summary = {}
 
-        dump = {}
+    for table in tables:
 
-        for table in tables:
+        cursor.execute(f"SELECT COUNT(*) FROM {table}")
+        count = cursor.fetchone()[0]
 
-            cursor.execute(
-                f"PRAGMA table_info({table});"
-            )
+        cursor.execute(f"PRAGMA table_info({table});")
+        cols = cursor.fetchall()
 
-            cols = cursor.fetchall()
-
-            dump[table] = [
-                {
-                    "name": c[1],
-                    "type": c[2]
-                }
+        summary[table] = {
+            "rows": count,
+            "columns": [
+                {"name": c[1], "type": c[2]}
                 for c in cols
             ]
+        }
 
-        conn.close()
-
-        return dump
-
-    except:
-        return {"error": "failed to read sqlite"}
+    conn.close()
+    return summary
 
 
 # =========================
-# ABSTRACT LOADERS
+# SQLITE SCHEMA FULL
+# =========================
+
+def extract_sqlite_schema(path):
+
+    if not path.exists():
+        return {"error": "db not found"}
+
+    conn = sqlite3.connect(path)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table';"
+    )
+
+    tables = [t[0] for t in cursor.fetchall()]
+
+    schema = {}
+
+    for table in tables:
+
+        cursor.execute(f"PRAGMA table_info({table});")
+        cols = cursor.fetchall()
+
+        cursor.execute(f"PRAGMA index_list({table});")
+        indexes = cursor.fetchall()
+
+        schema[table] = {
+            "columns": [
+                {
+                    "name": c[1],
+                    "type": c[2],
+                    "notnull": bool(c[3]),
+                    "default": c[4],
+                    "pk": bool(c[5])
+                }
+                for c in cols
+            ],
+            "indexes": [
+                {
+                    "name": i[1],
+                    "unique": bool(i[2])
+                }
+                for i in indexes
+            ]
+        }
+
+    conn.close()
+    return schema
+
+
+# =========================
+# SUPABASE SCHEMA + LOGS (PATCH CONSERVADOR)
+# =========================
+
+def extract_supabase_schema():
+
+    print("\n[Supabase] Iniciando extração de schema...")
+
+    try:
+
+        SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+        print(f"[Supabase] URL detectada: {bool(SUPABASE_URL)}")
+        print(f"[Supabase] SERVICE_ROLE detectada: {bool(SERVICE_ROLE_KEY)}")
+
+        if not SUPABASE_URL or not SERVICE_ROLE_KEY:
+            print("[Supabase] ERRO: Variáveis de ambiente ausentes.")
+            return {"error": "supabase env vars missing"}
+
+        headers = {
+            "apikey": SERVICE_ROLE_KEY,
+            "Authorization": f"Bearer {SERVICE_ROLE_KEY}"
+        }
+
+        url = (
+            f"{SUPABASE_URL}/rest/v1/information_schema.columns"
+            "?select=table_name,column_name,data_type,is_nullable,column_default"
+        )
+
+        print(f"[Supabase] Endpoint: {url}")
+
+        response = requests.get(url, headers=headers, timeout=15)
+
+        print(f"[Supabase] Status HTTP: {response.status_code}")
+
+        if response.status_code != 200:
+            print("[Supabase] ERRO HTTP ao consultar schema.")
+            return {"error": f"http {response.status_code}"}
+
+        rows = response.json()
+
+        print(f"[Supabase] Colunas encontradas: {len(rows)}")
+
+        schema = {}
+
+        for r in rows:
+
+            table = r["table_name"]
+
+            if table not in schema:
+                schema[table] = []
+
+            schema[table].append({
+                "name": r["column_name"],
+                "type": r["data_type"],
+                "nullable": r["is_nullable"],
+                "default": r["column_default"]
+            })
+
+        print(f"[Supabase] Tabelas mapeadas: {len(schema)}")
+
+        return schema
+
+    except Exception as e:
+        print(f"[Supabase] EXCEPTION: {str(e)}")
+        return {"error": str(e)}
+
+
+# =========================
+# SEO DETECTION
+# =========================
+
+def detect_indexable_routes(tree):
+
+    routes = []
+
+    for line in tree.splitlines():
+
+        if "page.tsx" in line and "(internal)" not in line:
+            route = line.split("app")[-1]
+            route = route.replace("\\page.tsx", "")
+            route = route.replace("\\", "/")
+
+            if route == "":
+                route = "/"
+
+            routes.append(route)
+
+    return routes
+
+
+def detect_seo_surface(routes):
+
+    surface = {
+        "listas": False,
+        "livros": False,
+        "categorias": False,
+        "ofertas": False
+    }
+
+    for r in routes:
+
+        if "/listas" in r:
+            surface["listas"] = True
+
+        if "/livros" in r:
+            surface["livros"] = True
+
+        if "/categorias" in r:
+            surface["categorias"] = True
+
+        if "/ofertas" in r:
+            surface["ofertas"] = True
+
+    return surface
+
+
+def detect_structured_data():
+
+    schemas = set()
+
+    for root, _, files in os.walk(PROJECT_ROOT / "app"):
+
+        for f in files:
+
+            if not f.endswith(".tsx"):
+                continue
+
+            path = Path(root) / f
+
+            try:
+                content = path.read_text(encoding="utf-8")
+
+                if "Product" in content:
+                    schemas.add("Product")
+
+                if "Offer" in content:
+                    schemas.add("Offer")
+
+                if "ItemList" in content:
+                    schemas.add("ItemList")
+
+            except:
+                pass
+
+    return list(schemas)
+
+
+# =========================
+# LOADERS
 # =========================
 
 def load_project_state():
@@ -243,52 +501,59 @@ def load_db_schema():
 
 
 # =========================
-# MODES
+# EXPORT — SITE
 # =========================
 
 def export_site():
 
     name = f"{now()}_site_bootstrap"
 
+    tree_full = build_site_tree_full()
+    routes = detect_indexable_routes(tree_full)
+
     data = {
-        "tree_site": build_site_tree(),
+        "tree_site": tree_full,
+        "indexable_routes": routes,
+        "seo_surface": detect_seo_surface(routes),
+        "structured_data": detect_structured_data(),
         "project_state": load_project_state(),
-        "database_schema_abstract": load_db_schema(),
-        "files": collect_files(
-            SITE_FOLDERS,
-            SITE_EXTENSIONS
-        )
+        "database_schema_abstract": load_db_schema()
     }
 
     return write_parts(name, data)
 
 
-def export_pipeline():
+# =========================
+# EXPORT — PIPELINE
+# =========================
 
-    name = f"{now()}_pipeline_full"
+def export_pipeline_summary():
+
+    name = f"{now()}_pipeline_summary"
 
     data = {
-        "sqlite_dump": dump_sqlite(SQLITE_DB_PATH),
-        "files": collect_files(
-            PIPELINE_FOLDERS,
-            PIPELINE_EXTENSIONS
-        )
+        "pipeline_tree": build_pipeline_tree(),
+        "sqlite_path": str(SQLITE_DB_PATH.resolve()),
+        "sqlite_summary": summarize_sqlite(SQLITE_DB_PATH),
+        "project_state": load_project_state()
     }
 
     return write_parts(name, data)
 
 
-def export_full():
+# =========================
+# EXPORT — DATABASE (LOCAL + SUPABASE)
+# =========================
 
-    name = f"{now()}_full_snapshot"
+def export_database_transcript():
+
+    name = f"{now()}_database_transcript"
 
     data = {
-        "tree_site": build_site_tree(),
-        "sqlite_dump": dump_sqlite(SQLITE_DB_PATH),
-        "files": collect_files(
-            ["."],
-            None
-        )
+        "sqlite_path": str(SQLITE_DB_PATH.resolve()),
+        "sqlite_summary": summarize_sqlite(SQLITE_DB_PATH),
+        "sqlite_schema": extract_sqlite_schema(SQLITE_DB_PATH),
+        "supabase_schema": extract_supabase_schema()
     }
 
     return write_parts(name, data)
@@ -303,11 +568,11 @@ def export_state_transcript(mode="site"):
     if mode == "site":
         paths = export_site()
 
-    elif mode == "pipeline":
-        paths = export_pipeline()
+    elif mode == "pipeline_summary":
+        paths = export_pipeline_summary()
 
-    elif mode == "full":
-        paths = export_full()
+    elif mode == "database":
+        paths = export_database_transcript()
 
     else:
         print("Modo inválido.")

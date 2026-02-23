@@ -59,6 +59,8 @@ def ensure_schema(conn):
         status_cover INTEGER DEFAULT 0,
         status_publish INTEGER DEFAULT 0,
 
+        supabase_id TEXT,
+
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

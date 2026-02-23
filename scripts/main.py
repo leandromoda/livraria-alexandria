@@ -125,8 +125,8 @@ def main():
 8 → Publicar Supabase
 
 9 → Export Site Transcript
-10 → Export Pipeline Transcript
-11 → Export Full Transcript
+10 → Export Pipeline Summary
+11 → Export Database Transcript
 
 0 → Sair
 """)
@@ -176,13 +176,13 @@ def main():
             log("Concluído.")
 
         elif op == "10":
-            log("Exportando Pipeline Transcript…")
-            export_state_transcript("pipeline")
+            log("Exportando Pipeline Summary…")
+            export_state_transcript("pipeline_summary")
             log("Concluído.")
 
         elif op == "11":
-            log("Exportando Full Transcript…")
-            export_state_transcript("full")
+            log("Exportando Database Transcript…")
+            export_state_transcript("database")
             log("Concluído.")
 
         else:

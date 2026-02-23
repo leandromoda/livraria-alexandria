@@ -1,0 +1,92 @@
+{
+  "pipeline_tree": "scripts\nscripts\\main.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\logger.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\prospect.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py\nscripts\\steps\\_clusters.py\nscripts\\_backup\nscripts\\_backup\\ingest_books.py",
+  "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
+  "sqlite_summary": {
+    "livros": {
+      "rows": 50,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT"
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster",
+          "type": "TEXT"
+        },
+        {
+          "name": "fonte",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "is_book",
+          "type": "INTEGER"
+        }
+      ]
+    }
+  },
+  "project_state": "project_state.json não encontrado."
+}

@@ -1,0 +1,28 @@
+{
+  "tree_site": "app\napp\\favicon.ico\napp\\globals.css\napp\\layout.tsx\napp\\(internal)\napp\\(internal)\\api\napp\\(internal)\\api\\click\napp\\(internal)\\api\\click\\[id]\napp\\(internal)\\api\\click\\[id]\\route.ts\napp\\(public)\napp\\(public)\\page.tsx\napp\\(public)\\autores\napp\\(public)\\categorias\napp\\(public)\\categorias\\page.tsx\napp\\(public)\\categorias\\[slug]\napp\\(public)\\categorias\\[slug]\\page.tsx\napp\\(public)\\contato\napp\\(public)\\contato\\page.tsx\napp\\(public)\\listas\napp\\(public)\\listas\\[slug]\napp\\(public)\\listas\\[slug]\\page.tsx\napp\\(public)\\listas\\[slug]\\_components\napp\\(public)\\listas\\[slug]\\_data\napp\\(public)\\listas\\[slug]\\_graph\napp\\(public)\\livros\napp\\(public)\\livros\\page.tsx\napp\\(public)\\livros\\[slug]\napp\\(public)\\livros\\[slug]\\page.tsx\napp\\(public)\\livros\\[slug]\\_components\napp\\(public)\\livros\\[slug]\\_data\napp\\(public)\\livros\\[slug]\\_graph\napp\\(public)\\ofertas\napp\\(public)\\ofertas\\data.mock.ts\napp\\(public)\\ofertas\\data.ts\napp\\(public)\\ofertas\\page.tsx\napp\\(public)\\ofertas\\_components\napp\\(public)\\ofertas\\_data\napp\\(public)\\sobre\napp\\(public)\\sobre\\page.tsx\napp\\(public)\\tags\napp\\teste\napp\\teste\\[id]\napp\\teste\\[id]\\page.tsx\nlib\nlib\\supabase-admin.ts\nlib\\supabase.ts\nlib\\supabase\nlib\\supabase\\edge.ts\npublic\npublic\\file.svg\npublic\\globe.svg\npublic\\next.svg\npublic\\vercel.svg\npublic\\window.svg",
+  "indexable_routes": [
+    "/(public)",
+    "/(public)/categorias",
+    "/(public)/categorias/[slug]",
+    "/(public)/contato",
+    "/(public)/listas/[slug]",
+    "/(public)/livros",
+    "/(public)/livros/[slug]",
+    "/(public)/ofertas",
+    "/(public)/sobre",
+    "/teste/[id]"
+  ],
+  "seo_surface": {
+    "listas": true,
+    "livros": true,
+    "categorias": true,
+    "ofertas": true
+  },
+  "structured_data": [
+    "Offer",
+    "Product",
+    "ItemList"
+  ],
+  "project_state": "project_state.json não encontrado.",
+  "database_schema_abstract": "database_schema.json não encontrado."
+}
