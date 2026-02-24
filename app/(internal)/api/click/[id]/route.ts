@@ -1,12 +1,12 @@
 export const runtime = "edge";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   context: { params: { id: string } }
-): Promise<Response> {
+) {
 
   const offerId = context.params.id;
 
@@ -45,7 +45,7 @@ export async function GET(
     "0.0.0.0";
 
   /**
-   * 3) Hash IP
+   * 3) Hash IP (Edge-safe)
    */
   const hashBuffer = await crypto.subtle.digest(
     "SHA-256",
@@ -59,7 +59,7 @@ export async function GET(
     .join("");
 
   /**
-   * 4) Tracking
+   * 4) Insert tracking
    */
   await supabase.from("oferta_clicks").insert({
     oferta_id: oferta.id,
@@ -70,7 +70,7 @@ export async function GET(
   });
 
   /**
-   * 5) Redirect
+   * 5) Redirect afiliado
    */
   return NextResponse.redirect(
     oferta.url_afiliada,
