@@ -6,7 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 export async function GET(
   request: Request,
   context: { params: { id: string } }
-) {
+): Promise<Response> {
+
   const offerId = context.params.id;
 
   const supabase = createClient(
@@ -44,7 +45,7 @@ export async function GET(
     "0.0.0.0";
 
   /**
-   * 3) Hash IP (Edge-safe)
+   * 3) Hash IP
    */
   const hashBuffer = await crypto.subtle.digest(
     "SHA-256",
@@ -58,7 +59,7 @@ export async function GET(
     .join("");
 
   /**
-   * 4) Insert tracking
+   * 4) Tracking
    */
   await supabase.from("oferta_clicks").insert({
     oferta_id: oferta.id,
@@ -69,7 +70,7 @@ export async function GET(
   });
 
   /**
-   * 5) Redirect afiliado
+   * 5) Redirect
    */
   return NextResponse.redirect(
     oferta.url_afiliada,
