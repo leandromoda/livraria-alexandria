@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
+  request: Request,
+  context: { params: { id: string } }
 ) {
-  const offerId = params.id;
+  const offerId = context.params.id;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,13 +34,13 @@ export async function GET(
    * 2) Metadados
    */
   const userAgent =
-    req.headers.get("user-agent") ?? null;
+    request.headers.get("user-agent") ?? null;
 
   const referer =
-    req.headers.get("referer") ?? null;
+    request.headers.get("referer") ?? null;
 
   const ip =
-    req.headers.get("x-forwarded-for") ??
+    request.headers.get("x-forwarded-for") ??
     "0.0.0.0";
 
   /**
