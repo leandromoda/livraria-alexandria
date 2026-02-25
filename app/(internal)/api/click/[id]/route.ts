@@ -3,9 +3,15 @@ export const runtime = "edge";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
 export async function GET(
   request: NextRequest,
-  context
+  context: RouteContext
 ) {
 
   const offerId = context.params.id;
