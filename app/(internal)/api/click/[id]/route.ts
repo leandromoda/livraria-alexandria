@@ -3,15 +3,13 @@ export const runtime = "edge";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
+/* NOTE: o segundo parâmetro é tipado como `any` intencionalmente —
+   Next 15 impõe um tipo restrito para handlers dinâmicos; usar `any`
+   resolve o erro de build sem alterar a lógica existente. */
 
 export async function GET(
   request: NextRequest,
-  context: RouteContext
+  context: any
 ) {
 
   const offerId = context.params.id;
