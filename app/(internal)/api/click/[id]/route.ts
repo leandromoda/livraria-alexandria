@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context
 ) {
 
   const offerId = context.params.id;
