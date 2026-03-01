@@ -1,171 +1,119 @@
-# ============================================
-# LIVRARIA ALEXANDRIA — SYNOPSIS
-# LLM (Ollama) + Path Safe + Retry Safe
-# ============================================
-
-import requests
 import time
-
-from datetime import datetime
 
 from core.db import get_conn
 from core.logger import log
+from core.markdown_executor import execute_agent
 
 
-# =========================
+# =====================================================
 # CONFIG
-# =========================
+# =====================================================
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "phi3:mini"
-
-MAX_RETRIES = 3
+AGENT_PATH = "agents/synopsis"
 
 
-# =========================
-# PROMPT
-# =========================
+# =====================================================
+# HELPERS
+# =====================================================
 
-def build_prompt(titulo, autor):
+def fetch_pending(conn, idioma, limit):
 
-    autor = autor or "Autor não informado"
-
-    return f"""
-Escreva uma sinopse editorial curta (até 80 palavras)
-para página de recomendação de livros.
-
-Tom: informativo + persuasivo
-Foco: valor do livro para o leitor
-Sem spoilers
-Sem citações
-
-Livro: {titulo}
-Autor: {autor}
-"""
-
-
-# =========================
-# LLM CALL
-# =========================
-
-def generate_synopsis(titulo, autor):
-
-    prompt = build_prompt(titulo, autor)
-
-    for attempt in range(MAX_RETRIES):
-
-        try:
-
-            res = requests.post(
-                OLLAMA_URL,
-                json={
-                    "model": MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.4,
-                        "num_predict": 180
-                    }
-                },
-                timeout=120
-            )
-
-            text = res.json()["response"].strip()
-
-            if len(text) > 30:
-                return text
-
-        except Exception:
-            log(f"Retry LLM ({attempt+1}) → {titulo}")
-            time.sleep(2)
-
-    return None
-
-
-# =========================
-# FETCH PENDENTES
-# =========================
-
-def fetch_pending(idioma, limit):
-
-    conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, titulo, autor
+    cur.execute(
+        """
+        SELECT id, titulo, autor, idioma
         FROM livros
         WHERE status_synopsis = 0
-        AND idioma = ?
+          AND idioma = ?
+          AND is_book = 1
         LIMIT ?
-    """, (idioma, limit))
+        """,
+        (idioma, limit),
+    )
 
-    rows = cur.fetchall()
-    conn.close()
-
-    return rows
+    return cur.fetchall()
 
 
-# =========================
-# UPDATE
-# =========================
+def update_synopsis(conn, livro_id, synopsis):
 
-def update_synopsis(book_id, text):
-
-    conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("""
+    cur.execute(
+        """
         UPDATE livros
-        SET
-            descricao = ?,
+        SET descricao = ?,
             status_synopsis = 1,
-            updated_at = ?
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (
-        text,
-        datetime.utcnow().isoformat(),
-        book_id
-    ))
+        """,
+        (synopsis, livro_id),
+    )
 
     conn.commit()
-    conn.close()
 
 
-# =========================
-# RUN
-# =========================
+# =====================================================
+# MAIN STEP
+# =====================================================
 
-def run(idioma, pacote=10):
+def run(idioma, pacote):
+    """
+    Step: geração de sinopses via Markdown Agent
+    Compatível com main.py → synopsis.run(idioma, pacote)
+    """
 
-    rows = fetch_pending(idioma, pacote)
+    log("[SYNOPSIS] Iniciando geração de sinopses")
+
+    conn = get_conn()
+
+    rows = fetch_pending(conn, idioma, pacote)
 
     if not rows:
-        log(
-            f"Nada pendente para sinopse "
-            f"no idioma [{idioma}]."
-        )
+        log("[SYNOPSIS] Nada pendente.")
         return
 
-    processed = 0
-    failed = 0
+    total = len(rows)
 
-    for book_id, titulo, autor in rows:
+    log(f"[SYNOPSIS] {total} livros encontrados")
 
-        log(f"LLM → {titulo}")
+    start_time = time.time()
 
-        synopsis = generate_synopsis(titulo, autor)
+    for i, (livro_id, titulo, autor, idioma_livro) in enumerate(rows, start=1):
 
-        if not synopsis:
-            failed += 1
-            log(f"FALHA → {titulo}")
-            continue
+        heartbeat = int(time.time() - start_time)
 
-        update_synopsis(book_id, synopsis)
+        log(
+            f"[SYNOPSIS][{i}/{total}] "
+            f"{titulo} — heartbeat {heartbeat}s"
+        )
 
-        processed += 1
-        log(f"SINOPSE OK → {titulo}")
+        payload = {
+            "titulo": titulo,
+            "autor": autor,
+            "idioma": idioma_livro,
+        }
 
-    log(
-        f"SINOPSE CONCLUÍDA [{idioma}] → "
-        f"{processed} | falhas {failed}"
-    )
+        result = execute_agent(AGENT_PATH, payload)
+
+        synopsis_text = result.get("synopsis", "")
+
+        # =====================================================
+        # NOVO LOG — TRANSCRIÇÃO DA SINOPSE GERADA
+        # =====================================================
+        if synopsis_text:
+            log("[SYNOPSIS][TEXT_BEGIN]")
+            log(synopsis_text)
+            log("[SYNOPSIS][TEXT_END]")
+
+        # =====================================================
+
+        if synopsis_text:
+            update_synopsis(conn, livro_id, synopsis_text)
+            log(f"[SYNOPSIS] OK → {titulo}")
+        else:
+            log(f"[SYNOPSIS] Falha → {titulo}")
+
+    conn.close()
+
+    log("[SYNOPSIS] Finalizado")

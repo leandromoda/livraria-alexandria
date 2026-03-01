@@ -2,7 +2,7 @@
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 50,
+      "rows": 148,
       "columns": [
         {
           "name": "id",
@@ -82,6 +82,18 @@
         },
         {
           "name": "is_book",
+          "type": "INTEGER"
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "is_publishable",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_score",
           "type": "INTEGER"
         }
       ]
@@ -228,6 +240,27 @@
           "type": "INTEGER",
           "notnull": false,
           "default": "1",
+          "pk": false
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "is_publishable",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "1",
+          "pk": false
+        },
+        {
+          "name": "editorial_score",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
           "pk": false
         }
       ],

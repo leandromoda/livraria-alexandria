@@ -32,6 +32,52 @@ HEADERS = {
 TIMEOUT = 60
 MAX_RETRIES = 3
 
+# namespace fixo → UUID determinístico
+UUID_NAMESPACE = uuid.UUID("11111111-2222-3333-4444-555555555555")
+
+
+# =========================
+# SCHEMA GUARD
+# =========================
+
+def ensure_publish_schema():
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("PRAGMA table_info(livros)")
+    columns = [row[1] for row in cur.fetchall()]
+
+    # supabase_id
+    if "supabase_id" not in columns:
+
+        log("Schema update → adicionando coluna supabase_id")
+
+        cur.execute("""
+            ALTER TABLE livros
+            ADD COLUMN supabase_id TEXT
+        """)
+
+        conn.commit()
+
+        log("Coluna supabase_id criada com sucesso.")
+
+    # is_publishable
+    if "is_publishable" not in columns:
+
+        log("Schema update → adicionando coluna is_publishable")
+
+        cur.execute("""
+            ALTER TABLE livros
+            ADD COLUMN is_publishable INTEGER DEFAULT 1
+        """)
+
+        conn.commit()
+
+        log("Coluna is_publishable criada com sucesso.")
+
+    conn.close()
+
 
 # =========================
 # FETCH
@@ -51,7 +97,8 @@ def fetch_pending(idioma, limit):
             descricao,
             isbn,
             ano_publicacao,
-            imagem_url
+            imagem_url,
+            supabase_id
         FROM livros
         WHERE status_publish = 0
         AND status_review = 1
@@ -67,6 +114,23 @@ def fetch_pending(idioma, limit):
 
 
 # =========================
+# UUID RESOLUTION
+# =========================
+
+def resolve_uuid(local_id, existing_supabase_id):
+
+    if existing_supabase_id:
+        return existing_supabase_id
+
+    deterministic_uuid = uuid.uuid5(
+        UUID_NAMESPACE,
+        str(local_id)
+    )
+
+    return str(deterministic_uuid)
+
+
+# =========================
 # PAYLOAD
 # =========================
 
@@ -74,7 +138,10 @@ def build_payload(row):
 
     now = datetime.utcnow().isoformat()
 
-    supabase_uuid = str(uuid.uuid4())
+    local_id = row[0]
+    existing_supabase_id = row[8]
+
+    supabase_uuid = resolve_uuid(local_id, existing_supabase_id)
 
     return {
         "id": supabase_uuid,
@@ -159,6 +226,9 @@ def mark_published(local_id, supabase_id):
 # =========================
 
 def run(idioma, pacote=10):
+
+    # garante compatibilidade de schema
+    ensure_publish_schema()
 
     rows = fetch_pending(idioma, pacote)
 

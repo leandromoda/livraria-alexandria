@@ -1,9 +1,9 @@
 {
-  "pipeline_tree": "scripts\nscripts\\main.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\logger.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\prospect.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py\nscripts\\steps\\_clusters.py\nscripts\\_backup\nscripts\\_backup\\ingest_books.py",
+  "pipeline_tree": "scripts\nscripts\\main.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\logger.py\nscripts\\core\\markdown_executor.py\nscripts\\core\\markdown_memory.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\prospect.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py\nscripts\\steps\\_clusters.py\nscripts\\_backup\nscripts\\_backup\\ingest_books.py",
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 50,
+      "rows": 148,
       "columns": [
         {
           "name": "id",
@@ -83,6 +83,18 @@
         },
         {
           "name": "is_book",
+          "type": "INTEGER"
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "is_publishable",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_score",
           "type": "INTEGER"
         }
       ]

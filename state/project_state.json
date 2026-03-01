@@ -2,12 +2,13 @@
   "meta": {
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
-    "current_phase": "pilot_functional_interlinked_taxonomy_active_idioma_aware_editorial_gate",
-    "last_updated": "2026-02-22",
+    "current_phase": "pilot_functional_production_live_affiliate_pending",
+    "last_updated": "2026-03-01",
     "owner": "Leandro Moda",
-    "environment": "local",
+    "environment": "production_live",
     "runtime_stack": {
       "node": "Next.js App Router (Edge Runtime ativo)",
+      "next_version": "16.1.6",
       "database_primary": "Supabase",
       "database_staging": "SQLite (pipeline local)",
       "database_staging_path": "scripts/data/books.db",
@@ -15,6 +16,12 @@
       "llm_model": "phi3:mini",
       "python_env": "venv (Windows)",
       "ingest_language": "Python 3.14"
+    },
+    "deployment": {
+      "platform": "Vercel",
+      "status": "production_live",
+      "domain": "livrariaalexandria.com.br",
+      "env_vars_configured": true
     },
     "version_control": {
       "provider": "GitHub",
@@ -85,7 +92,7 @@
       },
       {
         "name": "Click Tracking",
-        "status": "operational",
+        "status": "operational_production",
         "path": "app/(internal)/api/click/[id]"
       }
     ]
@@ -93,16 +100,20 @@
 
   "monetization": {
     "model": "affiliate_redirect",
-    "status": "functional",
+    "status": "infra_ready_affiliate_ids_pending",
     "flows": [
       "Lista → Livro",
       "Livro → Oferta",
       "Oferta → Afiliado"
+    ],
+    "programs_pending": [
+      "Amazon Associates",
+      "Mercado Livre Partners"
     ]
   },
 
   "tracking": {
-    "status": "implemented",
+    "status": "implemented_production",
     "table": "oferta_clicks",
     "deduplication": "pending"
   },
@@ -162,7 +173,8 @@
       "editorial_fields": [
         "is_book",
         "editorial_score"
-      ]
+      ],
+      "runtime_mode": "WAL_enabled_busy_timeout_60s"
     }
   },
 
@@ -237,6 +249,24 @@
 
     "steps": [
       {
+        "order": 0,
+        "name": "Offer Seed Import",
+        "status": "operational",
+        "description": "Entrada offer-first via JSON gerado por Seeder Agent com auto-migration de schema SQLite",
+        "input": "scripts/data/offer_seeds.json",
+        "target_table": "livros",
+        "source_tag": "offer_seed",
+        "auto_schema_migration": true
+      },
+      {
+        "order": 0.5,
+        "name": "Offer Resolver",
+        "status": "operational",
+        "description": "Resolve lookup_query em ofertas reais e preenche offer_url e marketplace",
+        "mode": "lookup_to_offer",
+        "idioma_aware": true
+      },
+      {
         "order": 1,
         "name": "Prospect",
         "status": "operational",
@@ -265,9 +295,13 @@
       {
         "order": 4,
         "name": "Synopsis Generation",
-        "status": "operational",
+        "status": "operational_markdown_agent_executor_decomposed",
         "idioma_aware": true,
-        "llm": "phi3:mini"
+        "llm": "phi3:mini",
+        "executor": "Markdown Agent Executor",
+        "agent_path": "agents/synopsis",
+        "workflow_model": "collect_abstract_plan_generate_validate",
+        "temporary_state": "ephemeral_context_memory"
       },
       {
         "order": 5,
@@ -357,6 +391,31 @@
       "id": "TASK-INGEST-007",
       "description": "Refinar editorial_score com dataset supervisionado",
       "priority": "low"
+    },
+    {
+      "id": "TASK-AFF-001",
+      "description": "Cadastro Amazon Associates",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-AFF-002",
+      "description": "Cadastro Mercado Livre Partners",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-AFF-003",
+      "description": "Inserir IDs afiliados nas URLs de redirecionamento",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-AFF-004",
+      "description": "Validar tracking de conversão por marketplace",
+      "priority": "medium"
+    },
+    {
+      "id": "TASK-SYN-OPT-001",
+      "description": "Reduzir tempo de geração de sinopses via otimização do executor Markdown e critic lightweight",
+      "priority": "medium"
     }
   ]
 }

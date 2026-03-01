@@ -10,6 +10,10 @@ from steps import covers
 from steps import publish
 from steps import quality_gate
 
+# >>> STEPS OFFER-FIRST
+from steps import offer_seed
+from steps import offer_resolver
+
 from steps.export_state_transcript import export_state_transcript
 
 
@@ -63,7 +67,7 @@ def input_safe(text):
 
 
 # =========================
-# IDIOMA (ISO NORMALIZADO)
+# IDIOMA
 # =========================
 
 def escolher_idioma():
@@ -115,6 +119,9 @@ def main():
         print("""
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
+00 → Importar Offer Seeds
+05 → Resolver Ofertas (lookup → oferta real)
+
 1 → Prospectar livros
 2 → Gerar slugs
 3 → Deduplicar
@@ -135,6 +142,17 @@ def main():
 
         if op == "0":
             break
+
+        elif op == "00":
+            log("Importando Offer Seeds…")
+            offer_seed.run()
+            log("Offer Seeds importadas.")
+
+        elif op == "05":
+            pacote = escolher_pacote()
+            log("Resolvendo ofertas reais…")
+            offer_resolver.run(idioma, pacote)
+            log("Offer Resolver concluído.")
 
         elif op == "1":
             pacote = escolher_pacote()

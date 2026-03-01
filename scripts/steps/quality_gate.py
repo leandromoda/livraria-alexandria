@@ -15,6 +15,43 @@ MIN_SYNOPSIS_LEN = 400
 
 
 # ============================================
+# SCHEMA GUARD (NOVO)
+# ============================================
+
+def ensure_quality_schema():
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("PRAGMA table_info(livros)")
+    cols = [r[1] for r in cur.fetchall()]
+
+    def add_column(name, sql):
+
+        if name not in cols:
+            log(f"Schema update → criando coluna {name}")
+            cur.execute(sql)
+            conn.commit()
+
+    add_column(
+        "editorial_score",
+        "ALTER TABLE livros ADD COLUMN editorial_score INTEGER DEFAULT 0"
+    )
+
+    add_column(
+        "is_book",
+        "ALTER TABLE livros ADD COLUMN is_book INTEGER DEFAULT 1"
+    )
+
+    add_column(
+        "is_publishable",
+        "ALTER TABLE livros ADD COLUMN is_publishable INTEGER DEFAULT 1"
+    )
+
+    conn.close()
+
+
+# ============================================
 # FETCH
 # ============================================
 
@@ -58,10 +95,8 @@ def check_cover(v): return v == 1
 
 
 def check_synopsis_len(texto):
-
     if not texto:
         return False
-
     return len(texto) >= MIN_SYNOPSIS_LEN
 
 
@@ -117,7 +152,7 @@ def check_editorial_score(score):
 
 
 # ============================================
-# UPDATE
+# LEGADO (PRESERVADO)
 # ============================================
 
 def mark_publish(book_id):
@@ -137,10 +172,33 @@ def mark_publish(book_id):
 
 
 # ============================================
+# MATERIALIZAÇÃO DO GATE
+# ============================================
+
+def set_publishable(book_id, value):
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE livros
+        SET
+            is_publishable = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (value, book_id))
+
+    conn.commit()
+    conn.close()
+
+
+# ============================================
 # RUN
 # ============================================
 
 def run(idioma_base="PT", pacote=20):
+
+    ensure_quality_schema()
 
     idioma_base = idioma_base.upper()
 
@@ -175,10 +233,6 @@ def run(idioma_base="PT", pacote=20):
 
         motivos = []
 
-        # =========================
-        # PIPELINE CHECKS
-        # =========================
-
         if not check_slug(status_slug):
             motivos.append("Slug pendente")
 
@@ -194,70 +248,41 @@ def run(idioma_base="PT", pacote=20):
         if not check_synopsis_len(descricao):
             motivos.append("Sinopse curta")
 
-        # =========================
-        # LANGUAGE GATE
-        # =========================
-
-        lang_ok, lang_msg = check_language(
-            idioma,
-            idioma_base
-        )
-
+        lang_ok, lang_msg = check_language(idioma, idioma_base)
         if not lang_ok:
             motivos.append(lang_msg)
 
-        # =========================
-        # EDITORIAL GATE
-        # =========================
-
-        ed_ok, ed_msg = check_editorial(
-            is_book
-        )
-
+        ed_ok, ed_msg = check_editorial(is_book)
         if not ed_ok:
             motivos.append(ed_msg)
 
-        # =========================
-        # SCORE GATE
-        # =========================
-
-        score_ok, score_msg = check_editorial_score(
-            editorial_score
-        )
-
+        score_ok, score_msg = check_editorial_score(editorial_score)
         if not score_ok:
             motivos.append(score_msg)
 
-        # =========================
-        # DECISÃO
-        # =========================
-
         if motivos:
 
+            set_publishable(book_id, 0)
             reprovados += 1
 
-            log(
-                f"REPROVADO → {titulo} | "
-                + " | ".join(motivos)
-            )
-
+            log(f"REPROVADO → {titulo} | " + " | ".join(motivos))
             continue
 
-        # =========================
-        # APROVA
-        # =========================
-
-        mark_publish(book_id)
-
+        set_publishable(book_id, 1)
         aprovados += 1
 
-        log(
-            f"APROVADO → {titulo} "
-            f"(idioma={idioma} | score={editorial_score})"
-        )
+        log(f"APROVADO → {titulo} (idioma={idioma} | score={editorial_score})")
 
     log(
         f"QUALITY GATE END | "
         f"Aprovados={aprovados} "
         f"Reprovados={reprovados}"
     )
+
+
+# ============================================
+# COMPATIBILITY LAYER
+# ============================================
+
+def evaluate_quality(idioma_base="PT", pacote=20):
+    return run(idioma_base, pacote)

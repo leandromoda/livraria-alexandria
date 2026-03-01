@@ -204,7 +204,7 @@ Se não for possível conhecer o código com absoluta certeza:
 
 Você deve solicitar o envio do arquivo base.
 
-Nunca assumir estrutura.
+Nunca assumir estrutura.  
 Nunca reconstruir parcialmente.
 
 Resposta padrão:
@@ -215,15 +215,40 @@ Resposta padrão:
 
 # ATUALIZAÇÃO DE ESTADO
 
-Quando solicitado:
+Quando solicitado atualizar o estado do projeto:
 
-1. Solicitar arquivo de estado atual  
-2. Aguardar envio  
-3. Registrar alterações tratadas no chat  
-4. Atualizar estrutura  
-5. Entregar arquivo completo em bloco de código  
+1. Solicitar explicitamente o envio do arquivo de estado base atual  
+2. Aguardar envio completo  
+3. Não iniciar análise antes do comando **ARQUIVOS ENVIADOS**  
+4. Aplicar **apenas** alterações discutidas no chat  
+5. Manter toda a estrutura original intacta  
+6. Não reorganizar campos  
+7. Não reformatar conteúdo  
+8. Não concatenar blocos  
+9. Não otimizar estrutura  
+10. Não alterar ordenação existente
 
-Nunca gerar estado incremental isolado.
+---
+
+## REGRAS EXPRESSAS — ATUALIZAÇÃO DE ESTADO (OBRIGATÓRIAS)
+
+Durante atualização de estado:
+
+- O arquivo base é a única fonte de verdade
+- Alterações devem ser estritamente incrementais
+- Nenhum conteúdo pode ser modificado fora do escopo discutido
+- A quantidade de linhas do arquivo **não pode diminuir**, exceto quando:
+  - houver remoção explicitamente autorizada no chat
+- Espaçamentos, quebras de linha e formatação devem ser preservados
+- Não reescrever blocos inteiros quando apenas partes forem alteradas
+
+### OPEN TASKS
+
+- Todas as `open_tasks` devem ser preservadas integralmente
+- Apenas remover tasks explicitamente concluídas durante a conversa
+- Não reordenar tasks
+- Não consolidar tasks
+- Não alterar descrições existentes
 
 ---
 
@@ -235,16 +260,20 @@ Quando o usuário disser:
 
 Você deve:
 
-1. Não executar imediatamente  
-2. Solicitar envio do arquivo de estado atual  
-3. Aguardar envio  
-4. Registrar apenas alterações ocorridas na conversa  
-5. Manter todo o restante constante  
-6. Não otimizar  
-7. Não reorganizar  
-8. Não reestruturar campos  
+1. Solicitar envio do arquivo de estado atual  
+2. Aguardar envio  
+3. Registrar apenas alterações ocorridas nesta conversa  
+4. Manter todo o restante constante  
+5. Aplicar alteração mínima obrigatória  
+6. Preservar formatação original  
+7. Preservar `open_tasks` (exceto concluídas)
 
-Objetivo: atualização conservadora e incremental.
+Entrega obrigatória:
+
+- Apresentar o JSON completo em **bloco de código**
+- Após o bloco, informar:
+	número de linhas do arquivo de estado base: XXXX linhas
+	número de linhas do arquivo de estado revisado: YYYY linhas
 
 ---
 

@@ -6,27 +6,66 @@ from pathlib import Path
 # ============================================
 
 CURRENT_DIR = Path(__file__).resolve()
-
-SCRIPTS_ROOT = CURRENT_DIR.parent.parent   # /scripts
+SCRIPTS_ROOT = CURRENT_DIR.parent.parent
 
 DATA_DIR = SCRIPTS_ROOT / "data"
 DB_PATH = DATA_DIR / "books.db"
 
 
+# ============================================
+# CONNECTION
+# ============================================
+
 def get_conn():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(
+        DB_PATH,
+        timeout=60,              # espera lock até 60s
+        isolation_level=None     # autocommit seguro
+    )
+
+    conn.row_factory = sqlite3.Row
+
+    _configure_sqlite(conn)
 
     ensure_schema(conn)
 
     return conn
 
 
-# =========================
+# alias compatibilidade
+def get_connection():
+    return get_conn()
+
+
+# ============================================
+# SQLITE RUNTIME CONFIG
+# ============================================
+
+def _configure_sqlite(conn):
+
+    cur = conn.cursor()
+
+    # WAL = readers não bloqueiam writers
+    cur.execute("PRAGMA journal_mode=WAL;")
+
+    # melhora concorrência
+    cur.execute("PRAGMA synchronous=NORMAL;")
+
+    # espera lock ao invés de falhar
+    cur.execute("PRAGMA busy_timeout = 60000;")
+
+    # cache maior (pipeline longo)
+    cur.execute("PRAGMA cache_size = -20000;")
+
+    cur.close()
+
+
+# ============================================
 # SCHEMA
-# =========================
+# ============================================
 
 def ensure_schema(conn):
 
