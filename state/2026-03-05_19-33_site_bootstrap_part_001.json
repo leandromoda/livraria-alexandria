@@ -21,9 +21,9 @@
     "ofertas": true
   },
   "structured_data": [
-    "Offer",
+    "ItemList",
     "Product",
-    "ItemList"
+    "Offer"
   ],
   "project_state": "project_state.json não encontrado.",
   "database_schema_abstract": "database_schema.json não encontrado."

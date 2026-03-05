@@ -1,9 +1,9 @@
 {
-  "pipeline_tree": "scripts\nscripts\\main.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\logger.py\nscripts\\core\\markdown_executor.py\nscripts\\core\\markdown_memory.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\prospect.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py\nscripts\\steps\\_clusters.py\nscripts\\_backup\nscripts\\_backup\\ingest_books.py",
+  "pipeline_tree": "scripts\nscripts\\main.py\nscripts\\test_abstract_structurer.py\nscripts\\test_fact_extractor.py\nscripts\\test_synopsis_writer.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\length_enforcer.py\nscripts\\core\\logger.py\nscripts\\core\\markdown_executor.py\nscripts\\core\\markdown_memory.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\offer_seeds.json\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\data\\seeds\nscripts\\data\\seeds\\001_offer_seeds.json\nscripts\\data\\seeds\\002_offer_seeds.json\nscripts\\data\\seeds\\003_offer_seeds.json\nscripts\\data\\seeds\\004_offer_seeds.json\nscripts\\data\\seeds\\005_offer_seeds.json\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\offer_resolver.py\nscripts\\steps\\offer_seed.py\nscripts\\steps\\prospect.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py\nscripts\\steps\\_clusters.py\nscripts\\_backup\nscripts\\_backup\\ingest_books.py",
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 148,
+      "rows": 90,
       "columns": [
         {
           "name": "id",
@@ -74,6 +74,14 @@
           "type": "INTEGER"
         },
         {
+          "name": "is_book",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_score",
+          "type": "INTEGER"
+        },
+        {
           "name": "created_at",
           "type": "DATETIME"
         },
@@ -82,19 +90,35 @@
           "type": "DATETIME"
         },
         {
-          "name": "is_book",
-          "type": "INTEGER"
-        },
-        {
-          "name": "supabase_id",
+          "name": "lookup_query",
           "type": "TEXT"
         },
         {
-          "name": "is_publishable",
+          "name": "marketplace",
+          "type": "TEXT"
+        },
+        {
+          "name": "offer_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "offer_status",
           "type": "INTEGER"
         },
         {
-          "name": "editorial_score",
+          "name": "categoria",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "nacionalidade_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "popularidade_id",
           "type": "INTEGER"
         }
       ]

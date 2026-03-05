@@ -2,7 +2,7 @@
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 148,
+      "rows": 90,
       "columns": [
         {
           "name": "id",
@@ -73,6 +73,14 @@
           "type": "INTEGER"
         },
         {
+          "name": "is_book",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_score",
+          "type": "INTEGER"
+        },
+        {
           "name": "created_at",
           "type": "DATETIME"
         },
@@ -81,19 +89,35 @@
           "type": "DATETIME"
         },
         {
-          "name": "is_book",
-          "type": "INTEGER"
-        },
-        {
-          "name": "supabase_id",
+          "name": "lookup_query",
           "type": "TEXT"
         },
         {
-          "name": "is_publishable",
+          "name": "marketplace",
+          "type": "TEXT"
+        },
+        {
+          "name": "offer_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "offer_status",
           "type": "INTEGER"
         },
         {
-          "name": "editorial_score",
+          "name": "categoria",
+          "type": "TEXT"
+        },
+        {
+          "name": "cluster_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "nacionalidade_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "popularidade_id",
           "type": "INTEGER"
         }
       ]
@@ -222,6 +246,20 @@
           "pk": false
         },
         {
+          "name": "is_book",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "1",
+          "pk": false
+        },
+        {
+          "name": "editorial_score",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
           "name": "created_at",
           "type": "DATETIME",
           "notnull": false,
@@ -236,39 +274,63 @@
           "pk": false
         },
         {
-          "name": "is_book",
-          "type": "INTEGER",
-          "notnull": false,
-          "default": "1",
-          "pk": false
-        },
-        {
-          "name": "supabase_id",
+          "name": "lookup_query",
           "type": "TEXT",
           "notnull": false,
           "default": null,
           "pk": false
         },
         {
-          "name": "is_publishable",
-          "type": "INTEGER",
+          "name": "marketplace",
+          "type": "TEXT",
           "notnull": false,
-          "default": "1",
+          "default": null,
           "pk": false
         },
         {
-          "name": "editorial_score",
+          "name": "offer_url",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "offer_status",
           "type": "INTEGER",
           "notnull": false,
           "default": "0",
           "pk": false
+        },
+        {
+          "name": "categoria",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "cluster_id",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "nacionalidade_id",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "popularidade_id",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
         }
       ],
       "indexes": [
-        {
-          "name": "sqlite_autoindex_livros_2",
-          "unique": true
-        },
         {
           "name": "sqlite_autoindex_livros_1",
           "unique": true

@@ -14,6 +14,7 @@
       "database_staging_path": "scripts/data/books.db",
       "llm_local": "Ollama",
       "llm_model": "phi3:mini",
+      "llm_execution_model": "multi_agent_fsm",
       "python_env": "venv (Windows)",
       "ingest_language": "Python 3.14"
     },
@@ -172,9 +173,35 @@
       "resume_capability": true,
       "editorial_fields": [
         "is_book",
-        "editorial_score"
+        "editorial_score",
+        "descricao_base"
       ],
       "runtime_mode": "WAL_enabled_busy_timeout_60s"
+    }
+  },
+
+  "synopsis_architecture": {
+    "model": "factual_transformation_pipeline",
+    "objective": "eliminate_llm_hallucination",
+    "strategy": [
+      "mandatory_source_description",
+      "fact_extraction",
+      "structured_abstraction",
+      "constrained_synopsis_generation",
+      "json_schema_validation"
+    ],
+    "llm_constraints": {
+      "model": "phi3:mini",
+      "allowed_operations": [
+        "extraction",
+        "compression",
+        "structured synthesis"
+      ],
+      "forbidden_operations": [
+        "open narrative reconstruction",
+        "external knowledge insertion",
+        "creative expansion without source"
+      ]
     }
   },
 
@@ -295,13 +322,25 @@
       {
         "order": 4,
         "name": "Synopsis Generation",
-        "status": "operational_markdown_agent_executor_decomposed",
+        "status": "operational_factual_fsm_pipeline",
         "idioma_aware": true,
         "llm": "phi3:mini",
-        "executor": "Markdown Agent Executor",
+        "executor": "Markdown Agent Executor FSM",
         "agent_path": "agents/synopsis",
-        "workflow_model": "collect_abstract_plan_generate_validate",
-        "temporary_state": "ephemeral_context_memory"
+        "pipeline_architecture": [
+          "fact_extractor",
+          "abstract_structurer",
+          "synopsis_writer",
+          "synopsis_validator"
+        ],
+        "generation_mode": "transformational_not_generative",
+        "source_required": "descricao_base",
+        "hallucination_control": [
+          "fact_extraction",
+          "structured_abstraction",
+          "constrained_synthesis",
+          "json_validation"
+        ]
       },
       {
         "order": 5,
@@ -355,14 +394,6 @@
           "quality_gate_fail"
         ]
       }
-    ],
-
-    "deprecated_steps": [
-      {
-        "name": "Reset + Reprospect",
-        "status": "removed",
-        "reason": "Instabilidade de import path + desnecessário após rebuild manual do staging"
-      }
     ]
   },
 
@@ -415,6 +446,26 @@
     {
       "id": "TASK-SYN-OPT-001",
       "description": "Reduzir tempo de geração de sinopses via otimização do executor Markdown e critic lightweight",
+      "priority": "medium"
+    },
+    {
+      "id": "TASK-SYN-PIPE-001",
+      "description": "Integrar length_enforcer para garantir sinopses entre 90–160 palavras sem nova chamada LLM",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-SYN-PIPE-002",
+      "description": "Criar teste de pipeline completo (fact_extractor → abstract_structurer → synopsis_writer → synopsis_validator)",
+      "priority": "high"
+    },
+    {
+      "id": "TASK-SYN-PIPE-003",
+      "description": "Adicionar validação estrutural automática para abstract_structurer",
+      "priority": "medium"
+    },
+    {
+      "id": "TASK-SYN-PIPE-004",
+      "description": "Implementar timeout control no executor para reduzir geração longa do phi3:mini",
       "priority": "medium"
     }
   ]

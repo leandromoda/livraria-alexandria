@@ -22,7 +22,7 @@ def fetch_pending(conn, idioma, limit):
 
     cur.execute(
         """
-        SELECT id, titulo, autor, idioma
+        SELECT id, titulo, autor, idioma, descricao
         FROM livros
         WHERE status_synopsis = 0
           AND idioma = ?
@@ -79,7 +79,7 @@ def run(idioma, pacote):
 
     start_time = time.time()
 
-    for i, (livro_id, titulo, autor, idioma_livro) in enumerate(rows, start=1):
+    for i, (livro_id, titulo, autor, idioma_livro, descricao_base) in enumerate(rows, start=1):
 
         heartbeat = int(time.time() - start_time)
 
@@ -92,6 +92,7 @@ def run(idioma, pacote):
             "titulo": titulo,
             "autor": autor,
             "idioma": idioma_livro,
+            "descricao_base": descricao_base,
         }
 
         result = execute_agent(AGENT_PATH, payload)
