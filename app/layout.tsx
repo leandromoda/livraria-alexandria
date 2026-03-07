@@ -1,6 +1,7 @@
 export const runtime = "edge";
 
 import "./globals.css";
+import Header from "./_components/Header";
 
 export default function RootLayout({
   children,
@@ -9,94 +10,46 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body className="bg-[#F5F0E8] text-[#0D1B2A]">
 
-        {/* =========================
-            NAVBAR GLOBAL
-        ========================== */}
-        <header className="border-b bg-gray-900 text-white">
-
-          <nav className="max-w-6xl mx-auto px-6 py-4 flex flex-wrap gap-6 text-sm font-medium">
-
-            {/* PRINCIPAL */}
-            <a href="/" className="hover:text-yellow-400">
-              Home
-            </a>
-
-            <a href="/listas" className="hover:text-yellow-400">
-              Listas
-            </a>
-
-            <a href="/livros" className="hover:text-yellow-400">
-              Livros
-            </a>
-
-            <a href="/ofertas" className="hover:text-yellow-400">
-              Ofertas
-            </a>
-
-            {/* INSTITUCIONAL */}
-            <a href="/sobre" className="hover:text-yellow-400">
-              Sobre
-            </a>
-
-            <a href="/contato" className="hover:text-yellow-400">
-              Contato
-            </a>
-
-            <a href="/privacidade" className="hover:text-yellow-400">
-              Privacidade
-            </a>
-
-            <a href="/termos" className="hover:text-yellow-400">
-              Termos
-            </a>
-
-          </nav>
-
-        </header>
+        <Header />
 
         {/* PAGE */}
-        <main>
+        <main className="max-w-6xl mx-auto px-6 py-12">
           {children}
         </main>
 
-        {/* =========================
-            FOOTER INSTITUCIONAL
-        ========================== */}
-        <footer className="border-t mt-16 bg-gray-50">
+        {/* FOOTER */}
+        <footer className="border-t border-[#E6DED3] mt-20 bg-[#F5F0E8]">
 
-          <div className="max-w-6xl mx-auto px-6 py-10 text-sm text-gray-600">
+          <div className="max-w-6xl mx-auto px-6 py-12 text-sm text-[#4A4A4A]">
 
-            {/* LINKS */}
-            <div className="flex flex-wrap gap-6 mb-6">
+            <div className="flex flex-wrap justify-center gap-6 mb-8">
 
-              <a href="/sobre" className="hover:text-blue-600">
+              <a href="/sobre" className="hover:text-[#8B1A1A]">
                 Sobre
               </a>
 
-              <a href="/contato" className="hover:text-blue-600">
+              <a href="/contato" className="hover:text-[#8B1A1A]">
                 Contato
               </a>
 
-              <a href="/privacidade" className="hover:text-blue-600">
+              <a href="/privacidade" className="hover:text-[#8B1A1A]">
                 Política de Privacidade
               </a>
 
-              <a href="/termos" className="hover:text-blue-600">
+              <a href="/termos" className="hover:text-[#8B1A1A]">
                 Termos de Uso
               </a>
 
             </div>
 
-            {/* DISCLOSURE AFILIADO */}
-            <p className="mb-4">
+            <p className="text-center mb-6 max-w-2xl mx-auto">
               Este site participa de programas de afiliados. Alguns links podem
               gerar comissão sem custo adicional ao usuário.
             </p>
 
-            {/* COPYRIGHT */}
-            <p>
+            <p className="text-center text-xs text-[#7B5E3A]">
               © {new Date().getFullYear()} Livraria Alexandria — Todos os direitos reservados.
             </p>
 
