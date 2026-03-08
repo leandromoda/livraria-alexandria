@@ -14,6 +14,9 @@ from steps import quality_gate
 from steps import offer_seed
 from steps import offer_resolver
 
+# >>> NOVO STEP
+from steps import list_composer
+
 from steps.export_state_transcript import export_state_transcript
 
 
@@ -131,6 +134,8 @@ def main():
 7 → Quality Gate
 8 → Publicar Supabase
 
+13 → Gerar listas SEO automáticas
+
 9  → Export Site Bootstrap
 10 → Export Pipeline Summary
 11 → Export Database Transcript
@@ -188,6 +193,11 @@ def main():
         elif op == "8":
             pacote = escolher_pacote()
             publish.run(idioma, pacote)
+
+        elif op == "13":
+            log("Gerando listas SEO automáticas…")
+            list_composer.run()
+            log("List Composer concluído.")
 
         elif op == "9":
             log("Exportando Site Bootstrap…")

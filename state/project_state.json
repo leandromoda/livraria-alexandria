@@ -393,6 +393,27 @@
         "blockers": [
           "quality_gate_fail"
         ]
+      },
+      {
+        "order": 9,
+        "name": "List Composer",
+        "status": "operational",
+        "description": "Geração automática de listas SEO por categoria com filtro editorial anti–thin content",
+        "script": "scripts/steps/list_composer.py",
+        "tables_created": [
+          "listas",
+          "listas_livros"
+        ],
+        "generation_rules": {
+          "min_books_per_list": 6,
+          "max_books_per_list": 12,
+          "max_lists_per_run": 200,
+          "min_high_score_books": 2,
+          "min_editorial_score": 2
+        },
+        "source": "livros publicados",
+        "execution_mode": "manual_menu_option",
+        "menu_option": 13
       }
     ]
   },

@@ -1,8 +1,22 @@
 from pathlib import Path
 from datetime import datetime
 import json
-import subprocess
+import os
+import re
 import uuid
+
+import requests
+from dotenv import load_dotenv
+
+# ======================================================
+# ENV
+# ======================================================
+
+_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=_ENV_PATH)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 # ======================================================
 # PATHS
@@ -68,19 +82,50 @@ def _tmp_delete(path: Path):
         path.unlink()
 
 # ======================================================
-# MODEL CALL
+# MODEL CALL — GEMINI
 # ======================================================
 
-def _call_ollama(prompt: str):
+def _call_gemini(prompt: str) -> str:
 
-    result = subprocess.run(
-        ["ollama", "run", "phi3:mini"],
-        input=prompt.encode("utf-8"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    if not GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY not set in scripts/.env")
+
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     )
 
-    return result.stdout.decode("utf-8", errors="ignore").strip()
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 4096,
+        },
+    }
+
+    response = requests.post(url, json=payload, timeout=60)
+
+    if response.status_code == 429:
+        raise RuntimeError(
+            "GEMINI_RATE_LIMIT_EXCEEDED — limite de requisições atingido (free tier: 15 req/min). "
+            "Aguarde 60s e tente novamente."
+        )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"GEMINI_API_ERROR {response.status_code}: {response.text[:300]}"
+        )
+
+    data = response.json()
+
+    try:
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except (KeyError, IndexError) as e:
+        raise RuntimeError(f"GEMINI_RESPONSE_PARSE_ERROR: {e}")
 
 # ======================================================
 # ROBUST JSON EXTRACTOR
@@ -149,6 +194,141 @@ def _validate_fact_schema(data: dict):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
 # ======================================================
+# ABSTRACT STRUCTURER — PYTHON PURO (SEM LLM)
+# ======================================================
+
+def _run_abstract_structurer(state: dict) -> dict:
+    """
+    Remap determinístico: fact_extractor → abstract_structurer.
+    Substitui chamada LLM por transformação Python pura.
+    """
+
+    _heartbeat("abstract_structurer_started")
+
+    result = {
+        "contexto":         state.get("ambientacao", ""),
+        "situacao_central": state.get("conflito_central", ""),
+        "temas":            state.get("temas_explicitos", []),
+        "escopo_narrativo": state.get("contexto_social", ""),
+    }
+
+    _heartbeat("abstract_structurer_finished")
+
+    print("[ABSTRACT_STRUCTURER][PYTHON_REMAP]")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    return result
+
+# ======================================================
+# SYNOPSIS VALIDATOR — PYTHON PURO (SEM LLM)
+# ======================================================
+
+_META_ARTIFACTS = [
+    "[SYSTEM]",
+    "[PROCESS]",
+    "[TASK]",
+    "INPUT_DATA_BEGIN",
+    "INPUT_DATA_END",
+    "EXECUTION_STAGE",
+]
+
+_LANGUAGE_MARKERS = {
+    "PT": ["o ", "a ", "os ", "as ", "de ", "que ", "em ", "um ", "uma ", "com ", "para "],
+    "EN": ["the ", "and ", "of ", "to ", "in ", "a ", "is ", "that ", "it ", "for "],
+    "ES": ["el ", "la ", "los ", "las ", "de ", "que ", "en ", "un ", "una ", "con ", "para "],
+    "IT": ["il ", "la ", "i ", "le ", "di ", "che ", "in ", "un ", "una ", "con ", "per "],
+}
+
+def _detect_language(text: str, expected_idioma: str) -> bool:
+    """
+    Heurística leve: verifica se o texto contém marcadores do idioma esperado.
+    Retorna True se compatível.
+    """
+
+    text_lower = text.lower()
+    markers = _LANGUAGE_MARKERS.get(expected_idioma.upper(), [])
+
+    if not markers:
+        return True
+
+    hits = sum(1 for m in markers if m in text_lower)
+
+    return hits >= 3
+
+def _run_synopsis_validator(state: dict) -> dict:
+    """
+    Validação determinística: substitui chamada LLM por regras Python puras.
+    Aplica as mesmas regras do synopsis_validator original.
+    """
+
+    _heartbeat("synopsis_validator_started")
+
+    synopsis = state.get("synopsis", "")
+    idioma = state.get("idioma_resolved", "PT").upper()
+
+    # R1 — Synopsis não pode ser vazia
+    if not synopsis or not synopsis.strip():
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R2 — Detecção de meta artifacts
+    synopsis_upper = synopsis.upper()
+    for artifact in _META_ARTIFACTS:
+        if artifact.upper() in synopsis_upper:
+            print(f"[VALIDATOR] Meta artifact detectado: {artifact}")
+            _heartbeat("synopsis_validator_finished")
+            return {"status": "REWRITE_REQUIRED"}
+
+    # R3 — Markdown headings
+    if re.search(r"^#{1,6}\s", synopsis, re.MULTILINE):
+        print("[VALIDATOR] Markdown heading detectado")
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R4 — Contagem de palavras (90–160)
+    word_count = len(synopsis.split())
+    if word_count < 90 or word_count > 160:
+        print(f"[VALIDATOR] Word count fora do range: {word_count}")
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R5 — Integridade estrutural: deve terminar com pontuação
+    stripped = synopsis.strip()
+    if stripped and stripped[-1] not in ".!?":
+        print("[VALIDATOR] Sinopse não termina com pontuação")
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R6 — Verificação de idioma
+    if not _detect_language(synopsis, idioma):
+        print(f"[VALIDATOR] Idioma divergente. Esperado: {idioma}")
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R7 — Tom promocional
+    promotional_patterns = [
+        r"\bimperdível\b",
+        r"\bmust.read\b",
+        r"\bcompre\b",
+        r"\badquira\b",
+        r"\bclique\b",
+        r"\bgaranta\b",
+        r"\bincrível\b",
+        r"\bfantástico\b",
+    ]
+    for pattern in promotional_patterns:
+        if re.search(pattern, synopsis, re.IGNORECASE):
+            print(f"[VALIDATOR] Tom promocional detectado: {pattern}")
+            _heartbeat("synopsis_validator_finished")
+            return {"status": "REWRITE_REQUIRED"}
+
+    _heartbeat("synopsis_validator_finished")
+
+    print(f"[VALIDATOR] APPROVED — {word_count} palavras")
+
+    return {"status": "APPROVED"}
+
+# ======================================================
 # PROMPT BUILDER
 # ======================================================
 
@@ -188,7 +368,7 @@ def _execute_single_agent(agent_path: Path, context: dict):
 
     _heartbeat(f"{stage_name}_generation_started")
 
-    raw_output = _call_ollama(prompt)
+    raw_output = _call_gemini(prompt)
 
     _heartbeat(f"{stage_name}_generation_finished")
 
@@ -213,6 +393,20 @@ def _execute_single_agent(agent_path: Path, context: dict):
 
 def _execute_stage(stage: str, state: dict):
 
+    # -----------------------------------------------
+    # ESTÁGIOS PYTHON PURO — SEM CHAMADA LLM
+    # -----------------------------------------------
+
+    if stage == "abstract_structurer":
+        return _run_abstract_structurer(state)
+
+    if stage == "synopsis_validator":
+        return _run_synopsis_validator(state)
+
+    # -----------------------------------------------
+    # ESTÁGIOS LLM
+    # -----------------------------------------------
+
     identity = _read_md(DOMAIN, stage, "identity.md")
     rules = _read_md(DOMAIN, stage, "rules.md")
     task = _read_md(DOMAIN, stage, "task.md")
@@ -221,7 +415,7 @@ def _execute_stage(stage: str, state: dict):
 
     _heartbeat(f"{stage}_generation_started")
 
-    raw_output = _call_ollama(prompt)
+    raw_output = _call_gemini(prompt)
 
     _heartbeat(f"{stage}_generation_finished")
 
@@ -269,6 +463,7 @@ def execute_agent(agent_name: str, context: dict):
         "titulo": context.get("titulo"),
         "autor": context.get("autor"),
         "idioma_resolved": context.get("idioma", "PT"),
+        "descricao_base": context.get("descricao_base", ""),
         "reference_synopses": [],
         "reader_signals": [],
         "abstract": "",
