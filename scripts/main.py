@@ -131,9 +131,10 @@ def main():
 7 → Quality Gate
 8 → Publicar Supabase
 
-9 → Export Site Transcript
+9  → Export Site Bootstrap
 10 → Export Pipeline Summary
 11 → Export Database Transcript
+12 → Export Project Tree (JSON)
 
 0 → Sair
 """)
@@ -189,7 +190,7 @@ def main():
             publish.run(idioma, pacote)
 
         elif op == "9":
-            log("Exportando Site Transcript…")
+            log("Exportando Site Bootstrap…")
             export_state_transcript("site")
             log("Concluído.")
 
@@ -201,6 +202,11 @@ def main():
         elif op == "11":
             log("Exportando Database Transcript…")
             export_state_transcript("database")
+            log("Concluído.")
+
+        elif op == "12":
+            log("Exportando Project Tree…")
+            export_state_transcript("project_tree")
             log("Concluído.")
 
         else:

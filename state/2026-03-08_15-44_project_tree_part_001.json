@@ -1,0 +1,415 @@
+{
+  "generated_at": "2026-03-08T15:44:10.552193",
+  "project_root": "C:\\Users\\Leandro Moda\\livraria-alexandria",
+  "filter_rules": {
+    "app": {
+      "max_depth": 3,
+      "exts": [
+        ".tsx",
+        ".ts"
+      ]
+    },
+    "scripts": {
+      "max_depth": 2,
+      "exts": [
+        ".py"
+      ]
+    },
+    "lib": {
+      "max_depth": 99,
+      "exts": null
+    },
+    "state": {
+      "max_depth": 1,
+      "exts": [
+        ".json"
+      ],
+      "files_allowed": [
+        "db_state.json",
+        "project_state.json"
+      ]
+    },
+    "docs": {
+      "max_depth": 99,
+      "exts": null
+    },
+    "tasks": {
+      "max_depth": 99,
+      "exts": null
+    }
+  },
+  "tree": {
+    "name": "livraria-alexandria",
+    "type": "directory",
+    "children": [
+      {
+        "name": "app",
+        "type": "directory",
+        "children": [
+          {
+            "name": "(internal)",
+            "type": "directory",
+            "children": [
+              {
+                "name": "api",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "click",
+                    "type": "directory",
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "(public)",
+            "type": "directory",
+            "children": [
+              {
+                "name": "autores",
+                "type": "directory",
+                "children": []
+              },
+              {
+                "name": "categorias",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "[slug]",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "contato",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "listas",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "[slug]",
+                    "type": "directory",
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "livros",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "[slug]",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "ofertas",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "_components",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "_data",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "data.mock.ts",
+                    "type": "file"
+                  },
+                  {
+                    "name": "data.ts",
+                    "type": "file"
+                  },
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "privacidade",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "sobre",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "tags",
+                "type": "directory",
+                "children": []
+              },
+              {
+                "name": "termos",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
+                "name": "page.tsx",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "_components",
+            "type": "directory",
+            "children": [
+              {
+                "name": "Header.tsx",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "teste",
+            "type": "directory",
+            "children": [
+              {
+                "name": "[id]",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "layout.tsx",
+            "type": "file"
+          }
+        ]
+      },
+      {
+        "name": "scripts",
+        "type": "directory",
+        "children": [
+          {
+            "name": "core",
+            "type": "directory",
+            "children": [
+              {
+                "name": "db.py",
+                "type": "file"
+              },
+              {
+                "name": "length_enforcer.py",
+                "type": "file"
+              },
+              {
+                "name": "logger.py",
+                "type": "file"
+              },
+              {
+                "name": "markdown_executor.py",
+                "type": "file"
+              },
+              {
+                "name": "markdown_memory.py",
+                "type": "file"
+              },
+              {
+                "name": "state.py",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "dashboard",
+            "type": "directory",
+            "children": [
+              {
+                "name": "dashboard.py",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "steps",
+            "type": "directory",
+            "children": [
+              {
+                "name": "_clusters.py",
+                "type": "file"
+              },
+              {
+                "name": "covers.py",
+                "type": "file"
+              },
+              {
+                "name": "dedup.py",
+                "type": "file"
+              },
+              {
+                "name": "export_state_transcript.py",
+                "type": "file"
+              },
+              {
+                "name": "offer_resolver.py",
+                "type": "file"
+              },
+              {
+                "name": "offer_seed.py",
+                "type": "file"
+              },
+              {
+                "name": "prospect.py",
+                "type": "file"
+              },
+              {
+                "name": "publish.py",
+                "type": "file"
+              },
+              {
+                "name": "quality_gate.py",
+                "type": "file"
+              },
+              {
+                "name": "review.py",
+                "type": "file"
+              },
+              {
+                "name": "slugify.py",
+                "type": "file"
+              },
+              {
+                "name": "synopsis.py",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "main.py",
+            "type": "file"
+          },
+          {
+            "name": "test_abstract_structurer.py",
+            "type": "file"
+          },
+          {
+            "name": "test_fact_extractor.py",
+            "type": "file"
+          },
+          {
+            "name": "test_synopsis_pipeline.py",
+            "type": "file"
+          },
+          {
+            "name": "test_synopsis_writer.py",
+            "type": "file"
+          }
+        ]
+      },
+      {
+        "name": "lib",
+        "type": "directory",
+        "children": [
+          {
+            "name": "supabase",
+            "type": "directory",
+            "children": [
+              {
+                "name": "edge.ts",
+                "type": "file"
+              }
+            ]
+          },
+          {
+            "name": "supabase-admin.ts",
+            "type": "file"
+          },
+          {
+            "name": "supabase.ts",
+            "type": "file"
+          }
+        ]
+      },
+      {
+        "name": "state",
+        "type": "directory",
+        "children": [
+          {
+            "name": "db_state.json",
+            "type": "file"
+          },
+          {
+            "name": "project_state.json",
+            "type": "file"
+          }
+        ]
+      },
+      {
+        "name": "docs",
+        "type": "directory",
+        "children": [
+          {
+            "name": "pipeline_growth.md",
+            "type": "file"
+          }
+        ]
+      },
+      {
+        "name": "tasks",
+        "type": "directory",
+        "children": [
+          {
+            "name": "TASK-001.md",
+            "type": "file"
+          },
+          {
+            "name": "TASK-002.md",
+            "type": "file"
+          },
+          {
+            "name": "TASK-003.md",
+            "type": "file"
+          }
+        ]
+      }
+    ]
+  }
+}

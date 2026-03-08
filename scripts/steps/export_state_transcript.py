@@ -236,6 +236,115 @@ def build_pipeline_tree():
 
 
 # =========================
+# TREE — PROJETO COMPLETO (JSON) — FILTRADO
+# =========================
+
+# Extensões irrelevantes excluídas globalmente
+EXCLUDE_EXTENSIONS = {
+    ".svg", ".ico", ".png", ".jpg", ".jpeg",
+    ".lock", ".txt", ".db", ".db-wal", ".db-shm"
+}
+
+# Arquivos excluídos por nome
+EXCLUDE_FILES = {
+    "package-lock.json", "pip"
+}
+
+# Pastas excluídas globalmente
+EXCLUDE_DIRS_TREE = EXCLUDE_DIRS | {
+    "public", "arquitetura", "reviews", "runtime",
+    "_backup", "data", "backup", "seeds"
+}
+
+# Regras por pasta raiz: (profundidade_max, extensoes_permitidas_ou_None)
+# None = todas as extensões permitidas
+TREE_RULES = {
+    "app":     {"max_depth": 3,    "exts": {".tsx", ".ts"}},
+    "scripts": {"max_depth": 2,    "exts": {".py"}},
+    "lib":     {"max_depth": 99,   "exts": None},
+    "state":   {"max_depth": 1,    "exts": {".json"}, "files_allowed": {"project_state.json", "db_state.json"}},
+    "docs":    {"max_depth": 99,   "exts": None},
+    "tasks":   {"max_depth": 99,   "exts": None},
+}
+
+
+def build_project_tree_json():
+
+    root = PROJECT_ROOT
+    result = {"name": root.name, "type": "directory", "children": []}
+
+    for folder_name, rules in TREE_RULES.items():
+
+        folder_path = root / folder_name
+
+        if not folder_path.exists():
+            continue
+
+        node = _walk_filtered(
+            path=folder_path,
+            depth=0,
+            max_depth=rules["max_depth"],
+            exts=rules.get("exts"),
+            files_allowed=rules.get("files_allowed")
+        )
+
+        if node:
+            result["children"].append(node)
+
+    return result
+
+
+def _walk_filtered(path, depth, max_depth, exts, files_allowed=None):
+
+    node = {
+        "name": path.name,
+        "type": "directory",
+        "children": []
+    }
+
+    if depth >= max_depth:
+        return node
+
+    try:
+        entries = sorted(path.iterdir(), key=lambda x: (x.is_file(), x.name.lower()))
+    except PermissionError:
+        return node
+
+    for entry in entries:
+
+        if entry.name in EXCLUDE_DIRS_TREE:
+            continue
+
+        if entry.is_dir():
+            child = _walk_filtered(entry, depth + 1, max_depth, exts, files_allowed)
+            if child is not None:
+                node["children"].append(child)
+
+        else:
+            # Filtro por nome específico
+            if files_allowed and entry.name not in files_allowed:
+                continue
+
+            # Filtro por extensão global
+            if entry.suffix in EXCLUDE_EXTENSIONS:
+                continue
+
+            if entry.name in EXCLUDE_FILES:
+                continue
+
+            # Filtro por extensão da regra
+            if exts and entry.suffix not in exts:
+                continue
+
+            node["children"].append({
+                "name": entry.name,
+                "type": "file"
+            })
+
+    return node
+
+
+# =========================
 # SQLITE SUMMARY
 # =========================
 
@@ -501,7 +610,7 @@ def load_db_schema():
 
 
 # =========================
-# EXPORT — SITE
+# EXPORT — SITE (item 9)
 # =========================
 
 def export_site():
@@ -517,14 +626,13 @@ def export_site():
         "seo_surface": detect_seo_surface(routes),
         "structured_data": detect_structured_data(),
         "project_state": load_project_state(),
-        "database_schema_abstract": load_db_schema()
     }
 
     return write_parts(name, data)
 
 
 # =========================
-# EXPORT — PIPELINE
+# EXPORT — PIPELINE (item 10)
 # =========================
 
 def export_pipeline_summary():
@@ -535,14 +643,13 @@ def export_pipeline_summary():
         "pipeline_tree": build_pipeline_tree(),
         "sqlite_path": str(SQLITE_DB_PATH.resolve()),
         "sqlite_summary": summarize_sqlite(SQLITE_DB_PATH),
-        "project_state": load_project_state()
     }
 
     return write_parts(name, data)
 
 
 # =========================
-# EXPORT — DATABASE (LOCAL + SUPABASE)
+# EXPORT — DATABASE (item 11)
 # =========================
 
 def export_database_transcript():
@@ -554,6 +661,32 @@ def export_database_transcript():
         "sqlite_summary": summarize_sqlite(SQLITE_DB_PATH),
         "sqlite_schema": extract_sqlite_schema(SQLITE_DB_PATH),
         "supabase_schema": extract_supabase_schema()
+    }
+
+    return write_parts(name, data)
+
+
+# =========================
+# EXPORT — PROJECT TREE JSON (item 12)
+# =========================
+
+def export_project_tree():
+
+    name = f"{now()}_project_tree"
+
+    filter_rules_serializable = {
+        k: {
+            rk: list(rv) if isinstance(rv, set) else rv
+            for rk, rv in v.items()
+        }
+        for k, v in TREE_RULES.items()
+    }
+
+    data = {
+        "generated_at": datetime.now().isoformat(),
+        "project_root": str(PROJECT_ROOT),
+        "filter_rules": filter_rules_serializable,
+        "tree": build_project_tree_json()
     }
 
     return write_parts(name, data)
@@ -573,6 +706,9 @@ def export_state_transcript(mode="site"):
 
     elif mode == "database":
         paths = export_database_transcript()
+
+    elif mode == "project_tree":
+        paths = export_project_tree()
 
     else:
         print("Modo inválido.")
