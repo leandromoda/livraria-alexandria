@@ -1,20 +1,16 @@
 import time
 import threading
 
-from steps import prospect
+from steps import offer_seed
+from steps import enrich_descricao
+from steps import offer_resolver
 from steps import slugify
 from steps import dedup
-from steps import synopsis
 from steps import review
+from steps import synopsis
 from steps import covers
-from steps import publish
 from steps import quality_gate
-
-# >>> STEPS OFFER-FIRST
-from steps import offer_seed
-from steps import offer_resolver
-
-# >>> NOVO STEP
+from steps import publish
 from steps import list_composer
 
 from steps.export_state_transcript import export_state_transcript
@@ -24,7 +20,7 @@ from steps.export_state_transcript import export_state_transcript
 # INPUT CONTROL
 # =========================
 
-INPUT_MODE = False
+INPUT_MODE    = False
 last_activity = time.time()
 
 
@@ -41,11 +37,9 @@ def heartbeat():
     global INPUT_MODE
 
     while True:
-
         if not INPUT_MODE:
             elapsed = int(time.time() - last_activity)
             log(f"Script ativo… último evento há {elapsed}s")
-
         time.sleep(30)
 
 
@@ -61,7 +55,7 @@ def input_safe(text):
     global INPUT_MODE, last_activity
 
     INPUT_MODE = True
-    val = input(text)
+    val        = input(text)
     INPUT_MODE = False
 
     last_activity = time.time()
@@ -86,12 +80,7 @@ Escolha o idioma base:
 
     op = input_safe("Idioma: ")
 
-    return {
-        "1": "PT",
-        "2": "EN",
-        "3": "ES",
-        "4": "IT"
-    }.get(op, "PT")
+    return {"1": "PT", "2": "EN", "3": "ES", "4": "IT"}.get(op, "PT")
 
 
 # =========================
@@ -122,26 +111,32 @@ def main():
         print("""
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
-00 → Importar Offer Seeds
-05 → Resolver Ofertas (lookup → oferta real)
+--- INGESTÃO ---
+1  → Importar Offer Seeds
+2  → Enriquecer descrições (Google Books)
+3  → Resolver Ofertas (lookup → URL afiliado)
 
-1 → Prospectar livros
-2 → Gerar slugs
-3 → Deduplicar
-4 → Gerar sinopses
-5 → Revisar sinopses
-6 → Gerar capas
-7 → Quality Gate
-8 → Publicar Supabase
+--- PRÉ-PROCESSAMENTO ---
+4  → Gerar slugs
+5  → Deduplicar
+6  → Review (classificação editorial + idioma)
 
-13 → Gerar listas SEO automáticas
+--- GERAÇÃO DE CONTEÚDO ---
+7  → Gerar sinopses (requer review concluído)
+8  → Gerar capas
 
-9  → Export Site Bootstrap
-10 → Export Pipeline Summary
-11 → Export Database Transcript
-12 → Export Project Tree (JSON)
+--- PUBLICAÇÃO ---
+9  → Quality Gate
+10 → Publicar Supabase
+11 → Gerar listas SEO automáticas
 
-0 → Sair
+--- EXPORTS ---
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+0  → Sair
 """)
 
         op = input_safe("Opção: ")
@@ -149,75 +144,67 @@ def main():
         if op == "0":
             break
 
-        elif op == "00":
+        elif op == "1":
             log("Importando Offer Seeds…")
             offer_seed.run()
-            log("Offer Seeds importadas.")
-
-        elif op == "05":
-            pacote = escolher_pacote()
-            log("Resolvendo ofertas reais…")
-            offer_resolver.run(idioma, pacote)
-            log("Offer Resolver concluído.")
-
-        elif op == "1":
-            pacote = escolher_pacote()
-            prospect.run(idioma, pacote)
 
         elif op == "2":
             pacote = escolher_pacote()
-            slugify.run(idioma, pacote)
+            log("Enriquecendo descrições via Google Books…")
+            enrich_descricao.run(pacote)
 
         elif op == "3":
             pacote = escolher_pacote()
-            dedup.run(idioma, pacote)
+            log("Resolvendo ofertas reais…")
+            offer_resolver.run(idioma, pacote)
 
         elif op == "4":
             pacote = escolher_pacote()
-            synopsis.run(idioma, pacote)
+            slugify.run(idioma, pacote)
 
         elif op == "5":
             pacote = escolher_pacote()
-            review.run(idioma, pacote)
+            dedup.run(idioma, pacote)
 
         elif op == "6":
             pacote = escolher_pacote()
-            covers.run(idioma, pacote)
+            review.run(idioma, pacote)
 
         elif op == "7":
             pacote = escolher_pacote()
-            log("Executando Quality Gate…")
-            quality_gate.evaluate_quality(idioma, pacote)
-            log("Quality Gate concluído.")
+            synopsis.run(idioma, pacote)
 
         elif op == "8":
             pacote = escolher_pacote()
-            publish.run(idioma, pacote)
-
-        elif op == "13":
-            log("Gerando listas SEO automáticas…")
-            list_composer.run()
-            log("List Composer concluído.")
+            covers.run(idioma, pacote)
 
         elif op == "9":
-            log("Exportando Site Bootstrap…")
-            export_state_transcript("site")
-            log("Concluído.")
+            pacote = escolher_pacote()
+            quality_gate.evaluate_quality(idioma, pacote)
 
         elif op == "10":
-            log("Exportando Pipeline Summary…")
-            export_state_transcript("pipeline_summary")
-            log("Concluído.")
+            pacote = escolher_pacote()
+            publish.run(idioma, pacote)
 
         elif op == "11":
+            log("Gerando listas SEO automáticas…")
+            list_composer.run()
+
+        elif op == "91":
+            log("Exportando Site Bootstrap…")
+            export_state_transcript("site")
+
+        elif op == "92":
+            log("Exportando Pipeline Summary…")
+            export_state_transcript("pipeline_summary")
+
+        elif op == "93":
             log("Exportando Database Transcript…")
             export_state_transcript("database")
-            log("Concluído.")
 
-        elif op == "12":
+        elif op == "94":
             log("Exportando Project Tree…")
             export_state_transcript("project_tree")
-            log("Concluído.")
 
         else:
             print("Opção inválida.\n")

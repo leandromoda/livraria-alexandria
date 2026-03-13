@@ -1,3 +1,13 @@
+# ============================================================
+# STEP 7 — SYNOPSIS
+# Livraria Alexandria
+#
+# Gera sinopse editorial via Gemini.
+# Lê de: descricao (campo bruto)
+# Grava em: sinopse (campo gerado) — NÃO toca em descricao
+# Depende de: status_review=1 e is_book=1
+# ============================================================
+
 import time
 
 from core.db import get_conn
@@ -5,63 +15,58 @@ from core.logger import log
 from core.markdown_executor import execute_agent
 
 
-# =====================================================
+# =========================
 # CONFIG
-# =====================================================
+# =========================
 
 AGENT_PATH = "agents/synopsis"
 
 
-# =====================================================
-# HELPERS
-# =====================================================
+# =========================
+# FETCH
+# =========================
 
 def fetch_pending(conn, idioma, limit):
 
     cur = conn.cursor()
 
-    cur.execute(
-        """
+    cur.execute("""
         SELECT id, titulo, autor, idioma, descricao
         FROM livros
         WHERE status_synopsis = 0
-          AND idioma = ?
-          AND is_book = 1
+          AND status_review   = 1
+          AND is_book         = 1
+          AND idioma          = ?
         LIMIT ?
-        """,
-        (idioma, limit),
-    )
+    """, (idioma, limit))
 
     return cur.fetchall()
 
 
-def update_synopsis(conn, livro_id, synopsis):
+# =========================
+# UPDATE — grava em sinopse, não em descricao
+# =========================
+
+def update_synopsis(conn, livro_id, sinopse):
 
     cur = conn.cursor()
 
-    cur.execute(
-        """
+    cur.execute("""
         UPDATE livros
-        SET descricao = ?,
+        SET sinopse         = ?,
             status_synopsis = 1,
-            updated_at = CURRENT_TIMESTAMP
+            updated_at      = CURRENT_TIMESTAMP
         WHERE id = ?
-        """,
-        (synopsis, livro_id),
-    )
+    """, (sinopse, livro_id))
 
     conn.commit()
 
 
-# =====================================================
-# MAIN STEP
-# =====================================================
+# =========================
+# RUN
+# =========================
 
 def run(idioma, pacote):
-    """
-    Step: geração de sinopses via Markdown Agent
-    Compatível com main.py → synopsis.run(idioma, pacote)
-    """
 
     log("[SYNOPSIS] Iniciando geração de sinopses")
 
@@ -71,49 +76,43 @@ def run(idioma, pacote):
 
     if not rows:
         log("[SYNOPSIS] Nada pendente.")
+        conn.close()
         return
 
-    total = len(rows)
+    total      = len(rows)
+    start_time = time.time()
 
     log(f"[SYNOPSIS] {total} livros encontrados")
 
-    start_time = time.time()
-
-    for i, (livro_id, titulo, autor, idioma_livro, descricao_base) in enumerate(rows, start=1):
+    for i, (livro_id, titulo, autor, idioma_livro, descricao) in enumerate(rows, start=1):
 
         heartbeat = int(time.time() - start_time)
 
-        log(
-            f"[SYNOPSIS][{i}/{total}] "
-            f"{titulo} — heartbeat {heartbeat}s"
-        )
+        log(f"[SYNOPSIS][{i}/{total}] {titulo} — heartbeat {heartbeat}s")
 
         payload = {
-            "titulo": titulo,
-            "autor": autor,
-            "idioma": idioma_livro,
-            "descricao_base": descricao_base,
+            "titulo":        titulo,
+            "autor":         autor,
+            "idioma":        idioma_livro,
+            "descricao_base": descricao or "",
         }
 
-        result = execute_agent(AGENT_PATH, payload)
+        try:
+            result = execute_agent(AGENT_PATH, payload)
+        except Exception as e:
+            log(f"[SYNOPSIS] ERRO → {titulo} | {e}")
+            continue
 
-        synopsis_text = result.get("synopsis", "")
+        sinopse_text = result.get("synopsis", "")
 
-        # =====================================================
-        # NOVO LOG — TRANSCRIÇÃO DA SINOPSE GERADA
-        # =====================================================
-        if synopsis_text:
+        if sinopse_text:
             log("[SYNOPSIS][TEXT_BEGIN]")
-            log(synopsis_text)
+            log(sinopse_text)
             log("[SYNOPSIS][TEXT_END]")
-
-        # =====================================================
-
-        if synopsis_text:
-            update_synopsis(conn, livro_id, synopsis_text)
+            update_synopsis(conn, livro_id, sinopse_text)
             log(f"[SYNOPSIS] OK → {titulo}")
         else:
-            log(f"[SYNOPSIS] Falha → {titulo}")
+            log(f"[SYNOPSIS] Falha (sinopse vazia) → {titulo}")
 
     conn.close()
 

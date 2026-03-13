@@ -1,0 +1,193 @@
+
+C:\Users\Leandro Moda\livraria-alexandria>venv\Scripts\python scripts\main.py
+
+[ENV] Iniciando carregamento de variáveis...
+[ENV] Não encontrado: C:\Users\Leandro Moda\livraria-alexandria\.env
+[ENV] Carregado: C:\Users\Leandro Moda\livraria-alexandria\.env.local
+[ENV] Carregado: C:\Users\Leandro Moda\livraria-alexandria\scripts\.env
+[ENV] Não encontrado: C:\Users\Leandro Moda\livraria-alexandria\scripts\.env.local
+
+[ENV] Variáveis críticas:
+NEXT_PUBLIC_SUPABASE_URL: True
+SUPABASE_SERVICE_ROLE_KEY: True
+[19:39:57] Script ativo… último evento há 0s
+
+Escolha o idioma base:
+
+1 → Português (padrão)
+2 → Inglês
+3 → Espanhol
+4 → Italiano
+
+Idioma: 1
+
+=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
+
+--- INGESTÃO ---
+1  → Importar Offer Seeds
+2  → Enriquecer descrições (Google Books)
+3  → Resolver Ofertas (lookup → URL afiliado)
+
+--- PRÉ-PROCESSAMENTO ---
+4  → Gerar slugs
+5  → Deduplicar
+6  → Review (classificação editorial + idioma)
+
+--- GERAÇÃO DE CONTEÚDO ---
+7  → Gerar sinopses (requer review concluído)
+8  → Gerar capas
+
+--- PUBLICAÇÃO ---
+9  → Quality Gate
+10 → Publicar Supabase
+11 → Gerar listas SEO automáticas
+
+--- EXPORTS ---
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+0  → Sair
+
+Opção: 9
+
+Escolha tamanho do pacote:
+
+10 | 20 | 50 | 100 | 500 | 1000
+
+Pacote: 100
+[19:40:08] QUALITY GATE START
+[19:40:08] REPROVADO → 1984 | Capa pendente
+[19:40:08] REPROVADO → 21 Lições para o Século 21 | Capa pendente
+[19:40:08] REPROVADO → A Arte da Guerra | Capa pendente
+[19:40:08] REPROVADO → A Cabana | Capa pendente
+[19:40:08] REPROVADO → A Cauda Longa | Capa pendente
+[19:40:08] REPROVADO → A Cidade e as Serras | Capa pendente
+[19:40:08] REPROVADO → A Cor Púrpura | Capa pendente
+[19:40:08] REPROVADO → A Coragem de Ser Imperfeito | Capa pendente
+[19:40:08] REPROVADO → A Elite da Tropa | Capa pendente
+[19:40:08] REPROVADO → A Estratégia do Oceano Azul | Capa pendente
+[19:40:08] REPROVADO → A Fórmula da Inovação | Capa pendente
+[19:40:08] REPROVADO → A Garota no Trem | Capa pendente
+[19:40:08] REPROVADO → A Hora da Estrela | Capa pendente
+[19:40:08] REPROVADO → A Menina que Roubava Livros | Capa pendente
+[19:40:08] REPROVADO → A Meta | Capa pendente
+[19:40:08] REPROVADO → A Metamorfose | Capa pendente
+[19:40:08] REPROVADO → A Moreninha | Capa pendente
+[19:40:08] REPROVADO → A Morte de Ivan Ilyich | Capa pendente
+[19:40:08] REPROVADO → A Paixão Segundo G.H. | Capa pendente
+[19:40:08] REPROVADO → A Peste | Capa pendente
+[19:40:08] REPROVADO → A Quinta Disciplina | Capa pendente
+[19:40:08] REPROVADO → A Regra é Não Ter Regras | Capa pendente
+[19:40:08] REPROVADO → A Revolução dos Bichos | Capa pendente
+[19:40:08] REPROVADO → A Sombra do Vento | Capa pendente
+[19:40:08] REPROVADO → A Startup Enxuta | Capa pendente
+[19:40:08] REPROVADO → A Sutil Arte de Ligar o F*da-se | Capa pendente
+[19:40:08] REPROVADO → A Vaca Roxa | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → A Viagem do Elefante | Capa pendente
+[19:40:08] REPROVADO → A Virada | Capa pendente
+[19:40:08] REPROVADO → Abílio | Capa pendente
+[19:40:08] REPROVADO → Administração de Alto Nível | Capa pendente
+[19:40:08] REPROVADO → Administração de Marketing | Capa pendente
+[19:40:08] REPROVADO → Administração nos Novos Tempos | Capa pendente
+[19:40:08] REPROVADO → Admirável Mundo Novo | Capa pendente
+[19:40:08] REPROVADO → Alguma Poesia | Capa pendente
+[19:40:08] REPROVADO → Anna Kariênina | Capa pendente
+[19:40:08] REPROVADO → Ansiedade: Como Enfrentar o Mal do Século | Capa pendente
+[19:40:08] REPROVADO → Anjos e Demônios | Capa pendente
+[19:40:08] REPROVADO → As Crônicas de Nárnia | Capa pendente
+[19:40:08] REPROVADO → Assim Falou Zaratustra | Capa pendente
+[19:40:08] REPROVADO → Atitude Mental Positiva | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Auto da Compadecida | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Breve Respostas para Grandes Questões | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Brida | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Capitães da Areia | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Claro Enigma | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Como as Gigantes Caem | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Como Evitar Preocupações e Começar a Viver | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Como Fazer Amigos e Influenciar Pessoas | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Comece pelo Porquê | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Comunicação Não Violenta | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Competindo Contra a Sorte | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Construa para Vender | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Crime e Castigo | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Dar e Receber | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → De Animais a Deuses | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → De Zero a Um | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Decisivo | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Deus, um Delírio | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Diário de um Banana | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Dom Casmurro | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Drácula | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Duna | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → E Não Sobrou Nenhum | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Elon Musk | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Em Busca de Sentido | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Empresas Feitas para Vencer | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Ensaio sobre a Cegueira | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Essencialismo | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Estação Carandiru | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Estratégia Competitiva | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Eu Sou Malala | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Extrema Responsabilidade | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Fahrenheit 451 | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Feitas para Durar | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Felicidade Clandestina | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Foco | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Frankenstein | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Freakonomics | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Fundação | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Gabriela, Cravo e Canela | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Grande Sertão: Veredas | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Guerra e Paz | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Hábitos Atômicos | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Harry Potter e a Pedra Filosofal | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Homo Deus | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Ideias que Colam | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Inferno | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Inovação e Espírito Empreendedor | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Inteligência Emocional | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Introdução à Teoria Geral da Administração | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Iracema | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Isso é Marketing | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Jane Eyre | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Jogos Vorazes | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Kanban | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Laços de Família | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Líderes se Servem por Último | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Livro do Desassossego | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] REPROVADO → Macunaíma | Sinopse pendente | Capa pendente | Sinopse curta ou ausente
+[19:40:08] QUALITY GATE END | Aprovados=0 Reprovados=100
+
+=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
+
+--- INGESTÃO ---
+1  → Importar Offer Seeds
+2  → Enriquecer descrições (Google Books)
+3  → Resolver Ofertas (lookup → URL afiliado)
+
+--- PRÉ-PROCESSAMENTO ---
+4  → Gerar slugs
+5  → Deduplicar
+6  → Review (classificação editorial + idioma)
+
+--- GERAÇÃO DE CONTEÚDO ---
+7  → Gerar sinopses (requer review concluído)
+8  → Gerar capas
+
+--- PUBLICAÇÃO ---
+9  → Quality Gate
+10 → Publicar Supabase
+11 → Gerar listas SEO automáticas
+
+--- EXPORTS ---
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+0  → Sair
+
+Opção:
+

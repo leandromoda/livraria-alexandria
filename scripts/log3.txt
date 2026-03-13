@@ -1,0 +1,88 @@
+
+C:\Users\Leandro Moda\livraria-alexandria>venv\Scripts\python scripts\main.py
+
+[ENV] Iniciando carregamento de variáveis...
+[ENV] Não encontrado: C:\Users\Leandro Moda\livraria-alexandria\.env
+[ENV] Carregado: C:\Users\Leandro Moda\livraria-alexandria\.env.local
+[ENV] Carregado: C:\Users\Leandro Moda\livraria-alexandria\scripts\.env
+[ENV] Não encontrado: C:\Users\Leandro Moda\livraria-alexandria\scripts\.env.local
+
+[ENV] Variáveis críticas:
+NEXT_PUBLIC_SUPABASE_URL: True
+SUPABASE_SERVICE_ROLE_KEY: True
+[19:41:23] Script ativo… último evento há 0s
+
+Escolha o idioma base:
+
+1 → Português (padrão)
+2 → Inglês
+3 → Espanhol
+4 → Italiano
+
+Idioma: 1
+
+=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
+
+--- INGESTÃO ---
+1  → Importar Offer Seeds
+2  → Enriquecer descrições (Google Books)
+3  → Resolver Ofertas (lookup → URL afiliado)
+
+--- PRÉ-PROCESSAMENTO ---
+4  → Gerar slugs
+5  → Deduplicar
+6  → Review (classificação editorial + idioma)
+
+--- GERAÇÃO DE CONTEÚDO ---
+7  → Gerar sinopses (requer review concluído)
+8  → Gerar capas
+
+--- PUBLICAÇÃO ---
+9  → Quality Gate
+10 → Publicar Supabase
+11 → Gerar listas SEO automáticas
+
+--- EXPORTS ---
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+0  → Sair
+
+Opção: 11
+[19:41:29] Gerando listas SEO automáticas…
+[19:41:29] List Composer iniciado...
+[19:41:29] Verificando schema de listas...
+[19:41:29] Nenhuma categoria elegível encontrada.
+
+=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
+
+--- INGESTÃO ---
+1  → Importar Offer Seeds
+2  → Enriquecer descrições (Google Books)
+3  → Resolver Ofertas (lookup → URL afiliado)
+
+--- PRÉ-PROCESSAMENTO ---
+4  → Gerar slugs
+5  → Deduplicar
+6  → Review (classificação editorial + idioma)
+
+--- GERAÇÃO DE CONTEÚDO ---
+7  → Gerar sinopses (requer review concluído)
+8  → Gerar capas
+
+--- PUBLICAÇÃO ---
+9  → Quality Gate
+10 → Publicar Supabase
+11 → Gerar listas SEO automáticas
+
+--- EXPORTS ---
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+0  → Sair
+
+Opção:

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-08T15:44:10.552193",
+  "generated_at": "2026-03-08T17:32:13.472310",
   "project_root": "C:\\Users\\Leandro Moda\\livraria-alexandria",
   "filter_rules": {
     "app": {
@@ -286,6 +286,10 @@
               },
               {
                 "name": "export_state_transcript.py",
+                "type": "file"
+              },
+              {
+                "name": "list_composer.py",
                 "type": "file"
               },
               {

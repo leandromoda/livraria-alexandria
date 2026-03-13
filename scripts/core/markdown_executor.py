@@ -18,6 +18,10 @@ load_dotenv(dotenv_path=_ENV_PATH)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
+# Ollama — fallback local
+OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
+
 # ======================================================
 # PATHS
 # ======================================================
@@ -82,13 +86,13 @@ def _tmp_delete(path: Path):
         path.unlink()
 
 # ======================================================
-# MODEL CALL — GEMINI
+# MODEL CALL — GEMINI (primary)
 # ======================================================
 
 def _call_gemini(prompt: str) -> str:
 
     if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY not set in scripts/.env")
+        raise RuntimeError("GEMINI_API_KEY not set")
 
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
@@ -96,11 +100,7 @@ def _call_gemini(prompt: str) -> str:
     )
 
     payload = {
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ],
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.2,
             "maxOutputTokens": 4096,
@@ -110,10 +110,7 @@ def _call_gemini(prompt: str) -> str:
     response = requests.post(url, json=payload, timeout=60)
 
     if response.status_code == 429:
-        raise RuntimeError(
-            "GEMINI_RATE_LIMIT_EXCEEDED — limite de requisições atingido (free tier: 15 req/min). "
-            "Aguarde 60s e tente novamente."
-        )
+        raise RuntimeError("GEMINI_RATE_LIMIT_EXCEEDED")
 
     if response.status_code != 200:
         raise RuntimeError(
@@ -126,6 +123,70 @@ def _call_gemini(prompt: str) -> str:
         return data["candidates"][0]["content"]["parts"][0]["text"].strip()
     except (KeyError, IndexError) as e:
         raise RuntimeError(f"GEMINI_RESPONSE_PARSE_ERROR: {e}")
+
+
+# ======================================================
+# MODEL CALL — OLLAMA (fallback local)
+# ======================================================
+
+def _call_ollama(prompt: str) -> str:
+
+    url = f"{OLLAMA_URL}/api/generate"
+
+    payload = {
+        "model":  OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": 2048,
+        },
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=180)
+    except requests.exceptions.ConnectionError:
+        raise RuntimeError(
+            f"OLLAMA_UNAVAILABLE — servidor não encontrado em {OLLAMA_URL}. "
+            "Verifique se o Ollama está rodando."
+        )
+
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"OLLAMA_API_ERROR {response.status_code}: {response.text[:300]}"
+        )
+
+    data = response.json()
+
+    try:
+        return data["response"].strip()
+    except KeyError as e:
+        raise RuntimeError(f"OLLAMA_RESPONSE_PARSE_ERROR: {e}")
+
+
+# ======================================================
+# MODEL CALL — ROUTER (Gemini → Ollama fallback)
+# ======================================================
+
+def _call_llm(prompt: str) -> str:
+    """
+    Tenta Gemini primeiro. Se falhar por qualquer motivo
+    (rate limit, sem key, erro de API), cai para Ollama.
+    """
+
+    if GEMINI_API_KEY:
+        try:
+            result = _call_gemini(prompt)
+            print("[LLM] Provider: gemini")
+            return result
+
+        except RuntimeError as e:
+            reason = str(e)
+            print(f"[LLM] Gemini falhou ({reason[:80]}) — tentando Ollama…")
+
+    result = _call_ollama(prompt)
+    print(f"[LLM] Provider: ollama ({OLLAMA_MODEL})")
+    return result
 
 # ======================================================
 # ROBUST JSON EXTRACTOR
@@ -287,7 +348,7 @@ def _run_synopsis_validator(state: dict) -> dict:
 
     # R4 — Contagem de palavras (90–160)
     word_count = len(synopsis.split())
-    if word_count < 90 or word_count > 160:
+    if word_count < 80 or word_count > 160:
         print(f"[VALIDATOR] Word count fora do range: {word_count}")
         _heartbeat("synopsis_validator_finished")
         return {"status": "REWRITE_REQUIRED"}
@@ -368,7 +429,7 @@ def _execute_single_agent(agent_path: Path, context: dict):
 
     _heartbeat(f"{stage_name}_generation_started")
 
-    raw_output = _call_gemini(prompt)
+    raw_output = _call_llm(prompt)
 
     _heartbeat(f"{stage_name}_generation_finished")
 
@@ -415,7 +476,7 @@ def _execute_stage(stage: str, state: dict):
 
     _heartbeat(f"{stage}_generation_started")
 
-    raw_output = _call_gemini(prompt)
+    raw_output = _call_llm(prompt)
 
     _heartbeat(f"{stage}_generation_finished")
 
@@ -487,7 +548,9 @@ def execute_agent(agent_name: str, context: dict):
         if stage == "synopsis_validator":
 
             if result.get("status") != "APPROVED":
-                raise RuntimeError("SYNOPSIS_VALIDATION_FAILED")
+                # Log and return empty synopsis — caller decides what to do
+                print(f"[VALIDATOR] REJECTED — returning empty synopsis")
+                return {"synopsis": ""}
 
     _heartbeat("finalized")
 

@@ -1,7 +1,3 @@
-Número de seeds: 4
-Número de títulos antes da deduplicação: 289
-Número de títulos após a deduplicação: 196
-
 [
   {"titulo":"1984","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"1984 George Orwell livro","categoria":"Distopia","idioma":"PT","cluster_id":21,"nacionalidade_id":3,"ano_sorteado":1949,"popularidade_id":1},
   {"titulo":"21 Lições para o Século 21","autor":"Yuval Noah Harari","marketplace":"amazon","lookup_query":"21 Lições para o Século 21 Yuval Noah Harari livro","categoria":"Crítica social","idioma":"PT","cluster_id":60,"nacionalidade_id":32,"ano_sorteado":2018,"popularidade_id":1},

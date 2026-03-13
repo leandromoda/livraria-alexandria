@@ -5,36 +5,64 @@
     "engine": "SQLite",
     "purpose": "Staging local para ingest, enriquecimento, classificação editorial e preparação antes de publicação",
     "resume_capability": true,
-    "uuid_strategy": "hex_24_non_uuid",
-    "publish_blocker": "uuid_format_mismatch"
+    "uuid_strategy": "uuid5 (namespace fixo + local_id)",
+    "publish_blocker": null
   },
-
   "tables": [
     {
       "name": "livros",
       "primary_key": "id",
       "description": "Staging consolidado com enriquecimento editorial e validação semântica",
-
       "fields": [
-
-        { "name": "id", "type": "TEXT" },
-        { "name": "titulo", "type": "TEXT" },
-        { "name": "slug", "type": "TEXT", "unique": true },
-        { "name": "autor", "type": "TEXT" },
-        { "name": "descricao", "type": "TEXT" },
-        { "name": "isbn", "type": "TEXT", "index": true },
-        { "name": "ano_publicacao", "type": "INTEGER" },
-        { "name": "imagem_url", "type": "TEXT" },
-
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "unique": true
+        },
+        {
+          "name": "autor",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "isbn",
+          "type": "TEXT",
+          "index": true
+        },
+        {
+          "name": "ano_publicacao",
+          "type": "INTEGER"
+        },
+        {
+          "name": "imagem_url",
+          "type": "TEXT"
+        },
         {
           "name": "idioma",
           "type": "TEXT",
           "format": "ISO-2 upper",
-          "examples": ["PT", "EN", "ES", "IT"]
+          "examples": [
+            "PT",
+            "EN",
+            "ES",
+            "IT"
+          ]
         },
-
-        { "name": "cluster", "type": "TEXT" },
-
+        {
+          "name": "cluster",
+          "type": "TEXT"
+        },
         {
           "name": "fonte",
           "type": "TEXT",
@@ -45,84 +73,209 @@
             "import_csv"
           ]
         },
-
         {
           "name": "is_book",
           "type": "INTEGER",
           "default": 1,
           "description": "1 livro | 0 não-livro"
         },
-
         {
           "name": "editorial_score",
           "type": "INTEGER",
           "range": "-5 → +5",
           "publish_threshold": ">= 0"
         },
-
-        { "name": "status_slug", "type": "INTEGER", "default": 0 },
-        { "name": "status_dedup", "type": "INTEGER", "default": 0 },
-        { "name": "status_synopsis", "type": "INTEGER", "default": 0 },
-        { "name": "status_review", "type": "INTEGER", "default": 0 },
-        { "name": "status_cover", "type": "INTEGER", "default": 0 },
-        { "name": "status_publish", "type": "INTEGER", "default": 0 },
-
-        { "name": "created_at", "type": "DATETIME" },
-        { "name": "updated_at", "type": "DATETIME" }
+        {
+          "name": "status_slug",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER",
+          "default": 0,
+          "values": {
+            "0": "pendente",
+            "1": "capa encontrada",
+            "2": "sem capa disponível (não bloqueia quality gate)"
+          },
+          "sources": [
+            "amazon (isbn)",
+            "google_books",
+            "openlibrary"
+          ]
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "sinopse",
+          "type": "TEXT",
+          "description": "Sinopse gerada por LLM (Gemini/Ollama). Nunca sobrescreve descricao."
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT",
+          "description": "UUID retornado pelo Supabase após publicação"
+        },
+        {
+          "name": "is_publishable",
+          "type": "INTEGER",
+          "default": 0,
+          "description": "1 = aprovado pelo quality gate"
+        },
+        {
+          "name": "offer_url",
+          "type": "TEXT",
+          "description": "URL de afiliado resolvida pelo offer_resolver"
+        }
       ]
     },
-
     {
       "name": "dedup_log",
       "primary_key": "id",
       "fields": [
-        { "name": "id", "type": "TEXT" },
-        { "name": "livro_id_origem", "type": "TEXT" },
-        { "name": "livro_id_duplicado", "type": "TEXT" },
-        { "name": "criterio", "type": "TEXT" },
-        { "name": "acao", "type": "TEXT" },
-        { "name": "created_at", "type": "DATETIME" }
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "livro_id_origem",
+          "type": "TEXT"
+        },
+        {
+          "name": "livro_id_duplicado",
+          "type": "TEXT"
+        },
+        {
+          "name": "criterio",
+          "type": "TEXT"
+        },
+        {
+          "name": "acao",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
       ]
     },
-
     {
       "name": "ingest_runs",
       "primary_key": "id",
       "fields": [
-        { "name": "id", "type": "TEXT" },
-        { "name": "idioma_base", "type": "TEXT" },
-        { "name": "pacote", "type": "INTEGER" },
-        { "name": "clusters_usados", "type": "TEXT" },
-        { "name": "inseridos", "type": "INTEGER" },
-        { "name": "skips", "type": "INTEGER" },
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma_base",
+          "type": "TEXT"
+        },
+        {
+          "name": "pacote",
+          "type": "INTEGER"
+        },
+        {
+          "name": "clusters_usados",
+          "type": "TEXT"
+        },
+        {
+          "name": "inseridos",
+          "type": "INTEGER"
+        },
+        {
+          "name": "skips",
+          "type": "INTEGER"
+        },
         {
           "name": "idioma_detectado_ratio",
           "type": "TEXT",
           "description": "ex: PT:82% | EN:10%"
         },
-        { "name": "created_at", "type": "DATETIME" }
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
       ]
     },
-
     {
       "name": "pipeline_state",
       "primary_key": "key",
       "fields": [
-        { "name": "key", "type": "TEXT" },
-        { "name": "value", "type": "TEXT" },
-        { "name": "updated_at", "type": "DATETIME" }
+        {
+          "name": "key",
+          "type": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "TEXT"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
       ]
     }
   ],
-
   "indexes": [
-
-    { "table": "livros", "fields": ["slug"], "unique": true },
-    { "table": "livros", "fields": ["isbn"] },
-    { "table": "livros", "fields": ["cluster"] },
-    { "table": "livros", "fields": ["status_publish"] },
-    { "table": "livros", "fields": ["is_book"] },
-
+    {
+      "table": "livros",
+      "fields": [
+        "slug"
+      ],
+      "unique": true
+    },
+    {
+      "table": "livros",
+      "fields": [
+        "isbn"
+      ]
+    },
+    {
+      "table": "livros",
+      "fields": [
+        "cluster"
+      ]
+    },
+    {
+      "table": "livros",
+      "fields": [
+        "status_publish"
+      ]
+    },
+    {
+      "table": "livros",
+      "fields": [
+        "is_book"
+      ]
+    },
     {
       "table": "livros",
       "fields": [
@@ -133,7 +286,6 @@
       "description": "Gate editorial + idioma"
     }
   ],
-
   "quality_gate": {
     "language": {
       "block_unknown": true,
@@ -143,13 +295,46 @@
       "require_is_book": true,
       "block_non_book": true,
       "min_editorial_score": 0
+    },
+    "cover": {
+      "block_pending": true,
+      "accept_no_cover": true,
+      "note": "status_cover IN (1,2) aprovado; status_cover=0 reprova"
+    },
+    "synopsis": {
+      "min_length_chars": 400,
+      "min_length_words": 80,
+      "validator": "markdown_executor._run_synopsis_validator"
     }
   },
-
   "publish_layer": {
     "target": "Supabase.livros",
-    "mode": "REST upsert",
-    "status": "blocked",
-    "blocking_issue": "invalid input syntax for type uuid"
+    "mode": "REST upsert (POST ?on_conflict=slug)",
+    "status": "active",
+    "blocking_issue": null,
+    "prefer_header": "resolution=merge-duplicates,return=representation",
+    "notes": "409 tratado graciosamente — marca como publicado localmente sem retentar"
+  },
+  "llm": {
+    "primary": "gemini",
+    "model": "gemini-2.5-flash",
+    "fallback": "ollama",
+    "ollama_model": "gemma2:9b",
+    "ollama_timeout_s": 180,
+    "routing": "markdown_executor._call_llm()",
+    "on_both_fail": "continue (livro pulado, status não atualizado)"
+  },
+  "pipeline_steps": {
+    "1_offer_seed": "Importa seeds CSV → livros",
+    "2_enrich_descricao": "Google Books API → descricao",
+    "3_offer_resolver": "Lookup URL afiliado → offer_url",
+    "4_slugify": "Gera slug único → status_slug=1",
+    "5_dedup": "Remove duplicatas → dedup_log",
+    "6_review": "Classificação editorial + idioma → status_review=1",
+    "7_synopsis": "LLM gera sinopse → sinopse, status_synopsis=1",
+    "8_covers": "Amazon→Google→OpenLibrary → imagem_url, status_cover∈{1,2}",
+    "9_quality_gate": "Valida todos os status → is_publishable=1",
+    "10_publish": "Upsert Supabase → status_publish=1",
+    "11_seo_lists": "Gera listas SEO por categoria → tabela listas"
   }
 }

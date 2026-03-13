@@ -121,6 +121,68 @@
           "type": "INTEGER"
         }
       ]
+    },
+    "listas": {
+      "rows": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "categoria_slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "source",
+          "type": "TEXT"
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "listas_livros": {
+      "rows": 0,
+      "columns": [
+        {
+          "name": "lista_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "position",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_weight",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
     }
   },
   "sqlite_schema": {
@@ -336,9 +398,124 @@
           "unique": true
         }
       ]
+    },
+    "listas": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "categoria_slug",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": "CURRENT_TIMESTAMP",
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_listas_2",
+          "unique": true
+        },
+        {
+          "name": "sqlite_autoindex_listas_1",
+          "unique": true
+        }
+      ]
+    },
+    "listas_livros": {
+      "columns": [
+        {
+          "name": "lista_id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "livro_id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "position",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "editorial_weight",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": "CURRENT_TIMESTAMP",
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_listas_livros_1",
+          "unique": true
+        }
+      ]
     }
   },
   "supabase_schema": {
-    "error": "supabase env vars missing"
+    "error": "http 404"
   }
 }

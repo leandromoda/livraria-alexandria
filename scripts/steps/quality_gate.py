@@ -1,70 +1,36 @@
-# ============================================
-# LIVRARIA ALEXANDRIA — QUALITY GATE
-# HARD LANGUAGE + EDITORIAL + SCORE VALIDATION
-# ============================================
+# ============================================================
+# STEP 9 — QUALITY GATE
+# Livraria Alexandria
+#
+# Valida sinopse (não descricao) para publicação.
+# ============================================================
 
+import os
+import sqlite3
 from core.db import get_conn
 from core.logger import log
 
 
-# ============================================
+# =========================
 # CONFIG
-# ============================================
+# =========================
 
 MIN_SYNOPSIS_LEN = 400
 
 
-# ============================================
-# SCHEMA GUARD (NOVO)
-# ============================================
-
-def ensure_quality_schema():
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("PRAGMA table_info(livros)")
-    cols = [r[1] for r in cur.fetchall()]
-
-    def add_column(name, sql):
-
-        if name not in cols:
-            log(f"Schema update → criando coluna {name}")
-            cur.execute(sql)
-            conn.commit()
-
-    add_column(
-        "editorial_score",
-        "ALTER TABLE livros ADD COLUMN editorial_score INTEGER DEFAULT 0"
-    )
-
-    add_column(
-        "is_book",
-        "ALTER TABLE livros ADD COLUMN is_book INTEGER DEFAULT 1"
-    )
-
-    add_column(
-        "is_publishable",
-        "ALTER TABLE livros ADD COLUMN is_publishable INTEGER DEFAULT 1"
-    )
-
-    conn.close()
-
-
-# ============================================
+# =========================
 # FETCH
-# ============================================
+# =========================
 
-def fetch_candidates(limit):
+def fetch_candidates(conn, limit):
 
-    conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT
             id,
             titulo,
-            descricao,
+            sinopse,
             imagem_url,
             idioma,
             is_book,
@@ -78,21 +44,12 @@ def fetch_candidates(limit):
         LIMIT ?
     """, (limit,))
 
-    rows = cur.fetchall()
-    conn.close()
-
-    return rows
+    return cur.fetchall()
 
 
-# ============================================
-# CHECKS — PIPELINE
-# ============================================
-
-def check_slug(v): return v == 1
-def check_synopsis(v): return v == 1
-def check_review(v): return v == 1
-def check_cover(v): return v == 1
-
+# =========================
+# CHECKS
+# =========================
 
 def check_synopsis_len(texto):
     if not texto:
@@ -100,153 +57,98 @@ def check_synopsis_len(texto):
     return len(texto) >= MIN_SYNOPSIS_LEN
 
 
-# ============================================
-# LANGUAGE HARD GATE
-# ============================================
-
 def check_language(idioma_detectado, idioma_base):
-
     if not idioma_detectado:
         return False, "Idioma vazio"
-
-    idioma_detectado = idioma_detectado.upper()
-    idioma_base = idioma_base.upper()
-
-    if idioma_detectado == "UNKNOWN":
+    i = idioma_detectado.upper()
+    if i == "UNKNOWN":
         return False, "Idioma UNKNOWN"
-
-    if idioma_detectado != idioma_base:
-        return False, f"Idioma divergente ({idioma_detectado})"
-
+    if i != idioma_base.upper():
+        return False, f"Idioma divergente ({i})"
     return True, "OK"
 
-
-# ============================================
-# EDITORIAL HARD GATE
-# ============================================
 
 def check_editorial(is_book):
-
     if is_book is None:
         return False, "Editorial indefinido"
-
     if is_book == 0:
-        return False, "Publicação não é livro"
-
+        return False, "Não é livro"
     return True, "OK"
 
-
-# ============================================
-# EDITORIAL SCORE GATE
-# ============================================
 
 def check_editorial_score(score):
-
     if score is None:
-        return False, "Editorial score ausente"
-
+        return False, "Score ausente"
     if score < 0:
-        return False, f"Score editorial negativo ({score})"
-
+        return False, f"Score negativo ({score})"
     return True, "OK"
 
 
-# ============================================
-# LEGADO (PRESERVADO)
-# ============================================
+# =========================
+# UPDATE
+# =========================
 
-def mark_publish(book_id):
+def set_publishable(conn, book_id, value):
 
-    conn = get_conn()
     cur = conn.cursor()
 
     cur.execute("""
         UPDATE livros
-        SET status_publish = 1,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    """, (book_id,))
-
-    conn.commit()
-    conn.close()
-
-
-# ============================================
-# MATERIALIZAÇÃO DO GATE
-# ============================================
-
-def set_publishable(book_id, value):
-
-    conn = get_conn()
-    cur = conn.cursor()
-
-    cur.execute("""
-        UPDATE livros
-        SET
-            is_publishable = ?,
-            updated_at = CURRENT_TIMESTAMP
+        SET is_publishable = ?,
+            updated_at     = CURRENT_TIMESTAMP
         WHERE id = ?
     """, (value, book_id))
 
     conn.commit()
-    conn.close()
 
 
-# ============================================
+# =========================
 # RUN
-# ============================================
+# =========================
 
 def run(idioma_base="PT", pacote=20):
 
-    ensure_quality_schema()
-
     idioma_base = idioma_base.upper()
 
-    log("QUALITY GATE START")
+    conn = get_conn()
 
-    rows = fetch_candidates(pacote)
+    rows = fetch_candidates(conn, pacote)
 
     if not rows:
-        log("Nada para validar.")
+        log("QUALITY GATE — Nada para validar.")
+        conn.close()
         return
 
-    aprovados = 0
+    aprovados  = 0
     reprovados = 0
+
+    log("QUALITY GATE START")
 
     for row in rows:
 
         (
-            book_id,
-            titulo,
-            descricao,
-            imagem_url,
-            idioma,
-            is_book,
-            editorial_score,
-            status_slug,
-            status_synopsis,
-            status_review,
-            status_cover
+            book_id, titulo, sinopse, imagem_url,
+            idioma, is_book, editorial_score,
+            status_slug, status_synopsis,
+            status_review, status_cover
         ) = row
-
-        log(f"VALIDANDO → {titulo}")
 
         motivos = []
 
-        if not check_slug(status_slug):
+        if status_slug != 1:
             motivos.append("Slug pendente")
 
-        if not check_synopsis(status_synopsis):
+        if status_synopsis != 1:
             motivos.append("Sinopse pendente")
 
-        if not check_review(status_review):
+        if status_review != 1:
             motivos.append("Review pendente")
 
-        if not check_cover(status_cover):
+        if status_cover not in (1, 2):
             motivos.append("Capa pendente")
 
-        if not check_synopsis_len(descricao):
-            motivos.append("Sinopse curta")
+        if not check_synopsis_len(sinopse):
+            motivos.append("Sinopse curta ou ausente")
 
         lang_ok, lang_msg = check_language(idioma, idioma_base)
         if not lang_ok:
@@ -261,28 +163,22 @@ def run(idioma_base="PT", pacote=20):
             motivos.append(score_msg)
 
         if motivos:
-
-            set_publishable(book_id, 0)
+            set_publishable(conn, book_id, 0)
             reprovados += 1
-
             log(f"REPROVADO → {titulo} | " + " | ".join(motivos))
-            continue
+        else:
+            set_publishable(conn, book_id, 1)
+            aprovados += 1
+            log(f"APROVADO → {titulo}")
 
-        set_publishable(book_id, 1)
-        aprovados += 1
+    conn.close()
 
-        log(f"APROVADO → {titulo} (idioma={idioma} | score={editorial_score})")
-
-    log(
-        f"QUALITY GATE END | "
-        f"Aprovados={aprovados} "
-        f"Reprovados={reprovados}"
-    )
+    log(f"QUALITY GATE END | Aprovados={aprovados} Reprovados={reprovados}")
 
 
-# ============================================
+# =========================
 # COMPATIBILITY LAYER
-# ============================================
+# =========================
 
 def evaluate_quality(idioma_base="PT", pacote=20):
     return run(idioma_base, pacote)

@@ -1,25 +1,54 @@
-import os
-import requests
-import time
-import sqlite3
+# ============================================================
+# STEP 8 — COVERS
+# Livraria Alexandria
+#
+# Cadeia de fallback:
+#   1. Amazon (URL direta por ISBN)
+#   2. Google Books API
+#   3. OpenLibrary
+#
+# status_cover:
+#   0 = pendente
+#   1 = capa encontrada
+#   2 = sem capa (não bloqueia o pipeline)
+# ============================================================
 
+import os
+import sqlite3
+import time
 from datetime import datetime
 
+import requests
+from dotenv import load_dotenv
+
 
 # =========================
-# PATH SAFE — CORRIGIDO
+# CONFIG
 # =========================
 
-CURRENT_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+DB_PATH  = os.path.join(DATA_DIR, "books.db")
 
-SCRIPTS_DIR = os.path.abspath(
-    os.path.join(CURRENT_DIR, "..")
-)
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY", "")
 
-DATA_DIR = os.path.join(SCRIPTS_DIR, "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+AMAZON_COVER      = "https://images-na.ssl-images-amazon.com/images/P/{isbn}.jpg"
+GOOGLE_BOOKS_URL  = "https://www.googleapis.com/books/v1/volumes"
+OPENLIBRARY_COVER = "https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
 
-DB_PATH = os.path.join(DATA_DIR, "books.db")
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; LibraryBot/1.0)"}
+TIMEOUT = 15
+MIN_IMAGE_BYTES = 5000   # abaixo disso = placeholder
+
+
+# =========================
+# LOGGER
+# =========================
+
+def log(msg):
+    now = datetime.now().strftime("%H:%M:%S")
+    print(f"[{now}] {msg}", flush=True)
 
 
 # =========================
@@ -27,149 +56,105 @@ DB_PATH = os.path.join(DATA_DIR, "books.db")
 # =========================
 
 def get_conn():
-
-    conn = sqlite3.connect(
-        DB_PATH,
-        timeout=60,
-        isolation_level=None
-    )
-
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-
+    conn = sqlite3.connect(DB_PATH, timeout=60)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
 # =========================
-# LOGGER SAFE
+# FETCHERS
 # =========================
 
-def log(msg):
-    now = datetime.now().strftime("%H:%M:%S")
-    print(f"[{now}] {msg}")
-
-
-# =========================
-# CONFIG
-# =========================
-
-OPENLIBRARY_COVER = "https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
-GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
-
-TIMEOUT = 60
-
-
-# =========================
-# OPENLIBRARY
-# =========================
-
-def fetch_openlibrary_cover(isbn):
-
+def fetch_amazon_cover(isbn):
+    """URL direta da Amazon por ISBN — sem API key."""
     if not isbn:
         return None
-
-    url = OPENLIBRARY_COVER.format(isbn=isbn)
-
+    url = AMAZON_COVER.format(isbn=isbn)
     try:
-        res = requests.get(url, timeout=TIMEOUT)
-
-        if res.status_code == 200 and res.content:
+        res = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        if res.status_code == 200 and len(res.content) > MIN_IMAGE_BYTES:
             return url
-
-    except:
+    except Exception:
         pass
-
     return None
 
 
-# =========================
-# GOOGLE
-# =========================
-
-def fetch_google_cover(titulo, autor):
-
-    query = f"{titulo} {autor}"
-
+def fetch_google_cover(titulo, autor, isbn=None):
+    """Google Books API — busca por ISBN primeiro, depois título+autor."""
     try:
+        query = f"isbn:{isbn}" if isbn else f"{titulo} {autor}"
+        params = {"q": query, "maxResults": 1}
+        if GOOGLE_BOOKS_API_KEY:
+            params["key"] = GOOGLE_BOOKS_API_KEY
 
-        res = requests.get(
-            GOOGLE_BOOKS_URL,
-            params={
-                "q": query,
-                "maxResults": 1
-            },
-            timeout=TIMEOUT
-        )
-
+        res = requests.get(GOOGLE_BOOKS_URL, params=params,
+                           headers=HEADERS, timeout=TIMEOUT)
         items = res.json().get("items")
-
         if not items:
             return None
 
-        links = items[0]["volumeInfo"].get(
-            "imageLinks", {}
-        )
-
-        thumb = (
-            links.get("thumbnail")
-            or links.get("smallThumbnail")
-        )
+        links = items[0]["volumeInfo"].get("imageLinks", {})
+        thumb = (links.get("large")
+                 or links.get("medium")
+                 or links.get("thumbnail")
+                 or links.get("smallThumbnail"))
 
         if thumb:
-            return thumb.replace(
-                "http://",
-                "https://"
-            )
+            # Força HTTPS e remove zoom baixo
+            thumb = thumb.replace("http://", "https://")
+            thumb = thumb.replace("&zoom=1", "&zoom=0")
+            return thumb
 
-    except:
+    except Exception:
         pass
+    return None
 
+
+def fetch_openlibrary_cover(isbn):
+    """OpenLibrary — fallback final, checa tamanho para evitar placeholder."""
+    if not isbn:
+        return None
+    url = OPENLIBRARY_COVER.format(isbn=isbn)
+    try:
+        res = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+        if res.status_code == 200 and len(res.content) > MIN_IMAGE_BYTES:
+            return url
+    except Exception:
+        pass
     return None
 
 
 # =========================
-# FETCH PENDENTES
+# FETCH PENDING
 # =========================
 
-def fetch_pending(idioma, limit):
-
-    conn = get_conn()
+def fetch_pending(conn, idioma, limit):
     cur = conn.cursor()
-
     cur.execute("""
         SELECT id, titulo, autor, isbn
         FROM livros
         WHERE status_cover = 0
-        AND idioma = ?
+          AND idioma = ?
         LIMIT ?
     """, (idioma, limit))
-
-    rows = cur.fetchall()
-    conn.close()
-
-    return rows
+    return cur.fetchall()
 
 
 # =========================
 # UPDATE
 # =========================
 
-def update_cover(book_id, url):
-
-    conn = get_conn()
+def update_cover(conn, book_id, url, status):
     cur = conn.cursor()
-
     cur.execute("""
         UPDATE livros
-        SET
-            imagem_url = ?,
-            status_cover = 1,
-            updated_at = CURRENT_TIMESTAMP
+        SET imagem_url   = ?,
+            status_cover = ?,
+            updated_at   = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (url, book_id))
-
+    """, (url, status, book_id))
     conn.commit()
-    conn.close()
 
 
 # =========================
@@ -178,46 +163,59 @@ def update_cover(book_id, url):
 
 def run(idioma, pacote=10):
 
-    rows = fetch_pending(idioma, pacote)
+    conn = get_conn()
+    rows = fetch_pending(conn, idioma, pacote)
 
     if not rows:
-        log(f"Nada pendente para capas no idioma [{idioma}].")
+        log(f"Nada pendente para capas [{idioma}].")
+        conn.close()
         return
 
-    processed = 0
-    fallback_used = 0
+    ok = 0
+    amazon_used = 0
+    google_used = 0
+    openlibrary_used = 0
     failed = 0
 
     for book_id, titulo, autor, isbn in rows:
 
-        log(f"CAPA → {titulo}")
+        log(f"[CAPA] {titulo}")
 
-        cover = fetch_openlibrary_cover(isbn)
+        cover  = None
+        source = None
 
+        # 1. Amazon
+        cover = fetch_amazon_cover(isbn)
+        if cover:
+            source = "amazon"
+            amazon_used += 1
+
+        # 2. Google Books
         if not cover:
-
-            cover = fetch_google_cover(
-                titulo,
-                autor
-            )
-
+            cover = fetch_google_cover(titulo, autor, isbn)
             if cover:
-                fallback_used += 1
+                source = "google"
+                google_used += 1
 
+        # 3. OpenLibrary
         if not cover:
+            cover = fetch_openlibrary_cover(isbn)
+            if cover:
+                source = "openlibrary"
+                openlibrary_used += 1
 
+        if cover:
+            update_cover(conn, book_id, cover, status=1)
+            ok += 1
+            log(f"[CAPA] OK [{source}] → {titulo}")
+        else:
+            update_cover(conn, book_id, None, status=2)
             failed += 1
-            log(f"SEM CAPA → {titulo}")
-            continue
+            log(f"[CAPA] SEM CAPA → {titulo}")
 
-        update_cover(book_id, cover)
+        time.sleep(0.3)
 
-        processed += 1
-        log(f"CAPA OK → {titulo}")
+    conn.close()
 
-        time.sleep(0.2)
-
-    log(
-        f"CAPAS CONCLUÍDO [{idioma}] → "
-        f"{processed} | fallback {fallback_used} | falhas {failed}"
-    )
+    log(f"[CAPA] Finalizado | OK={ok} amazon={amazon_used} google={google_used} "
+        f"openlibrary={openlibrary_used} | sem_capa={failed}")
