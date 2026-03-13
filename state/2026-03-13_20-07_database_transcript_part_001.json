@@ -2,7 +2,7 @@
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 90,
+      "rows": 207,
       "columns": [
         {
           "name": "id",
@@ -18,10 +18,6 @@
         },
         {
           "name": "autor",
-          "type": "TEXT"
-        },
-        {
-          "name": "descricao",
           "type": "TEXT"
         },
         {
@@ -49,28 +45,16 @@
           "type": "TEXT"
         },
         {
-          "name": "status_slug",
-          "type": "INTEGER"
+          "name": "categoria",
+          "type": "TEXT"
         },
         {
-          "name": "status_dedup",
-          "type": "INTEGER"
+          "name": "descricao",
+          "type": "TEXT"
         },
         {
-          "name": "status_synopsis",
-          "type": "INTEGER"
-        },
-        {
-          "name": "status_review",
-          "type": "INTEGER"
-        },
-        {
-          "name": "status_cover",
-          "type": "INTEGER"
-        },
-        {
-          "name": "status_publish",
-          "type": "INTEGER"
+          "name": "sinopse",
+          "type": "TEXT"
         },
         {
           "name": "is_book",
@@ -81,12 +65,8 @@
           "type": "INTEGER"
         },
         {
-          "name": "created_at",
-          "type": "DATETIME"
-        },
-        {
-          "name": "updated_at",
-          "type": "DATETIME"
+          "name": "is_publishable",
+          "type": "INTEGER"
         },
         {
           "name": "lookup_query",
@@ -105,10 +85,6 @@
           "type": "INTEGER"
         },
         {
-          "name": "categoria",
-          "type": "TEXT"
-        },
-        {
           "name": "cluster_id",
           "type": "INTEGER"
         },
@@ -119,6 +95,42 @@
         {
           "name": "popularidade_id",
           "type": "INTEGER"
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
         }
       ]
     },
@@ -217,13 +229,6 @@
           "pk": false
         },
         {
-          "name": "descricao",
-          "type": "TEXT",
-          "notnull": false,
-          "default": null,
-          "pk": false
-        },
-        {
           "name": "isbn",
           "type": "TEXT",
           "notnull": false,
@@ -266,45 +271,24 @@
           "pk": false
         },
         {
-          "name": "status_slug",
-          "type": "INTEGER",
+          "name": "categoria",
+          "type": "TEXT",
           "notnull": false,
-          "default": "0",
+          "default": null,
           "pk": false
         },
         {
-          "name": "status_dedup",
-          "type": "INTEGER",
+          "name": "descricao",
+          "type": "TEXT",
           "notnull": false,
-          "default": "0",
+          "default": null,
           "pk": false
         },
         {
-          "name": "status_synopsis",
-          "type": "INTEGER",
+          "name": "sinopse",
+          "type": "TEXT",
           "notnull": false,
-          "default": "0",
-          "pk": false
-        },
-        {
-          "name": "status_review",
-          "type": "INTEGER",
-          "notnull": false,
-          "default": "0",
-          "pk": false
-        },
-        {
-          "name": "status_cover",
-          "type": "INTEGER",
-          "notnull": false,
-          "default": "0",
-          "pk": false
-        },
-        {
-          "name": "status_publish",
-          "type": "INTEGER",
-          "notnull": false,
-          "default": "0",
+          "default": null,
           "pk": false
         },
         {
@@ -322,17 +306,10 @@
           "pk": false
         },
         {
-          "name": "created_at",
-          "type": "DATETIME",
+          "name": "is_publishable",
+          "type": "INTEGER",
           "notnull": false,
-          "default": null,
-          "pk": false
-        },
-        {
-          "name": "updated_at",
-          "type": "DATETIME",
-          "notnull": false,
-          "default": null,
+          "default": "1",
           "pk": false
         },
         {
@@ -364,13 +341,6 @@
           "pk": false
         },
         {
-          "name": "categoria",
-          "type": "TEXT",
-          "notnull": false,
-          "default": null,
-          "pk": false
-        },
-        {
           "name": "cluster_id",
           "type": "INTEGER",
           "notnull": false,
@@ -387,6 +357,69 @@
         {
           "name": "popularidade_id",
           "type": "INTEGER",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "status_slug",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_dedup",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_review",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_synopsis",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_cover",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
           "notnull": false,
           "default": null,
           "pk": false

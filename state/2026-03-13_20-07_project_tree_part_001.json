@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-08T17:32:13.472310",
+  "generated_at": "2026-03-13T20:07:20.285538",
   "project_root": "C:\\Users\\Leandro Moda\\livraria-alexandria",
   "filter_rules": {
     "app": {
@@ -25,8 +25,8 @@
         ".json"
       ],
       "files_allowed": [
-        "db_state.json",
-        "project_state.json"
+        "project_state.json",
+        "db_state.json"
       ]
     },
     "docs": {
@@ -273,15 +273,15 @@
             "type": "directory",
             "children": [
               {
-                "name": "_clusters.py",
-                "type": "file"
-              },
-              {
                 "name": "covers.py",
                 "type": "file"
               },
               {
                 "name": "dedup.py",
+                "type": "file"
+              },
+              {
+                "name": "enrich_descricao.py",
                 "type": "file"
               },
               {
@@ -298,10 +298,6 @@
               },
               {
                 "name": "offer_seed.py",
-                "type": "file"
-              },
-              {
-                "name": "prospect.py",
                 "type": "file"
               },
               {
@@ -376,6 +372,11 @@
         "name": "state",
         "type": "directory",
         "children": [
+          {
+            "name": "sessions",
+            "type": "directory",
+            "children": []
+          },
           {
             "name": "db_state.json",
             "type": "file"
