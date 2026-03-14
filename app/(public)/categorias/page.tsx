@@ -25,13 +25,23 @@ export default async function CategoriasPage() {
     .order("nome");
 
   return (
-    <main className="p-10 max-w-4xl mx-auto space-y-6">
+    <div className="space-y-8">
 
-      <h1 className="text-2xl font-bold">
-        Categorias
-      </h1>
+      {/* Header */}
+      <header>
 
-      <ul className="space-y-3">
+        <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-2">
+          Navegação
+        </p>
+
+        <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A]">
+          Categorias
+        </h1>
+
+      </header>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {categorias?.map((cat: any) => {
 
@@ -40,30 +50,28 @@ export default async function CategoriasPage() {
 
           return (
 
-            <li
+            <a
               key={cat.slug}
-              className="flex justify-between border p-4 rounded-lg"
+              href={`/categorias/${cat.slug}`}
+              className="group flex items-center justify-between bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
 
-              <a
-                href={`/categorias/${cat.slug}`}
-                className="text-blue-600 hover:underline font-medium"
-              >
+              <span className="font-medium text-[#0D1B2A] group-hover:text-[#4A1628] transition-colors text-sm">
                 {cat.nome}
-              </a>
+              </span>
 
-              <span className="text-sm text-gray-500">
+              <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] px-2.5 py-1 rounded-full border border-[#E6DED3]">
                 {count} livros
               </span>
 
-            </li>
+            </a>
 
           );
 
         })}
 
-      </ul>
+      </div>
 
-    </main>
+    </div>
   );
 }

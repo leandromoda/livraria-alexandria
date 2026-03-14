@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-13T20:07:20.285538",
+  "generated_at": "2026-03-14T18:46:03.202573",
   "project_root": "C:\\Users\\Leandro Moda\\livraria-alexandria",
   "filter_rules": {
     "app": {
@@ -25,8 +25,8 @@
         ".json"
       ],
       "files_allowed": [
-        "project_state.json",
-        "db_state.json"
+        "db_state.json",
+        "project_state.json"
       ]
     },
     "docs": {
@@ -51,6 +51,16 @@
             "type": "directory",
             "children": [
               {
+                "name": "admin",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
+              },
+              {
                 "name": "api",
                 "type": "directory",
                 "children": [
@@ -70,7 +80,17 @@
               {
                 "name": "autores",
                 "type": "directory",
-                "children": []
+                "children": [
+                  {
+                    "name": "[slug]",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
+                  }
+                ]
               },
               {
                 "name": "categorias",
@@ -305,6 +325,10 @@
                 "type": "file"
               },
               {
+                "name": "publish_autores.py",
+                "type": "file"
+              },
+              {
                 "name": "quality_gate.py",
                 "type": "file"
               },
@@ -314,6 +338,10 @@
               },
               {
                 "name": "slugify.py",
+                "type": "file"
+              },
+              {
+                "name": "slugify_autores.py",
                 "type": "file"
               },
               {

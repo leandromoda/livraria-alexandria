@@ -72,7 +72,8 @@ export default async function OfertasPage() {
   };
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+    <div className="space-y-8">
+
       {/* Schema */}
       <script
         type="application/ld+json"
@@ -81,37 +82,95 @@ export default async function OfertasPage() {
         }}
       />
 
-      <h1 className="text-3xl font-bold">
-        Ofertas de Livros
-      </h1>
+      {/* =========================
+          HEADER
+      ========================== */}
+      <header>
 
-      <ul className="space-y-4">
+        <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-2">
+          Monetização
+        </p>
+
+        <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A]">
+          Ofertas de livros
+        </h1>
+
+        <p className="text-[#4A4A4A] text-sm mt-2">
+          {ofertas?.length ?? 0} {(ofertas?.length ?? 0) === 1 ? "oferta disponível" : "ofertas disponíveis"}
+        </p>
+
+      </header>
+
+      {/* =========================
+          LISTA DE OFERTAS
+      ========================== */}
+      <div className="space-y-4">
+
         {ofertas?.map((o: any) => (
-          <li
+
+          <div
             key={o.id}
-            className="border p-4 rounded-lg"
+            className="flex items-center gap-5 bg-white border border-[#E6DED3] rounded-xl px-6 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all"
           >
-            <a
-              href={`/livros/${o.livros.slug}`}
-              className="text-lg font-semibold text-blue-600 hover:underline block"
-            >
-              {o.livros.titulo}
-            </a>
 
-            <p className="text-gray-700">
-              R$ {o.preco}
-            </p>
+            {/* Capa */}
+            {o.livros.imagem_url ? (
+              <img
+                src={o.livros.imagem_url}
+                alt={o.livros.titulo}
+                className="flex-shrink-0 w-12 h-16 object-cover rounded border border-[#E6DED3]"
+              />
+            ) : (
+              <div className="flex-shrink-0 w-12 h-16 rounded bg-[#4A1628] flex items-center justify-center">
+                <span className="text-[#C9A84C] text-base font-serif">A</span>
+              </div>
+            )}
 
-            <a
-              href={`/api/click/${o.id}`}
-              target="_blank"
-              className="text-sm text-green-600 hover:underline"
-            >
-              Ver oferta →
-            </a>
-          </li>
+            {/* Dados */}
+            <div className="flex-1 min-w-0">
+
+              <a
+                href={`/livros/${o.livros.slug}`}
+                className="block font-serif font-semibold text-base text-[#0D1B2A] leading-snug hover:text-[#4A1628] transition-colors"
+              >
+                {o.livros.titulo}
+              </a>
+
+              {o.livros.autor && (
+                <p className="text-sm text-[#4A4A4A] mt-0.5">
+                  por {o.livros.autor}
+                </p>
+              )}
+
+              <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] border border-[#E6DED3] px-2.5 py-0.5 rounded-full mt-2 inline-block">
+                {o.marketplace}
+              </span>
+
+            </div>
+
+            {/* Preço + CTA */}
+            <div className="flex-shrink-0 text-right">
+
+              <p className="text-xl font-serif font-semibold text-[#4A1628] mb-2">
+                R$ {o.preco}
+              </p>
+
+              <a
+                href={`/api/click/${o.id}`}
+                target="_blank"
+                className="inline-block px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-xs font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
+              >
+                Ver oferta →
+              </a>
+
+            </div>
+
+          </div>
+
         ))}
-      </ul>
-    </main>
+
+      </div>
+
+    </div>
   );
 }

@@ -53,76 +53,98 @@ export default async function AutorPage({
   const livros = livrosPivot?.map((l: any) => l.livros) ?? [];
 
   return (
-    <main className="p-10 max-w-5xl mx-auto space-y-10">
+    <div className="space-y-10">
 
       {/* =========================
-          Header
+          HEADER
       ========================== */}
-      <section className="space-y-2">
+      <header className="flex items-start gap-6">
 
-        <h1 className="text-3xl font-bold">
-          {autor.nome}
-        </h1>
+        {/* Avatar */}
+        <div className="flex-shrink-0 w-16 h-16 rounded-full bg-[#4A1628] flex items-center justify-center">
+          <span className="text-[#C9A84C] text-2xl font-serif font-semibold">
+            {autor.nome.charAt(0).toUpperCase()}
+          </span>
+        </div>
 
-        {autor.nacionalidade && (
-          <p className="text-gray-600">
-            {autor.nacionalidade}
+        <div>
+
+          <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-1">
+            <a href="/autores" className="hover:opacity-80 transition-opacity">Autores</a>
+            {" "}/ {autor.nome}
           </p>
-        )}
 
-        <p className="text-gray-500 text-sm">
-          {livros.length} livro{livros.length !== 1 ? "s" : ""} publicado{livros.length !== 1 ? "s" : ""}
-        </p>
+          <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A] leading-tight">
+            {autor.nome}
+          </h1>
 
-      </section>
+          <div className="flex items-center gap-3 mt-2">
+
+            {autor.nacionalidade && (
+              <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+                {autor.nacionalidade}
+              </span>
+            )}
+
+            <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+              {livros.length} {livros.length === 1 ? "livro" : "livros"}
+            </span>
+
+          </div>
+
+        </div>
+
+      </header>
 
       {/* =========================
-          Livros
+          LIVROS DO AUTOR
       ========================== */}
-      <section className="space-y-4">
+      <section>
 
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-xl font-serif font-semibold text-[#0D1B2A] mb-5">
           Livros
         </h2>
 
         {!livros.length && (
-          <p className="text-gray-500">
+          <p className="text-[#7B5E3A] text-sm">
             Nenhum livro publicado ainda.
           </p>
         )}
 
-        <ul className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {livros.map((livro: any) => (
 
-            <li
+            <a
               key={livro.slug}
-              className="flex items-center gap-4 border p-4 rounded-lg"
+              href={`/livros/${livro.slug}`}
+              className="group flex items-center gap-4 bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
 
-              {livro.imagem_url && (
+              {livro.imagem_url ? (
                 <img
                   src={livro.imagem_url}
                   alt={livro.titulo}
-                  className="w-12 h-16 object-cover rounded"
+                  className="flex-shrink-0 w-10 h-14 object-cover rounded border border-[#E6DED3]"
                 />
+              ) : (
+                <div className="flex-shrink-0 w-10 h-14 rounded bg-[#4A1628] flex items-center justify-center">
+                  <span className="text-[#C9A84C] text-sm font-serif">A</span>
+                </div>
               )}
 
-              <a
-                href={`/livros/${livro.slug}`}
-                className="text-blue-600 hover:underline font-medium"
-              >
+              <span className="font-medium text-sm text-[#0D1B2A] leading-snug group-hover:text-[#4A1628] transition-colors">
                 {livro.titulo}
-              </a>
+              </span>
 
-            </li>
+            </a>
 
           ))}
 
-        </ul>
+        </div>
 
       </section>
 
-    </main>
+    </div>
   );
 }

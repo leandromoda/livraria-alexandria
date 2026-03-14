@@ -109,7 +109,7 @@ export default async function LivroPage({
   };
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+    <div className="max-w-4xl mx-auto space-y-10">
 
       {/* Schema JSON-LD */}
       <script
@@ -120,137 +120,135 @@ export default async function LivroPage({
       />
 
       {/* =========================
-          Livro
+          HERO DO LIVRO
       ========================== */}
-      <section className="space-y-4">
-
-        <h1 className="text-3xl font-bold">
-          {livro.titulo}
-        </h1>
-
-        {livro.autor && (
-          <p className="text-lg text-gray-600">
-            por {livro.autor}
-          </p>
-        )}
+      <section className="flex flex-col sm:flex-row gap-8">
 
         {/* CAPA */}
-        {livro.imagem_url && (
-          <img
-            src={livro.imagem_url}
-            alt={livro.titulo}
-            className="w-48 rounded"
-          />
-        )}
+        <div className="flex-shrink-0">
+          {livro.imagem_url ? (
+            <img
+              src={livro.imagem_url}
+              alt={livro.titulo}
+              className="w-44 rounded-xl shadow-md border border-[#E6DED3]"
+            />
+          ) : (
+            <div className="w-44 h-64 rounded-xl bg-[#4A1628] flex items-center justify-center">
+              <span className="text-[#C9A84C] text-5xl font-serif">A</span>
+            </div>
+          )}
+        </div>
 
-        {livro.descricao && (
-          <p className="text-gray-800 leading-relaxed">
-            {livro.descricao}
+        {/* DADOS */}
+        <div className="space-y-4">
+
+          {/* Breadcrumb */}
+          <p className="text-xs text-[#7B5E3A] uppercase tracking-widest font-medium">
+            <a href="/livros" className="hover:text-[#C9A84C] transition-colors">Livros</a>
+            {" "}/{" "}
+            <span>{livro.titulo}</span>
           </p>
-        )}
 
-      </section>
+          <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A] leading-tight">
+            {livro.titulo}
+          </h1>
 
-      {/* =========================
-          Categorias
-      ========================== */}
-      <section className="space-y-3">
+          {livro.autor && (
+            <p className="text-base text-[#4A4A4A]">
+              por <span className="font-medium text-[#0D1B2A]">{livro.autor}</span>
+            </p>
+          )}
 
-        <h2 className="text-xl font-semibold">
-          Categorias
-        </h2>
+          {/* Metadados */}
+          <div className="flex flex-wrap gap-2 pt-1">
 
-        {!livro.livros_categorias?.length && (
-          <p className="text-gray-500">
-            Ainda não categorizado.
-          </p>
-        )}
+            {livro.ano_publicacao && (
+              <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+                {livro.ano_publicacao}
+              </span>
+            )}
 
-        <ul className="list-disc list-inside text-sm space-y-1">
+            {livro.idioma && (
+              <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+                {livro.idioma}
+              </span>
+            )}
 
-          {livro.livros_categorias?.map((rel: any) => (
-
-            <li key={rel.categorias.slug}>
-
+            {livro.livros_categorias?.map((rel: any) => (
               <a
+                key={rel.categorias.slug}
                 href={`/categorias/${rel.categorias.slug}`}
-                className="text-blue-600 hover:underline"
+                className="text-xs bg-[#4A1628] text-[#F5F0E8] px-3 py-1 rounded-full hover:bg-[#6B2238] transition-colors"
               >
                 {rel.categorias.nome}
               </a>
+            ))}
 
-            </li>
+          </div>
 
-          ))}
-
-        </ul>
-
-      </section>
-
-      {/* =========================
-          Listas relacionadas
-      ========================== */}
-      <section className="space-y-4">
-
-        <h2 className="text-2xl font-semibold">
-          Este livro aparece nas listas
-        </h2>
-
-        {!listas.length && (
-          <p className="text-gray-500">
-            Ainda não vinculado a listas editoriais.
-          </p>
-        )}
-
-        <ul className="list-disc list-inside space-y-1">
-
-          {listas.map((lista: any) => (
-
-            <li key={lista.slug}>
+          {/* CTA principal */}
+          {ofertas && ofertas.length > 0 && (
+            <div className="pt-2">
               <a
-                href={`/listas/${lista.slug}`}
-                className="text-blue-600 hover:underline"
+                href={`/api/click/${ofertas[0].id}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
-                {lista.titulo}
+                Ver melhor oferta — R$ {ofertas[0].preco}
               </a>
-            </li>
+            </div>
+          )}
 
-          ))}
-
-        </ul>
+        </div>
 
       </section>
 
       {/* =========================
-          Ofertas
+          SINOPSE
       ========================== */}
-      <section className="space-y-4">
+      {livro.descricao && (
+        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
 
-        <h2 className="text-2xl font-semibold">
+          <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+            Sinopse
+          </h2>
+
+          <p className="text-[#4A4A4A] leading-relaxed text-base">
+            {livro.descricao}
+          </p>
+
+        </section>
+      )}
+
+      {/* =========================
+          ONDE COMPRAR
+      ========================== */}
+      <section>
+
+        <h2 className="text-xl font-serif font-semibold text-[#0D1B2A] mb-5">
           Onde comprar
         </h2>
 
         {!ofertas?.length && (
-          <p className="text-gray-500">
+          <p className="text-[#7B5E3A] text-sm">
             Nenhuma oferta disponível no momento.
           </p>
         )}
 
-        <ul className="space-y-3">
+        <div className="space-y-3">
 
           {ofertas?.map((o: any) => (
 
-            <li
+            <div
               key={o.id}
-              className="border p-4 rounded-lg flex items-center justify-between"
+              className="flex items-center justify-between bg-white border border-[#E6DED3] rounded-xl px-6 py-4 hover:border-[#C9A84C] transition-all"
             >
 
               <div>
-                <p className="font-medium">
+                <p className="font-medium text-[#0D1B2A] text-sm">
                   {o.marketplace}
                 </p>
-
-                <p className="text-lg font-bold">
+                <p className="text-xl font-serif font-semibold text-[#4A1628] mt-0.5">
                   R$ {o.preco}
                 </p>
               </div>
@@ -258,19 +256,55 @@ export default async function LivroPage({
               <a
                 href={`/api/click/${o.id}`}
                 target="_blank"
-                className="text-sm text-green-600 hover:underline"
+                className="px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
                 Ver oferta →
               </a>
 
-            </li>
+            </div>
 
           ))}
 
-        </ul>
+        </div>
 
       </section>
 
-    </main>
+      {/* =========================
+          LISTAS RELACIONADAS
+      ========================== */}
+      <section>
+
+        <h2 className="text-xl font-serif font-semibold text-[#0D1B2A] mb-5">
+          Este livro aparece nas listas
+        </h2>
+
+        {!listas.length && (
+          <p className="text-[#7B5E3A] text-sm">
+            Ainda não vinculado a listas editoriais.
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          {listas.map((lista: any) => (
+            <a
+              key={lista.slug}
+              href={`/listas/${lista.slug}`}
+              className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
+            >
+              <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider mb-1 block">
+                Lista editorial
+              </span>
+              <span className="text-[#0D1B2A] font-serif font-semibold text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
+                {lista.titulo}
+              </span>
+            </a>
+          ))}
+
+        </div>
+
+      </section>
+
+    </div>
   );
 }

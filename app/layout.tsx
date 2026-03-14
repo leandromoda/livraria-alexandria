@@ -2,6 +2,17 @@ export const runtime = "edge";
 
 import "./globals.css";
 import Header from "./_components/Header";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Livraria Alexandria",
+    template: "%s | Livraria Alexandria",
+  },
+  description:
+    "Descubra livros, listas editoriais e as melhores ofertas em literatura nacional e internacional.",
+  metadataBase: new URL("https://livrariaalexandria.com.br"),
+};
 
 export default function RootLayout({
   children,

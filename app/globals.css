@@ -1,14 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #F5F0E8;
+  --foreground: #0D1B2A;
+
+  --brand-primary: #4A1628;
+  --brand-accent: #C9A84C;
+  --brand-surface: #F5F0E8;
+  --brand-text: #0D1B2A;
+  --brand-muted: #4A4A4A;
+  --brand-navy: #0D1B2A;
+  --brand-border: #E6DED3;
+
+  --font-serif: "Lora", Georgia, serif;
+  --font-sans: "Inter", Arial, Helvetica, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,5 +34,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }

@@ -1,5 +1,5 @@
 {
-  "pipeline_tree": "scripts\nscripts\\.env\nscripts\\log1.txt\nscripts\\log2.txt\nscripts\\log3.txt\nscripts\\main.py\nscripts\\test_abstract_structurer.py\nscripts\\test_fact_extractor.py\nscripts\\test_synopsis_pipeline.py\nscripts\\test_synopsis_writer.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\length_enforcer.py\nscripts\\core\\logger.py\nscripts\\core\\markdown_executor.py\nscripts\\core\\markdown_memory.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\offer_seeds.json\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\data\\seeds\nscripts\\data\\seeds\\001_offer_seeds.json\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\enrich_descricao.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\list_composer.py\nscripts\\steps\\offer_resolver.py\nscripts\\steps\\offer_seed.py\nscripts\\steps\\publish.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\synopsis.py",
+  "pipeline_tree": "scripts\nscripts\\.env\nscripts\\log1.txt\nscripts\\log2.txt\nscripts\\log3.txt\nscripts\\main.py\nscripts\\test_abstract_structurer.py\nscripts\\test_fact_extractor.py\nscripts\\test_synopsis_pipeline.py\nscripts\\test_synopsis_writer.py\nscripts\\core\nscripts\\core\\db.py\nscripts\\core\\length_enforcer.py\nscripts\\core\\logger.py\nscripts\\core\\markdown_executor.py\nscripts\\core\\markdown_memory.py\nscripts\\core\\state.py\nscripts\\dashboard\nscripts\\dashboard\\dashboard.py\nscripts\\data\nscripts\\data\\books.db\nscripts\\data\\offer_seeds.json\nscripts\\data\\backup\nscripts\\data\\backup\\books.db\nscripts\\data\\seeds\nscripts\\data\\seeds\\001_offer_seeds.json\nscripts\\steps\nscripts\\steps\\covers.py\nscripts\\steps\\dedup.py\nscripts\\steps\\enrich_descricao.py\nscripts\\steps\\export_state_transcript.py\nscripts\\steps\\list_composer.py\nscripts\\steps\\offer_resolver.py\nscripts\\steps\\offer_seed.py\nscripts\\steps\\publish.py\nscripts\\steps\\publish_autores.py\nscripts\\steps\\quality_gate.py\nscripts\\steps\\review.py\nscripts\\steps\\slugify.py\nscripts\\steps\\slugify_autores.py\nscripts\\steps\\synopsis.py",
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
@@ -190,6 +190,60 @@
         {
           "name": "editorial_weight",
           "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "autores": {
+      "rows": 134,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "nome",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "nacionalidade",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "livros_autores": {
+      "rows": 207,
+      "columns": [
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor_id",
+          "type": "TEXT"
         },
         {
           "name": "created_at",

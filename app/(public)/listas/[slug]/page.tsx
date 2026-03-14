@@ -74,7 +74,8 @@ export default async function ListaPage({
   };
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+    <div className="max-w-3xl mx-auto space-y-10">
+
       {/* Schema */}
       <script
         type="application/ld+json"
@@ -83,40 +84,89 @@ export default async function ListaPage({
         }}
       />
 
-      {/* Header */}
-      <header className="space-y-4">
-        <h1 className="text-3xl font-bold">
+      {/* =========================
+          HEADER DA LISTA
+      ========================== */}
+      <header className="bg-[#4A1628] rounded-2xl px-8 py-10 text-[#F5F0E8]">
+
+        <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-3">
+          <a href="/listas" className="hover:opacity-80 transition-opacity">Listas</a>
+          {" "}/ Lista editorial
+        </p>
+
+        <h1 className="text-3xl font-serif font-semibold leading-tight mb-4">
           {lista.titulo}
         </h1>
 
-        <p className="text-lg text-gray-700">
-          {lista.introducao}
+        {lista.introducao && (
+          <p className="text-[#C8C0B4] text-base leading-relaxed">
+            {lista.introducao}
+          </p>
+        )}
+
+        <p className="text-[#C9A84C] text-sm font-medium mt-5">
+          {livros?.length ?? 0} livros nesta lista
         </p>
+
       </header>
 
-      {/* Ranking */}
-      <section className="space-y-6">
+      {/* =========================
+          RANKING DE LIVROS
+      ========================== */}
+      <section className="space-y-4">
+
         {livros?.map((item: any) => (
+
           <article
             key={item.livros.id}
-            className="space-y-2"
+            className="flex items-start gap-5 bg-white border border-[#E6DED3] rounded-xl px-6 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all group"
           >
-            <h2 className="text-xl font-semibold">
-              {item.posicao}.{" "}
-              <a
-                href={`/livros/${item.livros.slug}`}
-                className="text-blue-600 hover:underline"
-              >
-                {item.livros.titulo}
-              </a>
-            </h2>
 
-            <p className="text-sm text-gray-600">
-              por {item.livros.autor}
-            </p>
+            {/* Número */}
+            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-[#F5F0E8] border border-[#E6DED3] flex items-center justify-center text-sm font-semibold text-[#7B5E3A]">
+              {item.posicao}
+            </span>
+
+            {/* Capa (se houver) */}
+            {item.livros.imagem_url && (
+              <img
+                src={item.livros.imagem_url}
+                alt={item.livros.titulo}
+                className="flex-shrink-0 w-12 h-16 object-cover rounded-md border border-[#E6DED3]"
+              />
+            )}
+
+            {/* Dados */}
+            <div className="flex-1 min-w-0">
+
+              <h2 className="text-base font-serif font-semibold text-[#0D1B2A] leading-snug group-hover:text-[#4A1628] transition-colors">
+                <a href={`/livros/${item.livros.slug}`}>
+                  {item.livros.titulo}
+                </a>
+              </h2>
+
+              {item.livros.autor && (
+                <p className="text-sm text-[#4A4A4A] mt-1">
+                  por {item.livros.autor}
+                </p>
+              )}
+
+            </div>
+
+            {/* CTA */}
+            <a
+              href={`/livros/${item.livros.slug}`}
+              className="flex-shrink-0 text-xs text-[#C9A84C] font-semibold hover:underline"
+            >
+              Ver →
+            </a>
+
           </article>
+
         ))}
+
       </section>
-    </main>
+
+    </div>
   );
 }

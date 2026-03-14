@@ -39,6 +39,50 @@
       ]
     }
   },
+  "visual_identity": {
+    "status": "implemented",
+    "last_updated": "2026-03-14",
+    "palette": {
+      "brand_primary": "#4A1628",
+      "brand_accent": "#C9A84C",
+      "brand_surface": "#F5F0E8",
+      "brand_text": "#0D1B2A",
+      "brand_muted": "#4A4A4A",
+      "brand_navy": "#0D1B2A",
+      "brand_border": "#E6DED3"
+    },
+    "typography": {
+      "serif": "Lora (Google Fonts) — headings, títulos editoriais",
+      "sans": "Inter (Google Fonts) — navegação, UI, corpo",
+      "import": "globals.css via @import url Google Fonts"
+    },
+    "favicon": {
+      "strategy": "app/icon.tsx (Next.js OG Image — Edge Runtime)",
+      "description": "Letra A dourada (#C9A84C) sobre fundo bordô (#4A1628), border-radius 6px, 32x32px",
+      "replaces": "ícone padrão Vercel"
+    },
+    "layout_pattern": {
+      "header": "sticky, fundo #0D1B2A, logo + nav + busca",
+      "main": "max-w-6xl mx-auto px-6 py-12",
+      "footer": "bordas #E6DED3, fundo #F5F0E8, links + disclaimer afiliado",
+      "cards": "bg-white border #E6DED3 rounded-xl, hover border #C9A84C",
+      "hero": "bg #4A1628, texto #F5F0E8, CTA âmbar, decorativo A opaco"
+    },
+    "files_altered": [
+      "app/globals.css",
+      "app/layout.tsx",
+      "app/icon.tsx (novo)",
+      "app/(public)/page.tsx",
+      "app/(public)/listas/page.tsx (novo)",
+      "app/(public)/livros/[slug]/page.tsx",
+      "app/(public)/listas/[slug]/page.tsx",
+      "app/(public)/categorias/page.tsx",
+      "app/(public)/categorias/[slug]/page.tsx",
+      "app/(public)/autores/page.tsx",
+      "app/(public)/autores/[slug]/page.tsx",
+      "app/(public)/ofertas/page.tsx"
+    ]
+  },
   "objectives": {
     "primary": "Piloto funcional monetizável com interlinking entre listas, livros, categorias e ofertas.",
     "secondary": [
@@ -73,6 +117,11 @@
         "status": "operational",
         "schema_org": "ItemList + Book",
         "path": "app/(public)/listas/[slug]"
+      },
+      {
+        "name": "Hub Listas",
+        "status": "operational",
+        "path": "app/(public)/listas"
       },
       {
         "name": "Categorias (Taxonomia)",
@@ -270,63 +319,18 @@
     "cluster_strategy": {
       "type": "library_grade_taxonomy",
       "scope": "expanded_exhaustive",
-      "language_model": "idioma_aware_queries",
-      "rotation": "random_balanced",
-      "languages_supported": [
-        "Portuguese",
-        "English",
-        "Spanish",
-        "Italian"
-      ],
-      "language_isolation": true
-    },
-    "language_resolution": {
-      "strategy": "hybrid",
-      "sources": [
-        "API language",
-        "ISBN prefix heuristic",
-        "Title linguistic heuristic"
-      ],
-      "fallback": "UNKNOWN",
-      "retry_on_unknown": false
-    },
-    "editorial_classification": {
-      "layer": "review_step",
-      "classifier_type": "LLM + heuristic hybrid",
-      "llm_model": "phi3:mini",
-      "fields_generated": [
-        "is_book",
-        "editorial_score"
-      ],
-      "targets_filtered": [
-        "magazines",
-        "journals",
-        "reports",
-        "proceedings",
-        "legislation",
-        "directories",
-        "census",
-        "academic_periodicals"
-      ]
+      "clusters_pt": 42,
+      "clusters_en": 40,
+      "clusters_es": 20,
+      "clusters_it": 10
     },
     "steps": [
       {
-        "order": 0,
-        "name": "Offer Seed Import",
+        "order": 1,
+        "name": "Offer Seed",
         "status": "operational",
-        "description": "Entrada offer-first via JSON gerado por Seeder Agent com auto-migration de schema SQLite",
-        "input": "scripts/data/offer_seeds.json",
-        "target_table": "livros",
-        "source_tag": "offer_seed",
-        "auto_schema_migration": true
-      },
-      {
-        "order": 3,
-        "name": "Offer Resolver",
-        "status": "operational",
-        "description": "Resolve lookup_query em ofertas reais e preenche offer_url e marketplace",
-        "mode": "lookup_to_offer",
-        "idioma_aware": true
+        "idioma_aware": true,
+        "persistence": "scripts/data/books.db"
       },
       {
         "order": 2,
@@ -504,6 +508,7 @@
   },
   "validated_routes": [
     "/",
+    "/listas",
     "/livros",
     "/livros/[slug]",
     "/listas/[slug]",

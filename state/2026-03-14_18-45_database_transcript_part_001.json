@@ -195,6 +195,60 @@
           "type": "DATETIME"
         }
       ]
+    },
+    "autores": {
+      "rows": 134,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "nome",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "nacionalidade",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER"
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "livros_autores": {
+      "rows": 207,
+      "columns": [
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
     }
   },
   "sqlite_schema": {
@@ -543,6 +597,111 @@
       "indexes": [
         {
           "name": "sqlite_autoindex_listas_livros_1",
+          "unique": true
+        }
+      ]
+    },
+    "autores": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "nome",
+          "type": "TEXT",
+          "notnull": true,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "notnull": true,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "nacionalidade",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "notnull": false,
+          "default": "0",
+          "pk": false
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": "CURRENT_TIMESTAMP",
+          "pk": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": "CURRENT_TIMESTAMP",
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_autores_2",
+          "unique": true
+        },
+        {
+          "name": "sqlite_autoindex_autores_1",
+          "unique": true
+        }
+      ]
+    },
+    "livros_autores": {
+      "columns": [
+        {
+          "name": "livro_id",
+          "type": "TEXT",
+          "notnull": true,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "autor_id",
+          "type": "TEXT",
+          "notnull": true,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": "CURRENT_TIMESTAMP",
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_livros_autores_autor_id",
+          "unique": false
+        },
+        {
+          "name": "sqlite_autoindex_livros_autores_1",
           "unique": true
         }
       ]

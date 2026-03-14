@@ -115,105 +115,118 @@ export default async function CategoriaPage({
   ];
 
   return (
-    <main className="p-10 max-w-5xl mx-auto space-y-10">
+    <div className="space-y-10">
 
       {/* =========================
-          Header
+          HEADER
       ========================== */}
-      <section className="space-y-2">
+      <header className="bg-[#4A1628] rounded-2xl px-8 py-10 text-[#F5F0E8]">
 
-        <h1 className="text-3xl font-bold">
+        <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-3">
+          <a href="/categorias" className="hover:opacity-80 transition-opacity">Categorias</a>
+          {" "}/ {categoria.nome}
+        </p>
+
+        <h1 className="text-3xl font-serif font-semibold leading-tight mb-3">
           {categoria.nome}
         </h1>
 
-        <p className="text-gray-600">
-          Livros classificados nesta categoria.
+        <p className="text-[#C8C0B4] text-sm">
+          {livros.length} {livros.length === 1 ? "livro" : "livros"} nesta categoria
         </p>
 
-      </section>
+      </header>
 
       {/* =========================
-          Listas relacionadas
+          LISTAS RELACIONADAS
       ========================== */}
-      <section className="space-y-4">
+      <section>
 
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-xl font-serif font-semibold text-[#0D1B2A] mb-5">
           Listas relacionadas
         </h2>
 
         {!listas.length && (
-          <p className="text-gray-500">
+          <p className="text-[#7B5E3A] text-sm">
             Nenhuma lista relacionada ainda.
           </p>
         )}
 
-        <ul className="list-disc list-inside space-y-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {listas.map((lista: any) => (
 
-            <li key={lista.slug}>
+            <a
+              key={lista.slug}
+              href={`/listas/${lista.slug}`}
+              className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
+            >
 
-              <a
-                href={`/listas/${lista.slug}`}
-                className="text-blue-600 hover:underline"
-              >
+              <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider mb-1 block">
+                Lista editorial
+              </span>
+
+              <span className="text-[#0D1B2A] font-serif font-semibold text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
                 {lista.titulo}
-              </a>
+              </span>
 
-            </li>
+            </a>
 
           ))}
 
-        </ul>
+        </div>
 
       </section>
 
       {/* =========================
-          Livros
+          LIVROS DA CATEGORIA
       ========================== */}
-      <section className="space-y-4">
+      <section>
 
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-xl font-serif font-semibold text-[#0D1B2A] mb-5">
           Livros da categoria
         </h2>
 
         {!livros.length && (
-          <p className="text-gray-500">
+          <p className="text-[#7B5E3A] text-sm">
             Nenhum livro nesta categoria ainda.
           </p>
         )}
 
-        <ul className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {livros.map((livro: any) => (
 
-            <li
+            <a
               key={livro.slug}
-              className="flex items-center gap-4 border p-4 rounded-lg"
+              href={`/livros/${livro.slug}`}
+              className="group flex items-center gap-4 bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
 
-              {livro.imagem_url && (
+              {livro.imagem_url ? (
                 <img
                   src={livro.imagem_url}
-                  className="w-12 h-16 object-cover rounded"
+                  alt={livro.titulo}
+                  className="flex-shrink-0 w-10 h-14 object-cover rounded border border-[#E6DED3]"
                 />
+              ) : (
+                <div className="flex-shrink-0 w-10 h-14 rounded bg-[#4A1628] flex items-center justify-center">
+                  <span className="text-[#C9A84C] text-sm font-serif">A</span>
+                </div>
               )}
 
-              <a
-                href={`/livros/${livro.slug}`}
-                className="text-blue-600 hover:underline font-medium"
-              >
+              <span className="font-medium text-sm text-[#0D1B2A] leading-snug group-hover:text-[#4A1628] transition-colors">
                 {livro.titulo}
-              </a>
+              </span>
 
-            </li>
+            </a>
 
           ))}
 
-        </ul>
+        </div>
 
       </section>
 
-    </main>
+    </div>
   );
 }

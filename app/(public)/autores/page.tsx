@@ -25,13 +25,23 @@ export default async function AutoresPage() {
     .order("nome");
 
   return (
-    <main className="p-10 max-w-4xl mx-auto space-y-6">
+    <div className="space-y-8">
 
-      <h1 className="text-2xl font-bold">
-        Autores
-      </h1>
+      {/* Header */}
+      <header>
 
-      <ul className="space-y-3">
+        <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-2">
+          Navegação
+        </p>
+
+        <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A]">
+          Autores
+        </h1>
+
+      </header>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
 
         {autores?.map((autor: any) => {
 
@@ -39,30 +49,35 @@ export default async function AutoresPage() {
 
           return (
 
-            <li
+            <a
               key={autor.slug}
-              className="flex justify-between border p-4 rounded-lg"
+              href={`/autores/${autor.slug}`}
+              className="group block bg-white border border-[#E6DED3] rounded-xl px-4 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
 
-              <a
-                href={`/autores/${autor.slug}`}
-                className="text-blue-600 hover:underline font-medium"
-              >
-                {autor.nome}
-              </a>
+              {/* Inicial */}
+              <div className="w-9 h-9 rounded-full bg-[#4A1628] flex items-center justify-center mb-3">
+                <span className="text-[#C9A84C] text-sm font-serif font-semibold">
+                  {autor.nome.charAt(0).toUpperCase()}
+                </span>
+              </div>
 
-              <span className="text-sm text-gray-500">
-                {count} livros
+              <span className="block font-medium text-[#0D1B2A] text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
+                {autor.nome}
               </span>
 
-            </li>
+              <span className="text-xs text-[#7B5E3A] mt-1 block">
+                {count} {count === 1 ? "livro" : "livros"}
+              </span>
+
+            </a>
 
           );
 
         })}
 
-      </ul>
+      </div>
 
-    </main>
+    </div>
   );
 }
