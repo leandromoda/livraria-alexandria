@@ -5,12 +5,14 @@ from steps import offer_seed
 from steps import enrich_descricao
 from steps import offer_resolver
 from steps import slugify
+from steps import slugify_autores
 from steps import dedup
 from steps import review
 from steps import synopsis
 from steps import covers
 from steps import quality_gate
 from steps import publish
+from steps import publish_autores
 from steps import list_composer
 
 from steps.export_state_transcript import export_state_transcript
@@ -118,17 +120,19 @@ def main():
 
 --- PRÉ-PROCESSAMENTO ---
 4  → Gerar slugs
-5  → Deduplicar
-6  → Review (classificação editorial + idioma)
+5  → Slugify Autores
+6  → Deduplicar
+7  → Review (classificação editorial + idioma)
 
 --- GERAÇÃO DE CONTEÚDO ---
-7  → Gerar sinopses (requer review concluído)
-8  → Gerar capas
+8  → Gerar sinopses (requer review concluído)
+9  → Gerar capas
 
 --- PUBLICAÇÃO ---
-9  → Quality Gate
-10 → Publicar Supabase
-11 → Gerar listas SEO automáticas
+10 → Quality Gate
+11 → Publicar Supabase
+12 → Publicar Autores
+13 → Gerar listas SEO automáticas
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -163,30 +167,38 @@ def main():
             slugify.run(idioma, pacote)
 
         elif op == "5":
-            pacote = escolher_pacote()
-            dedup.run(idioma, pacote)
+            log("Slugificando autores…")
+            slugify_autores.run()
 
         elif op == "6":
             pacote = escolher_pacote()
-            review.run(idioma, pacote)
+            dedup.run(idioma, pacote)
 
         elif op == "7":
             pacote = escolher_pacote()
-            synopsis.run(idioma, pacote)
+            review.run(idioma, pacote)
 
         elif op == "8":
             pacote = escolher_pacote()
-            covers.run(idioma, pacote)
+            synopsis.run(idioma, pacote)
 
         elif op == "9":
             pacote = escolher_pacote()
-            quality_gate.evaluate_quality(idioma, pacote)
+            covers.run(idioma, pacote)
 
         elif op == "10":
             pacote = escolher_pacote()
-            publish.run(idioma, pacote)
+            quality_gate.evaluate_quality(idioma, pacote)
 
         elif op == "11":
+            pacote = escolher_pacote()
+            publish.run(idioma, pacote)
+
+        elif op == "12":
+            log("Publicando autores no Supabase…")
+            publish_autores.run()
+
+        elif op == "13":
             log("Gerando listas SEO automáticas…")
             list_composer.run()
 

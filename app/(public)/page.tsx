@@ -39,6 +39,38 @@ export default async function Home() {
     .eq("ativa", true)
     .limit(6);
 
+  /**
+   * Categorias (navegação)
+   */
+  const { data: categorias } = await supabase
+    .from("categorias")
+    .select(`
+      id,
+      nome,
+      slug,
+      livros_categorias (
+        id
+      )
+    `)
+    .order("nome")
+    .limit(8);
+
+  /**
+   * Autores (discovery)
+   */
+  const { data: autores } = await supabase
+    .from("autores")
+    .select(`
+      id,
+      nome,
+      slug,
+      livros_autores (
+        livro_id
+      )
+    `)
+    .order("nome")
+    .limit(8);
+
   return (
     <main className="p-10 max-w-3xl mx-auto space-y-10">
 
@@ -110,6 +142,76 @@ export default async function Home() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* =========================
+          Categorias
+      ========================== */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">
+          Categorias
+        </h2>
+
+        <ul className="list-disc list-inside space-y-1">
+          {categorias?.map((cat: any) => {
+            const count = cat.livros_categorias?.length ?? 0;
+            return (
+              <li key={cat.slug}>
+                <a
+                  href={`/categorias/${cat.slug}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  {cat.nome}
+                </a>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({count} livros)
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <a
+          href="/categorias"
+          className="inline-block text-blue-600 font-medium hover:underline"
+        >
+          Ver todas as categorias →
+        </a>
+      </section>
+
+      {/* =========================
+          Autores
+      ========================== */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold">
+          Autores
+        </h2>
+
+        <ul className="list-disc list-inside space-y-1">
+          {autores?.map((a: any) => {
+            const count = a.livros_autores?.length ?? 0;
+            return (
+              <li key={a.slug}>
+                <a
+                  href={`/autores/${a.slug}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  {a.nome}
+                </a>
+                <span className="text-sm text-gray-500 ml-2">
+                  ({count} livros)
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+
+        <a
+          href="/autores"
+          className="inline-block text-blue-600 font-medium hover:underline"
+        >
+          Ver todos os autores →
+        </a>
       </section>
 
       {/* =========================

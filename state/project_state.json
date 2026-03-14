@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-13",
+    "last_updated": "2026-03-14",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -23,7 +23,8 @@
       "platform": "Vercel",
       "status": "production_live",
       "domain": "livrariaalexandria.com.br",
-      "env_vars_configured": true
+      "env_vars_configured": true,
+      "analytics": "Vercel Analytics (ativo)"
     },
     "version_control": {
       "provider": "GitHub",
@@ -85,6 +86,16 @@
         "path": "app/(public)/categorias"
       },
       {
+        "name": "Hub Autores",
+        "status": "operational",
+        "path": "app/(public)/autores"
+      },
+      {
+        "name": "Página de Autor",
+        "status": "operational",
+        "path": "app/(public)/autores/[slug]"
+      },
+      {
         "name": "Página de Ofertas",
         "status": "operational",
         "schema_org": "ItemList + Product + Offer",
@@ -94,6 +105,17 @@
         "name": "Click Tracking",
         "status": "operational_production",
         "path": "app/(internal)/api/click/[id]"
+      },
+      {
+        "name": "Painel Admin",
+        "status": "operational",
+        "path": "app/(internal)/admin",
+        "features": [
+          "Status do pipeline",
+          "Top livros por cliques",
+          "Cliques recentes",
+          "Visitas ao site (Vercel Analytics)"
+        ]
       }
     ]
   },
@@ -113,7 +135,14 @@
   "tracking": {
     "status": "implemented_production",
     "table": "oferta_clicks",
-    "deduplication": "pending"
+    "deduplication": "pending",
+    "analytics": {
+      "provider": "Vercel Analytics",
+      "status": "active",
+      "env_var": "VERCEL_ACCESS_TOKEN",
+      "team_slug": "leandro-modas-projects",
+      "project": "livraria-alexandria"
+    }
   },
   "interlinking": {
     "implemented": [
@@ -125,11 +154,12 @@
       "Livro → Categoria",
       "Categoria → Livro",
       "Categoria → Listas (auto)",
-      "Categoria → Listas (editorial layer ready)"
+      "Categoria → Listas (editorial layer ready)",
+      "Autor → Livro",
+      "Home → Autores"
     ],
     "pending": [
       "Livro → Livros relacionados",
-      "Autor → Livro",
       "Aggregate relevance ordering"
     ]
   },
@@ -138,7 +168,8 @@
     "layers": {
       "livros_categorias": "operational",
       "listas_categorias": "operational_empty",
-      "inferencia_automatica": "operational"
+      "inferencia_automatica": "operational",
+      "livros_autores": "operational"
     },
     "ordering": {
       "pivot_weight": true,
@@ -156,7 +187,18 @@
     "production": {
       "provider": "Supabase",
       "status": "connected",
-      "rls_public_read": true
+      "rls_public_read": true,
+      "tables": [
+        "livros",
+        "listas",
+        "listas_livros",
+        "categorias",
+        "livros_categorias",
+        "ofertas",
+        "oferta_clicks",
+        "autores",
+        "livros_autores"
+      ]
     },
     "staging": {
       "provider": "SQLite",
@@ -169,7 +211,15 @@
         "editorial_score",
         "descricao_base"
       ],
-      "runtime_mode": "WAL_enabled_busy_timeout_60s"
+      "runtime_mode": "WAL_enabled_busy_timeout_60s",
+      "tables": [
+        "livros",
+        "autores",
+        "livros_autores",
+        "dedup_log",
+        "ingest_runs",
+        "pipeline_state"
+      ]
     }
   },
   "synopsis_architecture": {
@@ -294,6 +344,16 @@
       },
       {
         "order": 5,
+        "name": "Slugify Autores",
+        "status": "operational",
+        "description": "Extrai autores únicos de livros.autor, gera slugs, popula tabelas autores e livros_autores no SQLite",
+        "script": "scripts/steps/slugify_autores.py",
+        "idioma_aware": false,
+        "multi_autor_support": true,
+        "separator": ";"
+      },
+      {
+        "order": 6,
         "name": "Deduplicate",
         "status": "operational",
         "idioma_aware": true,
@@ -411,6 +471,16 @@
       },
       {
         "order": 11,
+        "name": "Publish Autores",
+        "status": "operational",
+        "description": "Publica autores e relações livros_autores no Supabase",
+        "script": "scripts/steps/publish_autores.py",
+        "target": "Supabase.autores + Supabase.livros_autores",
+        "upsert_mode": "POST ?on_conflict=slug",
+        "idioma_aware": false
+      },
+      {
+        "order": 12,
         "name": "List Composer",
         "status": "operational",
         "description": "Geração automática de listas SEO por categoria com filtro editorial anti–thin content",
@@ -428,7 +498,7 @@
         },
         "source": "livros publicados",
         "execution_mode": "manual_menu_option",
-        "menu_option": 11
+        "menu_option": 13
       }
     ]
   },
@@ -439,7 +509,10 @@
     "/listas/[slug]",
     "/categorias",
     "/categorias/[slug]",
-    "/ofertas"
+    "/autores",
+    "/autores/[slug]",
+    "/ofertas",
+    "/admin"
   ],
   "open_tasks": [
     {
