@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 export const metadata = {
   title: "Termos de Uso | Livraria Alexandria",
   description:

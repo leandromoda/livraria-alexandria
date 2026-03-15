@@ -1,4 +1,3 @@
-export const runtime = "edge";
 
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
