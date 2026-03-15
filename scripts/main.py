@@ -13,6 +13,7 @@ from steps import covers
 from steps import quality_gate
 from steps import publish
 from steps import publish_autores
+from steps import publish_ofertas
 from steps import list_composer
 from steps import auditor
 
@@ -152,11 +153,12 @@ def main():
 10 → Quality Gate
 11 → Publicar Supabase
 12 → Publicar Autores
-13 → Gerar listas SEO automáticas
+13 → Publicar Ofertas
+14 → Gerar listas SEO automáticas
 
 --- AUDITORIA ---
-14 → Auditar conectividade do site (sem LLM)
-15 → Auditar conteúdo publicado (LLM)
+15 → Auditar conectividade do site (sem LLM)
+16 → Auditar conteúdo publicado (LLM)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -225,16 +227,20 @@ def main():
             publish_autores.run()
 
         elif op == "13":
+            log("Publicando ofertas no Supabase…")
+            publish_ofertas.run()
+
+        elif op == "14":
             log("Gerando listas SEO automáticas…")
             list_composer.run()
 
-        elif op == "14":
+        elif op == "15":
             log("Auditando conectividade do site…")
             import argparse
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
-        elif op == "15":
+        elif op == "16":
             print("""
 Limite de livros para auditoria:
 

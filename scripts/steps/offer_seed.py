@@ -171,6 +171,8 @@ def ensure_tables(conn):
         marketplace         TEXT,
         offer_url           TEXT,
         offer_status        INTEGER DEFAULT 0,
+        preco               REAL,
+        status_publish_oferta INTEGER DEFAULT 0,
 
         -- IDs de classificação
         cluster_id          INTEGER,
@@ -226,6 +228,7 @@ def insert_seed(conn, seed):
     categoria    = seed.get("categoria")
     marketplace  = seed.get("marketplace")
     lookup_query = seed.get("lookup_query")
+    preco        = seed.get("preco")
 
     if not titulo or not lookup_query:
         return "invalid"
@@ -253,6 +256,7 @@ def insert_seed(conn, seed):
             id, titulo, autor, isbn,
             cluster, fonte, idioma, categoria,
             lookup_query, marketplace, offer_status,
+            preco,
             cluster_id, nacionalidade_id, popularidade_id,
             ano_publicacao,
             created_at, updated_at
@@ -262,6 +266,7 @@ def insert_seed(conn, seed):
             ?, ?, ?,
             ?, 'offer_seed', ?, ?,
             ?, ?, 0,
+            ?,
             ?, ?, ?,
             ?,
             ?, ?
@@ -270,6 +275,7 @@ def insert_seed(conn, seed):
         titulo, autor, isbn,
         categoria, idioma_resolved, categoria,
         lookup_query, marketplace,
+        preco,
         seed.get("cluster_id"),
         seed.get("nacionalidade_id"),
         seed.get("popularidade_id"),

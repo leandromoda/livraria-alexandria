@@ -91,12 +91,15 @@ def ensure_schema(conn):
         cluster TEXT,
         fonte TEXT,
 
+        preco REAL,
+
         status_slug INTEGER DEFAULT 0,
         status_dedup INTEGER DEFAULT 0,
         status_synopsis INTEGER DEFAULT 0,
         status_review INTEGER DEFAULT 0,
         status_cover INTEGER DEFAULT 0,
         status_publish INTEGER DEFAULT 0,
+        status_publish_oferta INTEGER DEFAULT 0,
 
         supabase_id TEXT,
 
@@ -104,6 +107,16 @@ def ensure_schema(conn):
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
+
+    # Migrações para bancos existentes (colunas novas)
+    for col, definition in [
+        ("preco",                 "REAL"),
+        ("status_publish_oferta", "INTEGER DEFAULT 0"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS autores (
