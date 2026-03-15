@@ -22,7 +22,8 @@ from core.logger import log
 
 MIN_LIVROS_LISTA = 6
 MAX_LIVROS_LISTA = 12
-MAX_LISTAS_EXEC = 200
+MAX_LISTAS_EXEC  = 200
+MIN_LIVROS_LISTA_AUTOR = 3
 
 
 # ============================================================
@@ -319,6 +320,79 @@ def descricao_lista(cat):
 
 
 # ============================================================
+# AUTOR — FETCH
+# ============================================================
+
+def fetch_autores_validos():
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            a.id,
+            a.nome,
+            a.slug,
+            COUNT(la.livro_id) as total
+        FROM autores a
+        JOIN livros_autores la ON la.autor_id = a.id
+        JOIN livros l ON l.id = la.livro_id
+        WHERE l.status_publish = 1
+          AND l.editorial_score >= 1
+        GROUP BY a.id
+        HAVING COUNT(la.livro_id) >= ?
+    """, (MIN_LIVROS_LISTA_AUTOR,))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+
+def fetch_livros_autor(autor_id):
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            l.id,
+            l.editorial_score
+        FROM livros l
+        JOIN livros_autores la ON la.livro_id = l.id
+        WHERE la.autor_id = ?
+          AND l.status_publish = 1
+          AND l.editorial_score >= 1
+        ORDER BY l.editorial_score DESC
+        LIMIT ?
+    """, (autor_id, MAX_LIVROS_LISTA))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+
+# ============================================================
+# AUTOR — SLUG / TITULO / DESCRICAO
+# ============================================================
+
+def slug_autor(autor_slug):
+    return f"melhores-livros-de-{autor_slug}"
+
+
+def titulo_lista_autor(nome):
+    return f"Melhores livros de {nome}"
+
+
+def descricao_lista_autor(nome):
+    return (
+        f"Seleção das melhores obras de {nome}, "
+        "reunidas por critérios editoriais e relevância cultural."
+    )
+
+
+# ============================================================
 # RUN
 # ============================================================
 
@@ -379,4 +453,43 @@ def run():
 
         log(f"Lista criada → {titulo}")
 
-    log(f"List Composer finalizado → {listas_criadas} listas geradas.")
+    log(f"List Composer finalizado → {listas_criadas} listas de categoria geradas.")
+
+    # --------------------------------------------------------
+    # LISTAS POR AUTOR
+    # --------------------------------------------------------
+
+    autores = fetch_autores_validos()
+    listas_autor = 0
+
+    for autor_row in autores:
+
+        if listas_criadas + listas_autor >= MAX_LISTAS_EXEC:
+            break
+
+        autor_id   = autor_row[0]
+        autor_nome = autor_row[1]
+        autor_slug = autor_row[2]
+
+        slug = slug_autor(autor_slug)
+
+        if lista_existe(slug):
+            continue
+
+        livros = fetch_livros_autor(autor_id)
+
+        if len(livros) < MIN_LIVROS_LISTA_AUTOR:
+            continue
+
+        titulo    = titulo_lista_autor(autor_nome)
+        descricao = descricao_lista_autor(autor_nome)
+
+        lista_id = criar_lista(slug, titulo, descricao, autor_slug)
+
+        inserir_livros(lista_id, livros)
+
+        listas_autor += 1
+
+        log(f"Lista criada → {titulo}")
+
+    log(f"List Composer finalizado → {listas_autor} listas de autor geradas.")

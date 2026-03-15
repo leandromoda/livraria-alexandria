@@ -5,11 +5,15 @@
 # Publica autores e relações livros_autores no Supabase.
 # ============================================================
 
+import os
+
 import requests
 import time
 
 from datetime import datetime
+from pathlib import Path
 
+from dotenv import load_dotenv
 from core.db import get_conn
 from core.logger import log
 
@@ -18,18 +22,18 @@ from core.logger import log
 # CONFIG
 # =========================
 
-SUPABASE_URL = "https://ncnexkuiiuzwujqurtsa.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbmV4a3VpaXV6d3VqcXVydHNhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTU0MTY2MCwiZXhwIjoyMDg1MTE3NjYwfQ.CacLDlVd0noDzcuVJnxjx3eMr7SjI_19rAsDZeQh6S8"
+_ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=_ENV_PATH)
+
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 HEADERS = {
-    "apikey": SUPABASE_URL,
+    "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
     "Prefer": "resolution=merge-duplicates,return=representation"
 }
-
-AUTORES_URL          = f"{SUPABASE_URL}/rest/v1/autores?on_conflict=slug"
-LIVROS_AUTORES_URL   = f"{SUPABASE_URL}/rest/v1/livros_autores?on_conflict=livro_id,autor_id"
 
 TIMEOUT     = 60
 MAX_RETRIES = 3
@@ -72,14 +76,14 @@ def fetch_relacoes(conn, autor_id_local):
 # UPSERT
 # =========================
 
-def upsert(url, payload):
+def upsert(url, payload, headers):
 
     for attempt in range(MAX_RETRIES):
 
         try:
             res = requests.post(
                 url,
-                headers=HEADERS,
+                headers=headers,
                 json=payload,
                 timeout=TIMEOUT
             )
@@ -101,34 +105,32 @@ def upsert(url, payload):
     return False
 
 
-def upsert_autor(row):
+def upsert_autor(row, autores_url, headers):
 
     (local_id, nome, slug, nacionalidade, existing_supabase_id) = row
 
     now = datetime.utcnow().isoformat()
 
     payload = {
-        "nome":         nome,
-        "slug":         slug,
+        "nome":          nome,
+        "slug":          slug,
         "nacionalidade": nacionalidade,
-        "created_at":   now,
-        "updated_at":   now,
+        "created_at":    now,
     }
 
-    return upsert(AUTORES_URL, payload)
+    return upsert(autores_url, payload, headers)
 
 
-def upsert_relacao(livro_supabase_id, autor_slug):
+def upsert_relacao(livro_supabase_id, autor_slug, livros_autores_url, headers, supabase_url):
     """Resolve autor_id via slug no Supabase e insere relação."""
 
-    # Busca autor_id no Supabase pelo slug
     lookup_url = (
-        f"{SUPABASE_URL}/rest/v1/autores"
+        f"{supabase_url}/rest/v1/autores"
         f"?slug=eq.{autor_slug}&select=id"
     )
 
     try:
-        res = requests.get(lookup_url, headers=HEADERS, timeout=TIMEOUT)
+        res = requests.get(lookup_url, headers=headers, timeout=TIMEOUT)
         data = res.json()
 
         if not data:
@@ -144,12 +146,11 @@ def upsert_relacao(livro_supabase_id, autor_slug):
     now = datetime.utcnow().isoformat()
 
     payload = {
-        "livro_id":  livro_supabase_id,
-        "autor_id":  autor_supabase_id,
-        "created_at": now,
+        "livro_id": livro_supabase_id,
+        "autor_id": autor_supabase_id,
     }
 
-    return upsert(LIVROS_AUTORES_URL, payload)
+    return upsert(livros_autores_url, payload, headers)
 
 
 # =========================
@@ -178,6 +179,25 @@ def run():
 
     conn = get_conn()
 
+    # Lê credenciais em runtime — garante que o sistema de env do main.py já executou
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    if not supabase_url or not supabase_key:
+        log("ERRO: NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados.")
+        conn.close()
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation",
+    }
+
+    autores_url        = f"{supabase_url}/rest/v1/autores?on_conflict=slug"
+    livros_autores_url = f"{supabase_url}/rest/v1/livros_autores?on_conflict=livro_id,autor_id"
+
     autores = fetch_autores_pendentes(conn)
 
     if not autores:
@@ -188,17 +208,18 @@ def run():
     inserted  = 0
     failed    = 0
     relacoes  = 0
+    total     = len(autores)
 
-    for row in autores:
+    for i, row in enumerate(autores, start=1):
 
         local_id = row["id"]
         slug     = row["slug"]
 
-        ok = upsert_autor(row)
+        ok = upsert_autor(row, autores_url, headers)
 
         if not ok:
             failed += 1
-            log(f"FALHA → {row['nome']}")
+            log(f"FALHA [{i}/{total}] → {row['nome']}")
             continue
 
         # Publica relações livros_autores
@@ -206,12 +227,12 @@ def run():
 
         for livro_row in livros_rows:
             livro_supabase_id = livro_row["supabase_id"]
-            upsert_relacao(livro_supabase_id, slug)
+            upsert_relacao(livro_supabase_id, slug, livros_autores_url, headers, supabase_url)
             relacoes += 1
 
         mark_published(conn, local_id)
         inserted += 1
-        log(f"PUBLICADO → {row['nome']}")
+        log(f"PUBLICADO [{i}/{total}] → {row['nome']}")
 
     conn.close()
 

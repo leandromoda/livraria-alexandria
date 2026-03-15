@@ -1,16 +1,26 @@
 # Fact Extractor — Task
+
 ## Task Name
+
 extract_structured_facts
+
 ---
+
 ## Inputs
+
 runtime:
   descricao_base
   idioma_resolved
+
 If descricao_base is null, empty, or whitespace-only:
 TASK_ABORTED
+
 ---
+
 ## Schema Lock (IMMUTABLE)
+
 You MUST return a JSON object with EXACTLY the following keys.
+
 The keys are IDENTIFIERS.
 They are NOT natural language.
 They MUST NOT be translated.
@@ -19,18 +29,24 @@ They MUST NOT be reformatted.
 They MUST NOT be renamed.
 They MUST NOT contain accents.
 They MUST match character-by-character.
+
 Required keys (exact spelling):
-- "ambientacao"
-- "contexto_social"
-- "conflito_central"
-- "personagens_mencionados"
-- "temas_explicitos"
+- "tema_central"
+- "abordagem"
+- "conceitos_chave"
+- "publico_alvo"
+- "proposta_valor"
+
 No additional keys are allowed.
 No missing keys are allowed.
+
 ---
+
 ## Processing Rules
+
 Read descricao_base carefully.
 Extract ONLY explicitly stated elements.
+
 DO NOT:
 - infer
 - interpret
@@ -39,90 +55,102 @@ DO NOT:
 - translate field names
 - add commentary
 - explain decisions
+
 If information is not explicitly present,
 leave the field as empty string "" or empty array [].
+
 ---
+
 ## Field Constraints
-ambientacao:
-  - explicit setting references only
+
+tema_central:
+  - main subject, topic, or narrative thread
+  - explicit references only
   - empty string if none
-contexto_social:
-  - explicit social conditions only
+
+abordagem:
+  - how the book treats the subject
+  - explicit methodology, tone, or style only
   - empty string if none
-conflito_central:
-  - explicit central conflict only
-  - empty string if none
-personagens_mencionados:
-  - only names explicitly written
+
+conceitos_chave:
+  - concepts, terms, or ideas directly stated
   - empty array if none
-temas_explicitos:
-  - only themes directly stated
-  - empty array if none
+
+publico_alvo:
+  - target audience only if explicitly described
+  - empty string if none
+
+proposta_valor:
+  - what the reader gains, only if explicitly stated
+  - empty string if none
+
 ---
+
 ## Extraction Examples
 
-### ambientacao
+### tema_central
 
 descricao_base fragment:
-"A história se passa no sertão nordestino, marcado por longos períodos de seca."
+"Este livro explora as estratégias de marketing usadas por empresas modernas."
 
 CORRECT:
-"ambientacao": "sertão nordestino, marcado por longos períodos de seca"
+"tema_central": "estratégias de marketing em empresas modernas"
 
 INCORRECT:
-"ambientacao": ""   ← the setting is explicitly stated; leaving it empty is WRONG
+"tema_central": ""   <- the subject is explicitly stated; leaving it empty is WRONG
 
 ---
 
-### conflito_central
+### abordagem
 
 descricao_base fragment:
-"O romance retrata a luta pela sobrevivência em um ambiente hostil."
+"A obra apresenta casos reais e ferramentas práticas para aplicação imediata."
 
 CORRECT:
-"conflito_central": "luta pela sobrevivência em ambiente hostil"
+"abordagem": "casos reais e ferramentas práticas"
 
 INCORRECT:
-"conflito_central": ""   ← the conflict is explicitly stated; leaving it empty is WRONG
+"abordagem": ""   <- the approach is explicitly stated; leaving it empty is WRONG
 
 ---
 
-### contexto_social
+### conceitos_chave
 
 descricao_base fragment:
-"A narrativa acompanha suas dificuldades diante da pobreza e da escassez de recursos."
+"O livro aborda branding, posicionamento e comportamento do consumidor."
 
 CORRECT:
-"contexto_social": "dificuldades diante da pobreza e da escassez de recursos"
+"conceitos_chave": ["branding", "posicionamento", "comportamento do consumidor"]
 
 INCORRECT:
-"contexto_social": ""   ← the social condition is explicitly stated; leaving it empty is WRONG
+"conceitos_chave": []   <- the concepts are directly stated; leaving it empty is WRONG
 
 ---
 
-### personagens_mencionados
+### publico_alvo
 
 descricao_base fragment:
-"Fabiano e sua família vivem no sertão nordestino."
+"Indicado para profissionais de marketing e empreendedores."
 
 CORRECT:
-"personagens_mencionados": ["Fabiano"]
+"publico_alvo": "profissionais de marketing e empreendedores"
 
 INCORRECT:
-"personagens_mencionados": []   ← the name is explicitly written; leaving it empty is WRONG
+"publico_alvo": ""   <- the audience is explicitly stated; leaving it empty is WRONG
 
 ---
 
-### temas_explicitos
+### proposta_valor
 
 descricao_base fragment:
-"O livro aborda a pobreza, a seca e a esperança de dias melhores."
+"O leitor aprenderá a construir campanhas eficazes com baixo orçamento."
 
 CORRECT:
-"temas_explicitos": ["pobreza", "seca", "esperança"]
+"proposta_valor": "construir campanhas eficazes com baixo orçamento"
 
 INCORRECT:
-"temas_explicitos": []   ← the themes are directly stated; leaving it empty is WRONG
+"proposta_valor": ""   <- the value is explicitly stated; leaving it empty is WRONG
 
 ---
 
@@ -133,15 +161,19 @@ An empty field is only valid when the information is truly absent.
 Empty fields caused by omission are extraction failures.
 
 ---
+
 ## Output Format (STRICT)
+
 Return EXACTLY:
+
 {
-  "ambientacao": "",
-  "contexto_social": "",
-  "conflito_central": "",
-  "personagens_mencionados": [],
-  "temas_explicitos": []
+  "tema_central": "",
+  "abordagem": "",
+  "conceitos_chave": [],
+  "publico_alvo": "",
+  "proposta_valor": ""
 }
+
 Rules:
 - JSON only
 - No markdown fences
@@ -150,4 +182,5 @@ Rules:
 - No extra text before or after JSON
 - No translated keys
 - No modified keys
+
 Any deviation is INVALID.

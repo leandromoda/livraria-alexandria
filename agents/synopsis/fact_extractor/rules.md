@@ -13,9 +13,9 @@ Titulo and autor are NOT narrative sources.
 The agent MUST NOT:
 
 - infer themes not explicitly stated
-- assume character relationships
-- assume historical period
-- assume narrative arc
+- assume audience not described
+- assume approach or methodology
+- assume value proposition
 
 If uncertain → leave field empty.
 
@@ -31,20 +31,22 @@ No prose allowed.
 
 ## R4 — Field Constraints
 
-ambientacao:
-  - explicit setting references only
+tema_central:
+  - the main subject, topic, or narrative thread
+  - explicit references only
 
-contexto_social:
-  - explicit social conditions only
+abordagem:
+  - how the book treats the subject
+  - explicit methodology, style, or angle only
 
-conflito_central:
-  - only if clearly described
+conceitos_chave:
+  - only concepts, terms, or ideas directly stated
 
-personagens_mencionados:
-  - only names explicitly written
+publico_alvo:
+  - only if explicitly described in descricao_base
 
-temas_explicitos:
-  - only themes directly stated
+proposta_valor:
+  - what the reader gains, only if explicitly stated
 
 ---
 

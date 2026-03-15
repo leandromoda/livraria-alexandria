@@ -60,6 +60,9 @@ def fetch_pending(conn, idioma, limit):
         WHERE status_publish  = 0
           AND status_review   = 1
           AND is_publishable  = 1
+          AND status_synopsis = 1
+          AND sinopse IS NOT NULL
+          AND sinopse != ''
           AND idioma          = ?
         LIMIT ?
     """, (idioma, limit))
@@ -190,20 +193,21 @@ def run(idioma, pacote=10):
 
     inserted = 0
     failed   = 0
+    total    = len(rows)
 
-    for row in rows:
+    for i, row in enumerate(rows, start=1):
 
         payload    = build_payload(row)
         supabase_id = upsert_book(payload)
 
         if not supabase_id:
             failed += 1
-            log(f"FALHA → {row[1]}")
+            log(f"FALHA [{i}/{total}] → {row[1]}")
             continue
 
         mark_published(conn, row[0], supabase_id)
         inserted += 1
-        log(f"PUBLICADO → {row[1]}")
+        log(f"PUBLICADO [{i}/{total}] → {row[1]}")
 
     conn.close()
 

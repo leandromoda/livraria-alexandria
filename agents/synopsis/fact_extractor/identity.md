@@ -30,6 +30,6 @@ it MUST NOT be included.
 
 ## Operational Principle
 
-extract > interpret  
-structure > narrate  
-omit > invent  
+extract > interpret
+structure > narrate
+omit > invent

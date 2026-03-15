@@ -2,7 +2,7 @@
   "sqlite_path": "C:\\Users\\Leandro Moda\\livraria-alexandria\\scripts\\data\\books.db",
   "sqlite_summary": {
     "livros": {
-      "rows": 207,
+      "rows": 270,
       "columns": [
         {
           "name": "id",
@@ -135,7 +135,7 @@
       ]
     },
     "listas": {
-      "rows": 0,
+      "rows": 1,
       "columns": [
         {
           "name": "id",
@@ -172,7 +172,7 @@
       ]
     },
     "listas_livros": {
-      "rows": 0,
+      "rows": 12,
       "columns": [
         {
           "name": "lista_id",
@@ -197,7 +197,7 @@
       ]
     },
     "autores": {
-      "rows": 134,
+      "rows": 172,
       "columns": [
         {
           "name": "id",
@@ -234,7 +234,7 @@
       ]
     },
     "livros_autores": {
-      "rows": 207,
+      "rows": 274,
       "columns": [
         {
           "name": "livro_id",
@@ -246,6 +246,23 @@
         },
         {
           "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    "pipeline_state": {
+      "rows": 0,
+      "columns": [
+        {
+          "name": "key",
+          "type": "TEXT"
+        },
+        {
+          "name": "value",
+          "type": "TEXT"
+        },
+        {
+          "name": "updated_at",
           "type": "DATETIME"
         }
       ]
@@ -702,6 +719,37 @@
         },
         {
           "name": "sqlite_autoindex_livros_autores_1",
+          "unique": true
+        }
+      ]
+    },
+    "pipeline_state": {
+      "columns": [
+        {
+          "name": "key",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": true
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "notnull": false,
+          "default": null,
+          "pk": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "sqlite_autoindex_pipeline_state_1",
           "unique": true
         }
       ]

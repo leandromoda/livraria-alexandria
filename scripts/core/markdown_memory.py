@@ -1,4 +1,3 @@
-```python
 """
 Markdown Agent Memory System
 Compatible with pipeline_state table.
@@ -6,13 +5,9 @@ Compatible with pipeline_state table.
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 from core.db import get_connection
 from core.logger import log
-
-
-STEP_NAME = "markdown_memory"
 
 
 # =========================
@@ -34,6 +29,15 @@ def load_memory(agent_name: str) -> str:
     conn = get_connection()
     cur = conn.cursor()
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pipeline_state (
+            key        TEXT PRIMARY KEY,
+            value      TEXT,
+            updated_at DATETIME
+        )
+    """)
+    conn.commit()
+
     cur.execute(
         "SELECT value FROM pipeline_state WHERE key=?",
         (key,),
@@ -42,10 +46,10 @@ def load_memory(agent_name: str) -> str:
     row = cur.fetchone()
 
     if not row:
-        log(STEP_NAME, f"No memory found for {agent_name}")
+        log(f"[markdown_memory] No memory found for {agent_name}")
         return ""
 
-    log(STEP_NAME, f"Memory loaded for {agent_name}")
+    log(f"[markdown_memory] Memory loaded for {agent_name}")
 
     return row[0]
 
@@ -76,7 +80,7 @@ def save_memory(agent_name: str, memory_text: str):
 
     conn.commit()
 
-    log(STEP_NAME, f"Memory saved for {agent_name}")
+    log(f"[markdown_memory] Memory saved for {agent_name}")
 
 
 # =========================
@@ -111,4 +115,3 @@ Example snippet:
     updated = existing + "\n" + new_block
 
     save_memory(agent_name, updated)
-```

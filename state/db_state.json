@@ -157,6 +157,137 @@
       ]
     },
     {
+      "name": "autores",
+      "primary_key": "id",
+      "description": "Autores extraídos de livros.autor, com slug único",
+      "fields": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "nome",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "unique": true
+        },
+        {
+          "name": "nacionalidade",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_publish",
+          "type": "INTEGER",
+          "default": 0
+        },
+        {
+          "name": "supabase_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "livros_autores",
+      "primary_key": ["livro_id", "autor_id"],
+      "description": "Relação N:N entre livros e autores",
+      "fields": [
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "autor_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "listas",
+      "primary_key": "id",
+      "description": "Listas SEO geradas automaticamente por categoria e por autor",
+      "fields": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT",
+          "unique": true
+        },
+        {
+          "name": "titulo",
+          "type": "TEXT"
+        },
+        {
+          "name": "descricao",
+          "type": "TEXT"
+        },
+        {
+          "name": "categoria_slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "source",
+          "type": "TEXT",
+          "values": [
+            "auto_categoria",
+            "auto_autor"
+          ]
+        },
+        {
+          "name": "idioma",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "listas_livros",
+      "primary_key": ["lista_id", "livro_id"],
+      "description": "Relação N:N entre listas e livros com ordenação editorial",
+      "fields": [
+        {
+          "name": "lista_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "position",
+          "type": "INTEGER"
+        },
+        {
+          "name": "editorial_weight",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
       "name": "dedup_log",
       "primary_key": "id",
       "fields": [
@@ -228,6 +359,7 @@
     {
       "name": "pipeline_state",
       "primary_key": "key",
+      "description": "Estado do pipeline e memória de agentes LLM",
       "fields": [
         {
           "name": "key",
@@ -239,6 +371,95 @@
         },
         {
           "name": "updated_at",
+          "type": "DATETIME"
+        }
+      ],
+      "known_keys": [
+        "agent::synopsis::memory"
+      ]
+    },
+    {
+      "name": "audit_log",
+      "primary_key": "id",
+      "description": "Registro de auditorias de conteúdo editorial (step auditor --content)",
+      "created_by": "scripts/steps/auditor.py (auto-create)",
+      "fields": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "livro_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "slug",
+          "type": "TEXT"
+        },
+        {
+          "name": "mode",
+          "type": "TEXT",
+          "values": ["content"]
+        },
+        {
+          "name": "severity",
+          "type": "TEXT",
+          "values": ["none", "low", "medium", "high"]
+        },
+        {
+          "name": "issues",
+          "type": "TEXT",
+          "description": "JSON array de issues encontradas"
+        },
+        {
+          "name": "action_taken",
+          "type": "TEXT",
+          "values": ["none", "despublished", "despublished_sqlite_only", "would_despublish"]
+        },
+        {
+          "name": "audited_at",
+          "type": "DATETIME"
+        }
+      ]
+    },
+    {
+      "name": "connectivity_log",
+      "primary_key": "id",
+      "description": "Registro de checks de conectividade de infra (step auditor --connectivity)",
+      "created_by": "scripts/steps/auditor.py (auto-create)",
+      "fields": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "check_type",
+          "type": "TEXT",
+          "values": ["supabase_table", "site_route", "site_route_livro", "site_route_autor", "api_click", "image_url"]
+        },
+        {
+          "name": "target",
+          "type": "TEXT"
+        },
+        {
+          "name": "status_code",
+          "type": "INTEGER"
+        },
+        {
+          "name": "latency_ms",
+          "type": "INTEGER"
+        },
+        {
+          "name": "ok",
+          "type": "INTEGER",
+          "values": {"0": "falha", "1": "sucesso"}
+        },
+        {
+          "name": "detail",
+          "type": "TEXT"
+        },
+        {
+          "name": "checked_at",
           "type": "DATETIME"
         }
       ]
@@ -313,28 +534,35 @@
     "status": "active",
     "blocking_issue": null,
     "prefer_header": "resolution=merge-duplicates,return=representation",
+    "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''",
     "notes": "409 tratado graciosamente — marca como publicado localmente sem retentar"
   },
   "llm": {
     "primary": "gemini",
     "model": "gemini-2.5-flash",
     "fallback": "ollama",
-    "ollama_model": "gemma2:9b",
-    "ollama_timeout_s": 180,
+    "ollama_model": "mistral:latest",
+    "ollama_timeout_s": 600,
+    "provider_control": "set_provider() em markdown_executor — seleção via menu (ollama | gemini | auto)",
     "routing": "markdown_executor._call_llm()",
-    "on_both_fail": "continue (livro pulado, status não atualizado)"
+    "on_both_fail": "continue (livro pulado, status não atualizado)",
+    "removed_models": ["gemma2:9b", "phi3:mini", "qwen2.5-coder:7b", "qwen2.5-coder:14b", "gemma3:1b"]
   },
   "pipeline_steps": {
     "1_offer_seed": "Importa seeds CSV → livros",
     "2_enrich_descricao": "Google Books API → descricao",
     "3_offer_resolver": "Lookup URL afiliado → offer_url",
     "4_slugify": "Gera slug único → status_slug=1",
-    "5_dedup": "Remove duplicatas → dedup_log",
-    "6_review": "Classificação editorial + idioma → status_review=1",
-    "7_synopsis": "LLM gera sinopse → sinopse, status_synopsis=1",
-    "8_covers": "Amazon→Google→OpenLibrary → imagem_url, status_cover∈{1,2}",
-    "9_quality_gate": "Valida todos os status → is_publishable=1",
-    "10_publish": "Upsert Supabase → status_publish=1",
-    "11_seo_lists": "Gera listas SEO por categoria → tabela listas"
+    "5_slugify_autores": "Extrai autores únicos → tabelas autores + livros_autores",
+    "6_dedup": "Remove duplicatas → dedup_log",
+    "7_review": "Classificação editorial + idioma → status_review=1",
+    "8_synopsis": "LLM gera sinopse (schema universal v2) → sinopse, status_synopsis=1",
+    "9_covers": "Amazon→Google→OpenLibrary → imagem_url, status_cover∈{1,2}",
+    "10_quality_gate": "Valida todos os status → is_publishable=1",
+    "11_publish": "Upsert Supabase → status_publish=1 (guard: sinopse obrigatória)",
+    "12_publish_autores": "Publica autores + livros_autores no Supabase",
+    "13_list_composer": "Gera listas SEO por categoria (min 6 livros) e por autor (min 3 livros)",
+    "14_auditor_connectivity": "Testa conectividade de infra sem LLM → connectivity_log",
+    "15_auditor_content": "Audita coerência editorial via LLM → audit_log + despublicação automática (medium|high)"
   }
 }

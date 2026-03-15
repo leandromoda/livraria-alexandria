@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-14",
+    "last_updated": "2026-03-15",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -12,9 +12,10 @@
       "database_primary": "Supabase",
       "database_staging": "SQLite (pipeline local)",
       "database_staging_path": "scripts/data/books.db",
-      "llm_local": "Ollama (fallback)",
-      "llm_model": "gemini-2.5-flash (primary) / gemma2:9b (fallback)",
+      "llm_local": "Ollama (mistral:latest — fallback local)",
+      "llm_model": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
       "llm_execution_model": "multi_agent_fsm (Gemini primary → Ollama fallback)",
+      "llm_provider_control": "menu_driven — seleção por opção no pipeline (ollama | gemini | auto)",
       "python_env": "venv (Windows)",
       "ingest_language": "Python 3.14",
       "llm_primary": "Gemini API"
@@ -267,7 +268,9 @@
         "livros_autores",
         "dedup_log",
         "ingest_runs",
-        "pipeline_state"
+        "pipeline_state",
+        "audit_log",
+        "connectivity_log"
       ]
     }
   },
@@ -281,8 +284,19 @@
       "constrained_synopsis_generation",
       "json_schema_validation"
     ],
+    "fact_extractor_schema": {
+      "version": "2 — universal (ficção + não-ficção)",
+      "fields": [
+        "tema_central",
+        "abordagem",
+        "conceitos_chave",
+        "publico_alvo",
+        "proposta_valor"
+      ],
+      "previous_schema": "v1 — ficcional (ambientacao, contexto_social, conflito_central, personagens_mencionados, temas_explicitos)"
+    },
     "llm_constraints": {
-      "model": "gemini-2.5-flash (primary) / gemma2:9b (fallback)",
+      "model": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
       "allowed_operations": [
         "extraction",
         "compression",
@@ -294,6 +308,17 @@
         "creative expansion without source"
       ]
     }
+  },
+  "agent_memory": {
+    "status": "operational",
+    "storage": "SQLite pipeline_state table",
+    "agents": [
+      {
+        "name": "synopsis",
+        "memory_key": "agent::synopsis::memory",
+        "populated_by": ["auditor (content audit issues)", "synopsis pipeline (approved patterns)"]
+      }
+    ]
   },
   "ingest_pipeline": {
     "status": "operational_idioma_editorial_aware",
@@ -368,7 +393,7 @@
         "name": "Synopsis Generation",
         "status": "operational_factual_fsm_pipeline",
         "idioma_aware": true,
-        "llm": "gemini-2.5-flash (primary) / gemma2:9b (fallback)",
+        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
         "executor": "Markdown Agent Executor FSM",
         "agent_path": "agents/synopsis",
         "pipeline_architecture": [
@@ -394,7 +419,7 @@
         "name": "Review",
         "status": "operational_editorial_classifier",
         "idioma_aware": true,
-        "llm": "gemini-2.5-flash (primary) / gemma2:9b (fallback)",
+        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
         "outputs": [
           "idioma_resolved",
           "is_book",
@@ -471,7 +496,8 @@
           "created_at",
           "updated_at"
         ],
-        "on_409": "UPSERT gracioso — marca como publicado localmente"
+        "on_409": "UPSERT gracioso — marca como publicado localmente",
+        "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''"
       },
       {
         "order": 11,
@@ -481,28 +507,63 @@
         "script": "scripts/steps/publish_autores.py",
         "target": "Supabase.autores + Supabase.livros_autores",
         "upsert_mode": "POST ?on_conflict=slug",
-        "idioma_aware": false
+        "idioma_aware": false,
+        "credentials": "lidas de os.environ em runtime (não hardcoded)"
       },
       {
         "order": 12,
         "name": "List Composer",
         "status": "operational",
-        "description": "Geração automática de listas SEO por categoria com filtro editorial anti–thin content",
+        "description": "Geração automática de listas SEO por categoria e por autor",
         "script": "scripts/steps/list_composer.py",
         "tables_created": [
           "listas",
           "listas_livros"
         ],
         "generation_rules": {
-          "min_books_per_list": 6,
+          "min_books_per_list_categoria": 6,
+          "min_books_per_list_autor": 3,
           "max_books_per_list": 12,
           "max_lists_per_run": 200,
-          "min_high_score_books": 2,
-          "min_editorial_score": 2
+          "min_editorial_score": 1
         },
+        "list_types": [
+          "categoria (slug: melhores-livros-de-{categoria})",
+          "autor (slug: melhores-livros-de-{autor-slug})"
+        ],
         "source": "livros publicados",
         "execution_mode": "manual_menu_option",
         "menu_option": 13
+      },
+      {
+        "order": 14,
+        "name": "Auditor — Connectivity",
+        "status": "operational",
+        "description": "Testa conectividade de infra: Supabase endpoints, rotas do site, click API, imagens",
+        "script": "scripts/steps/auditor.py",
+        "mode": "connectivity",
+        "llm_required": false,
+        "menu_option": 14,
+        "output": "scripts/data/audit_connectivity_{ts}.json + SQLite connectivity_log"
+      },
+      {
+        "order": 15,
+        "name": "Auditor — Content",
+        "status": "operational",
+        "description": "Audita coerência editorial de sinopses via LLM. Despublica automaticamente severity=medium|high.",
+        "script": "scripts/steps/auditor.py",
+        "mode": "content",
+        "llm_required": true,
+        "llm": "configurável via menu (ollama | gemini | auto)",
+        "menu_option": 15,
+        "unpublish_threshold": "medium ou high",
+        "unpublish_actions": [
+          "SQLite: is_publishable=0, status_publish=0",
+          "Supabase: PATCH is_publishable=false"
+        ],
+        "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
+        "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
+        "flags": ["--limit N", "--dry-run"]
       }
     ]
   },
@@ -582,13 +643,14 @@
       "description": "Implementar timeout control no executor para reduzir geração longa do phi3:mini",
       "priority": "medium",
       "status": "resolved",
-      "resolution": "Migrado para Gemini API. Timeout Ollama=180s como fallback apenas."
+      "resolution": "Migrado para Gemini API. Timeout Ollama=600s como fallback apenas. Modelo local alterado para mistral:latest."
     },
     {
       "id": "TASK-PIPE-001",
       "description": "Completar steps 2-5 para os 107 seeds restantes",
       "priority": "high",
-      "status": "open"
+      "status": "resolved",
+      "resolution": "Steps 1-7 executados para 100 livros em 2026-03-15. Pipeline end-to-end validado."
     },
     {
       "id": "TASK-PIPE-002",
@@ -599,6 +661,25 @@
     {
       "id": "TASK-PIPE-003",
       "description": "Rodar step 11 (SEO lists) após publicação completa",
+      "priority": "medium",
+      "status": "resolved",
+      "resolution": "List Composer executado. Lista 'Melhores livros de Negócios' criada. Listas de autor adicionadas ao composer."
+    },
+    {
+      "id": "TASK-PIPE-004",
+      "description": "Gerar sinopses e publicar lote restante (~95 livros pendentes com status_synopsis=0)",
+      "priority": "high",
+      "status": "open"
+    },
+    {
+      "id": "TASK-REVIEW-001",
+      "description": "Investigar editorial_score sempre retornando 1 — impede filtros de qualidade do list_composer e quality_gate",
+      "priority": "medium",
+      "status": "open"
+    },
+    {
+      "id": "TASK-AUDIT-001",
+      "description": "Rodar auditor de conteúdo (opção 15) após completar publicação do lote principal",
       "priority": "medium",
       "status": "open"
     }

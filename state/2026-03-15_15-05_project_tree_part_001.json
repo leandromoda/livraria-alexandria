@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-03-14T18:46:03.202573",
+  "generated_at": "2026-03-15T15:05:22.896332",
   "project_root": "C:\\Users\\Leandro Moda\\livraria-alexandria",
   "filter_rules": {
     "app": {
       "max_depth": 3,
       "exts": [
-        ".tsx",
-        ".ts"
+        ".ts",
+        ".tsx"
       ]
     },
     "scripts": {
@@ -25,8 +25,8 @@
         ".json"
       ],
       "files_allowed": [
-        "db_state.json",
-        "project_state.json"
+        "project_state.json",
+        "db_state.json"
       ]
     },
     "docs": {
@@ -125,6 +125,10 @@
                     "name": "[slug]",
                     "type": "directory",
                     "children": []
+                  },
+                  {
+                    "name": "page.tsx",
+                    "type": "file"
                   }
                 ]
               },
@@ -239,6 +243,10 @@
             ]
           },
           {
+            "name": "icon.tsx",
+            "type": "file"
+          },
+          {
             "name": "layout.tsx",
             "type": "file"
           }
@@ -292,6 +300,10 @@
             "name": "steps",
             "type": "directory",
             "children": [
+              {
+                "name": "auditor.py",
+                "type": "file"
+              },
               {
                 "name": "covers.py",
                 "type": "file"

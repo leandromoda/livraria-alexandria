@@ -7,6 +7,7 @@ import uuid
 
 import requests
 from dotenv import load_dotenv
+from core.markdown_memory import load_memory
 
 # ======================================================
 # ENV
@@ -18,9 +19,21 @@ load_dotenv(dotenv_path=_ENV_PATH)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL   = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
-# Ollama — fallback local
+# Ollama — local
 OLLAMA_URL   = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
+
+# Provider ativo: "ollama" | "gemini" | "auto"
+# "auto" = comportamento original (gemini → ollama fallback)
+LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "ollama")
+_active_provider = LLM_PROVIDER
+
+
+def set_provider(provider: str) -> None:
+    """Define o provider LLM ativo para toda a sessão."""
+    global _active_provider
+    _active_provider = provider
+    print(f"[LLM] Provider ativo: {provider}")
 
 # ======================================================
 # PATHS
@@ -144,7 +157,7 @@ def _call_ollama(prompt: str) -> str:
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=180)
+        response = requests.post(url, json=payload, timeout=600)
     except requests.exceptions.ConnectionError:
         raise RuntimeError(
             f"OLLAMA_UNAVAILABLE — servidor não encontrado em {OLLAMA_URL}. "
@@ -170,10 +183,25 @@ def _call_ollama(prompt: str) -> str:
 
 def _call_llm(prompt: str) -> str:
     """
-    Tenta Gemini primeiro. Se falhar por qualquer motivo
-    (rate limit, sem key, erro de API), cai para Ollama.
+    Roteia chamada LLM conforme _active_provider:
+      "ollama" -> Ollama local (padrao)
+      "gemini" -> Gemini cloud
+      "auto"   -> Gemini -> Ollama fallback (comportamento legado)
     """
 
+    provider = _active_provider
+
+    if provider == "gemini":
+        result = _call_gemini(prompt)
+        print("[LLM] Provider: gemini")
+        return result
+
+    if provider == "ollama":
+        result = _call_ollama(prompt)
+        print(f"[LLM] Provider: ollama ({OLLAMA_MODEL})")
+        return result
+
+    # "auto" -- gemini -> ollama fallback
     if GEMINI_API_KEY:
         try:
             result = _call_gemini(prompt)
@@ -182,7 +210,7 @@ def _call_llm(prompt: str) -> str:
 
         except RuntimeError as e:
             reason = str(e)
-            print(f"[LLM] Gemini falhou ({reason[:80]}) — tentando Ollama…")
+            print(f"[LLM] Gemini falhou ({reason[:80]}) -- tentando Ollama...")
 
     result = _call_ollama(prompt)
     print(f"[LLM] Provider: ollama ({OLLAMA_MODEL})")
@@ -229,29 +257,29 @@ def _extract_json(text: str):
 def _validate_fact_schema(data: dict):
 
     required_keys = {
-        "ambientacao",
-        "contexto_social",
-        "conflito_central",
-        "personagens_mencionados",
-        "temas_explicitos",
+        "tema_central",
+        "abordagem",
+        "conceitos_chave",
+        "publico_alvo",
+        "proposta_valor",
     }
 
     if set(data.keys()) != required_keys:
         raise RuntimeError("INVALID_FACT_SCHEMA_KEYS")
 
-    if not isinstance(data["ambientacao"], str):
+    if not isinstance(data["tema_central"], str):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
-    if not isinstance(data["contexto_social"], str):
+    if not isinstance(data["abordagem"], str):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
-    if not isinstance(data["conflito_central"], str):
+    if not isinstance(data["conceitos_chave"], list):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
-    if not isinstance(data["personagens_mencionados"], list):
+    if not isinstance(data["publico_alvo"], str):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
-    if not isinstance(data["temas_explicitos"], list):
+    if not isinstance(data["proposta_valor"], str):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
 # ======================================================
@@ -266,11 +294,14 @@ def _run_abstract_structurer(state: dict) -> dict:
 
     _heartbeat("abstract_structurer_started")
 
+    conceitos = state.get("conceitos_chave", [])
+
     result = {
-        "contexto":         state.get("ambientacao", ""),
-        "situacao_central": state.get("conflito_central", ""),
-        "temas":            state.get("temas_explicitos", []),
-        "escopo_narrativo": state.get("contexto_social", ""),
+        "contexto":         state.get("tema_central", ""),
+        "situacao_central": state.get("abordagem", ""),
+        "temas":            conceitos,
+        "escopo_narrativo": state.get("publico_alvo", ""),
+        "proposta_valor":   state.get("proposta_valor", ""),
     }
 
     _heartbeat("abstract_structurer_finished")
@@ -395,6 +426,12 @@ def _run_synopsis_validator(state: dict) -> dict:
 
 def _build_prompt(identity, rules, task, input_data, stage):
 
+    memory_section = ""
+    if "agent_memory" in input_data:
+        memory_section = f"\n[AGENT_MEMORY]\n{input_data['agent_memory']}\n"
+
+    clean_input = {k: v for k, v in input_data.items() if k != "agent_memory"}
+
     return f"""
 EXECUTION_STAGE: {stage}
 STRICT_JSON_OUTPUT: TRUE
@@ -404,12 +441,12 @@ NO_META_TEXT: TRUE
 {identity}
 
 {rules}
-
+{memory_section}
 [TASK]
 {task}
 
 <INPUT_DATA_BEGIN>
-{json.dumps(input_data, ensure_ascii=False)}
+{json.dumps(clean_input, ensure_ascii=False)}
 </INPUT_DATA_END>
 """
 
@@ -530,6 +567,11 @@ def execute_agent(agent_name: str, context: dict):
         "abstract": "",
         "synopsis": "",
     }
+
+    agent_memory = load_memory("synopsis")
+    if agent_memory:
+        state["agent_memory"] = agent_memory
+        print(f"[MEMORY] Memória do agente synopsis carregada ({len(agent_memory)} chars)")
 
     _tmp_write(tmp_file, state)
 

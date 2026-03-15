@@ -14,6 +14,7 @@ from steps import quality_gate
 from steps import publish
 from steps import publish_autores
 from steps import list_composer
+from steps import auditor
 
 from steps.export_state_transcript import export_state_transcript
 
@@ -101,6 +102,25 @@ Escolha tamanho do pacote:
 
 
 # =========================
+# PROVIDER LLM
+# =========================
+
+def escolher_provider():
+
+    print("""
+Modelo LLM:
+
+1 → Ollama (local) [padrão]
+2 → Gemini (cloud)
+3 → Auto (Gemini → Ollama fallback)
+""")
+
+    op = input_safe("Modelo: ")
+
+    return {"1": "ollama", "2": "gemini", "3": "auto"}.get(op, "ollama")
+
+
+# =========================
 # MAIN LOOP
 # =========================
 
@@ -133,6 +153,10 @@ def main():
 11 → Publicar Supabase
 12 → Publicar Autores
 13 → Gerar listas SEO automáticas
+
+--- AUDITORIA ---
+14 → Auditar conectividade do site (sem LLM)
+15 → Auditar conteúdo publicado (LLM)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -180,6 +204,8 @@ def main():
 
         elif op == "8":
             pacote = escolher_pacote()
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
             synopsis.run(idioma, pacote)
 
         elif op == "9":
@@ -201,6 +227,34 @@ def main():
         elif op == "13":
             log("Gerando listas SEO automáticas…")
             list_composer.run()
+
+        elif op == "14":
+            log("Auditando conectividade do site…")
+            import argparse
+            args = argparse.Namespace(mode="connectivity", dry_run=False)
+            auditor.run(args)
+
+        elif op == "15":
+            print("""
+Limite de livros para auditoria:
+
+10 | 20 | 50 | 100
+""")
+            try:
+                limite = int(input_safe("Limite: "))
+            except ValueError:
+                limite = 20
+
+            dry_op = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+
+            log(f"Auditando conteúdo publicado (limit={limite}, dry_run={dry_run})…")
+            import argparse
+            args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
+            auditor.run(args)
 
         elif op == "91":
             log("Exportando Site Bootstrap…")
