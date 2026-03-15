@@ -55,7 +55,7 @@ async function getRecentClicks(): Promise<Click[]> {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  return (data as Click[]) ?? [];
+  return (data as unknown as Click[]) ?? [];
 }
 
 async function getTopLivros(): Promise<TopLivro[]> {
