@@ -140,4 +140,37 @@ def ensure_schema(conn):
     ON livros_autores(autor_id);
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS categorias (
+
+        id TEXT PRIMARY KEY,
+
+        nome TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+
+        status_publish INTEGER DEFAULT 0,
+        supabase_id TEXT,
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS livros_categorias (
+
+        livro_id     TEXT NOT NULL REFERENCES livros(id),
+        categoria_id TEXT NOT NULL REFERENCES categorias(id),
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+        PRIMARY KEY (livro_id, categoria_id)
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_livros_categorias_categoria_id
+    ON livros_categorias(categoria_id);
+    """)
+
     conn.commit()
