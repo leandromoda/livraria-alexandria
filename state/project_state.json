@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-15",
+    "last_updated": "2026-03-16",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -270,7 +270,10 @@
         "ingest_runs",
         "pipeline_state",
         "audit_log",
-        "connectivity_log"
+        "connectivity_log",
+        "seed_imports",
+        "offer_price_log",
+        "livros_categorias_tematicas"
       ]
     }
   },
@@ -564,6 +567,37 @@
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
         "flags": ["--limit N", "--dry-run"]
+      },
+      {
+        "order": 17,
+        "name": "Marketplace Scraper",
+        "status": "operational",
+        "description": "Extrai capa, descrição e preço direto do marketplace para livros com offer_url resolvida. Fallback: Google Books → OpenLibrary.",
+        "script": "scripts/steps/marketplace_scraper.py",
+        "idioma_aware": false,
+        "menu_option": 17
+      },
+      {
+        "order": 18,
+        "name": "Categorize",
+        "status": "operational",
+        "description": "Classifica livros em até 5 categorias temáticas da taxonomy.json usando LLM. Insere em livros_categorias_tematicas.",
+        "script": "scripts/steps/categorize.py",
+        "idioma_aware": false,
+        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
+        "menu_option": 18,
+        "progress_format": "[CATEGORIZE][NNN/TTT] → titulo"
+      },
+      {
+        "order": 19,
+        "name": "Offer Price Monitor",
+        "status": "operational",
+        "description": "Monitora preço e disponibilidade das ofertas no marketplace. Despublica automaticamente após detecção de indisponibilidade. Marca reactivation_pending=1 para reativação manual.",
+        "script": "scripts/steps/offer_price_monitor.py",
+        "idioma_aware": false,
+        "menu_option": 19,
+        "flags": ["--limit N", "--dry-run"],
+        "progress_format": "[MONITOR][NNN/TTT] → titulo"
       }
     ]
   },
@@ -680,6 +714,30 @@
     {
       "id": "TASK-AUDIT-001",
       "description": "Rodar auditor de conteúdo (opção 15) após completar publicação do lote principal",
+      "priority": "medium",
+      "status": "open"
+    },
+    {
+      "id": "TASK-SUPABASE-001",
+      "description": "Rodar migrations Supabase: ADD COLUMN preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ na tabela livros",
+      "priority": "high",
+      "status": "open"
+    },
+    {
+      "id": "TASK-PIPE-005",
+      "description": "Criar pasta scripts/data/seeds/ e mover arquivo atual offer_seeds.json para 001_offer_seeds.json dentro dela",
+      "priority": "high",
+      "status": "open"
+    },
+    {
+      "id": "TASK-PIPE-006",
+      "description": "Rodar step 17 (Marketplace Scraper) após resolver ofertas para capturar preços reais",
+      "priority": "high",
+      "status": "open"
+    },
+    {
+      "id": "TASK-PIPE-007",
+      "description": "Rodar step 18 (Categorize) após review para classificar livros na nova taxonomia temática",
       "priority": "medium",
       "status": "open"
     }

@@ -153,6 +153,49 @@
           "name": "offer_url",
           "type": "TEXT",
           "description": "URL de afiliado resolvida pelo offer_resolver"
+        },
+        {
+          "name": "status_enrich",
+          "type": "INTEGER",
+          "default": 0,
+          "values": {
+            "0": "pendente",
+            "1": "enriquecido via scraping",
+            "2": "enriquecido via fallback API"
+          }
+        },
+        {
+          "name": "preco_atual",
+          "type": "REAL",
+          "description": "Preço atual capturado do marketplace"
+        },
+        {
+          "name": "preco_anterior",
+          "type": "REAL",
+          "description": "Preço anterior para detecção de variação"
+        },
+        {
+          "name": "preco_updated_at",
+          "type": "DATETIME",
+          "description": "Última atualização de preço"
+        },
+        {
+          "name": "offer_status",
+          "type": "TEXT",
+          "default": "active",
+          "values": ["active", "unavailable", "price_changed", "error"]
+        },
+        {
+          "name": "reactivation_pending",
+          "type": "INTEGER",
+          "default": 0,
+          "description": "1 = oferta voltou a estar disponível, aguardando republicação manual"
+        },
+        {
+          "name": "status_categorize",
+          "type": "INTEGER",
+          "default": 0,
+          "description": "0=pendente | 1=categorizado"
         }
       ]
     },
@@ -463,6 +506,43 @@
           "type": "DATETIME"
         }
       ]
+    },
+    {
+      "name": "seed_imports",
+      "primary_key": "filename",
+      "description": "Rastreamento de arquivos de seed já importados",
+      "fields": [
+        {"name": "filename", "type": "TEXT"},
+        {"name": "imported_at", "type": "DATETIME"},
+        {"name": "inserted", "type": "INTEGER"},
+        {"name": "skipped", "type": "INTEGER"}
+      ]
+    },
+    {
+      "name": "offer_price_log",
+      "primary_key": "id",
+      "description": "Histórico de variações de preço por livro",
+      "fields": [
+        {"name": "id", "type": "TEXT"},
+        {"name": "livro_id", "type": "TEXT"},
+        {"name": "preco_anterior", "type": "REAL"},
+        {"name": "preco_novo", "type": "REAL"},
+        {"name": "offer_status", "type": "TEXT"},
+        {"name": "marketplace", "type": "TEXT"},
+        {"name": "captured_at", "type": "DATETIME"}
+      ]
+    },
+    {
+      "name": "livros_categorias_tematicas",
+      "primary_key": ["livro_id", "categoria_slug"],
+      "description": "Relação N:N entre livros e categorias temáticas expandidas (classificação LLM)",
+      "fields": [
+        {"name": "livro_id", "type": "TEXT"},
+        {"name": "categoria_slug", "type": "TEXT"},
+        {"name": "confidence", "type": "REAL", "description": "0.0–1.0 — confiança do LLM"},
+        {"name": "primary_cat", "type": "INTEGER", "default": 0, "description": "1 = categoria principal"},
+        {"name": "created_at", "type": "DATETIME"}
+      ]
     }
   ],
   "indexes": [
@@ -563,6 +643,9 @@
     "12_publish_autores": "Publica autores + livros_autores no Supabase",
     "13_list_composer": "Gera listas SEO por categoria (min 6 livros) e por autor (min 3 livros)",
     "14_auditor_connectivity": "Testa conectividade de infra sem LLM → connectivity_log",
-    "15_auditor_content": "Audita coerência editorial via LLM → audit_log + despublicação automática (medium|high)"
+    "15_auditor_content": "Audita coerência editorial via LLM → audit_log + despublicação automática (medium|high)",
+    "17_marketplace_scraper": "Scraping direto do marketplace → capa, descrição, preco_atual, status_enrich",
+    "18_categorize": "LLM classifica em taxonomy temática → livros_categorias_tematicas, status_categorize=1",
+    "19_offer_price_monitor": "Monitora preço e disponibilidade → offer_status, preco_atual, despublicação automática"
   }
 }

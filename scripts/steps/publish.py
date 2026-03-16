@@ -55,7 +55,8 @@ def fetch_pending(conn, idioma, limit):
             sinopse, isbn, ano_publicacao,
             imagem_url, supabase_id,
             is_publishable, editorial_score,
-            is_book, updated_at
+            is_book, updated_at,
+            preco_atual, offer_status
         FROM livros
         WHERE status_publish  = 0
           AND status_review   = 1
@@ -94,11 +95,12 @@ def build_payload(row):
      sinopse, isbn, ano_publicacao,
      imagem_url, existing_supabase_id,
      is_publishable, editorial_score,
-     is_book, local_updated_at) = row
+     is_book, local_updated_at,
+     preco_atual, offer_status) = row
 
     supabase_uuid = resolve_uuid(local_id, existing_supabase_id)
 
-    return {
+    payload = {
         "id":                 supabase_uuid,
         "titulo":             titulo,
         "slug":               slug,
@@ -115,6 +117,14 @@ def build_payload(row):
         "created_at":         now,
         "updated_at":         now,
     }
+
+    # Campos de preço e status de oferta (requerem migrations Supabase)
+    if preco_atual is not None:
+        payload["preco_atual"] = preco_atual
+    if offer_status:
+        payload["offer_status"] = offer_status
+
+    return payload
 
 
 # =========================

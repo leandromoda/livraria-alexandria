@@ -91,12 +91,15 @@ def ensure_schema(conn):
         cluster TEXT,
         fonte TEXT,
 
+        preco REAL,
+
         status_slug INTEGER DEFAULT 0,
         status_dedup INTEGER DEFAULT 0,
         status_synopsis INTEGER DEFAULT 0,
         status_review INTEGER DEFAULT 0,
         status_cover INTEGER DEFAULT 0,
         status_publish INTEGER DEFAULT 0,
+        status_publish_oferta INTEGER DEFAULT 0,
 
         supabase_id TEXT,
 
@@ -104,6 +107,23 @@ def ensure_schema(conn):
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
+
+    # Migrações para bancos existentes (colunas novas)
+    for col, definition in [
+        ("preco",                 "REAL"),
+        ("status_publish_oferta", "INTEGER DEFAULT 0"),
+        ("status_enrich",         "INTEGER DEFAULT 0"),
+        ("preco_atual",           "REAL"),
+        ("preco_anterior",        "REAL"),
+        ("preco_updated_at",      "DATETIME"),
+        ("offer_status",          "TEXT DEFAULT 'active'"),
+        ("reactivation_pending",  "INTEGER DEFAULT 0"),
+        ("status_categorize",     "INTEGER DEFAULT 0"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS autores (
@@ -171,6 +191,48 @@ def ensure_schema(conn):
     cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_livros_categorias_categoria_id
     ON livros_categorias(categoria_id);
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS seed_imports (
+        filename    TEXT PRIMARY KEY,
+        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        inserted    INTEGER DEFAULT 0,
+        skipped     INTEGER DEFAULT 0
+    );
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS offer_price_log (
+        id            TEXT PRIMARY KEY,
+        livro_id      TEXT NOT NULL REFERENCES livros(id),
+        preco_anterior REAL,
+        preco_novo    REAL,
+        offer_status  TEXT,
+        marketplace   TEXT,
+        captured_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_offer_price_log_livro_id
+    ON offer_price_log(livro_id);
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS livros_categorias_tematicas (
+        livro_id      TEXT NOT NULL REFERENCES livros(id),
+        categoria_slug TEXT NOT NULL,
+        confidence    REAL DEFAULT 1.0,
+        primary_cat   INTEGER DEFAULT 0,
+        created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (livro_id, categoria_slug)
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_lct_categoria_slug
+    ON livros_categorias_tematicas(categoria_slug);
     """)
 
     conn.commit()
