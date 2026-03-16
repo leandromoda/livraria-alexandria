@@ -1,0 +1,85 @@
+[
+{"titulo":"O Alquimista","autor":"Paulo Coelho","marketplace":"amazon","lookup_query":"O Alquimista Paulo Coelho livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":1988,"popularidade_id":5},
+{"titulo":"Brida","autor":"Paulo Coelho","marketplace":"mercado_livre","lookup_query":"Brida Paulo Coelho livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"Veronika Decide Morrer","autor":"Paulo Coelho","marketplace":"amazon","lookup_query":"Veronika Decide Morrer Paulo Coelho livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":1998,"popularidade_id":4},
+
+{"titulo":"O Monge e o Executivo","autor":"James C. Hunter","marketplace":"mercado_livre","lookup_query":"O Monge e o Executivo James C Hunter livro","categoria":"lideranca espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":5},
+{"titulo":"O Segredo","autor":"Rhonda Byrne","marketplace":"amazon","lookup_query":"O Segredo Rhonda Byrne livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"As Cinco Pessoas que Você Encontra no Céu","autor":"Mitch Albom","marketplace":"mercado_livre","lookup_query":"As Cinco Pessoas que Você Encontra no Ceu Mitch Albom livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2003,"popularidade_id":4},
+{"titulo":"Tuesdays with Morrie","autor":"Mitch Albom","marketplace":"amazon","lookup_query":"Tuesdays with Morrie Mitch Albom livro","categoria":"reflexao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1997,"popularidade_id":4},
+{"titulo":"A Cabana","autor":"William P. Young","marketplace":"mercado_livre","lookup_query":"A Cabana William P Young livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"O Profeta","autor":"Khalil Gibran","marketplace":"amazon","lookup_query":"O Profeta Khalil Gibran livro","categoria":"poesia espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1923,"popularidade_id":5},
+{"titulo":"Sidarta","autor":"Hermann Hesse","marketplace":"mercado_livre","lookup_query":"Sidarta Hermann Hesse livro","categoria":"romance filosofico","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1922,"popularidade_id":5},
+
+{"titulo":"O Pequeno Principe","autor":"Antoine de Saint-Exupery","marketplace":"amazon","lookup_query":"O Pequeno Principe Antoine de Saint Exupery livro","categoria":"fabula filosofica","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1943,"popularidade_id":5},
+{"titulo":"Ilusoes","autor":"Richard Bach","marketplace":"mercado_livre","lookup_query":"Ilusoes Richard Bach livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1977,"popularidade_id":4},
+{"titulo":"Fernão Capelo Gaivota","autor":"Richard Bach","marketplace":"amazon","lookup_query":"Fernao Capelo Gaivota Richard Bach livro","categoria":"fabula espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1970,"popularidade_id":5},
+{"titulo":"O Caminho do Guerreiro Pacífico","autor":"Dan Millman","marketplace":"mercado_livre","lookup_query":"O Caminho do Guerreiro Pacifico Dan Millman livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1980,"popularidade_id":4},
+{"titulo":"A Profecia Celestina","autor":"James Redfield","marketplace":"amazon","lookup_query":"A Profecia Celestina James Redfield livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1993,"popularidade_id":5},
+{"titulo":"A Decima Profecia","autor":"James Redfield","marketplace":"mercado_livre","lookup_query":"A Decima Profecia James Redfield livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1996,"popularidade_id":4},
+{"titulo":"O Segredo de Shambhala","autor":"James Redfield","marketplace":"amazon","lookup_query":"O Segredo de Shambhala James Redfield livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":3},
+
+{"titulo":"As Sete Leis Espirituais do Sucesso","autor":"Deepak Chopra","marketplace":"mercado_livre","lookup_query":"As Sete Leis Espirituais do Sucesso Deepak Chopra livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1994,"popularidade_id":5},
+{"titulo":"Buda","autor":"Deepak Chopra","marketplace":"amazon","lookup_query":"Buda Deepak Chopra livro","categoria":"romance espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2007,"popularidade_id":4},
+{"titulo":"A Vida Depois da Vida","autor":"Raymond Moody","marketplace":"mercado_livre","lookup_query":"A Vida Depois da Vida Raymond Moody livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1975,"popularidade_id":4},
+
+{"titulo":"Os Quatro Compromissos","autor":"Don Miguel Ruiz","marketplace":"amazon","lookup_query":"Os Quatro Compromissos Don Miguel Ruiz livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"O Quinto Compromisso","autor":"Don Miguel Ruiz","marketplace":"mercado_livre","lookup_query":"O Quinto Compromisso Don Miguel Ruiz livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":4},
+
+{"titulo":"O Poder do Agora","autor":"Eckhart Tolle","marketplace":"amazon","lookup_query":"O Poder do Agora Eckhart Tolle livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"Um Novo Mundo","autor":"Eckhart Tolle","marketplace":"mercado_livre","lookup_query":"Um Novo Mundo Eckhart Tolle livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":2005,"popularidade_id":4},
+
+{"titulo":"Conversando com Deus Vol 1","autor":"Neale Donald Walsch","marketplace":"amazon","lookup_query":"Conversando com Deus Neale Donald Walsch livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"Conversando com Deus Vol 2","autor":"Neale Donald Walsch","marketplace":"mercado_livre","lookup_query":"Conversando com Deus Vol 2 Neale Donald Walsch livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1997,"popularidade_id":4},
+{"titulo":"Conversando com Deus Vol 3","autor":"Neale Donald Walsch","marketplace":"amazon","lookup_query":"Conversando com Deus Vol 3 Neale Donald Walsch livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":4},
+
+{"titulo":"O Maior Vendedor do Mundo","autor":"Og Mandino","marketplace":"mercado_livre","lookup_query":"O Maior Vendedor do Mundo Og Mandino livro","categoria":"inspiracional","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1968,"popularidade_id":5},
+{"titulo":"O Milagre da Manha","autor":"Hal Elrod","marketplace":"amazon","lookup_query":"O Milagre da Manha Hal Elrod livro","categoria":"autoajuda espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+{"titulo":"Ansiedade","autor":"Augusto Cury","marketplace":"mercado_livre","lookup_query":"Ansiedade Augusto Cury livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2013,"popularidade_id":5},
+{"titulo":"O Vendedor de Sonhos","autor":"Augusto Cury","marketplace":"amazon","lookup_query":"O Vendedor de Sonhos Augusto Cury livro","categoria":"romance filosofico","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"Nunca Desista de Seus Sonhos","autor":"Augusto Cury","marketplace":"mercado_livre","lookup_query":"Nunca Desista de Seus Sonhos Augusto Cury livro","categoria":"inspiracional","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2004,"popularidade_id":4},
+
+{"titulo":"O Codigo da Inteligencia","autor":"Augusto Cury","marketplace":"amazon","lookup_query":"O Codigo da Inteligencia Augusto Cury livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":4},
+
+{"titulo":"Quem Mexeu no Meu Queijo","autor":"Spencer Johnson","marketplace":"mercado_livre","lookup_query":"Quem Mexeu no Meu Queijo Spencer Johnson livro","categoria":"parabola motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":5},
+
+{"titulo":"Pense e Enriqueça","autor":"Napoleon Hill","marketplace":"amazon","lookup_query":"Pense e Enriqueça Napoleon Hill livro","categoria":"motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"Mais Esperto que o Diabo","autor":"Napoleon Hill","marketplace":"mercado_livre","lookup_query":"Mais Esperto que o Diabo Napoleon Hill livro","categoria":"motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1938,"popularidade_id":5},
+
+{"titulo":"Seja Foda","autor":"Caio Carneiro","marketplace":"amazon","lookup_query":"Seja Foda Caio Carneiro livro","categoria":"motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2017,"popularidade_id":4},
+{"titulo":"O Poder da Acao","autor":"Paulo Vieira","marketplace":"mercado_livre","lookup_query":"O Poder da Acao Paulo Vieira livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":2015,"popularidade_id":5},
+
+{"titulo":"O Sucesso é Ser Feliz","autor":"Roberto Shinyashiki","marketplace":"amazon","lookup_query":"O Sucesso e Ser Feliz Roberto Shinyashiki livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":1,"ano_sorteado":1997,"popularidade_id":4},
+
+{"titulo":"Você Pode Curar Sua Vida","autor":"Louise Hay","marketplace":"mercado_livre","lookup_query":"Voce Pode Curar Sua Vida Louise Hay livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1984,"popularidade_id":5},
+
+{"titulo":"O Poder do Subconsciente","autor":"Joseph Murphy","marketplace":"amazon","lookup_query":"O Poder do Subconsciente Joseph Murphy livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1963,"popularidade_id":5},
+
+{"titulo":"O Poder da Intencao","autor":"Wayne Dyer","marketplace":"mercado_livre","lookup_query":"O Poder da Intencao Wayne Dyer livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2004,"popularidade_id":4},
+{"titulo":"Seus Pontos Fracos","autor":"Wayne Dyer","marketplace":"amazon","lookup_query":"Seus Pontos Fracos Wayne Dyer livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1976,"popularidade_id":4},
+
+{"titulo":"O Caminho das Sete Energias","autor":"Elizabeth Clare Prophet","marketplace":"mercado_livre","lookup_query":"O Caminho das Sete Energias Elizabeth Clare Prophet livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":3},
+
+{"titulo":"Autobiografia de um Iogue","autor":"Paramahansa Yogananda","marketplace":"amazon","lookup_query":"Autobiografia de um Iogue Paramahansa Yogananda livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1946,"popularidade_id":5},
+
+{"titulo":"O Monge que Vendeu sua Ferrari","autor":"Robin Sharma","marketplace":"mercado_livre","lookup_query":"O Monge que Vendeu sua Ferrari Robin Sharma livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"Lider sem Titulo","autor":"Robin Sharma","marketplace":"amazon","lookup_query":"Lider sem Titulo Robin Sharma livro","categoria":"motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":4},
+{"titulo":"Clube das 5 da Manha","autor":"Robin Sharma","marketplace":"mercado_livre","lookup_query":"Clube das 5 da Manha Robin Sharma livro","categoria":"motivacional","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":2018,"popularidade_id":5},
+
+{"titulo":"A Coragem de Ser Imperfeito","autor":"Brene Brown","marketplace":"amazon","lookup_query":"A Coragem de Ser Imperfeito Brene Brown livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":4},
+
+{"titulo":"A Arte da Felicidade","autor":"Dalai Lama","marketplace":"mercado_livre","lookup_query":"A Arte da Felicidade Dalai Lama livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1998,"popularidade_id":5},
+{"titulo":"O Livro da Alegria","autor":"Dalai Lama","marketplace":"amazon","lookup_query":"O Livro da Alegria Dalai Lama livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"Cartas de um Diabo a seu Aprendiz","autor":"C S Lewis","marketplace":"mercado_livre","lookup_query":"Cartas de um Diabo a seu Aprendiz CS Lewis livro","categoria":"ficcao espiritual","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1942,"popularidade_id":5},
+
+{"titulo":"Cristianismo Puro e Simples","autor":"C S Lewis","marketplace":"amazon","lookup_query":"Cristianismo Puro e Simples CS Lewis livro","categoria":"espiritualidade","idioma":"PT","cluster_id":101,"nacionalidade_id":3,"ano_sorteado":1952,"popularidade_id":5},
+
+{"titulo":"O Milagre do Mindset","autor":"Carol S Dweck","marketplace":"mercado_livre","lookup_query":"Mindset Carol Dweck livro","categoria":"desenvolvimento pessoal","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2006,"popularidade_id":5},
+
+{"titulo":"A Sutil Arte de Ligar o Foda-se","autor":"Mark Manson","marketplace":"amazon","lookup_query":"A Sutil Arte de Ligar o Foda se Mark Manson livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+
+{"titulo":"Tudo é Foda","autor":"Mark Manson","marketplace":"mercado_livre","lookup_query":"Tudo e Foda Mark Manson livro","categoria":"autoajuda","idioma":"PT","cluster_id":101,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":4}
+
+]

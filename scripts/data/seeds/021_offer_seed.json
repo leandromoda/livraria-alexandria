@@ -1,0 +1,89 @@
+[
+{"titulo":"A Divina Comédia","autor":"Dante Alighieri","marketplace":"amazon","lookup_query":"A Divina Comédia Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1320,"popularidade_id":5},
+{"titulo":"Vida Nova","autor":"Dante Alighieri","marketplace":"mercado_livre","lookup_query":"Vida Nova Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1295,"popularidade_id":4},
+{"titulo":"Rimas","autor":"Dante Alighieri","marketplace":"amazon","lookup_query":"Rimas Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1290,"popularidade_id":3},
+{"titulo":"Cancioneiro","autor":"Francesco Petrarca","marketplace":"mercado_livre","lookup_query":"Cancioneiro Francesco Petrarca livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1374,"popularidade_id":5},
+{"titulo":"Triunfos","autor":"Francesco Petrarca","marketplace":"amazon","lookup_query":"Triunfos Francesco Petrarca livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1370,"popularidade_id":4},
+{"titulo":"Poemas Selecionados","autor":"Francesco Petrarca","marketplace":"mercado_livre","lookup_query":"Poemas Selecionados Francesco Petrarca livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1360,"popularidade_id":3},
+{"titulo":"Cantos","autor":"Giacomo Leopardi","marketplace":"amazon","lookup_query":"Cantos Giacomo Leopardi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1835,"popularidade_id":5},
+{"titulo":"Pequenas Obras Morais","autor":"Giacomo Leopardi","marketplace":"mercado_livre","lookup_query":"Pequenas Obras Morais Giacomo Leopardi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1827,"popularidade_id":4},
+{"titulo":"Poemas","autor":"Giacomo Leopardi","marketplace":"amazon","lookup_query":"Poemas Giacomo Leopardi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1831,"popularidade_id":4},
+{"titulo":"Alegria","autor":"Giuseppe Ungaretti","marketplace":"mercado_livre","lookup_query":"Alegria Giuseppe Ungaretti livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1931,"popularidade_id":4},
+{"titulo":"Sentimento do Tempo","autor":"Giuseppe Ungaretti","marketplace":"amazon","lookup_query":"Sentimento do Tempo Giuseppe Ungaretti livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1933,"popularidade_id":4},
+{"titulo":"Terra Prometida","autor":"Giuseppe Ungaretti","marketplace":"mercado_livre","lookup_query":"Terra Prometida Giuseppe Ungaretti livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1950,"popularidade_id":3},
+{"titulo":"Ossi di Seppia","autor":"Eugenio Montale","marketplace":"amazon","lookup_query":"Ossi di Seppia Eugenio Montale livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1925,"popularidade_id":4},
+{"titulo":"As Ocasiões","autor":"Eugenio Montale","marketplace":"mercado_livre","lookup_query":"As Ocasiões Eugenio Montale livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1939,"popularidade_id":4},
+{"titulo":"A Tempestade e Outros Poemas","autor":"Eugenio Montale","marketplace":"amazon","lookup_query":"A Tempestade e Outros Poemas Eugenio Montale livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1956,"popularidade_id":4},
+{"titulo":"Água e Terra","autor":"Salvatore Quasimodo","marketplace":"mercado_livre","lookup_query":"Água e Terra Salvatore Quasimodo livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1930,"popularidade_id":3},
+{"titulo":"E de Súbito é Noite","autor":"Salvatore Quasimodo","marketplace":"amazon","lookup_query":"E de Súbito é Noite Salvatore Quasimodo livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1942,"popularidade_id":4},
+{"titulo":"As Cinzas de Gramsci","autor":"Pier Paolo Pasolini","marketplace":"mercado_livre","lookup_query":"As Cinzas de Gramsci Pier Paolo Pasolini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1957,"popularidade_id":4},
+{"titulo":"Poesia em Forma de Rosa","autor":"Pier Paolo Pasolini","marketplace":"amazon","lookup_query":"Poesia em Forma de Rosa Pier Paolo Pasolini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1964,"popularidade_id":3},
+{"titulo":"Orlando Furioso","autor":"Ludovico Ariosto","marketplace":"mercado_livre","lookup_query":"Orlando Furioso Ludovico Ariosto livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1532,"popularidade_id":5},
+{"titulo":"Jerusalém Libertada","autor":"Torquato Tasso","marketplace":"amazon","lookup_query":"Jerusalém Libertada Torquato Tasso livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1581,"popularidade_id":5},
+{"titulo":"Rimas","autor":"Torquato Tasso","marketplace":"mercado_livre","lookup_query":"Rimas Torquato Tasso livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1591,"popularidade_id":3},
+{"titulo":"Poemas","autor":"Umberto Saba","marketplace":"amazon","lookup_query":"Poemas Umberto Saba livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1948,"popularidade_id":4},
+{"titulo":"Canzoniere","autor":"Umberto Saba","marketplace":"mercado_livre","lookup_query":"Canzoniere Umberto Saba livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1921,"popularidade_id":4},
+{"titulo":"Diário de Alguém","autor":"Umberto Saba","marketplace":"amazon","lookup_query":"Diário de Alguém Umberto Saba livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1953,"popularidade_id":3},
+{"titulo":"Poemas","autor":"Cesare Pavese","marketplace":"mercado_livre","lookup_query":"Poemas Cesare Pavese livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1936,"popularidade_id":3},
+{"titulo":"Trabalhar Cansa","autor":"Cesare Pavese","marketplace":"amazon","lookup_query":"Trabalhar Cansa Cesare Pavese livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1936,"popularidade_id":4},
+{"titulo":"Virá a Morte e Terá Teus Olhos","autor":"Cesare Pavese","marketplace":"mercado_livre","lookup_query":"Virá a Morte e Terá Teus Olhos Cesare Pavese livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1951,"popularidade_id":4},
+
+{"titulo":"Poemas","autor":"Alda Merini","marketplace":"amazon","lookup_query":"Poemas Alda Merini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1989,"popularidade_id":3},
+{"titulo":"A Terra Santa","autor":"Alda Merini","marketplace":"mercado_livre","lookup_query":"A Terra Santa Alda Merini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1984,"popularidade_id":3},
+{"titulo":"Baladas Não Pagas","autor":"Alda Merini","marketplace":"amazon","lookup_query":"Baladas Não Pagas Alda Merini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1995,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Vittorio Sereni","marketplace":"mercado_livre","lookup_query":"Poemas Vittorio Sereni livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1941,"popularidade_id":3},
+{"titulo":"Diário da Argélia","autor":"Vittorio Sereni","marketplace":"amazon","lookup_query":"Diário da Argélia Vittorio Sereni livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1947,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Andrea Zanzotto","marketplace":"mercado_livre","lookup_query":"Poemas Andrea Zanzotto livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1962,"popularidade_id":3},
+{"titulo":"Beltà","autor":"Andrea Zanzotto","marketplace":"amazon","lookup_query":"Beltà Andrea Zanzotto livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1968,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Mario Luzi","marketplace":"mercado_livre","lookup_query":"Poemas Mario Luzi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1952,"popularidade_id":3},
+{"titulo":"No Fundo das Campinas","autor":"Mario Luzi","marketplace":"amazon","lookup_query":"No Fundo das Campinas Mario Luzi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1963,"popularidade_id":3},
+{"titulo":"Viagem Terrestre e Celeste","autor":"Mario Luzi","marketplace":"mercado_livre","lookup_query":"Viagem Terrestre e Celeste Mario Luzi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1994,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Attilio Bertolucci","marketplace":"amazon","lookup_query":"Poemas Attilio Bertolucci livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1955,"popularidade_id":3},
+{"titulo":"Viagem de Inverno","autor":"Attilio Bertolucci","marketplace":"mercado_livre","lookup_query":"Viagem de Inverno Attilio Bertolucci livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1971,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Sandro Penna","marketplace":"amazon","lookup_query":"Poemas Sandro Penna livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1957,"popularidade_id":3},
+{"titulo":"Estranho Amor","autor":"Sandro Penna","marketplace":"mercado_livre","lookup_query":"Estranho Amor Sandro Penna livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1970,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Franco Fortini","marketplace":"amazon","lookup_query":"Poemas Franco Fortini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1958,"popularidade_id":3},
+{"titulo":"Uma Vez para Sempre","autor":"Franco Fortini","marketplace":"mercado_livre","lookup_query":"Uma Vez para Sempre Franco Fortini livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1963,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Patrizia Cavalli","marketplace":"amazon","lookup_query":"Poemas Patrizia Cavalli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1974,"popularidade_id":3},
+{"titulo":"Sempre Aberto Teatro","autor":"Patrizia Cavalli","marketplace":"mercado_livre","lookup_query":"Sempre Aberto Teatro Patrizia Cavalli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1999,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Valerio Magrelli","marketplace":"amazon","lookup_query":"Poemas Valerio Magrelli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1980,"popularidade_id":3},
+{"titulo":"Ora Serrata Retinae","autor":"Valerio Magrelli","marketplace":"mercado_livre","lookup_query":"Ora Serrata Retinae Valerio Magrelli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1980,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Antonella Anedda","marketplace":"amazon","lookup_query":"Poemas Antonella Anedda livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1992,"popularidade_id":3},
+{"titulo":"Residenze Invernali","autor":"Antonella Anedda","marketplace":"mercado_livre","lookup_query":"Residenze Invernali Antonella Anedda livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1992,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Dino Campana","marketplace":"amazon","lookup_query":"Poemas Dino Campana livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1914,"popularidade_id":4},
+{"titulo":"Cantos Órficos","autor":"Dino Campana","marketplace":"mercado_livre","lookup_query":"Cantos Órficos Dino Campana livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1914,"popularidade_id":4},
+
+{"titulo":"Poemas","autor":"Guido Gozzano","marketplace":"amazon","lookup_query":"Poemas Guido Gozzano livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1911,"popularidade_id":3},
+{"titulo":"Os Colóquios","autor":"Guido Gozzano","marketplace":"mercado_livre","lookup_query":"Os Colóquios Guido Gozzano livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1911,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Corrado Govoni","marketplace":"amazon","lookup_query":"Poemas Corrado Govoni livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1915,"popularidade_id":3},
+{"titulo":"Poesias Futuristas","autor":"Corrado Govoni","marketplace":"mercado_livre","lookup_query":"Poesias Futuristas Corrado Govoni livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1919,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Giovanni Pascoli","marketplace":"amazon","lookup_query":"Poemas Giovanni Pascoli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1897,"popularidade_id":4},
+{"titulo":"Myricae","autor":"Giovanni Pascoli","marketplace":"mercado_livre","lookup_query":"Myricae Giovanni Pascoli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1891,"popularidade_id":4},
+{"titulo":"Cantos de Castelvecchio","autor":"Giovanni Pascoli","marketplace":"amazon","lookup_query":"Cantos de Castelvecchio Giovanni Pascoli livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1903,"popularidade_id":3},
+
+{"titulo":"Poemas","autor":"Gabriele D’Annunzio","marketplace":"mercado_livre","lookup_query":"Poemas Gabriele D’Annunzio livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1900,"popularidade_id":4},
+{"titulo":"Alcyone","autor":"Gabriele D’Annunzio","marketplace":"amazon","lookup_query":"Alcyone Gabriele D’Annunzio livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1903,"popularidade_id":4},
+
+{"titulo":"Antologia da Poesia Italiana","autor":"Carlo Muscetta","marketplace":"mercado_livre","lookup_query":"Antologia da Poesia Italiana Carlo Muscetta livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1970,"popularidade_id":4},
+{"titulo":"Grande Antologia da Poesia Italiana","autor":"Edoardo Sanguineti","marketplace":"amazon","lookup_query":"Grande Antologia da Poesia Italiana Edoardo Sanguineti livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1993,"popularidade_id":4},
+{"titulo":"Antologia da Poesia Italiana Moderna","autor":"Luciano Anceschi","marketplace":"mercado_livre","lookup_query":"Antologia da Poesia Italiana Moderna Luciano Anceschi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1958,"popularidade_id":3},
+{"titulo":"Antologia da Poesia Italiana Contemporânea","autor":"Maurizio Cucchi","marketplace":"amazon","lookup_query":"Antologia da Poesia Italiana Contemporânea Maurizio Cucchi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":2005,"popularidade_id":3},
+{"titulo":"Panorama da Poesia Italiana","autor":"Giuliano Manacorda","marketplace":"mercado_livre","lookup_query":"Panorama da Poesia Italiana Giuliano Manacorda livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1981,"popularidade_id":3},
+{"titulo":"Poetas Italianos do Século XX","autor":"Antonio Porta","marketplace":"amazon","lookup_query":"Poetas Italianos do Século XX Antonio Porta livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1990,"popularidade_id":3},
+{"titulo":"Poetas Italianos Modernos","autor":"Franco Loi","marketplace":"mercado_livre","lookup_query":"Poetas Italianos Modernos Franco Loi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1985,"popularidade_id":3},
+{"titulo":"Poetas Italianos Essenciais","autor":"Roberto Mussapi","marketplace":"amazon","lookup_query":"Poetas Italianos Essenciais Roberto Mussapi livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":2000,"popularidade_id":3},
+{"titulo":"Clássicos da Poesia Italiana","autor":"Giuseppe Savoca","marketplace":"mercado_livre","lookup_query":"Clássicos da Poesia Italiana Giuseppe Savoca livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":1995,"popularidade_id":3},
+{"titulo":"Tesouros da Poesia Italiana","autor":"Marco Santagata","marketplace":"amazon","lookup_query":"Tesouros da Poesia Italiana Marco Santagata livro","categoria":"poesia","idioma":"PT","cluster_id":201,"nacionalidade_id":39,"ano_sorteado":2004,"popularidade_id":3}
+]

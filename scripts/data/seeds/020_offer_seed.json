@@ -1,0 +1,144 @@
+[
+{"titulo":"Dubliners","autor":"James Joyce","marketplace":"amazon","lookup_query":"Dubliners James Joyce livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1914,"popularidade_id":5},
+{"titulo":"Ulysses","autor":"James Joyce","marketplace":"mercado_livre","lookup_query":"Ulysses James Joyce livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1922,"popularidade_id":5},
+{"titulo":"A Portrait of the Artist as a Young Man","autor":"James Joyce","marketplace":"amazon","lookup_query":"A Portrait of the Artist as a Young Man James Joyce livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1916,"popularidade_id":4},
+
+{"titulo":"The Picture of Dorian Gray","autor":"Oscar Wilde","marketplace":"mercado_livre","lookup_query":"The Picture of Dorian Gray Oscar Wilde livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"De Profundis","autor":"Oscar Wilde","marketplace":"amazon","lookup_query":"De Profundis Oscar Wilde livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1905,"popularidade_id":4},
+{"titulo":"The Importance of Being Earnest","autor":"Oscar Wilde","marketplace":"mercado_livre","lookup_query":"The Importance of Being Earnest Oscar Wilde livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1895,"popularidade_id":4},
+
+{"titulo":"The Tower","autor":"W. B. Yeats","marketplace":"amazon","lookup_query":"The Tower W B Yeats livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1928,"popularidade_id":4},
+{"titulo":"The Wind Among the Reeds","autor":"W. B. Yeats","marketplace":"mercado_livre","lookup_query":"The Wind Among the Reeds W B Yeats livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1899,"popularidade_id":3},
+{"titulo":"Selected Poems","autor":"W. B. Yeats","marketplace":"amazon","lookup_query":"Selected Poems W B Yeats livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1933,"popularidade_id":4},
+
+{"titulo":"Waiting for Godot","autor":"Samuel Beckett","marketplace":"mercado_livre","lookup_query":"Waiting for Godot Samuel Beckett livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1953,"popularidade_id":5},
+{"titulo":"Molloy","autor":"Samuel Beckett","marketplace":"amazon","lookup_query":"Molloy Samuel Beckett livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1951,"popularidade_id":4},
+{"titulo":"Malone Dies","autor":"Samuel Beckett","marketplace":"mercado_livre","lookup_query":"Malone Dies Samuel Beckett livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1951,"popularidade_id":4},
+
+{"titulo":"Gulliver's Travels","autor":"Jonathan Swift","marketplace":"amazon","lookup_query":"Gulliver's Travels Jonathan Swift livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1726,"popularidade_id":5},
+{"titulo":"A Modest Proposal","autor":"Jonathan Swift","marketplace":"mercado_livre","lookup_query":"A Modest Proposal Jonathan Swift livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1729,"popularidade_id":4},
+{"titulo":"A Tale of a Tub","autor":"Jonathan Swift","marketplace":"amazon","lookup_query":"A Tale of a Tub Jonathan Swift livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1704,"popularidade_id":3},
+
+{"titulo":"Dracula","autor":"Bram Stoker","marketplace":"mercado_livre","lookup_query":"Dracula Bram Stoker livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1897,"popularidade_id":5},
+{"titulo":"The Jewel of Seven Stars","autor":"Bram Stoker","marketplace":"amazon","lookup_query":"The Jewel of Seven Stars Bram Stoker livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1903,"popularidade_id":3},
+{"titulo":"The Lair of the White Worm","autor":"Bram Stoker","marketplace":"mercado_livre","lookup_query":"The Lair of the White Worm Bram Stoker livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1911,"popularidade_id":3},
+
+{"titulo":"The Lion the Witch and the Wardrobe","autor":"C. S. Lewis","marketplace":"amazon","lookup_query":"The Lion the Witch and the Wardrobe C S Lewis livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1950,"popularidade_id":5},
+{"titulo":"Mere Christianity","autor":"C. S. Lewis","marketplace":"mercado_livre","lookup_query":"Mere Christianity C S Lewis livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1952,"popularidade_id":4},
+{"titulo":"The Screwtape Letters","autor":"C. S. Lewis","marketplace":"amazon","lookup_query":"The Screwtape Letters C S Lewis livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1942,"popularidade_id":4},
+
+{"titulo":"Death of a Naturalist","autor":"Seamus Heaney","marketplace":"mercado_livre","lookup_query":"Death of a Naturalist Seamus Heaney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1966,"popularidade_id":4},
+{"titulo":"North","autor":"Seamus Heaney","marketplace":"amazon","lookup_query":"North Seamus Heaney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1975,"popularidade_id":4},
+{"titulo":"Opened Ground","autor":"Seamus Heaney","marketplace":"mercado_livre","lookup_query":"Opened Ground Seamus Heaney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1998,"popularidade_id":4},
+
+{"titulo":"The Commitments","autor":"Roddy Doyle","marketplace":"amazon","lookup_query":"The Commitments Roddy Doyle livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1987,"popularidade_id":4},
+{"titulo":"Paddy Clarke Ha Ha Ha","autor":"Roddy Doyle","marketplace":"mercado_livre","lookup_query":"Paddy Clarke Ha Ha Ha Roddy Doyle livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1993,"popularidade_id":4},
+{"titulo":"The Woman Who Walked Into Doors","autor":"Roddy Doyle","marketplace":"amazon","lookup_query":"The Woman Who Walked Into Doors Roddy Doyle livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1996,"popularidade_id":3},
+
+{"titulo":"Brooklyn","autor":"Colm Tóibín","marketplace":"mercado_livre","lookup_query":"Brooklyn Colm Toibin livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2009,"popularidade_id":5},
+{"titulo":"The Master","autor":"Colm Tóibín","marketplace":"amazon","lookup_query":"The Master Colm Toibin livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2004,"popularidade_id":4},
+{"titulo":"Nora Webster","autor":"Colm Tóibín","marketplace":"mercado_livre","lookup_query":"Nora Webster Colm Toibin livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2014,"popularidade_id":4},
+
+{"titulo":"Normal People","autor":"Sally Rooney","marketplace":"amazon","lookup_query":"Normal People Sally Rooney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2018,"popularidade_id":5},
+{"titulo":"Conversations with Friends","autor":"Sally Rooney","marketplace":"mercado_livre","lookup_query":"Conversations with Friends Sally Rooney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2017,"popularidade_id":4},
+{"titulo":"Beautiful World Where Are You","autor":"Sally Rooney","marketplace":"amazon","lookup_query":"Beautiful World Where Are You Sally Rooney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2021,"popularidade_id":4},
+
+{"titulo":"The Sea","autor":"John Banville","marketplace":"mercado_livre","lookup_query":"The Sea John Banville livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2005,"popularidade_id":4},
+{"titulo":"Ancient Light","autor":"John Banville","marketplace":"amazon","lookup_query":"Ancient Light John Banville livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2012,"popularidade_id":3},
+{"titulo":"The Book of Evidence","autor":"John Banville","marketplace":"mercado_livre","lookup_query":"The Book of Evidence John Banville livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1989,"popularidade_id":3},
+
+{"titulo":"The Gathering","autor":"Anne Enright","marketplace":"amazon","lookup_query":"The Gathering Anne Enright livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2007,"popularidade_id":4},
+{"titulo":"Actress","autor":"Anne Enright","marketplace":"mercado_livre","lookup_query":"Actress Anne Enright livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2020,"popularidade_id":3},
+{"titulo":"The Green Road","autor":"Anne Enright","marketplace":"amazon","lookup_query":"The Green Road Anne Enright livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2015,"popularidade_id":3},
+
+{"titulo":"The Country Girls","autor":"Edna O'Brien","marketplace":"mercado_livre","lookup_query":"The Country Girls Edna OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1960,"popularidade_id":4},
+{"titulo":"Girl","autor":"Edna O'Brien","marketplace":"amazon","lookup_query":"Girl Edna OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2019,"popularidade_id":3},
+{"titulo":"Mother Ireland","autor":"Edna O'Brien","marketplace":"mercado_livre","lookup_query":"Mother Ireland Edna OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1976,"popularidade_id":3},
+
+{"titulo":"At Swim-Two-Birds","autor":"Flann O'Brien","marketplace":"amazon","lookup_query":"At Swim-Two-Birds Flann OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1939,"popularidade_id":4},
+{"titulo":"The Third Policeman","autor":"Flann O'Brien","marketplace":"mercado_livre","lookup_query":"The Third Policeman Flann OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1967,"popularidade_id":4},
+{"titulo":"The Dalkey Archive","autor":"Flann O'Brien","marketplace":"amazon","lookup_query":"The Dalkey Archive Flann OBrien livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1964,"popularidade_id":3},
+
+{"titulo":"Angela's Ashes","autor":"Frank McCourt","marketplace":"mercado_livre","lookup_query":"Angelas Ashes Frank McCourt livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1996,"popularidade_id":5},
+{"titulo":"'Tis","autor":"Frank McCourt","marketplace":"amazon","lookup_query":"Tis Frank McCourt livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1999,"popularidade_id":3},
+
+{"titulo":"Foster","autor":"Claire Keegan","marketplace":"mercado_livre","lookup_query":"Foster Claire Keegan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2010,"popularidade_id":4},
+{"titulo":"Small Things Like These","autor":"Claire Keegan","marketplace":"amazon","lookup_query":"Small Things Like These Claire Keegan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2021,"popularidade_id":4},
+
+{"titulo":"Days Without End","autor":"Sebastian Barry","marketplace":"mercado_livre","lookup_query":"Days Without End Sebastian Barry livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2016,"popularidade_id":4},
+{"titulo":"A Long Long Way","autor":"Sebastian Barry","marketplace":"amazon","lookup_query":"A Long Long Way Sebastian Barry livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2005,"popularidade_id":3},
+
+{"titulo":"Room","autor":"Emma Donoghue","marketplace":"mercado_livre","lookup_query":"Room Emma Donoghue livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2010,"popularidade_id":5},
+{"titulo":"Slammerkin","autor":"Emma Donoghue","marketplace":"amazon","lookup_query":"Slammerkin Emma Donoghue livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2000,"popularidade_id":3},
+
+{"titulo":"In the Woods","autor":"Tana French","marketplace":"mercado_livre","lookup_query":"In the Woods Tana French livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2007,"popularidade_id":4},
+{"titulo":"The Likeness","autor":"Tana French","marketplace":"amazon","lookup_query":"The Likeness Tana French livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2008,"popularidade_id":3},
+
+{"titulo":"Artemis Fowl","autor":"Eoin Colfer","marketplace":"mercado_livre","lookup_query":"Artemis Fowl Eoin Colfer livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2001,"popularidade_id":5},
+{"titulo":"The Wish List","autor":"Eoin Colfer","marketplace":"amazon","lookup_query":"The Wish List Eoin Colfer livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2000,"popularidade_id":3},
+
+{"titulo":"Carmilla","autor":"Joseph Sheridan Le Fanu","marketplace":"mercado_livre","lookup_query":"Carmilla Joseph Sheridan Le Fanu livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1872,"popularidade_id":4},
+{"titulo":"Uncle Silas","autor":"Joseph Sheridan Le Fanu","marketplace":"amazon","lookup_query":"Uncle Silas Joseph Sheridan Le Fanu livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1864,"popularidade_id":3},
+
+{"titulo":"Gods and Fighting Men","autor":"Lady Gregory","marketplace":"mercado_livre","lookup_query":"Gods and Fighting Men Lady Gregory livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1904,"popularidade_id":3},
+{"titulo":"Cuchulain of Muirthemne","autor":"Lady Gregory","marketplace":"amazon","lookup_query":"Cuchulain of Muirthemne Lady Gregory livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1902,"popularidade_id":3},
+
+{"titulo":"The Playboy of the Western World","autor":"J. M. Synge","marketplace":"mercado_livre","lookup_query":"The Playboy of the Western World J M Synge livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1907,"popularidade_id":4},
+{"titulo":"Riders to the Sea","autor":"J. M. Synge","marketplace":"amazon","lookup_query":"Riders to the Sea J M Synge livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1904,"popularidade_id":3},
+
+{"titulo":"Borstal Boy","autor":"Brendan Behan","marketplace":"mercado_livre","lookup_query":"Borstal Boy Brendan Behan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1958,"popularidade_id":3},
+{"titulo":"The Quare Fellow","autor":"Brendan Behan","marketplace":"amazon","lookup_query":"The Quare Fellow Brendan Behan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1954,"popularidade_id":3},
+
+{"titulo":"The Great Hunger","autor":"Patrick Kavanagh","marketplace":"mercado_livre","lookup_query":"The Great Hunger Patrick Kavanagh livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1942,"popularidade_id":3},
+{"titulo":"Collected Poems","autor":"Patrick Kavanagh","marketplace":"amazon","lookup_query":"Collected Poems Patrick Kavanagh livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1964,"popularidade_id":3},
+
+{"titulo":"Night-Crossing","autor":"Derek Mahon","marketplace":"mercado_livre","lookup_query":"Night-Crossing Derek Mahon livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1968,"popularidade_id":3},
+{"titulo":"Selected Poems","autor":"Derek Mahon","marketplace":"amazon","lookup_query":"Selected Poems Derek Mahon livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1991,"popularidade_id":3},
+
+{"titulo":"Moy Sand and Gravel","autor":"Paul Muldoon","marketplace":"mercado_livre","lookup_query":"Moy Sand and Gravel Paul Muldoon livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2002,"popularidade_id":3},
+{"titulo":"New Selected Poems","autor":"Paul Muldoon","marketplace":"amazon","lookup_query":"New Selected Poems Paul Muldoon livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2014,"popularidade_id":3},
+
+{"titulo":"In a Time of Violence","autor":"Eavan Boland","marketplace":"mercado_livre","lookup_query":"In a Time of Violence Eavan Boland livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1994,"popularidade_id":3},
+{"titulo":"A Woman Without a Country","autor":"Eavan Boland","marketplace":"amazon","lookup_query":"A Woman Without a Country Eavan Boland livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2014,"popularidade_id":3},
+
+{"titulo":"Let the Great World Spin","autor":"Colum McCann","marketplace":"mercado_livre","lookup_query":"Let the Great World Spin Colum McCann livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2009,"popularidade_id":4},
+{"titulo":"TransAtlantic","autor":"Colum McCann","marketplace":"amazon","lookup_query":"TransAtlantic Colum McCann livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2013,"popularidade_id":3},
+
+{"titulo":"City of Bohane","autor":"Kevin Barry","marketplace":"mercado_livre","lookup_query":"City of Bohane Kevin Barry livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2011,"popularidade_id":3},
+{"titulo":"Night Boat to Tangier","autor":"Kevin Barry","marketplace":"amazon","lookup_query":"Night Boat to Tangier Kevin Barry livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2019,"popularidade_id":3},
+
+{"titulo":"Felicia's Journey","autor":"William Trevor","marketplace":"mercado_livre","lookup_query":"Felicias Journey William Trevor livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1994,"popularidade_id":3},
+{"titulo":"The Story of Lucy Gault","autor":"William Trevor","marketplace":"amazon","lookup_query":"The Story of Lucy Gault William Trevor livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2002,"popularidade_id":3},
+
+{"titulo":"Circle of Friends","autor":"Maeve Binchy","marketplace":"mercado_livre","lookup_query":"Circle of Friends Maeve Binchy livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"Tara Road","autor":"Maeve Binchy","marketplace":"amazon","lookup_query":"Tara Road Maeve Binchy livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1998,"popularidade_id":3},
+
+{"titulo":"Watermelon","autor":"Marian Keyes","marketplace":"mercado_livre","lookup_query":"Watermelon Marian Keyes livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1995,"popularidade_id":3},
+{"titulo":"Rachel's Holiday","autor":"Marian Keyes","marketplace":"amazon","lookup_query":"Rachels Holiday Marian Keyes livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1998,"popularidade_id":3},
+
+{"titulo":"PS I Love You","autor":"Cecelia Ahern","marketplace":"mercado_livre","lookup_query":"PS I Love You Cecelia Ahern livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2004,"popularidade_id":4},
+{"titulo":"Where Rainbows End","autor":"Cecelia Ahern","marketplace":"amazon","lookup_query":"Where Rainbows End Cecelia Ahern livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2004,"popularidade_id":3},
+
+{"titulo":"Are You Somebody?","autor":"Nuala O'Faolain","marketplace":"mercado_livre","lookup_query":"Are You Somebody Nuala OFaolain livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1996,"popularidade_id":3},
+{"titulo":"Almost There","autor":"Nuala O'Faolain","marketplace":"amazon","lookup_query":"Almost There Nuala OFaolain livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2003,"popularidade_id":3},
+
+{"titulo":"The Speckled People","autor":"Hugo Hamilton","marketplace":"mercado_livre","lookup_query":"The Speckled People Hugo Hamilton livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2003,"popularidade_id":3},
+{"titulo":"The Sailor in the Wardrobe","autor":"Hugo Hamilton","marketplace":"amazon","lookup_query":"The Sailor in the Wardrobe Hugo Hamilton livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2006,"popularidade_id":3},
+
+{"titulo":"The Spinning Heart","autor":"Donal Ryan","marketplace":"mercado_livre","lookup_query":"The Spinning Heart Donal Ryan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2012,"popularidade_id":4},
+{"titulo":"From a Low and Quiet Sea","autor":"Donal Ryan","marketplace":"amazon","lookup_query":"From a Low and Quiet Sea Donal Ryan livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2018,"popularidade_id":3},
+
+{"titulo":"The Glorious Heresies","autor":"Lisa McInerney","marketplace":"mercado_livre","lookup_query":"The Glorious Heresies Lisa McInerney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2015,"popularidade_id":3},
+{"titulo":"The Blood Miracles","autor":"Lisa McInerney","marketplace":"amazon","lookup_query":"The Blood Miracles Lisa McInerney livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2017,"popularidade_id":3},
+
+{"titulo":"Milkman","autor":"Anna Burns","marketplace":"mercado_livre","lookup_query":"Milkman Anna Burns livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2018,"popularidade_id":5},
+{"titulo":"No Bones","autor":"Anna Burns","marketplace":"amazon","lookup_query":"No Bones Anna Burns livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2001,"popularidade_id":3},
+
+{"titulo":"The International","autor":"Glenn Patterson","marketplace":"mercado_livre","lookup_query":"The International Glenn Patterson livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1999,"popularidade_id":3},
+{"titulo":"Gull","autor":"Glenn Patterson","marketplace":"amazon","lookup_query":"Gull Glenn Patterson livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":2016,"popularidade_id":3},
+
+{"titulo":"Grace Notes","autor":"Bernard MacLaverty","marketplace":"mercado_livre","lookup_query":"Grace Notes Bernard MacLaverty livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1997,"popularidade_id":3},
+{"titulo":"Cal","autor":"Bernard MacLaverty","marketplace":"amazon","lookup_query":"Cal Bernard MacLaverty livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1983,"popularidade_id":3},
+
+{"titulo":"The Silence in the Garden","autor":"William Trevor","marketplace":"mercado_livre","lookup_query":"The Silence in the Garden William Trevor livro","categoria":"literatura","idioma":"PT","cluster_id":201,"nacionalidade_id":372,"ano_sorteado":1988,"popularidade_id":3}
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "titulo": "Dom Quixote",
+    "autor": "Miguel de Cervantes",
+    "marketplace": "amazon",
+    "lookup_query": "Dom Quixote Miguel de Cervantes livro",
+    "categoria": "romance de cavalaria",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 34,
+    "ano_sorteado": 1605,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "Amadis de Gaula",
+    "autor": "Garci Rodríguez de Montalvo",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Amadis de Gaula Garci Rodríguez de Montalvo livro",
+    "categoria": "romance de cavalaria",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 34,
+    "ano_sorteado": 1508,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Tirant lo Blanc",
+    "autor": "Joanot Martorell",
+    "marketplace": "amazon",
+    "lookup_query": "Tirant lo Blanc Joanot Martorell livro",
+    "categoria": "romance de cavalaria",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 34,
+    "ano_sorteado": 1490,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "A Demanda do Santo Graal",
+    "autor": "Anônimo",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Demanda do Santo Graal Anônimo livro",
+    "categoria": "romance arturiano",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 250,
+    "ano_sorteado": 1225,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "A Morte de Artur",
+    "autor": "Thomas Malory",
+    "marketplace": "amazon",
+    "lookup_query": "A Morte de Artur Thomas Malory livro",
+    "categoria": "romance arturiano",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 44,
+    "ano_sorteado": 1485,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "O Cavaleiro da Carreta",
+    "autor": "Chrétien de Troyes",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Cavaleiro da Carreta Chrétien de Troyes livro",
+    "categoria": "romance arturiano",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 33,
+    "ano_sorteado": 1180,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Perceval ou o Conto do Graal",
+    "autor": "Chrétien de Troyes",
+    "marketplace": "amazon",
+    "lookup_query": "Perceval ou o Conto do Graal Chrétien de Troyes livro",
+    "categoria": "romance arturiano",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 33,
+    "ano_sorteado": 1182,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Parzival",
+    "autor": "Wolfram von Eschenbach",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Parzival Wolfram von Eschenbach livro",
+    "categoria": "romance de cavalaria",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 49,
+    "ano_sorteado": 1210,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Tristão e Isolda",
+    "autor": "Joseph Bédier",
+    "marketplace": "amazon",
+    "lookup_query": "Tristão e Isolda Joseph Bédier livro",
+    "categoria": "romance medieval",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 33,
+    "ano_sorteado": 1900,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "O Romance de Alexandre",
+    "autor": "Pseudo-Calístenes",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Romance de Alexandre Pseudo-Calístenes livro",
+    "categoria": "romance cavaleiresco",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 300,
+    "ano_sorteado": 300,
+    "popularidade_id": 3
+  }
+]

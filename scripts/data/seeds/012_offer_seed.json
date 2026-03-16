@@ -1,0 +1,81 @@
+[
+{"titulo":"Édipo Rei","autor":"Sófocles","marketplace":"amazon","lookup_query":"Édipo Rei Sófocles livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":429,"popularidade_id":5},
+{"titulo":"Antígona","autor":"Sófocles","marketplace":"mercado_livre","lookup_query":"Antígona Sófocles livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":441,"popularidade_id":5},
+{"titulo":"Electra","autor":"Sófocles","marketplace":"amazon","lookup_query":"Electra Sófocles livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":410,"popularidade_id":4},
+
+{"titulo":"Medeia","autor":"Eurípides","marketplace":"mercado_livre","lookup_query":"Medeia Eurípides livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":431,"popularidade_id":5},
+{"titulo":"As Bacantes","autor":"Eurípides","marketplace":"amazon","lookup_query":"As Bacantes Eurípides livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":405,"popularidade_id":5},
+{"titulo":"Hipólito","autor":"Eurípides","marketplace":"mercado_livre","lookup_query":"Hipólito Eurípides livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":428,"popularidade_id":4},
+
+{"titulo":"Prometeu Acorrentado","autor":"Ésquilo","marketplace":"amazon","lookup_query":"Prometeu Acorrentado Ésquilo livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":430,"popularidade_id":5},
+{"titulo":"Agamêmnon","autor":"Ésquilo","marketplace":"mercado_livre","lookup_query":"Agamêmnon Ésquilo livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":458,"popularidade_id":5},
+{"titulo":"Coéforas","autor":"Ésquilo","marketplace":"amazon","lookup_query":"Coéforas Ésquilo livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":458,"popularidade_id":4},
+
+{"titulo":"Lisístrata","autor":"Aristófanes","marketplace":"mercado_livre","lookup_query":"Lisístrata Aristófanes livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":411,"popularidade_id":5},
+{"titulo":"As Nuvens","autor":"Aristófanes","marketplace":"amazon","lookup_query":"As Nuvens Aristófanes livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":423,"popularidade_id":4},
+{"titulo":"As Rãs","autor":"Aristófanes","marketplace":"mercado_livre","lookup_query":"As Rãs Aristófanes livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":405,"popularidade_id":4},
+
+{"titulo":"O Misantropo","autor":"Menandro","marketplace":"amazon","lookup_query":"O Misantropo Menandro livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":316,"popularidade_id":3},
+{"titulo":"A Arbitragem","autor":"Menandro","marketplace":"mercado_livre","lookup_query":"A Arbitragem Menandro livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":310,"popularidade_id":3},
+{"titulo":"A Samiana","autor":"Menandro","marketplace":"amazon","lookup_query":"A Samiana Menandro livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":30,"ano_sorteado":315,"popularidade_id":3},
+
+{"titulo":"A Tragédia Grega","autor":"Albin Lesky","marketplace":"mercado_livre","lookup_query":"A Tragédia Grega Albin Lesky livro","categoria":"teatro clássico","idioma":"PT","cluster_id":101,"nacionalidade_id":40,"ano_sorteado":1956,"popularidade_id":5},
+{"titulo":"História da Literatura Grega","autor":"Albin Lesky","marketplace":"amazon","lookup_query":"História da Literatura Grega Albin Lesky livro","categoria":"teatro clássico","idioma":"PT","cluster_id":101,"nacionalidade_id":40,"ano_sorteado":1963,"popularidade_id":4},
+{"titulo":"Tragédia Grega e Pensamento Trágico","autor":"Albin Lesky","marketplace":"mercado_livre","lookup_query":"Tragédia Grega e Pensamento Trágico Albin Lesky livro","categoria":"teatro clássico","idioma":"PT","cluster_id":101,"nacionalidade_id":40,"ano_sorteado":1966,"popularidade_id":4},
+
+{"titulo":"Mito e Tragédia na Grécia Antiga","autor":"Jean-Pierre Vernant","marketplace":"amazon","lookup_query":"Mito e Tragédia na Grécia Antiga Jean-Pierre Vernant livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1972,"popularidade_id":5},
+{"titulo":"Entre Mito e Política","autor":"Jean-Pierre Vernant","marketplace":"mercado_livre","lookup_query":"Entre Mito e Política Jean-Pierre Vernant livro","categoria":"cultura grega","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1996,"popularidade_id":4},
+{"titulo":"As Origens do Pensamento Grego","autor":"Jean-Pierre Vernant","marketplace":"amazon","lookup_query":"As Origens do Pensamento Grego Jean-Pierre Vernant livro","categoria":"filosofia grega","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1962,"popularidade_id":4},
+
+{"titulo":"Mito e Tragédia na Grécia Antiga II","autor":"Pierre Vidal-Naquet","marketplace":"mercado_livre","lookup_query":"Mito e Tragédia na Grécia Antiga Pierre Vidal-Naquet livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1986,"popularidade_id":4},
+{"titulo":"O Caçador Negro","autor":"Pierre Vidal-Naquet","marketplace":"amazon","lookup_query":"O Caçador Negro Pierre Vidal-Naquet livro","categoria":"cultura grega","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1981,"popularidade_id":4},
+{"titulo":"Democracia Grega Antiga","autor":"Pierre Vidal-Naquet","marketplace":"mercado_livre","lookup_query":"Democracia Grega Antiga Pierre Vidal-Naquet livro","categoria":"história grega","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1990,"popularidade_id":3},
+
+{"titulo":"Os Gregos e o Irracional","autor":"E. R. Dodds","marketplace":"amazon","lookup_query":"Os Gregos e o Irracional E R Dodds livro","categoria":"cultura grega","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1951,"popularidade_id":5},
+{"titulo":"Eurípides o Irracionalista","autor":"E. R. Dodds","marketplace":"mercado_livre","lookup_query":"Eurípides o Irracionalista E R Dodds livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1929,"popularidade_id":3},
+{"titulo":"Estudos sobre Tragédia Grega","autor":"E. R. Dodds","marketplace":"amazon","lookup_query":"Estudos sobre Tragédia Grega E R Dodds livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1960,"popularidade_id":3},
+
+{"titulo":"O Herói Trágico","autor":"Bernard Knox","marketplace":"mercado_livre","lookup_query":"O Herói Trágico Bernard Knox livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1964,"popularidade_id":4},
+{"titulo":"Édipo em Tebas","autor":"Bernard Knox","marketplace":"amazon","lookup_query":"Édipo em Tebas Bernard Knox livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1957,"popularidade_id":4},
+{"titulo":"A Arte da Tragédia Grega","autor":"Bernard Knox","marketplace":"mercado_livre","lookup_query":"A Arte da Tragédia Grega Bernard Knox livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1979,"popularidade_id":4},
+
+{"titulo":"Greek Tragedy in Action","autor":"Oliver Taplin","marketplace":"amazon","lookup_query":"Greek Tragedy in Action Oliver Taplin livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1978,"popularidade_id":4},
+{"titulo":"The Stagecraft of Aeschylus","autor":"Oliver Taplin","marketplace":"mercado_livre","lookup_query":"The Stagecraft of Aeschylus Oliver Taplin livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1977,"popularidade_id":4},
+{"titulo":"Pots and Plays","autor":"Oliver Taplin","marketplace":"amazon","lookup_query":"Pots and Plays Oliver Taplin livro","categoria":"teatro grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2007,"popularidade_id":3},
+
+{"titulo":"Reading Greek Tragedy","autor":"Simon Goldhill","marketplace":"mercado_livre","lookup_query":"Reading Greek Tragedy Simon Goldhill livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1986,"popularidade_id":4},
+{"titulo":"How to Stage Greek Tragedy Today","autor":"Simon Goldhill","marketplace":"amazon","lookup_query":"How to Stage Greek Tragedy Today Simon Goldhill livro","categoria":"teatro clássico","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2007,"popularidade_id":3},
+{"titulo":"Sophocles and the Language of Tragedy","autor":"Simon Goldhill","marketplace":"mercado_livre","lookup_query":"Sophocles and the Language of Tragedy Simon Goldhill livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2012,"popularidade_id":3},
+
+{"titulo":"Inventing the Barbarian","autor":"Edith Hall","marketplace":"amazon","lookup_query":"Inventing the Barbarian Edith Hall livro","categoria":"cultura grega","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1989,"popularidade_id":4},
+{"titulo":"Greek Tragedy: Suffering under the Sun","autor":"Edith Hall","marketplace":"mercado_livre","lookup_query":"Greek Tragedy Suffering under the Sun Edith Hall livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2010,"popularidade_id":4},
+{"titulo":"Adventures with Iphigenia","autor":"Edith Hall","marketplace":"amazon","lookup_query":"Adventures with Iphigenia Edith Hall livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2015,"popularidade_id":3},
+
+{"titulo":"Playing the Other","autor":"Froma Zeitlin","marketplace":"mercado_livre","lookup_query":"Playing the Other Froma Zeitlin livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1996,"popularidade_id":4},
+{"titulo":"Under the Sign of the Shield","autor":"Froma Zeitlin","marketplace":"amazon","lookup_query":"Under the Sign of the Shield Froma Zeitlin livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1982,"popularidade_id":3},
+{"titulo":"The Mask of Dionysus","autor":"Froma Zeitlin","marketplace":"mercado_livre","lookup_query":"The Mask of Dionysus Froma Zeitlin livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1990,"popularidade_id":3},
+
+{"titulo":"The Mourning Voice","autor":"Nicole Loraux","marketplace":"amazon","lookup_query":"The Mourning Voice Nicole Loraux livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1998,"popularidade_id":4},
+{"titulo":"Tragic Ways of Killing a Woman","autor":"Nicole Loraux","marketplace":"mercado_livre","lookup_query":"Tragic Ways of Killing a Woman Nicole Loraux livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1987,"popularidade_id":4},
+{"titulo":"The Divided City","autor":"Nicole Loraux","marketplace":"amazon","lookup_query":"The Divided City Nicole Loraux livro","categoria":"cultura grega","idioma":"PT","cluster_id":101,"nacionalidade_id":41,"ano_sorteado":1997,"popularidade_id":3},
+
+{"titulo":"Greek Tragic Theatre","autor":"Rush Rehm","marketplace":"mercado_livre","lookup_query":"Greek Tragic Theatre Rush Rehm livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1992,"popularidade_id":4},
+{"titulo":"Marriage to Death","autor":"Rush Rehm","marketplace":"amazon","lookup_query":"Marriage to Death Rush Rehm livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1994,"popularidade_id":3},
+{"titulo":"Radical Theatre","autor":"Rush Rehm","marketplace":"mercado_livre","lookup_query":"Radical Theatre Rush Rehm livro","categoria":"teatro clássico","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":2003,"popularidade_id":3},
+
+{"titulo":"Female Acts in Greek Tragedy","autor":"Helene Foley","marketplace":"amazon","lookup_query":"Female Acts in Greek Tragedy Helene Foley livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":2001,"popularidade_id":4},
+{"titulo":"Ritual Irony","autor":"Helene Foley","marketplace":"mercado_livre","lookup_query":"Ritual Irony Helene Foley livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1985,"popularidade_id":3},
+{"titulo":"Women and the Greek Stage","autor":"Helene Foley","marketplace":"amazon","lookup_query":"Women and the Greek Stage Helene Foley livro","categoria":"teatro grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":2012,"popularidade_id":3},
+
+{"titulo":"The Cambridge Companion to Greek Tragedy","autor":"Pat Easterling","marketplace":"mercado_livre","lookup_query":"The Cambridge Companion to Greek Tragedy Pat Easterling livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"Sophocles: A Reading","autor":"Pat Easterling","marketplace":"amazon","lookup_query":"Sophocles A Reading Pat Easterling livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1983,"popularidade_id":3},
+{"titulo":"Greek Theatre and Society","autor":"Pat Easterling","marketplace":"mercado_livre","lookup_query":"Greek Theatre and Society Pat Easterling livro","categoria":"teatro grego","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1995,"popularidade_id":3},
+
+{"titulo":"Aeschylus: Prometheus Bound","autor":"Mark Griffith","marketplace":"amazon","lookup_query":"Aeschylus Prometheus Bound Mark Griffith livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1983,"popularidade_id":3},
+{"titulo":"Sophocles Antigone Commentary","autor":"Mark Griffith","marketplace":"mercado_livre","lookup_query":"Sophocles Antigone Commentary Mark Griffith livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":1999,"popularidade_id":3},
+{"titulo":"Greek Drama Studies","autor":"Mark Griffith","marketplace":"amazon","lookup_query":"Greek Drama Studies Mark Griffith livro","categoria":"drama grego","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":2008,"popularidade_id":3},
+
+{"titulo":"The Birth of Tragedy","autor":"Friedrich Nietzsche","marketplace":"mercado_livre","lookup_query":"O Nascimento da Tragédia Friedrich Nietzsche livro","categoria":"filosofia da tragédia","idioma":"PT","cluster_id":101,"nacionalidade_id":42,"ano_sorteado":1872,"popularidade_id":5},
+{"titulo":"Nietzsche and Greek Tragedy","autor":"Paul Raimond Daniels","marketplace":"amazon","lookup_query":"Nietzsche and Greek Tragedy Paul Raimond Daniels livro","categoria":"filosofia da tragédia","idioma":"PT","cluster_id":101,"nacionalidade_id":45,"ano_sorteado":2013,"popularidade_id":3},
+{"titulo":"Tragedy and Philosophy","autor":"Walter Kaufmann","marketplace":"mercado_livre","lookup_query":"Tragedy and Philosophy Walter Kaufmann livro","categoria":"filosofia da tragédia","idioma":"PT","cluster_id":101,"nacionalidade_id":43,"ano_sorteado":1968,"popularidade_id":3}
+]

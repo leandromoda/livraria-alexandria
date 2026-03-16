@@ -1,0 +1,122 @@
+[
+  {
+    "titulo": "Fausto",
+    "autor": "Johann Wolfgang von Goethe",
+    "marketplace": "amazon",
+    "lookup_query": "Fausto Johann Wolfgang von Goethe livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1808,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "Os Sofrimentos do Jovem Werther",
+    "autor": "Johann Wolfgang von Goethe",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Os Sofrimentos do Jovem Werther Johann Wolfgang von Goethe livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1774,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "Elegias de Duíno",
+    "autor": "Rainer Maria Rilke",
+    "marketplace": "amazon",
+    "lookup_query": "Elegias de Duíno Rainer Maria Rilke livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 1923,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "Sonetos a Orfeu",
+    "autor": "Rainer Maria Rilke",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Sonetos a Orfeu Rainer Maria Rilke livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 1922,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Hinos à Noite",
+    "autor": "Novalis",
+    "marketplace": "amazon",
+    "lookup_query": "Hinos à Noite Novalis livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1800,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Fragmentos Poéticos",
+    "autor": "Friedrich Schlegel",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Fragmentos Poéticos Friedrich Schlegel livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 2,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1798,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Hiperíon",
+    "autor": "Friedrich Hölderlin",
+    "marketplace": "amazon",
+    "lookup_query": "Hiperíon Friedrich Hölderlin livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1797,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Poemas",
+    "autor": "Friedrich Hölderlin",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Poemas Friedrich Hölderlin livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1804,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Livro das Horas",
+    "autor": "Rainer Maria Rilke",
+    "marketplace": "amazon",
+    "lookup_query": "Livro das Horas Rainer Maria Rilke livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 1905,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Canções da Juventude",
+    "autor": "Heinrich Heine",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Canções da Juventude Heinrich Heine livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1827,
+    "popularidade_id": 4
+  }
+]

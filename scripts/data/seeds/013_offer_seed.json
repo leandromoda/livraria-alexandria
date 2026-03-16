@@ -1,0 +1,84 @@
+[
+{"titulo":"Novum Organum","autor":"Francis Bacon","marketplace":"amazon","lookup_query":"Novum Organum Francis Bacon livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1620,"popularidade_id":5},
+{"titulo":"A Nova Atlântida","autor":"Francis Bacon","marketplace":"mercado_livre","lookup_query":"A Nova Atlântida Francis Bacon livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1627,"popularidade_id":4},
+{"titulo":"Ensaios","autor":"Francis Bacon","marketplace":"amazon","lookup_query":"Ensaios Francis Bacon livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1597,"popularidade_id":4},
+
+{"titulo":"Leviatã","autor":"Thomas Hobbes","marketplace":"mercado_livre","lookup_query":"Leviatã Thomas Hobbes livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1651,"popularidade_id":5},
+{"titulo":"Do Cidadão","autor":"Thomas Hobbes","marketplace":"amazon","lookup_query":"Do Cidadão Thomas Hobbes livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1642,"popularidade_id":4},
+{"titulo":"Elementos da Lei Natural e Política","autor":"Thomas Hobbes","marketplace":"mercado_livre","lookup_query":"Elementos da Lei Natural e Política Thomas Hobbes livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1650,"popularidade_id":3},
+
+{"titulo":"Ensaio sobre o Entendimento Humano","autor":"John Locke","marketplace":"amazon","lookup_query":"Ensaio sobre o Entendimento Humano John Locke livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1690,"popularidade_id":5},
+{"titulo":"Segundo Tratado sobre o Governo","autor":"John Locke","marketplace":"mercado_livre","lookup_query":"Segundo Tratado sobre o Governo John Locke livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1689,"popularidade_id":5},
+{"titulo":"Carta sobre a Tolerância","autor":"John Locke","marketplace":"amazon","lookup_query":"Carta sobre a Tolerância John Locke livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1689,"popularidade_id":4},
+
+{"titulo":"Tratado sobre os Princípios do Conhecimento Humano","autor":"George Berkeley","marketplace":"mercado_livre","lookup_query":"Tratado sobre os Princípios do Conhecimento Humano George Berkeley livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":372,"ano_sorteado":1710,"popularidade_id":4},
+{"titulo":"Três Diálogos entre Hylas e Philonous","autor":"George Berkeley","marketplace":"amazon","lookup_query":"Três Diálogos entre Hylas e Philonous George Berkeley livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":372,"ano_sorteado":1713,"popularidade_id":4},
+
+{"titulo":"Investigação sobre o Entendimento Humano","autor":"David Hume","marketplace":"mercado_livre","lookup_query":"Investigação sobre o Entendimento Humano David Hume livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1748,"popularidade_id":5},
+{"titulo":"Investigação sobre os Princípios da Moral","autor":"David Hume","marketplace":"amazon","lookup_query":"Investigação sobre os Princípios da Moral David Hume livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1751,"popularidade_id":4},
+{"titulo":"Diálogos sobre a Religião Natural","autor":"David Hume","marketplace":"mercado_livre","lookup_query":"Diálogos sobre a Religião Natural David Hume livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1779,"popularidade_id":4},
+
+{"titulo":"Uma Investigação sobre a Natureza e as Causas da Riqueza das Nações","autor":"Adam Smith","marketplace":"amazon","lookup_query":"A Riqueza das Nações Adam Smith livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1776,"popularidade_id":5},
+{"titulo":"Teoria dos Sentimentos Morais","autor":"Adam Smith","marketplace":"mercado_livre","lookup_query":"Teoria dos Sentimentos Morais Adam Smith livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1759,"popularidade_id":5},
+
+{"titulo":"Introdução aos Princípios da Moral e da Legislação","autor":"Jeremy Bentham","marketplace":"amazon","lookup_query":"Introdução aos Princípios da Moral e da Legislação Jeremy Bentham livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1789,"popularidade_id":4},
+{"titulo":"Fragmento sobre o Governo","autor":"Jeremy Bentham","marketplace":"mercado_livre","lookup_query":"Fragmento sobre o Governo Jeremy Bentham livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1776,"popularidade_id":3},
+
+{"titulo":"Sobre a Liberdade","autor":"John Stuart Mill","marketplace":"amazon","lookup_query":"Sobre a Liberdade John Stuart Mill livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1859,"popularidade_id":5},
+{"titulo":"Utilitarismo","autor":"John Stuart Mill","marketplace":"mercado_livre","lookup_query":"Utilitarismo John Stuart Mill livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1861,"popularidade_id":5},
+{"titulo":"A Sujeição das Mulheres","autor":"John Stuart Mill","marketplace":"amazon","lookup_query":"A Sujeição das Mulheres John Stuart Mill livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1869,"popularidade_id":4},
+
+{"titulo":"Os Métodos da Ética","autor":"Henry Sidgwick","marketplace":"mercado_livre","lookup_query":"Os Métodos da Ética Henry Sidgwick livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1874,"popularidade_id":3},
+
+{"titulo":"Principia Ethica","autor":"G. E. Moore","marketplace":"amazon","lookup_query":"Principia Ethica G E Moore livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1903,"popularidade_id":4},
+
+{"titulo":"Problemas da Filosofia","autor":"Bertrand Russell","marketplace":"mercado_livre","lookup_query":"Problemas da Filosofia Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1912,"popularidade_id":5},
+{"titulo":"História da Filosofia Ocidental","autor":"Bertrand Russell","marketplace":"amazon","lookup_query":"História da Filosofia Ocidental Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"A Conquista da Felicidade","autor":"Bertrand Russell","marketplace":"mercado_livre","lookup_query":"A Conquista da Felicidade Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1930,"popularidade_id":5},
+
+{"titulo":"Linguagem, Verdade e Lógica","autor":"A. J. Ayer","marketplace":"amazon","lookup_query":"Linguagem Verdade e Lógica A J Ayer livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1936,"popularidade_id":4},
+
+{"titulo":"O Conceito de Mente","autor":"Gilbert Ryle","marketplace":"mercado_livre","lookup_query":"O Conceito de Mente Gilbert Ryle livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1949,"popularidade_id":4},
+
+{"titulo":"Processo e Realidade","autor":"Alfred North Whitehead","marketplace":"amazon","lookup_query":"Processo e Realidade Alfred North Whitehead livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1929,"popularidade_id":4},
+
+{"titulo":"A Sociedade Aberta e Seus Inimigos","autor":"Karl Popper","marketplace":"mercado_livre","lookup_query":"A Sociedade Aberta e Seus Inimigos Karl Popper livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"A Lógica da Pesquisa Científica","autor":"Karl Popper","marketplace":"amazon","lookup_query":"A Lógica da Pesquisa Científica Karl Popper livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1934,"popularidade_id":5},
+
+{"titulo":"Indivíduo e Sociedade","autor":"Michael Oakeshott","marketplace":"mercado_livre","lookup_query":"Michael Oakeshott Indivíduo e Sociedade livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1962,"popularidade_id":3},
+
+{"titulo":"After Virtue","autor":"Alasdair MacIntyre","marketplace":"amazon","lookup_query":"After Virtue Alasdair MacIntyre livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1981,"popularidade_id":5},
+{"titulo":"Whose Justice Which Rationality","autor":"Alasdair MacIntyre","marketplace":"mercado_livre","lookup_query":"Whose Justice Which Rationality Alasdair MacIntyre livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1988,"popularidade_id":4},
+
+{"titulo":"Razões e Pessoas","autor":"Derek Parfit","marketplace":"amazon","lookup_query":"Razões e Pessoas Derek Parfit livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1984,"popularidade_id":5},
+{"titulo":"On What Matters","autor":"Derek Parfit","marketplace":"mercado_livre","lookup_query":"On What Matters Derek Parfit livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":2011,"popularidade_id":4},
+
+{"titulo":"Liberdade e Ressentimento","autor":"P. F. Strawson","marketplace":"amazon","lookup_query":"Liberdade e Ressentimento P F Strawson livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1962,"popularidade_id":3},
+
+{"titulo":"Individuals","autor":"P. F. Strawson","marketplace":"mercado_livre","lookup_query":"Individuals P F Strawson livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1959,"popularidade_id":3},
+
+{"titulo":"The View from Nowhere","autor":"Thomas Nagel","marketplace":"amazon","lookup_query":"The View from Nowhere Thomas Nagel livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":1986,"popularidade_id":4},
+{"titulo":"Mortal Questions","autor":"Thomas Nagel","marketplace":"mercado_livre","lookup_query":"Mortal Questions Thomas Nagel livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":1979,"popularidade_id":4},
+
+{"titulo":"Justice for Hedgehogs","autor":"Ronald Dworkin","marketplace":"amazon","lookup_query":"Justice for Hedgehogs Ronald Dworkin livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":2011,"popularidade_id":4},
+{"titulo":"Taking Rights Seriously","autor":"Ronald Dworkin","marketplace":"mercado_livre","lookup_query":"Taking Rights Seriously Ronald Dworkin livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":1977,"popularidade_id":4},
+
+{"titulo":"The Ethics of Belief","autor":"William K. Clifford","marketplace":"amazon","lookup_query":"The Ethics of Belief William K Clifford livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1877,"popularidade_id":3},
+
+{"titulo":"The Presumption of Equality","autor":"Bernard Williams","marketplace":"mercado_livre","lookup_query":"Bernard Williams Presumption of Equality livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1973,"popularidade_id":3},
+{"titulo":"Ethics and the Limits of Philosophy","autor":"Bernard Williams","marketplace":"amazon","lookup_query":"Ethics and the Limits of Philosophy Bernard Williams livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1985,"popularidade_id":4},
+
+{"titulo":"Mind and World","autor":"John McDowell","marketplace":"mercado_livre","lookup_query":"Mind and World John McDowell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":1994,"popularidade_id":4},
+
+{"titulo":"Self-Knowledge and Self-Identity","autor":"Sydney Shoemaker","marketplace":"amazon","lookup_query":"Self Knowledge and Self Identity Sydney Shoemaker livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":1963,"popularidade_id":3},
+
+{"titulo":"The Idea of Justice","autor":"Amartya Sen","marketplace":"mercado_livre","lookup_query":"The Idea of Justice Amartya Sen livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":826,"ano_sorteado":2009,"popularidade_id":5},
+
+{"titulo":"The Sovereign Individual","autor":"James Dale Davidson","marketplace":"amazon","lookup_query":"The Sovereign Individual James Dale Davidson livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":840,"ano_sorteado":1997,"popularidade_id":3},
+
+{"titulo":"The Problems of Philosophy","autor":"Bertrand Russell","marketplace":"mercado_livre","lookup_query":"The Problems of Philosophy Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1912,"popularidade_id":5},
+
+{"titulo":"Human Knowledge: Its Scope and Limits","autor":"Bertrand Russell","marketplace":"amazon","lookup_query":"Human Knowledge Its Scope and Limits Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1948,"popularidade_id":4},
+
+{"titulo":"The Analysis of Mind","autor":"Bertrand Russell","marketplace":"mercado_livre","lookup_query":"The Analysis of Mind Bertrand Russell livro","categoria":"filosofia","idioma":"PT","cluster_id":101,"nacionalidade_id":44,"ano_sorteado":1921,"popularidade_id":4}
+]

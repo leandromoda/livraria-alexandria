@@ -34,7 +34,7 @@ SEEDS_DIR = os.path.join(DATA_DIR, "seeds")
 
 DB_PATH = os.path.join(DATA_DIR, "books.db")
 
-SEED_PATTERN = re.compile(r"^\d{3}_offer_seeds\.json$")
+SEED_PATTERN = re.compile(r"^\d{3}_offer_seeds?\.json$")
 
 
 # =========================
@@ -360,7 +360,8 @@ def process_file(conn, filename, filepath):
         seeds = load_seeds(filepath)
     except Exception as e:
         log(f"[ERRO] Falha ao carregar {filename}: {e}")
-        return 0, 0
+        log(f"[ERRO] Arquivo ignorado — corrija o conteúdo e execute novamente.")
+        return None, None
 
     total  = len(seeds)
     counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0, "error": 0}
@@ -423,6 +424,10 @@ def run():
             continue
 
         inserted, skipped = process_file(conn, filename, filepath)
+
+        if inserted is None:
+            log(f"[SKIP] {filename} não marcado como importado — arquivo permanece em seeds/ para correção.")
+            continue
 
         mark_imported(conn, filename, inserted, skipped)
         move_to_ingested(filepath, filename)
