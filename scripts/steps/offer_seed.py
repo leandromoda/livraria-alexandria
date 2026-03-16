@@ -6,6 +6,11 @@
 # Schema canônico definido aqui. Todos os outros scripts
 # dependem deste schema.
 #
+# Multi-seed: processa todos os arquivos NNN_offer_seeds.json
+# de scripts/data/seeds/ em ordem crescente. Arquivos já
+# importados são rastreados em seed_imports e movidos para
+# scripts/data/seeds/ingested_seeds/ após processamento.
+#
 # Campos separados:
 #   descricao → texto bruto vindo de APIs externas
 #   sinopse   → texto gerado pelo pipeline LLM
@@ -14,8 +19,8 @@
 import json
 import os
 import re
+import shutil
 import sqlite3
-import time
 from datetime import datetime
 
 
@@ -23,11 +28,13 @@ from datetime import datetime
 # CONFIG
 # =========================
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "data")
+BASE_DIR  = os.path.dirname(os.path.dirname(__file__))
+DATA_DIR  = os.path.join(BASE_DIR, "data")
+SEEDS_DIR = os.path.join(DATA_DIR, "seeds")
 
 DB_PATH = os.path.join(DATA_DIR, "books.db")
-SEED_PATH = os.path.join(DATA_DIR, "offer_seeds.json")
+
+SEED_PATTERN = re.compile(r"^\d{3}_offer_seeds\.json$")
 
 
 # =========================
@@ -71,9 +78,9 @@ def is_editorial(titulo):
 
 ISBN_PREFIX_LANG = {
     ("85", "65", "972"): "PT",
-    ("84",): "ES",
-    ("88",): "IT",
-    ("0", "1"): "EN",
+    ("84",):             "ES",
+    ("88",):             "IT",
+    ("0", "1"):          "EN",
 }
 
 TITLE_PATTERNS = {
@@ -158,8 +165,8 @@ def ensure_tables(conn):
         categoria       TEXT,
 
         -- Conteúdo editorial (campos separados)
-        descricao       TEXT,   -- texto bruto vindo de APIs externas
-        sinopse         TEXT,   -- sinopse editorial gerada pelo pipeline
+        descricao       TEXT,
+        sinopse         TEXT,
 
         -- Metadados de curadoria
         is_book             INTEGER DEFAULT 1,
@@ -170,8 +177,12 @@ def ensure_tables(conn):
         lookup_query        TEXT,
         marketplace         TEXT,
         offer_url           TEXT,
-        offer_status        INTEGER DEFAULT 0,
+        offer_status        TEXT    DEFAULT 'active',
         preco               REAL,
+        preco_atual         REAL,
+        preco_anterior      REAL,
+        preco_updated_at    DATETIME,
+        reactivation_pending INTEGER DEFAULT 0,
         status_publish_oferta INTEGER DEFAULT 0,
 
         -- IDs de classificação
@@ -185,7 +196,9 @@ def ensure_tables(conn):
         status_review       INTEGER DEFAULT 0,
         status_synopsis     INTEGER DEFAULT 0,
         status_cover        INTEGER DEFAULT 0,
+        status_enrich       INTEGER DEFAULT 0,
         status_publish      INTEGER DEFAULT 0,
+        status_categorize   INTEGER DEFAULT 0,
 
         -- Supabase sync
         supabase_id         TEXT,
@@ -195,21 +208,71 @@ def ensure_tables(conn):
     )
     """)
 
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS seed_imports (
+        filename    TEXT PRIMARY KEY,
+        imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        inserted    INTEGER DEFAULT 0,
+        skipped     INTEGER DEFAULT 0
+    )
+    """)
+
     conn.commit()
     log("Schema canônico verificado.")
+
+
+# =========================
+# SEED FILES DISCOVERY
+# =========================
+
+def discover_seed_files():
+    """Retorna lista de (filename, filepath) em ordem crescente."""
+
+    if not os.path.exists(SEEDS_DIR):
+        return []
+
+    files = [
+        f for f in os.listdir(SEEDS_DIR)
+        if SEED_PATTERN.match(f)
+    ]
+
+    files.sort()
+
+    return [(f, os.path.join(SEEDS_DIR, f)) for f in files]
+
+
+def already_imported(conn, filename):
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM seed_imports WHERE filename = ? LIMIT 1", (filename,))
+    return cur.fetchone() is not None
+
+
+def mark_imported(conn, filename, inserted, skipped):
+    conn.execute("""
+        INSERT OR REPLACE INTO seed_imports (filename, imported_at, inserted, skipped)
+        VALUES (?, CURRENT_TIMESTAMP, ?, ?)
+    """, (filename, inserted, skipped))
+    conn.commit()
+
+
+def move_to_ingested(filepath, filename):
+    ingested_dir = os.path.join(SEEDS_DIR, "ingested_seeds")
+    os.makedirs(ingested_dir, exist_ok=True)
+    dest = os.path.join(ingested_dir, filename)
+    try:
+        shutil.move(filepath, dest)
+        log(f"Arquivo movido → ingested_seeds/{filename}")
+    except Exception as e:
+        log(f"[AVISO] Falha ao mover {filename}: {e} — arquivo permanece em seeds/")
 
 
 # =========================
 # LOAD SEEDS
 # =========================
 
-def load_seeds():
+def load_seeds(filepath):
 
-    if not os.path.exists(SEED_PATH):
-        log("offer_seeds.json não encontrado.")
-        return []
-
-    with open(SEED_PATH, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -234,7 +297,6 @@ def insert_seed(conn, seed):
         return "invalid"
 
     if not is_editorial(titulo):
-        log(f"[SKIP] Filtro editorial → {titulo}")
         return "filtered"
 
     idioma_resolved = resolve_language(idioma, isbn, titulo)
@@ -265,7 +327,7 @@ def insert_seed(conn, seed):
             lower(hex(randomblob(12))),
             ?, ?, ?,
             ?, 'offer_seed', ?, ?,
-            ?, ?, 0,
+            ?, ?, 'active',
             ?,
             ?, ?, ?,
             ?,
@@ -287,6 +349,50 @@ def insert_seed(conn, seed):
 
 
 # =========================
+# PROCESS ONE FILE
+# =========================
+
+def process_file(conn, filename, filepath):
+
+    log(f"Processando {filename}…")
+
+    try:
+        seeds = load_seeds(filepath)
+    except Exception as e:
+        log(f"[ERRO] Falha ao carregar {filename}: {e}")
+        return 0, 0
+
+    total  = len(seeds)
+    counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0, "error": 0}
+
+    for i, seed in enumerate(seeds, start=1):
+        titulo_log = seed.get("titulo", "?")
+        print(f"[SEED][{i:03d}/{total:03d}] → {titulo_log}")
+
+        try:
+            result = insert_seed(conn, seed)
+            counts[result] = counts.get(result, 0) + 1
+        except Exception as e:
+            log(f"[ERRO] {titulo_log}: {e}")
+            counts["error"] += 1
+
+    conn.commit()
+
+    inserted = counts["inserted"]
+    skipped  = counts["duplicate"] + counts["filtered"] + counts["invalid"]
+
+    log(
+        f"[SEED] {filename} → "
+        f"OK: {inserted} | "
+        f"Falhas: {counts['error']} | "
+        f"Pulados: {skipped} | "
+        f"Total: {total}"
+    )
+
+    return inserted, skipped
+
+
+# =========================
 # RUN
 # =========================
 
@@ -298,27 +404,37 @@ def run():
 
     ensure_tables(conn)
 
-    seeds = load_seeds()
+    seed_files = discover_seed_files()
 
-    if not seeds:
-        log("Nenhuma seed encontrada.")
+    if not seed_files:
+        log("Nenhum arquivo de seed encontrado em scripts/data/seeds/")
+        log("Padrão esperado: NNN_offer_seeds.json (ex: 001_offer_seeds.json)")
         conn.close()
         return
 
-    counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0}
+    total_inserted = 0
+    total_skipped  = 0
+    processed      = 0
 
-    for seed in seeds:
-        try:
-            result = insert_seed(conn, seed)
-            counts[result] = counts.get(result, 0) + 1
-        except Exception as e:
-            log(f"Erro ao inserir seed: {e}")
+    for filename, filepath in seed_files:
 
-    conn.commit()
+        if already_imported(conn, filename):
+            log(f"[SKIP] {filename} — já importado anteriormente")
+            continue
+
+        inserted, skipped = process_file(conn, filename, filepath)
+
+        mark_imported(conn, filename, inserted, skipped)
+        move_to_ingested(filepath, filename)
+
+        total_inserted += inserted
+        total_skipped  += skipped
+        processed      += 1
+
     conn.close()
 
-    log(f"Inseridas:  {counts['inserted']}")
-    log(f"Duplicatas: {counts['duplicate']}")
-    log(f"Filtradas:  {counts['filtered']}")
-    log(f"Inválidas:  {counts['invalid']}")
-    log("Offer Seed Import finalizado.")
+    if processed == 0:
+        log("Nenhum arquivo novo para importar.")
+    else:
+        log(f"Importação concluída → {processed} arquivo(s)")
+        log(f"Total inseridos: {total_inserted} | Total pulados: {total_skipped}")

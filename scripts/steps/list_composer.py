@@ -393,6 +393,110 @@ def descricao_lista_autor(nome):
 
 
 # ============================================================
+# LISTAS TEMÁTICAS (livros_categorias_tematicas)
+# ============================================================
+
+MIN_LIVROS_TEMATICA = 4
+
+
+def fetch_categorias_tematicas_validas():
+    """Retorna categorias temáticas com >= MIN_LIVROS_TEMATICA livros publicados."""
+
+    conn = get_conn()
+    cur  = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            lct.categoria_slug,
+            COUNT(DISTINCT l.id) as total
+        FROM livros_categorias_tematicas lct
+        JOIN livros l ON l.id = lct.livro_id
+        WHERE l.status_publish = 1
+          AND l.editorial_score >= 1
+        GROUP BY lct.categoria_slug
+        HAVING COUNT(DISTINCT l.id) >= ?
+    """, (MIN_LIVROS_TEMATICA,))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+
+def fetch_livros_tematica(categoria_slug):
+    """Retorna livros publicados nessa categoria, ordenados por confidence DESC, score DESC."""
+
+    conn = get_conn()
+    cur  = conn.cursor()
+
+    cur.execute("""
+        SELECT
+            l.id,
+            l.editorial_score,
+            lct.confidence
+        FROM livros_categorias_tematicas lct
+        JOIN livros l ON l.id = lct.livro_id
+        WHERE lct.categoria_slug = ?
+          AND l.status_publish   = 1
+          AND l.editorial_score  >= 1
+        ORDER BY lct.confidence DESC, l.editorial_score DESC
+        LIMIT ?
+    """, (categoria_slug, MAX_LIVROS_LISTA))
+
+    rows = cur.fetchall()
+    conn.close()
+
+    return rows
+
+
+def _gerar_listas_tematicas(listas_ja_criadas):
+    """Gera listas por categoria temática. Retorna quantidade criada."""
+
+    categorias = fetch_categorias_tematicas_validas()
+
+    if not categorias:
+        log("Nenhuma categoria temática elegível.")
+        return 0
+
+    listas_tematicas = 0
+
+    for row in categorias:
+
+        categoria_slug = row[0]
+
+        if listas_ja_criadas + listas_tematicas >= MAX_LISTAS_EXEC:
+            break
+
+        slug = f"melhores-livros-de-{categoria_slug}"
+
+        # Dedup: não criar lista se slug idêntico já existir
+        if lista_existe(slug):
+            continue
+
+        livros = fetch_livros_tematica(categoria_slug)
+
+        if len(livros) < MIN_LIVROS_TEMATICA:
+            continue
+
+        titulo    = f"Melhores livros de {categoria_slug.replace('-', ' ').title()}"
+        descricao = (
+            f"Seleção das melhores obras de {categoria_slug.replace('-', ' ')}, "
+            "curadas por critérios editoriais e relevância temática."
+        )
+
+        # Converter para formato (id, editorial_score) para inserir_livros
+        livros_fmt = [(r[0], r[1]) for r in livros]
+
+        lista_id = criar_lista(slug, titulo, descricao, categoria_slug)
+        inserir_livros(lista_id, livros_fmt)
+
+        listas_tematicas += 1
+        log(f"Lista temática criada → {titulo}")
+
+    return listas_tematicas
+
+
+# ============================================================
 # RUN
 # ============================================================
 
@@ -493,3 +597,10 @@ def run():
         log(f"Lista criada → {titulo}")
 
     log(f"List Composer finalizado → {listas_autor} listas de autor geradas.")
+
+    # --------------------------------------------------------
+    # LISTAS POR CATEGORIA TEMÁTICA
+    # --------------------------------------------------------
+
+    listas_tematicas = _gerar_listas_tematicas(listas_criadas + listas_autor)
+    log(f"List Composer finalizado → {listas_tematicas} listas temáticas geradas.")

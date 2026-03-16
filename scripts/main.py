@@ -16,6 +16,9 @@ from steps import publish_autores
 from steps import publish_ofertas
 from steps import list_composer
 from steps import auditor
+from steps import marketplace_scraper
+from steps import categorize
+from steps import offer_price_monitor
 
 from steps.export_state_transcript import export_state_transcript
 
@@ -136,14 +139,16 @@ def main():
 
 --- INGESTÃO ---
 1  → Importar Offer Seeds
-2  → Enriquecer descrições (Google Books)
+2  → Enriquecer descrições (Google Books / OpenLibrary)
 3  → Resolver Ofertas (lookup → URL afiliado)
+17 → Enriquecer via Marketplace Scraper (capa + descrição + preço)
 
 --- PRÉ-PROCESSAMENTO ---
 4  → Gerar slugs
 5  → Slugify Autores
 6  → Deduplicar
 7  → Review (classificação editorial + idioma)
+18 → Classificar Categorias Temáticas (LLM)
 
 --- GERAÇÃO DE CONTEÚDO ---
 8  → Gerar sinopses (requer review concluído)
@@ -155,6 +160,9 @@ def main():
 12 → Publicar Autores
 13 → Publicar Ofertas
 14 → Gerar listas SEO automáticas
+
+--- MONITORAMENTO ---
+19 → Monitorar preços e disponibilidade de ofertas
 
 --- AUDITORIA ---
 15 → Auditar conectividade do site (sem LLM)
@@ -233,6 +241,35 @@ def main():
         elif op == "14":
             log("Gerando listas SEO automáticas…")
             list_composer.run()
+
+        elif op == "17":
+            pacote = escolher_pacote()
+            log("Enriquecendo via Marketplace Scraper…")
+            marketplace_scraper.run(idioma, pacote)
+
+        elif op == "18":
+            pacote = escolher_pacote()
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+            log("Classificando categorias temáticas…")
+            categorize.run(idioma, pacote)
+
+        elif op == "19":
+            print("""
+Limite de livros para monitorar:
+
+10 | 20 | 50 | 100 | 200
+""")
+            try:
+                limite = int(input_safe("Limite: "))
+            except ValueError:
+                limite = 50
+
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+
+            log(f"Monitorando preços e disponibilidade (limit={limite}, dry_run={dry_run})…")
+            offer_price_monitor.run(limit=limite, dry_run=dry_run)
 
         elif op == "15":
             log("Auditando conectividade do site…")
