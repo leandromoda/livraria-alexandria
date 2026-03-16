@@ -218,6 +218,26 @@ def ensure_tables(conn):
     """)
 
     conn.commit()
+
+    # Migrations: adicionar colunas novas a bancos existentes
+    cur = conn.cursor()
+    for col, definition in [
+        ("preco",                  "REAL"),
+        ("preco_atual",            "REAL"),
+        ("preco_anterior",         "REAL"),
+        ("preco_updated_at",       "DATETIME"),
+        ("offer_status",           "TEXT DEFAULT 'active'"),
+        ("reactivation_pending",   "INTEGER DEFAULT 0"),
+        ("status_publish_oferta",  "INTEGER DEFAULT 0"),
+        ("status_enrich",          "INTEGER DEFAULT 0"),
+        ("status_categorize",      "INTEGER DEFAULT 0"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
+        except Exception:
+            pass
+    conn.commit()
+
     log("Schema canônico verificado.")
 
 
