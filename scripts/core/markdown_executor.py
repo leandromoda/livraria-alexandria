@@ -157,7 +157,7 @@ def _call_ollama(prompt: str) -> str:
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=600)
+        response = requests.post(url, json=payload, timeout=120)
     except requests.exceptions.ConnectionError:
         raise RuntimeError(
             f"OLLAMA_UNAVAILABLE — servidor não encontrado em {OLLAMA_URL}. "

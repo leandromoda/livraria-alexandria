@@ -25,9 +25,10 @@ from core.logger import log
 # CONFIG
 # =========================
 
-TIMEOUT       = 15
-RETRY_DELAY   = 3
-RETRY_MAX     = 2
+TIMEOUT_CONNECT = 5
+TIMEOUT_READ    = 12
+RETRY_DELAY     = 3
+RETRY_MAX       = 2
 MIN_IMG_BYTES = 5000
 MAX_DESC_CHARS = 2000
 
@@ -88,12 +89,22 @@ def fetch_page(url):
 
     for attempt in range(RETRY_MAX):
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
+            resp = requests.get(
+                url,
+                headers=HEADERS,
+                timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+                allow_redirects=True,
+            )
             if resp.status_code == 200:
                 return BeautifulSoup(resp.text, "html.parser")
             log(f"[SCRAPER] HTTP {resp.status_code} → {url[:80]}")
+            # Não faz sentido retry em 403/503 (bot detection)
+            if resp.status_code in (403, 503):
+                return None
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
-            log(f"[SCRAPER] Erro HTTP (tentativa {attempt + 1}): {e}")
+            log(f"[SCRAPER] Erro HTTP (tentativa {attempt + 1}): {type(e).__name__}")
         if attempt < RETRY_MAX - 1:
             time.sleep(RETRY_DELAY)
 
@@ -195,6 +206,99 @@ def scrape_marketplace(offer_url):
 
 
 # =========================
+# OPEN LIBRARY (PRIMARY)
+# =========================
+
+OL_SEARCH = "https://openlibrary.org/search.json?q={q}&limit=1&fields=title,cover_i,key,author_name"
+OL_WORK   = "https://openlibrary.org{key}.json"
+OL_COVER  = "https://covers.openlibrary.org/b/id/{cover_id}-L.jpg"
+
+
+def try_open_library(titulo, isbn=None, autor=None):
+    """
+    Busca capa e descrição via Open Library (Internet Archive).
+    Grátis, sem autenticação, cobre milhões de livros.
+
+    Usa ISBN quando disponível (mais preciso), senão "título autor".
+    NÃO usar lookup_query — contém sufixo 'livro' que confunde a busca.
+
+    Retorna dict com cover_url, descricao ou None se falha.
+    """
+    if not titulo and not isbn:
+        return None
+
+    try:
+        # Prefere ISBN se disponível (mais preciso), senão título + autor
+        if isbn:
+            q = isbn
+        elif autor:
+            q = f"{titulo} {autor}"
+        else:
+            q = titulo
+        resp = requests.get(
+            OL_SEARCH.format(q=requests.utils.quote(q)),
+            timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+        )
+        if resp.status_code != 200:
+            return None
+
+        docs = resp.json().get("docs", [])
+        if not docs:
+            return None
+
+        doc      = docs[0]
+        cover_id = doc.get("cover_i")
+        work_key = doc.get("key")  # ex: /works/OL123W
+
+        cover_url = OL_COVER.format(cover_id=cover_id) if cover_id else None
+
+        # Descrição via endpoint da obra
+        descricao = None
+        if work_key:
+            try:
+                w = requests.get(
+                    OL_WORK.format(key=work_key),
+                    timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+                )
+                if w.status_code == 200:
+                    raw = w.json().get("description", "")
+                    # description pode ser string ou {"value": "..."}
+                    if isinstance(raw, dict):
+                        raw = raw.get("value", "")
+                    descricao = clean_text(raw) if raw else None
+            except Exception:
+                pass
+
+        if not cover_url and not descricao:
+            return None
+
+        return {
+            "cover_url":  cover_url,
+            "descricao":  descricao,
+            "preco":      None,   # Open Library não tem preço
+            "disponivel": True,
+            "source":     "open_library",
+        }
+
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        log(f"[SCRAPER] Open Library falhou: {type(e).__name__}")
+        return None
+
+
+# =========================
+# NOTA: PREÇO VIA ML API
+# =========================
+# A API do MercadoLivre exige OAuth2 desde 2023.
+# Para habilitar coleta de preços reais, configure:
+#   ML_CLIENT_ID  e  ML_CLIENT_SECRET  no .env
+# e implemente o fluxo client_credentials em try_mercadolivre_api().
+# Por enquanto, preço fica NULL até o marketplace_scraper
+# receber auth ou o monitor de preços (passo 19) ser ativado.
+
+
+# =========================
 # GOOGLE BOOKS FALLBACK
 # =========================
 
@@ -236,7 +340,8 @@ def try_google_books(isbn, titulo, autor):
 def fetch_pending(conn, pacote):
     cur = conn.cursor()
     cur.execute("""
-        SELECT id, titulo, autor, isbn, offer_url, imagem_url
+        SELECT id, titulo, autor, isbn, offer_url, imagem_url,
+               marketplace, lookup_query
         FROM livros
         WHERE status_enrich = 0
           AND offer_url IS NOT NULL
@@ -298,47 +403,69 @@ def run(idioma=None, pacote=50):
 
     ok = falhas = pulados = 0
 
-    for i, row in enumerate(rows, start=1):
+    try:
+        for i, row in enumerate(rows, start=1):
 
-        livro_id  = row["id"]
-        titulo    = row["titulo"]
-        offer_url = row["offer_url"]
-        isbn      = row["isbn"]
-        autor     = row["autor"]
+            livro_id      = row["id"]
+            titulo        = row["titulo"]
+            offer_url     = row["offer_url"]
+            isbn          = row["isbn"]
+            autor         = row["autor"]
+            lookup_query  = row["lookup_query"] or titulo
+            marketplace   = row["marketplace"] or ""
 
-        print(f"[SCRAPER][{i:03d}/{total:03d}] → {titulo}")
+            print(f"[SCRAPER][{i:03d}/{total:03d}] → {titulo}")
 
-        # Tentativa 1: scraping direto do marketplace
-        result = scrape_marketplace(offer_url)
+            result = None
+            source = "scraping"
 
-        source = "scraping"
+            # Tentativa 1: Open Library (capa em alta-res + descrição, sem preço)
+            # Usa titulo+autor, NÃO lookup_query (tem sufixo "livro" para Amazon)
+            result = try_open_library(titulo, isbn, autor)
+            if result and (result.get("cover_url") or result.get("descricao")):
+                source = "open_library"
+            else:
+                result = None
 
-        if not result or not (result.get("cover_url") or result.get("descricao")):
-            # Tentativa 2: Google Books
-            result = try_google_books(isbn, titulo, autor)
-            source = "google_books"
+            # Tentativa 2: Google Books (descrição + capa, sem preço)
+            if not result:
+                result = try_google_books(isbn, titulo, autor)
+                if result and (result.get("cover_url") or result.get("descricao")):
+                    source = "google_books"
+                else:
+                    result = None
 
-        if not result:
-            log(f"[SCRAPER] Sem dados para: {titulo}")
-            pulados += 1
+            # Tentativa 3: scraping direto (para offer_url de página de produto)
+            if not result:
+                result = scrape_marketplace(offer_url)
+                if result and (result.get("cover_url") or result.get("descricao")):
+                    source = "scraping"
+                else:
+                    result = None
 
-            # Marca como tentado (status_enrich=2) para não reprocessar indefinidamente
-            conn.execute("""
-                UPDATE livros SET status_enrich = 2, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            """, (livro_id,))
-            conn.commit()
-            continue
+            if not result:
+                log(f"[SCRAPER] Sem dados para: {titulo}")
+                pulados += 1
+                # Marca como tentado (status_enrich=2) para não reprocessar indefinidamente
+                conn.execute("""
+                    UPDATE livros SET status_enrich = 2, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (livro_id,))
+                conn.commit()
+                continue
 
-        save_result(conn, livro_id, result, source)
+            save_result(conn, livro_id, result, source)
 
-        if result.get("cover_url") or result.get("descricao"):
-            ok += 1
-        else:
-            falhas += 1
+            if result.get("cover_url") or result.get("descricao"):
+                ok += 1
+            else:
+                falhas += 1
 
-        # Rate limiting respeitoso
-        time.sleep(1)
+            # Rate limiting respeitoso
+            time.sleep(0.5)
+
+    except KeyboardInterrupt:
+        log(f"[SCRAPER] Interrompido pelo usuário — progresso salvo até aqui.")
 
     conn.close()
 

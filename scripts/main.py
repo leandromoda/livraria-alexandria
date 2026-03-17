@@ -114,14 +114,14 @@ def escolher_provider():
     print("""
 Modelo LLM:
 
-1 → Ollama (local) [padrão]
-2 → Gemini (cloud)
+1 → Ollama (local)
+2 → Gemini (cloud) [padrão]
 3 → Auto (Gemini → Ollama fallback)
 """)
 
     op = input_safe("Modelo: ")
 
-    return {"1": "ollama", "2": "gemini", "3": "auto"}.get(op, "ollama")
+    return {"1": "ollama", "2": "gemini", "3": "auto"}.get(op, "gemini")
 
 
 # =========================
