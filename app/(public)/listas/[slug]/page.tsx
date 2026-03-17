@@ -1,16 +1,33 @@
-
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import type { Metadata } from "next";
 
 type PageProps = {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 };
 
-export default async function ListaPage({
+export async function generateMetadata({
   params,
-}: PageProps) {
+}: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  const { data: lista } = await supabase
+    .from("listas")
+    .select("titulo, introducao")
+    .eq("slug", slug)
+    .single();
+
+  if (!lista) return {};
+
+  return {
+    title: lista.titulo,
+    description: lista.introducao
+      ? lista.introducao.slice(0, 160)
+      : `Lista editorial: ${lista.titulo}`,
+  };
+}
+
+export default async function ListaPage({ params }: PageProps) {
   const { slug } = await params;
 
   /**
@@ -45,31 +62,26 @@ export default async function ListaPage({
     .order("posicao", { ascending: true });
 
   /**
-   * =========================
    * Schema.org ItemList
-   * =========================
    */
   const schema = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: lista.titulo,
     description: lista.introducao,
-    itemListElement: livros?.map(
-      (item: any, index: number) => ({
-        "@type": "ListItem",
-        position: index + 1,
-        item: {
-          "@type": "Book",
-          name: item.livros.titulo,
-          image:
-            item.livros.imagem_url || undefined,
-          author: {
-            "@type": "Person",
-            name: item.livros.autor,
-          },
+    itemListElement: livros?.map((item: any, index: number) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Book",
+        name: item.livros.titulo,
+        image: item.livros.imagem_url || undefined,
+        author: {
+          "@type": "Person",
+          name: item.livros.autor,
         },
-      })
-    ),
+      },
+    })),
   };
 
   return (
@@ -78,9 +90,7 @@ export default async function ListaPage({
       {/* Schema */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(schema),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
 
       {/* =========================
@@ -115,7 +125,6 @@ export default async function ListaPage({
       <section className="space-y-4">
 
         {livros?.map((item: any) => (
-
           <article
             key={item.livros.id}
             className="flex items-start gap-5 bg-white border border-[#E6DED3] rounded-xl px-6 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all group"
@@ -126,13 +135,17 @@ export default async function ListaPage({
               {item.posicao}
             </span>
 
-            {/* Capa (se houver) */}
-            {item.livros.imagem_url && (
+            {/* Capa */}
+            {item.livros.imagem_url ? (
               <img
                 src={item.livros.imagem_url}
                 alt={item.livros.titulo}
                 className="flex-shrink-0 w-12 h-16 object-cover rounded-md border border-[#E6DED3]"
               />
+            ) : (
+              <div className="flex-shrink-0 w-12 h-16 rounded-md bg-[#4A1628] flex items-center justify-center">
+                <span className="text-[#C9A84C] text-sm font-serif">A</span>
+              </div>
             )}
 
             {/* Dados */}
@@ -161,7 +174,6 @@ export default async function ListaPage({
             </a>
 
           </article>
-
         ))}
 
       </section>

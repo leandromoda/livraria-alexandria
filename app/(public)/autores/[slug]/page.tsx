@@ -1,28 +1,35 @@
-
 import { notFound } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import type { Metadata } from "next";
 
 type PageProps = {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 };
 
-export default async function AutorPage({
+export async function generateMetadata({
   params,
-}: PageProps) {
-
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const { data: autor } = await supabase
+    .from("autores")
+    .select("nome, nacionalidade")
+    .eq("slug", slug)
+    .single();
+
+  if (!autor) return {};
+
+  return {
+    title: autor.nome,
+    description: `Livros de ${autor.nome}${autor.nacionalidade ? `, escritor(a) ${autor.nacionalidade}` : ""} disponíveis na Livraria Alexandria.`,
+  };
+}
+
+export default async function AutorPage({ params }: PageProps) {
+  const { slug } = await params;
 
   /**
-   * =========================
    * Autor
-   * =========================
    */
   const { data: autor } = await supabase
     .from("autores")
@@ -33,20 +40,11 @@ export default async function AutorPage({
   if (!autor) return notFound();
 
   /**
-   * =========================
    * Livros do autor
-   * =========================
    */
   const { data: livrosPivot } = await supabase
     .from("livros_autores")
-    .select(`
-      livros (
-        id,
-        titulo,
-        slug,
-        imagem_url
-      )
-    `)
+    .select("livros ( id, titulo, slug, imagem_url )")
     .eq("autor_id", autor.id);
 
   const livros = livrosPivot?.map((l: any) => l.livros) ?? [];
@@ -113,7 +111,6 @@ export default async function AutorPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {livros.map((livro: any) => (
-
             <a
               key={livro.slug}
               href={`/livros/${livro.slug}`}
@@ -137,7 +134,6 @@ export default async function AutorPage({
               </span>
 
             </a>
-
           ))}
 
         </div>

@@ -1,10 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
 export default async function Home() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   /**
    * Listas (hub primário SEO)
@@ -15,11 +11,11 @@ export default async function Home() {
     .limit(6);
 
   /**
-   * Livros (discovery)
+   * Livros em destaque (com autor para enriquecer os cards)
    */
   const { data: livros } = await supabase
     .from("livros")
-    .select("titulo, slug")
+    .select("titulo, slug, autor, imagem_url")
     .limit(6);
 
   /**
@@ -29,6 +25,8 @@ export default async function Home() {
     .from("ofertas")
     .select(`
       id,
+      preco,
+      marketplace,
       livros (
         titulo,
         slug
@@ -143,15 +141,12 @@ export default async function Home() {
               href={`/listas/${l.slug}`}
               className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
-
               <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider mb-2 block">
                 Lista editorial
               </span>
-
               <span className="text-[#0D1B2A] font-serif font-semibold text-base leading-snug group-hover:text-[#4A1628] transition-colors">
                 {l.titulo}
               </span>
-
             </a>
           ))}
 
@@ -182,12 +177,33 @@ export default async function Home() {
             <a
               key={l.slug}
               href={`/livros/${l.slug}`}
-              className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
+              className="group flex items-center gap-4 bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
 
-              <span className="text-[#0D1B2A] font-medium text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
-                {l.titulo}
-              </span>
+              {/* Capa */}
+              {l.imagem_url ? (
+                <img
+                  src={l.imagem_url}
+                  alt={l.titulo}
+                  className="flex-shrink-0 w-10 h-14 object-cover rounded border border-[#E6DED3]"
+                />
+              ) : (
+                <div className="flex-shrink-0 w-10 h-14 rounded bg-[#4A1628] flex items-center justify-center">
+                  <span className="text-[#C9A84C] text-sm font-serif">A</span>
+                </div>
+              )}
+
+              {/* Texto */}
+              <div className="min-w-0">
+                <span className="block text-[#0D1B2A] font-medium text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
+                  {l.titulo}
+                </span>
+                {l.autor && (
+                  <span className="block text-xs text-[#7B5E3A] mt-0.5 truncate">
+                    {l.autor}
+                  </span>
+                )}
+              </div>
 
             </a>
           ))}
@@ -262,15 +278,12 @@ export default async function Home() {
                 href={`/autores/${a.slug}`}
                 className="group block bg-white border border-[#E6DED3] rounded-xl px-4 py-3 hover:border-[#C9A84C] hover:shadow-sm transition-all"
               >
-
                 <span className="block text-[#0D1B2A] font-medium text-sm group-hover:text-[#4A1628] transition-colors">
                   {a.nome}
                 </span>
-
                 <span className="text-xs text-[#7B5E3A] mt-1 block">
                   {count} {count === 1 ? "livro" : "livros"}
                 </span>
-
               </a>
             );
           })}
@@ -304,13 +317,10 @@ export default async function Home() {
               href={`/livros/${o.livros.slug}`}
               className="group flex items-center gap-3 bg-white border border-[#E6DED3] rounded-xl px-5 py-4 hover:border-[#C9A84C] hover:shadow-sm transition-all"
             >
-
               <span className="flex-shrink-0 w-2 h-2 rounded-full bg-[#C9A84C]" />
-
               <span className="text-[#0D1B2A] font-medium text-sm leading-snug group-hover:text-[#4A1628] transition-colors">
                 {o.livros.titulo}
               </span>
-
             </a>
           ))}
 

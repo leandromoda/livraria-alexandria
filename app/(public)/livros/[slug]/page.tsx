@@ -1,22 +1,41 @@
-
 import { notFound } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
+import type { Metadata } from "next";
 
 type PageProps = {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 };
 
-export default async function LivroPage({
+export async function generateMetadata({
   params,
-}: PageProps) {
+}: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const { data: livro } = await supabase
+    .from("livros")
+    .select("titulo, descricao, autor")
+    .eq("slug", slug)
+    .single();
+
+  if (!livro) return {};
+
+  return {
+    title: livro.titulo,
+    description: livro.descricao
+      ? livro.descricao.slice(0, 160)
+      : `Sinopse, ofertas e informações sobre ${livro.titulo}${livro.autor ? ` de ${livro.autor}` : ""}.`,
+  };
+}
+
+function formatPrice(value: unknown): string {
+  return Number(value).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export default async function LivroPage({ params }: PageProps) {
+  const { slug } = await params;
 
   /**
    * Livro + Categorias
@@ -44,11 +63,7 @@ export default async function LivroPage({
    */
   const { data: ofertas } = await supabase
     .from("ofertas")
-    .select(`
-      id,
-      preco,
-      marketplace
-    `)
+    .select("id, preco, marketplace")
     .eq("livro_id", livro.id)
     .eq("ativa", true);
 
@@ -57,16 +72,10 @@ export default async function LivroPage({
    */
   const { data: listasPivot } = await supabase
     .from("lista_livros")
-    .select(`
-      listas (
-        titulo,
-        slug
-      )
-    `)
+    .select("listas ( titulo, slug )")
     .eq("livro_id", livro.id);
 
-  const listas =
-    listasPivot?.map((l: any) => l.listas) ?? [];
+  const listas = listasPivot?.map((l: any) => l.listas) ?? [];
 
   /**
    * Schema.org
@@ -113,9 +122,7 @@ export default async function LivroPage({
       {/* Schema JSON-LD */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(schema),
-        }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
       />
 
       {/* =========================
@@ -123,7 +130,7 @@ export default async function LivroPage({
       ========================== */}
       <section className="flex flex-col sm:flex-row gap-8">
 
-        {/* CAPA */}
+        {/* Capa */}
         <div className="flex-shrink-0">
           {livro.imagem_url ? (
             <img
@@ -138,14 +145,15 @@ export default async function LivroPage({
           )}
         </div>
 
-        {/* DADOS */}
+        {/* Dados */}
         <div className="space-y-4">
 
           {/* Breadcrumb */}
           <p className="text-xs text-[#7B5E3A] uppercase tracking-widest font-medium">
-            <a href="/livros" className="hover:text-[#C9A84C] transition-colors">Livros</a>
-            {" "}/{" "}
-            <span>{livro.titulo}</span>
+            <a href="/livros" className="hover:text-[#C9A84C] transition-colors">
+              Livros
+            </a>
+            {" "}/ <span>{livro.titulo}</span>
           </p>
 
           <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A] leading-tight">
@@ -191,9 +199,10 @@ export default async function LivroPage({
               <a
                 href={`/api/click/${ofertas[0].id}`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
-                Ver melhor oferta — R$ {ofertas[0].preco}
+                Ver melhor oferta — R$ {formatPrice(ofertas[0].preco)}
               </a>
             </div>
           )}
@@ -237,7 +246,6 @@ export default async function LivroPage({
         <div className="space-y-3">
 
           {ofertas?.map((o: any) => (
-
             <div
               key={o.id}
               className="flex items-center justify-between bg-white border border-[#E6DED3] rounded-xl px-6 py-4 hover:border-[#C9A84C] transition-all"
@@ -248,20 +256,20 @@ export default async function LivroPage({
                   {o.marketplace}
                 </p>
                 <p className="text-xl font-serif font-semibold text-[#4A1628] mt-0.5">
-                  R$ {o.preco}
+                  R$ {formatPrice(o.preco)}
                 </p>
               </div>
 
               <a
                 href={`/api/click/${o.id}`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
                 Ver oferta →
               </a>
 
             </div>
-
           ))}
 
         </div>
