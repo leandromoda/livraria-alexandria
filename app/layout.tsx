@@ -1,5 +1,6 @@
 import "./globals.css";
 import Header from "./_components/Header";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -35,21 +36,21 @@ export default function RootLayout({
 
             <div className="flex flex-wrap justify-center gap-6 mb-8">
 
-              <a href="/sobre" className="hover:text-[#8B1A1A]">
+              <Link href="/sobre" className="hover:text-[#8B1A1A] transition-colors">
                 Sobre
-              </a>
+              </Link>
 
-              <a href="/contato" className="hover:text-[#8B1A1A]">
+              <Link href="/contato" className="hover:text-[#8B1A1A] transition-colors">
                 Contato
-              </a>
+              </Link>
 
-              <a href="/privacidade" className="hover:text-[#8B1A1A]">
+              <Link href="/privacidade" className="hover:text-[#8B1A1A] transition-colors">
                 Política de Privacidade
-              </a>
+              </Link>
 
-              <a href="/termos" className="hover:text-[#8B1A1A]">
+              <Link href="/termos" className="hover:text-[#8B1A1A] transition-colors">
                 Termos de Uso
-              </a>
+              </Link>
 
             </div>
 
