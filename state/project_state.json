@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-16",
+    "last_updated": "2026-03-17",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -12,13 +12,14 @@
       "database_primary": "Supabase",
       "database_staging": "SQLite (pipeline local)",
       "database_staging_path": "scripts/data/books.db",
-      "llm_local": "Ollama (mistral:latest — fallback local)",
-      "llm_model": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
-      "llm_execution_model": "multi_agent_fsm (Gemini primary → Ollama fallback)",
-      "llm_provider_control": "menu_driven — seleção por opção no pipeline (ollama | gemini | auto)",
+      "llm_local": "Ollama (mistral:latest — CPU only, ~2 tok/s, NÃO viável para pipeline; GT 720M sem CUDA)",
+      "llm_model": "gemini-2.5-flash (primary) / mistral:latest (fallback local — inviável nesta máquina)",
+      "llm_execution_model": "multi_agent_fsm (Gemini primary)",
+      "llm_provider_control": "menu_driven — padrão Gemini (Enter seleciona Gemini); Ollama e Auto disponíveis mas não recomendados sem GPU",
+      "llm_tier_control": "core/gemini_limiter.py — RPM 12/min, RPD 1400/dia, persiste em data/gemini_usage.json",
       "python_env": "venv (Windows)",
       "ingest_language": "Python 3.14",
-      "llm_primary": "Gemini API"
+      "llm_primary": "Gemini API (gemini-2.5-flash)"
     },
     "deployment": {
       "platform": "Vercel",
@@ -29,20 +30,31 @@
     },
     "version_control": {
       "provider": "GitHub",
-      "client": "GitHub Desktop",
-      "branch_strategy": "single-main",
-      "commit_mode": "manual_curated",
+      "client": "git CLI (gh não instalado)",
+      "branch_strategy": "feature-branch-via-worktree → merge-to-main",
+      "commit_mode": "claude_code_assisted",
+      "worktree_workflow": "Claude cria worktree (claude/<nome>), commita melhorias, merge --no-ff em main, push → Vercel deploy",
       "database_versioning": "excluded",
       "gitignore_rules": [
         "scripts/data/books.db",
         "scripts/data/*.db-wal",
-        "scripts/data/*.db-shm"
+        "scripts/data/*.db-shm",
+        "runtime/tmp/",
+        "__pycache__/",
+        "scripts/data/seeds/ingested_seeds/"
+      ],
+      "artifacts_not_to_commit": [
+        "scripts/data/books.db (pipeline state)",
+        "scripts/alexandria.db",
+        "runtime/tmp/*.json (synopsis tmp files)",
+        "scripts/steps/__pycache__/",
+        "deleted seeds (movidos para ingested_seeds pelo pipeline)"
       ]
     }
   },
   "visual_identity": {
     "status": "implemented",
-    "last_updated": "2026-03-14",
+    "last_updated": "2026-03-17",
     "palette": {
       "brand_primary": "#4A1628",
       "brand_accent": "#C9A84C",
@@ -63,25 +75,27 @@
       "replaces": "ícone padrão Vercel"
     },
     "layout_pattern": {
-      "header": "sticky, fundo #0D1B2A, logo + nav + busca",
+      "header": "sticky, fundo #0D1B2A, logo + nav desktop + busca funcional (/livros?q=) + hamburger mobile (animado, fecha ao navegar)",
       "main": "max-w-6xl mx-auto px-6 py-12",
       "footer": "bordas #E6DED3, fundo #F5F0E8, links + disclaimer afiliado",
       "cards": "bg-white border #E6DED3 rounded-xl, hover border #C9A84C",
       "hero": "bg #4A1628, texto #F5F0E8, CTA âmbar, decorativo A opaco"
     },
     "files_altered": [
-      "app/globals.css",
-      "app/layout.tsx",
+      "app/globals.css (dark mode incompleto removido; tokens de marca limpos)",
+      "app/layout.tsx (footer com Link Next.js)",
       "app/icon.tsx (novo)",
-      "app/(public)/page.tsx",
+      "app/_components/Header.tsx (hamburger mobile + busca funcional)",
+      "app/(public)/page.tsx (supabase unificado; cards de livros com autor + capa)",
       "app/(public)/listas/page.tsx (novo)",
-      "app/(public)/livros/[slug]/page.tsx",
-      "app/(public)/listas/[slug]/page.tsx",
+      "app/(public)/livros/page.tsx (reescrito com design system correto)",
+      "app/(public)/livros/[slug]/page.tsx (generateMetadata + supabase unificado + rel noopener + formatPrice)",
+      "app/(public)/listas/[slug]/page.tsx (generateMetadata + supabase unificado)",
       "app/(public)/categorias/page.tsx",
-      "app/(public)/categorias/[slug]/page.tsx",
+      "app/(public)/categorias/[slug]/page.tsx (generateMetadata + supabase unificado)",
       "app/(public)/autores/page.tsx",
-      "app/(public)/autores/[slug]/page.tsx",
-      "app/(public)/ofertas/page.tsx"
+      "app/(public)/autores/[slug]/page.tsx (generateMetadata + supabase unificado)",
+      "app/(public)/ofertas/page.tsx (supabase unificado + label Promoções + rel noopener + formatPrice)"
     ]
   },
   "objectives": {
@@ -231,7 +245,19 @@
     "listas_page": "ItemList + Book",
     "ofertas_page": "ItemList + Product + Offer",
     "categorias_page": "CollectionPage",
-    "aggregate_offer": "pending"
+    "aggregate_offer": "pending",
+    "generateMetadata": {
+      "status": "implemented_all_dynamic_routes",
+      "implemented_on": "2026-03-17",
+      "routes": [
+        "livros/[slug] — title: livro.titulo, description: descricao[:160]",
+        "autores/[slug] — title: autor.nome, description: livros de {nome}",
+        "listas/[slug] — title: lista.titulo, description: introducao[:160]",
+        "categorias/[slug] — title: categoria.nome, description: explore livros de {nome}",
+        "livros/page — metadata estática",
+        "ofertas/page — metadata estática"
+      ]
+    }
   },
   "data_layer": {
     "production": {
@@ -601,6 +627,66 @@
       }
     ]
   },
+  "documentation": {
+    "claude_md_root": {
+      "path": "CLAUDE.md",
+      "scope": "site Next.js",
+      "status": "created",
+      "created_on": "2026-03-17",
+      "sections": [
+        "Comandos npm e Python pipeline",
+        "Estrutura de arquivos",
+        "Convenções obrigatórias (7 regras)",
+        "Design system — paleta + padrão de card",
+        "Schema do banco",
+        "Variáveis de ambiente",
+        "Click tracking (edge function)",
+        "LLM / agentes",
+        "O que NÃO fazer"
+      ]
+    },
+    "claude_md_pipeline": {
+      "path": "scripts/CLAUDE.md",
+      "scope": "pipeline Python local (exclusivo)",
+      "status": "created",
+      "created_on": "2026-03-17",
+      "sections": [
+        "Execução e atalhos de diagnóstico",
+        "Arquitetura de diretórios",
+        "Tabela de steps (19 steps — dependências, LLM, status)",
+        "Fluxo recomendado para novos seeds",
+        "Schema livros (todas as colunas)",
+        "Tabelas auxiliares",
+        "IDs e timestamps (convenções)",
+        "LLM — providers, tier gratuito Gemini, limiter",
+        "Variáveis de ambiente",
+        "Convenções de código (logging, queries, HTTP, seeds)",
+        "Template mínimo de novo step",
+        "Migrations Supabase pendentes",
+        "Estado atual do pipeline (ref. 2026-03-17)"
+      ]
+    }
+  },
+  "pipeline_metrics": {
+    "last_measured": "2026-03-17",
+    "sqlite_db": "scripts/data/books.db",
+    "livros": {
+      "total": 1339,
+      "status_review_1": 196,
+      "status_synopsis_1": 112,
+      "status_synopsis_0_pendente": 84,
+      "status_publish_1": 112,
+      "status_enrich_done": 20,
+      "status_enrich_pendente": 250,
+      "status_slug_0": 1143,
+      "status_cover_1_ou_2": 244
+    },
+    "seeds": {
+      "ingested": "001–025 (25 arquivos em ingested_seeds/)",
+      "pending": "026–058 (33 arquivos em seeds/)"
+    },
+    "gemini_usage_hoje": "1 req (teste de integração)"
+  },
   "validated_routes": [
     "/",
     "/listas",
@@ -677,7 +763,7 @@
       "description": "Implementar timeout control no executor para reduzir geração longa do phi3:mini",
       "priority": "medium",
       "status": "resolved",
-      "resolution": "Migrado para Gemini API. Timeout Ollama=600s como fallback apenas. Modelo local alterado para mistral:latest."
+      "resolution": "Migrado para Gemini API (padrão). Timeout Ollama reduzido 600s → 120s para fail-fast. Ollama NÃO viável nesta máquina (GT 720M, sem CUDA, ~2 tok/s)."
     },
     {
       "id": "TASK-PIPE-001",
@@ -701,9 +787,11 @@
     },
     {
       "id": "TASK-PIPE-004",
-      "description": "Gerar sinopses e publicar lote restante (~95 livros pendentes com status_synopsis=0)",
+      "description": "Gerar sinopses para 84 livros pendentes (status_synopsis=0, status_review=1, is_book=1). Usar Gemini (padrão). Antes usava Ollama — todos 30 livros do lote 2026-03-17 falharam por timeout (2 tok/s CPU).",
       "priority": "high",
-      "status": "open"
+      "status": "open",
+      "current_count": "84 pendentes",
+      "action": "Rodar step 8 → Enter (Gemini) → pacote 30"
     },
     {
       "id": "TASK-REVIEW-001",
@@ -727,19 +815,82 @@
       "id": "TASK-PIPE-005",
       "description": "Criar pasta scripts/data/seeds/ e mover arquivo atual offer_seeds.json para 001_offer_seeds.json dentro dela",
       "priority": "high",
-      "status": "open"
+      "status": "resolved",
+      "resolution": "Pasta seeds/ existe com 058 seeds (001–058_offer_seeds.json). Seeds processados movidos para ingested_seeds/."
     },
     {
       "id": "TASK-PIPE-006",
-      "description": "Rodar step 17 (Marketplace Scraper) após resolver ofertas para capturar preços reais",
+      "description": "Continuar step 17 (Marketplace Scraper) para 250 livros ainda pendentes. Fix aplicado: usa titulo+autor na busca Open Library (não lookup_query). Resultado atual: 20 feitos, taxa ~75% de sucesso.",
       "priority": "high",
-      "status": "open"
+      "status": "open",
+      "current_count": "250 pendentes, 20 feitos",
+      "fix_applied": "try_open_library usa titulo+autor, não lookup_query (tinha sufixo 'livro' que quebrava busca)"
     },
     {
       "id": "TASK-PIPE-007",
       "description": "Rodar step 18 (Categorize) após review para classificar livros na nova taxonomia temática",
       "priority": "medium",
       "status": "open"
+    },
+    {
+      "id": "TASK-SITE-001",
+      "description": "Refatoração do site: SEO, design system, mobile header, convenções",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-17",
+      "resolution": "Implementado e deployado em main. Inclui: generateMetadata em todas as rotas dinâmicas, supabase unificado via lib/supabase.ts, rel noopener em todos target=_blank, formatPrice pt-BR, /livros/page.tsx reescrito com design system, homepage cards com autor+capa, hamburger mobile no Header, busca funcional, footer com Link, dark mode incompleto removido do CSS, label Promoções no /ofertas."
+    },
+    {
+      "id": "TASK-DOCS-001",
+      "description": "Criar CLAUDE.md na raiz do projeto com arquitetura, comandos e convenções",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-17",
+      "resolution": "CLAUDE.md criado em livraria-alexandria/CLAUDE.md e commitado em main. Cobre: comandos npm e pipeline Python, mapa de arquivos, 7 convenções obrigatórias, schema do banco, variáveis de ambiente, click tracking e LLM."
+    },
+    {
+      "id": "TASK-DOCS-002",
+      "description": "Criar scripts/CLAUDE.md com documentação exclusiva do pipeline Python local",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-17",
+      "resolution": "scripts/CLAUDE.md criado e commitado (commit 9bcd83d). Cobre: steps 1-19, schema completo, LLM tier, convenções, template de step, migrations Supabase pendentes."
+    },
+    {
+      "id": "TASK-LLM-001",
+      "description": "Implementar controle de tier Gemini para evitar custos (RPM + RPD)",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-17",
+      "resolution": "core/gemini_limiter.py criado. Integrado em _call_gemini(). Limites: 12 RPM, 1400 RPD. Persiste em data/gemini_usage.json com reset diário automático. Configurável via .env."
+    },
+    {
+      "id": "TASK-LLM-002",
+      "description": "Corrigir provider padrão LLM de Ollama → Gemini no pipeline interativo",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-17",
+      "resolution": "escolher_provider() alterado para padrão=gemini (Enter seleciona Gemini). Timeout Ollama reduzido 600s→120s para fail-fast. Diagnóstico: GT 720M sem CUDA → ~2 tok/s → 8-10 min/livro inviável."
+    },
+    {
+      "id": "TASK-GITIGNORE-001",
+      "description": "Adicionar runtime/tmp/, __pycache__ e scripts/alexandria.db ao .gitignore para evitar commits acidentais de artifacts",
+      "priority": "medium",
+      "status": "open"
+    },
+    {
+      "id": "TASK-PIPE-008",
+      "description": "Ingerir seeds 026–058 (33 arquivos pendentes em data/seeds/) e rodar pipeline completo",
+      "priority": "high",
+      "status": "open",
+      "action": "Step 1 → Step 2 → Step 3 → Step 17 → Step 4 → Step 5 → Step 6 → Step 7 → Step 8 (Gemini) → Step 9 → Step 10 → Step 11"
+    },
+    {
+      "id": "TASK-PIPE-009",
+      "description": "Rodar steps 4-6 (slugs, dedup) para 1143 livros que ainda não foram processados por esses steps",
+      "priority": "medium",
+      "status": "open",
+      "current_count": "1143 com status_slug=0"
     }
   ]
 }
