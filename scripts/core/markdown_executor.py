@@ -8,6 +8,7 @@ import uuid
 import requests
 from dotenv import load_dotenv
 from core.markdown_memory import load_memory
+from core.gemini_limiter import acquire as _gemini_acquire
 
 # ======================================================
 # ENV
@@ -106,6 +107,9 @@ def _call_gemini(prompt: str) -> str:
 
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY not set")
+
+    # Controle de tier: throttle RPM + bloqueio RPD
+    _gemini_acquire()
 
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
