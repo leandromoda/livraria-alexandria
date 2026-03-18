@@ -48,6 +48,12 @@ export async function GET(
     request.headers.get("x-forwarded-for") ??
     "0.0.0.0";
 
+  const requestUrl = new URL(request.url);
+  const utm_source   = requestUrl.searchParams.get("utm_source")   ?? null;
+  const utm_medium   = requestUrl.searchParams.get("utm_medium")   ?? null;
+  const utm_campaign = requestUrl.searchParams.get("utm_campaign") ?? null;
+  const session_id   = requestUrl.searchParams.get("session_id")   ?? null;
+
   /**
    * 3) Hash IP (Edge-safe)
    */
@@ -71,6 +77,10 @@ export async function GET(
     user_agent: userAgent,
     referer: referer,
     ip_hash: ipHash,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    session_id,
   });
 
   /**

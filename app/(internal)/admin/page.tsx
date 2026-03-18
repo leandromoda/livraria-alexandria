@@ -24,11 +24,21 @@ type TopLivro = {
   total: number;
 };
 
-type PipelineStats = {
+type CatalogStats = {
   total: number;
-  publishable: number;
-  blocked: number;
-  is_book: number;
+  published: number;
+  withCover: number;
+  withOffer: number;
+  withSynopsis: number;
+  stageBreakdown: { stage: string; count: number }[];
+};
+
+type SourceRow = { label: string; clicks: number; pct: number };
+
+type TrafficSources = {
+  byReferer: SourceRow[];
+  byMarketplace: SourceRow[];
+  byUtm: SourceRow[];
 };
 
 type PageViewDay = {
@@ -81,27 +91,114 @@ async function getTopLivros(): Promise<TopLivro[]> {
     .slice(0, 10);
 }
 
-async function getPipelineStats(): Promise<PipelineStats> {
-  const { count: total } = await supabaseAdmin
-    .from("livros")
-    .select("*", { count: "exact", head: true });
+async function getCatalogStats(): Promise<CatalogStats> {
+  const STAGES = ["slug", "dedup", "synopsis", "review", "cover", "publish"];
 
-  const { count: publishable } = await supabaseAdmin
-    .from("livros")
-    .select("*", { count: "exact", head: true })
-    .eq("is_publishable", true);
+  const [
+    { count: total },
+    { count: published },
+    { count: withCover },
+    { data: offerRows },
+    { data: allRows },
+  ] = await Promise.all([
+    supabaseAdmin.from("livros").select("*", { count: "exact", head: true }),
+    supabaseAdmin
+      .from("livros")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "publish"),
+    supabaseAdmin
+      .from("livros")
+      .select("*", { count: "exact", head: true })
+      .not("imagem_url", "is", null),
+    // busca livro_id de todas as ofertas ativas para deduplicar em JS
+    supabaseAdmin.from("ofertas").select("livro_id").eq("ativa", true),
+    supabaseAdmin.from("livros").select("status"),
+  ]);
 
-  const { count: is_book } = await supabaseAdmin
-    .from("livros")
-    .select("*", { count: "exact", head: true })
-    .eq("is_book", true);
+  const withOffer = new Set(
+    (offerRows ?? []).map((r: any) => r.livro_id)
+  ).size;
+
+  const rows = (allRows ?? []) as any[];
+
+  const withSynopsis = rows.filter((r) =>
+    ["synopsis", "review", "cover", "publish"].includes(r.status)
+  ).length;
+
+  const stageCounts: Record<string, number> = {};
+  for (const r of rows) {
+    stageCounts[r.status] = (stageCounts[r.status] ?? 0) + 1;
+  }
+  const stageBreakdown = STAGES.map((s) => ({
+    stage: s,
+    count: stageCounts[s] ?? 0,
+  }));
 
   return {
     total: total ?? 0,
-    publishable: publishable ?? 0,
-    blocked: (total ?? 0) - (publishable ?? 0),
-    is_book: is_book ?? 0,
+    published: published ?? 0,
+    withCover: withCover ?? 0,
+    withOffer,
+    withSynopsis,
+    stageBreakdown,
   };
+}
+
+// TODO: substituir por RPCs SQL com GROUP BY quando oferta_clicks > 50k rows
+async function getTrafficSources(): Promise<TrafficSources> {
+  const [clicksRef, clicksMkt, clicksUtm] = await Promise.all([
+    supabaseAdmin.from("oferta_clicks").select("referer"),
+    supabaseAdmin.from("oferta_clicks").select("ofertas(marketplace)"),
+    supabaseAdmin
+      .from("oferta_clicks")
+      .select("utm_source")
+      .not("utm_source", "is", null),
+  ]);
+
+  const refCounts: Record<string, number> = {};
+  for (const r of (clicksRef.data ?? []) as any[]) {
+    const domain = parseDomain(r.referer);
+    refCounts[domain] = (refCounts[domain] ?? 0) + 1;
+  }
+
+  const mktCounts: Record<string, number> = {};
+  for (const r of (clicksMkt.data ?? []) as any[]) {
+    const mkt = r.ofertas?.marketplace ?? "(sem marketplace)";
+    mktCounts[mkt] = (mktCounts[mkt] ?? 0) + 1;
+  }
+
+  const utmCounts: Record<string, number> = {};
+  for (const r of (clicksUtm.data ?? []) as any[]) {
+    const src = r.utm_source ?? "(sem utm)";
+    utmCounts[src] = (utmCounts[src] ?? 0) + 1;
+  }
+
+  return {
+    byReferer: toSourceRows(refCounts),
+    byMarketplace: toSourceRows(mktCounts),
+    byUtm: toSourceRows(utmCounts),
+  };
+}
+
+function parseDomain(url: string | null): string {
+  if (!url) return "(direto)";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "(inválido)";
+  }
+}
+
+function toSourceRows(counts: Record<string, number>): SourceRow[] {
+  const entries = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
+  return entries.map(([label, clicks]) => ({
+    label,
+    clicks,
+    pct: Math.round((clicks / total) * 100),
+  }));
 }
 
 async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
@@ -114,7 +211,6 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   }
 
   try {
-    // Busca team ID
     const teamRes = await fetch(
       `https://api.vercel.com/v2/teams?slug=${teamSlug}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
@@ -124,7 +220,6 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
 
     if (!teamId) return { totalViews: 0, totalVisitors: 0, history: [] };
 
-    // Últimos 30 dias
     const now = Date.now();
     const from = now - 30 * 24 * 60 * 60 * 1000;
 
@@ -173,20 +268,20 @@ function formatDay(dateStr: string) {
   });
 }
 
+function pct(a: number, b: number): number {
+  return b > 0 ? Math.round((a / b) * 100) : 0;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
-  const [clicks, topLivros, pipeline, analytics] = await Promise.all([
+  const [clicks, topLivros, catalog, analytics, traffic] = await Promise.all([
     getRecentClicks(),
     getTopLivros(),
-    getPipelineStats(),
+    getCatalogStats(),
     getVercelAnalytics(),
+    getTrafficSources(),
   ]);
-
-  const publishRatio =
-    pipeline.total > 0
-      ? Math.round((pipeline.publishable / pipeline.total) * 100)
-      : 0;
 
   const maxViews =
     analytics.history.length > 0
@@ -202,24 +297,63 @@ export default async function AdminPage() {
         <p className="admin-subtitle">Livraria Alexandria — acesso restrito</p>
       </header>
 
-      {/* ── Pipeline stats ── */}
+      {/* ── Status do Catálogo ── */}
       <section className="section">
-        <h2 className="section-title">Status do Pipeline</h2>
+        <h2 className="section-title">Status do Catálogo</h2>
         <div className="stats-grid">
-          <StatCard label="Total de livros" value={pipeline.total} />
+          <StatCard label="Total de livros" value={catalog.total} />
           <StatCard
-            label="Publicáveis"
-            value={pipeline.publishable}
+            label="Publicados"
+            value={catalog.published}
             accent="green"
-            sub={`${publishRatio}% do total`}
+            sub={`${pct(catalog.published, catalog.total)}% do total`}
           />
           <StatCard
-            label="Bloqueados"
-            value={pipeline.blocked}
-            accent="red"
+            label="Com capa"
+            value={catalog.withCover}
+            sub={`${pct(catalog.withCover, catalog.total)}% do total`}
           />
-          <StatCard label="Confirmados como livro" value={pipeline.is_book} />
+          <StatCard
+            label="Com oferta ativa"
+            value={catalog.withOffer}
+            sub={`${pct(catalog.withOffer, catalog.total)}% do total`}
+          />
+          <StatCard
+            label="Com sinopse"
+            value={catalog.withSynopsis}
+            sub={`${pct(catalog.withSynopsis, catalog.total)}% do total`}
+          />
+          <StatCard
+            label="Sem capa"
+            value={catalog.total - catalog.withCover}
+            accent="red"
+            sub="aguardando capa"
+          />
         </div>
+        <StageBar breakdown={catalog.stageBreakdown} total={catalog.total} />
+      </section>
+
+      {/* ── Origens de Tráfego ── */}
+      <section className="section">
+        <h2 className="section-title">Origens de Tráfego — Cliques Afiliados</h2>
+        <SourceTable
+          title="Por Referer (Domínio)"
+          rows={traffic.byReferer}
+          emptyMessage="Nenhum clique com referer registrado ainda."
+          labelHeader="Domínio"
+        />
+        <SourceTable
+          title="Por Marketplace"
+          rows={traffic.byMarketplace}
+          emptyMessage="Nenhum clique registrado ainda."
+          labelHeader="Marketplace"
+        />
+        <SourceTable
+          title="Por UTM Source"
+          rows={traffic.byUtm}
+          emptyMessage="Nenhum UTM registrado — adicione ?utm_source= nos links afiliados para rastrear origem."
+          labelHeader="Fonte"
+        />
       </section>
 
       {/* ── Visitas ── */}
@@ -456,6 +590,69 @@ export default async function AdminPage() {
           margin-top: 0.35rem;
         }
 
+        /* ── Stage breakdown bar ── */
+        .stage-bar-wrap {
+          margin-top: 1.5rem;
+          background: #111520;
+          border: 1px solid #1e2430;
+          border-radius: 6px;
+          padding: 1.25rem 1.5rem;
+        }
+
+        .stage-bar {
+          display: flex;
+          height: 8px;
+          border-radius: 4px;
+          overflow: hidden;
+          gap: 2px;
+          margin-bottom: 1rem;
+        }
+
+        .stage-segment {
+          height: 100%;
+          border-radius: 2px;
+          transition: opacity 0.15s;
+          cursor: default;
+          min-width: 3px;
+        }
+
+        .stage-segment:hover { opacity: 0.75; }
+
+        .stage-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem 1.5rem;
+          font-size: 0.65rem;
+          color: #64748b;
+        }
+
+        .stage-legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .stage-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 2px;
+          flex-shrink: 0;
+        }
+
+        /* ── Traffic sources subsections ── */
+        .subsection-title {
+          font-size: 0.65rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #64748b;
+          margin: 1.5rem 0 0.75rem;
+          padding-bottom: 0.35rem;
+          border-bottom: 1px solid #141820;
+        }
+
+        .subsection-title:first-child { margin-top: 0; }
+
+        /* ── Chart ── */
         .chart-wrap {
           background: #111520;
           border: 1px solid #1e2430;
@@ -490,9 +687,7 @@ export default async function AdminPage() {
           transition: background 0.15s;
         }
 
-        .chart-col:hover .bar {
-          background: #60a5fa;
-        }
+        .chart-col:hover .bar { background: #60a5fa; }
 
         .bar-label {
           font-size: 0.55rem;
@@ -507,6 +702,7 @@ export default async function AdminPage() {
           white-space: nowrap;
         }
 
+        /* ── Tables ── */
         .table-wrap {
           overflow-x: auto;
           border: 1px solid #1e2430;
@@ -538,13 +734,8 @@ export default async function AdminPage() {
           vertical-align: middle;
         }
 
-        .data-table tr:last-child td {
-          border-bottom: none;
-        }
-
-        .data-table tr:hover td {
-          background: #111520;
-        }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: #111520; }
 
         .align-right { text-align: right; }
 
@@ -573,6 +764,28 @@ export default async function AdminPage() {
           letter-spacing: 0.05em;
         }
 
+        .pct-bar-cell {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          justify-content: flex-end;
+        }
+
+        .pct-bar-track {
+          width: 80px;
+          height: 4px;
+          background: #1e2430;
+          border-radius: 2px;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .pct-bar-fill {
+          height: 100%;
+          background: #3b82f6;
+          border-radius: 2px;
+        }
+
         .mono  { font-family: 'IBM Plex Mono', monospace; }
         .muted { color: #475569; }
 
@@ -594,7 +807,7 @@ export default async function AdminPage() {
   );
 }
 
-// ─── Sub-component ────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatCard({
   label,
@@ -613,5 +826,130 @@ function StatCard({
       <div className={`stat-value${accent ? ` ${accent}` : ""}`}>{value}</div>
       {sub && <div className="stat-sub">{sub}</div>}
     </div>
+  );
+}
+
+const STAGE_COLORS: Record<string, string> = {
+  slug:     "#475569",
+  dedup:    "#64748b",
+  synopsis: "#3b82f6",
+  review:   "#f59e0b",
+  cover:    "#a78bfa",
+  publish:  "#4ade80",
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  slug:     "Slug",
+  dedup:    "Dedup",
+  synopsis: "Sinopse",
+  review:   "Review",
+  cover:    "Capa",
+  publish:  "Publicado",
+};
+
+function StageBar({
+  breakdown,
+  total,
+}: {
+  breakdown: { stage: string; count: number }[];
+  total: number;
+}) {
+  if (total === 0) return null;
+
+  return (
+    <div className="stage-bar-wrap">
+      <div className="stage-bar">
+        {breakdown.map(({ stage, count }) => {
+          const widthPct = Math.max(0.5, (count / total) * 100);
+          return (
+            <div
+              key={stage}
+              className="stage-segment"
+              style={{
+                width: `${widthPct}%`,
+                background: STAGE_COLORS[stage] ?? "#334155",
+              }}
+              title={`${STAGE_LABELS[stage] ?? stage}: ${count} livros`}
+            />
+          );
+        })}
+      </div>
+      <div className="stage-legend">
+        {breakdown.map(({ stage, count }) => (
+          <span key={stage} className="stage-legend-item">
+            <span
+              className="stage-dot"
+              style={{ background: STAGE_COLORS[stage] ?? "#334155" }}
+            />
+            {STAGE_LABELS[stage] ?? stage} ({count})
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SourceTable({
+  title,
+  rows,
+  emptyMessage,
+  labelHeader,
+}: {
+  title: string;
+  rows: SourceRow[];
+  emptyMessage: string;
+  labelHeader: string;
+}) {
+  return (
+    <>
+      <h3 className="subsection-title">{title}</h3>
+      <div className="table-wrap" style={{ marginBottom: "0.25rem" }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th style={{ width: "2rem" }}>#</th>
+              <th>{labelHeader}</th>
+              <th className="align-right">Cliques</th>
+              <th className="align-right">Proporção</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="empty">
+                  {emptyMessage}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, i) => (
+                <tr key={row.label}>
+                  <td className="rank">{i + 1}</td>
+                  <td>{row.label}</td>
+                  <td className="align-right">
+                    <span className="pill">{row.clicks}</span>
+                  </td>
+                  <td className="align-right">
+                    <div className="pct-bar-cell">
+                      <span
+                        className="muted"
+                        style={{ fontSize: "0.7rem", minWidth: "2.5rem", textAlign: "right" }}
+                      >
+                        {row.pct}%
+                      </span>
+                      <div className="pct-bar-track">
+                        <div
+                          className="pct-bar-fill"
+                          style={{ width: `${row.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
