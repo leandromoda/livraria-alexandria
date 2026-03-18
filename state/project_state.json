@@ -418,7 +418,7 @@
         "merge_scope": "intra-language"
       },
       {
-        "order": 7,
+        "order": 10,
         "name": "Synopsis Generation",
         "status": "operational_factual_fsm_pipeline",
         "idioma_aware": true,
@@ -444,7 +444,7 @@
         "validator_max_words": 160
       },
       {
-        "order": 6,
+        "order": 8,
         "name": "Review",
         "status": "operational_editorial_classifier",
         "idioma_aware": true,
@@ -457,7 +457,7 @@
         "description": "Classificação editorial + detecção de idioma. Roda ANTES da sinopse."
       },
       {
-        "order": 8,
+        "order": 11,
         "name": "Cover Enrichment",
         "status": "operational",
         "idioma_aware": true,
@@ -470,7 +470,7 @@
         "placeholder_check": "min 5000 bytes"
       },
       {
-        "order": 9,
+        "order": 12,
         "name": "Quality Gate",
         "status": "operational_hard_validation",
         "idioma_aware": true,
@@ -496,7 +496,7 @@
         }
       },
       {
-        "order": 10,
+        "order": 13,
         "name": "Publish",
         "status": "operational",
         "idioma_aware": true,
@@ -529,7 +529,7 @@
         "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''"
       },
       {
-        "order": 11,
+        "order": 14,
         "name": "Publish Autores",
         "status": "operational",
         "description": "Publica autores e relações livros_autores no Supabase",
@@ -540,7 +540,7 @@
         "credentials": "lidas de os.environ em runtime (não hardcoded)"
       },
       {
-        "order": 12,
+        "order": 16,
         "name": "List Composer",
         "status": "operational",
         "description": "Geração automática de listas SEO por categoria e por autor",
@@ -562,21 +562,52 @@
         ],
         "source": "livros publicados",
         "execution_mode": "manual_menu_option",
-        "menu_option": 13
+        "menu_option": 16
       },
       {
-        "order": 14,
+        "order": 4,
+        "name": "Marketplace Scraper",
+        "status": "operational",
+        "description": "Extrai capa, descrição e preço direto do marketplace para livros com offer_url resolvida. Fallback: Google Books → OpenLibrary.",
+        "script": "scripts/steps/marketplace_scraper.py",
+        "idioma_aware": false,
+        "menu_option": 4
+      },
+      {
+        "order": 9,
+        "name": "Categorize",
+        "status": "operational",
+        "description": "Classifica livros em até 5 categorias temáticas da taxonomy.json usando LLM. Insere em livros_categorias_tematicas.",
+        "script": "scripts/steps/categorize.py",
+        "idioma_aware": false,
+        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
+        "menu_option": 9,
+        "progress_format": "[CATEGORIZE][NNN/TTT] → titulo"
+      },
+      {
+        "order": 17,
+        "name": "Offer Price Monitor",
+        "status": "operational",
+        "description": "Monitora preço e disponibilidade das ofertas no marketplace. Despublica automaticamente após detecção de indisponibilidade. Marca reactivation_pending=1 para reativação manual.",
+        "script": "scripts/steps/offer_price_monitor.py",
+        "idioma_aware": false,
+        "menu_option": 17,
+        "flags": ["--limit N", "--dry-run"],
+        "progress_format": "[MONITOR][NNN/TTT] → titulo"
+      },
+      {
+        "order": 18,
         "name": "Auditor — Connectivity",
         "status": "operational",
         "description": "Testa conectividade de infra: Supabase endpoints, rotas do site, click API, imagens",
         "script": "scripts/steps/auditor.py",
         "mode": "connectivity",
         "llm_required": false,
-        "menu_option": 14,
+        "menu_option": 18,
         "output": "scripts/data/audit_connectivity_{ts}.json + SQLite connectivity_log"
       },
       {
-        "order": 15,
+        "order": 19,
         "name": "Auditor — Content",
         "status": "operational",
         "description": "Audita coerência editorial de sinopses via LLM. Despublica automaticamente severity=medium|high.",
@@ -584,7 +615,7 @@
         "mode": "content",
         "llm_required": true,
         "llm": "configurável via menu (ollama | gemini | auto)",
-        "menu_option": 15,
+        "menu_option": 19,
         "unpublish_threshold": "medium ou high",
         "unpublish_actions": [
           "SQLite: is_publishable=0, status_publish=0",
@@ -593,37 +624,6 @@
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
         "flags": ["--limit N", "--dry-run"]
-      },
-      {
-        "order": 17,
-        "name": "Marketplace Scraper",
-        "status": "operational",
-        "description": "Extrai capa, descrição e preço direto do marketplace para livros com offer_url resolvida. Fallback: Google Books → OpenLibrary.",
-        "script": "scripts/steps/marketplace_scraper.py",
-        "idioma_aware": false,
-        "menu_option": 17
-      },
-      {
-        "order": 18,
-        "name": "Categorize",
-        "status": "operational",
-        "description": "Classifica livros em até 5 categorias temáticas da taxonomy.json usando LLM. Insere em livros_categorias_tematicas.",
-        "script": "scripts/steps/categorize.py",
-        "idioma_aware": false,
-        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
-        "menu_option": 18,
-        "progress_format": "[CATEGORIZE][NNN/TTT] → titulo"
-      },
-      {
-        "order": 19,
-        "name": "Offer Price Monitor",
-        "status": "operational",
-        "description": "Monitora preço e disponibilidade das ofertas no marketplace. Despublica automaticamente após detecção de indisponibilidade. Marca reactivation_pending=1 para reativação manual.",
-        "script": "scripts/steps/offer_price_monitor.py",
-        "idioma_aware": false,
-        "menu_option": 19,
-        "flags": ["--limit N", "--dry-run"],
-        "progress_format": "[MONITOR][NNN/TTT] → titulo"
       }
     ]
   },
@@ -668,24 +668,24 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-03-17",
+    "last_measured": "2026-03-18",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
-      "total": 1339,
+      "total": 2219,
       "status_review_1": 196,
       "status_synopsis_1": 112,
       "status_synopsis_0_pendente": 84,
       "status_publish_1": 112,
-      "status_enrich_done": 20,
-      "status_enrich_pendente": 250,
-      "status_slug_0": 1143,
-      "status_cover_1_ou_2": 244
+      "status_enrich_lote_2026_03_18": 191,
+      "status_enrich_sem_desc_lote": 9,
+      "status_cover_1_ou_2": 244,
+      "nota": "step 1: +880 livros (seeds 030–093+059). step 2: 191/200 enriquecidos."
     },
     "seeds": {
-      "ingested": "001–025 (25 arquivos em ingested_seeds/)",
-      "pending": "026–058 (33 arquivos em seeds/)"
+      "ingested": "001–025 + 030–093 (incluindo 059 corrigido) — todos os seeds processados",
+      "pending": "nenhum"
     },
-    "gemini_usage_hoje": "1 req (teste de integração)"
+    "gemini_usage_hoje": "0 req"
   },
   "validated_routes": [
     "/",
@@ -791,7 +791,7 @@
       "priority": "high",
       "status": "open",
       "current_count": "84 pendentes",
-      "action": "Rodar step 8 → Enter (Gemini) → pacote 30"
+      "action": "Rodar step 10 → Enter (Gemini) → pacote 30"
     },
     {
       "id": "TASK-REVIEW-001",
@@ -801,7 +801,7 @@
     },
     {
       "id": "TASK-AUDIT-001",
-      "description": "Rodar auditor de conteúdo (opção 15) após completar publicação do lote principal",
+      "description": "Rodar auditor de conteúdo (opção 19) após completar publicação do lote principal",
       "priority": "medium",
       "status": "open"
     },
@@ -880,17 +880,18 @@
     },
     {
       "id": "TASK-PIPE-008",
-      "description": "Ingerir seeds 026–058 (33 arquivos pendentes em data/seeds/) e rodar pipeline completo",
+      "description": "Ingerir seeds 026–093 e rodar pipeline completo",
       "priority": "high",
-      "status": "open",
-      "action": "Step 1 → Step 2 → Step 3 → Step 17 → Step 4 → Step 5 → Step 6 → Step 7 → Step 8 (Gemini) → Step 9 → Step 10 → Step 11"
+      "status": "resolved",
+      "resolved_on": "2026-03-18",
+      "resolution": "Seeds 030–093 (64 arquivos) + 059 corrigido ingeridos. 880 novos livros. Step 2 rodado para 200 livros (191 OK)."
     },
     {
       "id": "TASK-PIPE-009",
-      "description": "Rodar steps 4-6 (slugs, dedup) para 1143 livros que ainda não foram processados por esses steps",
+      "description": "Rodar steps slugify e dedup para livros sem slug",
       "priority": "medium",
       "status": "open",
-      "current_count": "1143 com status_slug=0"
+      "current_count": "~2023 com status_slug=0 (1143 anteriores + 880 novos)"
     }
   ]
 }

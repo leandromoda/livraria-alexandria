@@ -38,19 +38,19 @@ Sequência padrão completa:
 1 → Importar seeds
 2 → Enriquecer descrições
 3 → Resolver ofertas
-17 → Marketplace scraper (capa + preço)
-4 → Slugs
-5 → Slugify autores
-6 → Deduplicar
-7 → Review editorial
-18 → Categorias temáticas (LLM)
-8 → Sinopses (LLM)
-9 → Capas
-10 → Quality gate
-11 → Publicar livros
-12 → Publicar autores
-13 → Publicar ofertas
-14 → Gerar listas SEO
+4 → Marketplace scraper (capa + preço)
+5 → Slugs
+6 → Slugify autores
+7 → Deduplicar
+8 → Review editorial
+9 → Categorias temáticas (LLM)
+10 → Sinopses (LLM)
+11 → Capas
+12 → Quality gate
+13 → Publicar livros
+14 → Publicar autores
+15 → Publicar ofertas
+16 → Gerar listas SEO
 ```
 
 ---
