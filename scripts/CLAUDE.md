@@ -84,28 +84,28 @@ scripts/
 | 1 | Importar Seeds | offer_seed.py | — | seeds/*.json | created |
 | 2 | Enriquecer Desc | enrich_descricao.py | — | — | descricao preenchida |
 | 3 | Resolver Ofertas | offer_resolver.py | — | lookup_query | offer_url |
-| 4 | Gerar Slugs | slugify.py | — | — | status_slug=1 |
-| 5 | Slugify Autores | slugify_autores.py | — | — | autores.slug |
-| 6 | Deduplicar | dedup.py | — | — | status_dedup=1 |
-| 7 | Review | review.py | — | — | status_review=1 |
-| **8** | **Gerar Sinopses** | synopsis.py | **Gemini** | review=1 | status_synopsis=1 |
-| 9 | Gerar Capas | covers.py | — | — | status_cover=1/2 |
-| 10 | Quality Gate | quality_gate.py | — | steps 4,7,8,9 | is_publishable=0/1 |
-| 11 | Publicar Supabase | publish.py | — | is_publishable=1 | status_publish=1 |
-| 12 | Publicar Autores | publish_autores.py | — | step 11 | autores.status_publish=1 |
-| 13 | Publicar Ofertas | publish_ofertas.py | — | step 11 | status_publish_oferta=1 |
-| 14 | Listas SEO | list_composer.py | — | step 11 | tabelas listas/listas_livros |
-| 15 | Auditoria Conectiv | auditor.py | — | — | connectivity_log |
-| **16** | **Auditoria Conteúdo** | auditor.py | **Gemini** | step 11 | audit_log |
-| 17 | Scraper Marketplace | marketplace_scraper.py | — | offer_url | imagem_url, descricao, preco |
-| **18** | **Categorizar** | categorize.py | **Gemini** | review=1 | livros_categorias_tematicas |
-| 19 | Monitor Preços | offer_price_monitor.py | — | step 11 | offer_price_log |
+| 4 | Scraper Marketplace | marketplace_scraper.py | — | offer_url | imagem_url, descricao, preco |
+| 5 | Gerar Slugs | slugify.py | — | — | status_slug=1 |
+| 6 | Slugify Autores | slugify_autores.py | — | — | autores.slug |
+| 7 | Deduplicar | dedup.py | — | — | status_dedup=1 |
+| 8 | Review | review.py | — | — | status_review=1 |
+| **9** | **Categorizar** | categorize.py | **Gemini** | review=1 | livros_categorias_tematicas |
+| **10** | **Gerar Sinopses** | synopsis.py | **Gemini** | review=1 | status_synopsis=1 |
+| 11 | Gerar Capas | covers.py | — | — | status_cover=1/2 |
+| 12 | Quality Gate | quality_gate.py | — | steps 5,8,10,11 | is_publishable=0/1 |
+| 13 | Publicar Supabase | publish.py | — | is_publishable=1 | status_publish=1 |
+| 14 | Publicar Autores | publish_autores.py | — | step 13 | autores.status_publish=1 |
+| 15 | Publicar Ofertas | publish_ofertas.py | — | step 13 | status_publish_oferta=1 |
+| 16 | Listas SEO | list_composer.py | — | step 13 | tabelas listas/listas_livros |
+| 17 | Monitor Preços | offer_price_monitor.py | — | step 13 | offer_price_log |
+| 18 | Auditoria Conectiv | auditor.py | — | — | connectivity_log |
+| **19** | **Auditoria Conteúdo** | auditor.py | **Gemini** | step 13 | audit_log |
 | 91–94 | Exports | export_state_transcript.py | — | — | JSON/markdown |
 
 ### Fluxo recomendado para novos seeds
 
 ```
-1 → 2 → 3 → 17 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 18
+1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16
 ```
 
 ---
