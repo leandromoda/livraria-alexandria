@@ -121,10 +121,11 @@ def run(idioma_base="PT", pacote=20):
 
     aprovados  = 0
     reprovados = 0
+    total      = len(rows)
 
     log("QUALITY GATE START")
 
-    for row in rows:
+    for i, row in enumerate(rows, start=1):
 
         (
             book_id, titulo, sinopse, imagem_url,
@@ -165,11 +166,11 @@ def run(idioma_base="PT", pacote=20):
         if motivos:
             set_publishable(conn, book_id, 0)
             reprovados += 1
-            log(f"REPROVADO → {titulo} | " + " | ".join(motivos))
+            log(f"[QUALITY][{i:03d}/{total:03d}] REPROVADO → {titulo} | " + " | ".join(motivos))
         else:
             set_publishable(conn, book_id, 1)
             aprovados += 1
-            log(f"APROVADO → {titulo}")
+            log(f"[QUALITY][{i:03d}/{total:03d}] APROVADO → {titulo}")
 
     conn.close()
 

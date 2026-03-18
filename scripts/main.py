@@ -243,8 +243,9 @@ def main():
             publish.run(idioma, pacote)
 
         elif op == "14":
+            pacote = escolher_pacote()
             log("Publicando autores no Supabase…")
-            publish_autores.run()
+            publish_autores.run(pacote)
 
         elif op == "15":
             log("Publicando ofertas no Supabase…")

@@ -202,8 +202,9 @@ def run(idioma="PT", pacote=20):
         return
 
     reviewed = 0
+    total    = len(rows)
 
-    for book_id, titulo, isbn, current_lang in rows:
+    for i, (book_id, titulo, isbn, current_lang) in enumerate(rows, start=1):
 
         idioma_final = resolve_language(current_lang, isbn, titulo)
         score        = calculate_editorial_score(titulo, isbn)
@@ -213,8 +214,8 @@ def run(idioma="PT", pacote=20):
 
         reviewed += 1
         tipo = "BOOK" if is_book else "NON-BOOK"
-        log(f"[REVIEW] {titulo} → {idioma_final} | {tipo} | score={score}")
+        log(f"[REVIEW][{i:03d}/{total:03d}] {titulo} → {idioma_final} | {tipo} | score={score}")
 
     conn.close()
 
-    log(f"[REVIEW] Concluído → {reviewed}")
+    log(f"[REVIEW] Finalizado → {reviewed}")

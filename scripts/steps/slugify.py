@@ -131,14 +131,15 @@ def run(idioma, pacote=10):
         return
 
     processed = 0
+    total     = len(rows)
 
-    for book_id, titulo in rows:
+    for i, (book_id, titulo) in enumerate(rows, start=1):
 
         slug = generate_unique_slug(conn, titulo)
         update_slug(conn, book_id, slug)
         processed += 1
-        log(f"SLUG → {titulo} → {slug}")
+        log(f"[SLUG][{i:03d}/{total:03d}] → {titulo} | {slug}")
 
     conn.close()
 
-    log(f"Slugs gerados: {processed}")
+    log(f"[SLUG] Finalizado | Slugs gerados: {processed}")

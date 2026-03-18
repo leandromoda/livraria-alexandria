@@ -212,12 +212,12 @@ def run(idioma, pacote=10):
 
         if not supabase_id:
             failed += 1
-            log(f"FALHA [{i}/{total}] → {row[1]}")
+            log(f"[PUBLISH][{i:03d}/{total:03d}] FALHA → {row[1]}")
             continue
 
         mark_published(conn, row[0], supabase_id)
         inserted += 1
-        log(f"PUBLICADO [{i}/{total}] → {row[1]}")
+        log(f"[PUBLISH][{i:03d}/{total:03d}] OK → {row[1]}")
 
     conn.close()
 

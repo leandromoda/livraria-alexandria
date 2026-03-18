@@ -176,10 +176,11 @@ def run(idioma, pacote=10):
     google_used = 0
     openlibrary_used = 0
     failed = 0
+    total  = len(rows)
 
-    for book_id, titulo, autor, isbn in rows:
+    for i, (book_id, titulo, autor, isbn) in enumerate(rows, start=1):
 
-        log(f"[CAPA] {titulo}")
+        log(f"[CAPA][{i:03d}/{total:03d}] → {titulo}")
 
         cover  = None
         source = None

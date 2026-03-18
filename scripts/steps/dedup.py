@@ -138,7 +138,7 @@ def merge_books(conn, master_id, dup_row):
 
     conn.commit()
 
-    log(f"MERGE → {dup_id} → {master_id}")
+    log(f"MERGE | {dup_id} | {master_id}")
 
 
 # =========================
@@ -176,8 +176,9 @@ def run(idioma, pacote=10):
 
     processed = 0
     removed   = 0
+    total     = len(rows)
 
-    for r in rows:
+    for i, r in enumerate(rows, start=1):
 
         book = {"id": r[0], "titulo": r[1], "slug": r[2], "isbn": r[3]}
 
@@ -190,8 +191,8 @@ def run(idioma, pacote=10):
         mark_processed(conn, book["id"])
         processed += 1
 
-        log(f"DEDUP OK → {book['titulo']}")
+        log(f"[DEDUP][{i:03d}/{total:03d}] OK → {book['titulo']}")
 
     conn.close()
 
-    log(f"Processados: {processed} | Removidos: {removed}")
+    log(f"[DEDUP] Finalizado | Processados: {processed} | Removidos: {removed}")

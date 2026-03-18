@@ -166,12 +166,12 @@ def run():
 
         if not ok:
             failed += 1
-            log(f"FALHA [{i}/{total}] → {titulo}")
+            log(f"[OFERTAS][{i:03d}/{total:03d}] FALHA → {titulo}")
             continue
 
         mark_published(conn, local_id)
         inserted += 1
-        log(f"PUBLICADO [{i}/{total}] → {titulo} ({marketplace})")
+        log(f"[OFERTAS][{i:03d}/{total:03d}] OK → {titulo} ({marketplace})")
 
     conn.close()
 

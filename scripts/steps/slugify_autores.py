@@ -140,11 +140,13 @@ def run():
 
     autores_criados = 0
     relacoes_criadas = 0
+    total = len(rows)
 
-    for row in rows:
+    for i, row in enumerate(rows, start=1):
 
         livro_id = row["id"]
         autor_raw = row["autor"].strip()
+        log(f"[SLUG_AUTORES][{i:03d}/{total:03d}] → {autor_raw}")
 
         # Suporte a múltiplos autores separados por ";"
         nomes = [n.strip() for n in autor_raw.split(";") if n.strip()]
@@ -167,8 +169,7 @@ def run():
 
     conn.close()
 
-    log(f"Autores criados: {autores_criados}")
-    log(f"Relações criadas: {relacoes_criadas}")
+    log(f"[SLUG_AUTORES] Finalizado | Autores criados: {autores_criados} | Relações criadas: {relacoes_criadas}")
 
 
 if __name__ == "__main__":
