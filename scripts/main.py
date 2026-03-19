@@ -19,6 +19,7 @@ from steps import auditor
 from steps import marketplace_scraper
 from steps import categorize
 from steps import offer_price_monitor
+from steps import publish_categorias
 
 from steps.export_state_transcript import export_state_transcript
 
@@ -160,6 +161,7 @@ def main():
 12 → Publicar Autores
 13 → Publicar Ofertas
 14 → Gerar listas SEO automáticas
+20 → Publicar Categorias (requer step 18)
 
 --- MONITORAMENTO ---
 19 → Monitorar preços e disponibilidade de ofertas
@@ -298,6 +300,10 @@ Limite de livros para auditoria:
             import argparse
             args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
             auditor.run(args)
+
+        elif op == "20":
+            log("Publicando categorias temáticas no Supabase…")
+            publish_categorias.run()
 
         elif op == "91":
             log("Exportando Site Bootstrap…")
