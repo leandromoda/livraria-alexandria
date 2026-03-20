@@ -4,6 +4,7 @@
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
     "last_updated": "2026-03-17",
+    "last_updated": "2026-03-20",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -26,7 +27,7 @@
       "status": "production_live",
       "domain": "livrariaalexandria.com.br",
       "env_vars_configured": true,
-      "analytics": "Vercel Analytics (ativo)"
+      "analytics": "Vercel Analytics (pacote @vercel/analytics instalado, <Analytics /> no layout.tsx — ativo após deploy 2026-03-20)"
     },
     "version_control": {
       "provider": "GitHub",
@@ -175,10 +176,12 @@
         "status": "operational",
         "path": "app/(internal)/admin",
         "features": [
-          "Status do pipeline",
+          "Status do catálogo (total, publicados, com capa, com oferta, com sinopse, sem capa)",
+          "Barra de estágios do pipeline",
+          "Origens de tráfego (por referer, marketplace, UTM source)",
           "Top livros por cliques",
           "Cliques recentes",
-          "Visitas ao site (Vercel Analytics)"
+          "Visitas ao site (Vercel Analytics — requer VERCEL_ACCESS_TOKEN no Vercel)"
         ]
       }
     ]
@@ -522,6 +525,7 @@
           "is_book",
           "last_quality_check",
           "publish_blockers",
+          "status(='publish')",
           "created_at",
           "updated_at"
         ],
@@ -624,6 +628,20 @@
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
         "flags": ["--limit N", "--dry-run"]
+      },
+      {
+        "order": 20,
+        "name": "Publish Categorias",
+        "status": "operational",
+        "description": "Sincroniza categorias temáticas do SQLite (livros_categorias_tematicas) para o Supabase. Popula tabelas categorias e livros_categorias via upsert. Requer step 9 (Categorize) e step 13 (Publish) concluídos.",
+        "script": "scripts/steps/publish_categorias.py",
+        "idioma_aware": false,
+        "menu_option": 20,
+        "target": "Supabase.categorias + Supabase.livros_categorias",
+        "upsert_mode": "POST ?on_conflict=slug (categorias) + ?on_conflict=livro_id,categoria_id (relações)",
+        "taxonomy_source": "scripts/data/taxonomy.json",
+        "slug_cache": "in-memory por execução — evita lookups repetidos",
+        "created_on": "2026-03-19"
       }
     ]
   },
@@ -668,7 +686,7 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-03-18",
+    "last_measured": "2026-03-20",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
       "total": 2219,
@@ -680,6 +698,15 @@
       "status_enrich_sem_desc_lote": 9,
       "status_cover_1_ou_2": 244,
       "nota": "step 1: +880 livros (seeds 030–093+059). step 2: 191/200 enriquecidos."
+    },
+    "supabase": {
+      "total_livros": 140,
+      "publicados_status_publish": 137,
+      "com_capa": 129,
+      "com_oferta_ativa": 1,
+      "com_sinopse": 137,
+      "sem_capa": 11,
+      "nota": "status column criada via migration 2026-03-20. 137 livros atualizados para status='publish'."
     },
     "seeds": {
       "ingested": "001–025 + 030–093 (incluindo 059 corrigido) — todos os seeds processados",
@@ -812,6 +839,14 @@
       "status": "open"
     },
     {
+      "id": "TASK-SUPABASE-002",
+      "description": "Rodar migration: ALTER TABLE livros ADD COLUMN IF NOT EXISTS status TEXT + UPDATE livros SET status='publish' WHERE status IS NULL",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-20",
+      "resolution": "Migration rodada manualmente no SQL Editor do Supabase. 137 livros atualizados. Admin agora exibe corretamente Publicados=137 e Com sinopse=137."
+    },
+    {
       "id": "TASK-PIPE-005",
       "description": "Criar pasta scripts/data/seeds/ e mover arquivo atual offer_seeds.json para 001_offer_seeds.json dentro dela",
       "priority": "high",
@@ -828,9 +863,25 @@
     },
     {
       "id": "TASK-PIPE-007",
-      "description": "Rodar step 18 (Categorize) após review para classificar livros na nova taxonomia temática",
+      "description": "Rodar step 9 (Categorize) para classificar livros na taxonomia temática, depois step 20 (Publish Categorias) para sincronizar com Supabase",
       "priority": "medium",
-      "status": "open"
+      "status": "open",
+      "nota": "publish_categorias.py criado em 2026-03-19. Menu renumerado: step 9=Categorize, step 20=Publish Categorias."
+    },
+    {
+      "id": "TASK-ANALYTICS-001",
+      "description": "Verificar e ativar Vercel Analytics: @vercel/analytics instalado + <Analytics /> no layout. Adicionar VERCEL_ACCESS_TOKEN nas env vars do Vercel (Settings → Environment Variables → Production).",
+      "priority": "medium",
+      "status": "open",
+      "nota": "Pacote instalado e componente adicionado em 2026-03-20. Token criado mas pode não estar nas env vars de produção do Vercel. Admin usa /v9/projects/{name} para resolver projectId (corrigido em 2026-03-20)."
+    },
+    {
+      "id": "TASK-ADMIN-001",
+      "description": "Admin dashboard expandido: status do catálogo (6 cards), barra de estágios, origens de tráfego (referer, marketplace, UTM), fix UTM tracking no click route",
+      "priority": "low",
+      "status": "resolved",
+      "resolved_on": "2026-03-19",
+      "resolution": "Implementado em commit 2e1b104. Admin mostra 140 total, 137 publicados, 129 com capa, 1 com oferta, 137 com sinopse após migration do campo status."
     },
     {
       "id": "TASK-SITE-001",
