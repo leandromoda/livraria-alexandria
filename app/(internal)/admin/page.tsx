@@ -203,7 +203,6 @@ function toSourceRows(counts: Record<string, number>): SourceRow[] {
 
 async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   const token = process.env.VERCEL_ACCESS_TOKEN;
-  const teamSlug = "leandro-modas-projects";
   const projectName = "livraria-alexandria";
 
   if (!token) {
@@ -211,21 +210,23 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   }
 
   try {
-    const teamRes = await fetch(
-      `https://api.vercel.com/v2/teams?slug=${teamSlug}`,
+    // Busca projeto pelo nome para obter teamId e projectId real
+    const projectRes = await fetch(
+      `https://api.vercel.com/v9/projects/${projectName}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
-    const teamData = await teamRes.json();
-    const teamId = teamData?.teams?.[0]?.id;
+    const projectData = await projectRes.json();
+    const projectId = projectData?.id;
+    const teamId = projectData?.accountId;
 
-    if (!teamId) return { totalViews: 0, totalVisitors: 0, history: [] };
+    if (!projectId) return { totalViews: 0, totalVisitors: 0, history: [] };
 
     const now = Date.now();
     const from = now - 30 * 24 * 60 * 60 * 1000;
 
     const analyticsRes = await fetch(
       `https://api.vercel.com/v1/web/insights/stats/pageviews` +
-        `?projectId=${projectName}&teamId=${teamId}` +
+        `?projectId=${projectId}&teamId=${teamId}` +
         `&from=${from}&to=${now}&granularity=1d&environment=production`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
