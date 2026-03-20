@@ -2,6 +2,7 @@ import "./globals.css";
 import Header from "./_components/Header";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: {
@@ -67,6 +68,7 @@ export default function RootLayout({
 
         </footer>
 
+        <Analytics />
       </body>
     </html>
   );
