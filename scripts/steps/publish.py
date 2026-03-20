@@ -114,6 +114,7 @@ def build_payload(row):
         "is_book":            bool(is_book) if is_book is not None else True,
         "last_quality_check": now,
         "publish_blockers":   None,
+        "status":             "publish",
         "created_at":         now,
         "updated_at":         now,
     }
