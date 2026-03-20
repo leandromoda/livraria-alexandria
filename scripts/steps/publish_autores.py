@@ -43,7 +43,7 @@ MAX_RETRIES = 3
 # FETCH
 # =========================
 
-def fetch_autores_pendentes(conn):
+def fetch_autores_pendentes(conn, pacote):
 
     cur = conn.cursor()
 
@@ -51,7 +51,8 @@ def fetch_autores_pendentes(conn):
         SELECT id, nome, slug, nacionalidade, supabase_id
         FROM autores
         WHERE status_publish = 0
-    """)
+        LIMIT ?
+    """, (pacote,))
 
     return cur.fetchall()
 
@@ -175,7 +176,7 @@ def mark_published(conn, local_id):
 # RUN
 # =========================
 
-def run():
+def run(pacote=100):
 
     conn = get_conn()
 
@@ -198,7 +199,7 @@ def run():
     autores_url        = f"{supabase_url}/rest/v1/autores?on_conflict=slug"
     livros_autores_url = f"{supabase_url}/rest/v1/livros_autores?on_conflict=livro_id,autor_id"
 
-    autores = fetch_autores_pendentes(conn)
+    autores = fetch_autores_pendentes(conn, pacote)
 
     if not autores:
         log("Nenhum autor pendente para publicação.")
@@ -219,7 +220,7 @@ def run():
 
         if not ok:
             failed += 1
-            log(f"FALHA [{i}/{total}] → {row['nome']}")
+            log(f"[AUTORES][{i:03d}/{total:03d}] FALHA → {row['nome']}")
             continue
 
         # Publica relações livros_autores
@@ -232,7 +233,7 @@ def run():
 
         mark_published(conn, local_id)
         inserted += 1
-        log(f"PUBLICADO [{i}/{total}] → {row['nome']}")
+        log(f"[AUTORES][{i:03d}/{total:03d}] OK → {row['nome']}")
 
     conn.close()
 

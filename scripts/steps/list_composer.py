@@ -458,14 +458,17 @@ def _gerar_listas_tematicas(listas_ja_criadas):
         log("Nenhuma categoria temática elegível.")
         return 0
 
-    listas_tematicas = 0
+    listas_tematicas  = 0
+    total_tematicas   = len(categorias)
 
-    for row in categorias:
+    for k, row in enumerate(categorias, start=1):
 
         categoria_slug = row[0]
 
         if listas_ja_criadas + listas_tematicas >= MAX_LISTAS_EXEC:
             break
+
+        log(f"[LISTAS][{k:03d}/{total_tematicas:03d}] temática → {categoria_slug}")
 
         slug = f"melhores-livros-de-{categoria_slug}"
 
@@ -513,15 +516,17 @@ def run():
         log("Nenhuma categoria elegível encontrada.")
         return
 
-    listas_criadas = 0
+    listas_criadas  = 0
+    total_categorias = len(categorias)
 
-    for row in categorias:
+    for i, row in enumerate(categorias, start=1):
 
         categoria = row[0]
-        total = row[1]
 
         if listas_criadas >= MAX_LISTAS_EXEC:
             break
+
+        log(f"[LISTAS][{i:03d}/{total_categorias:03d}] categoria → {categoria}")
 
         slug = slug_categoria(categoria)
 
@@ -563,10 +568,11 @@ def run():
     # LISTAS POR AUTOR
     # --------------------------------------------------------
 
-    autores = fetch_autores_validos()
+    autores      = fetch_autores_validos()
     listas_autor = 0
+    total_autores = len(autores)
 
-    for autor_row in autores:
+    for j, autor_row in enumerate(autores, start=1):
 
         if listas_criadas + listas_autor >= MAX_LISTAS_EXEC:
             break
@@ -574,6 +580,8 @@ def run():
         autor_id   = autor_row[0]
         autor_nome = autor_row[1]
         autor_slug = autor_row[2]
+
+        log(f"[LISTAS][{j:03d}/{total_autores:03d}] autor → {autor_nome}")
 
         slug = slug_autor(autor_slug)
 

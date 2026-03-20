@@ -142,33 +142,33 @@ def main():
 1  → Importar Offer Seeds
 2  → Enriquecer descrições (Google Books / OpenLibrary)
 3  → Resolver Ofertas (lookup → URL afiliado)
-17 → Enriquecer via Marketplace Scraper (capa + descrição + preço)
+4  → Enriquecer via Marketplace Scraper (capa + descrição + preço)
 
 --- PRÉ-PROCESSAMENTO ---
-4  → Gerar slugs
-5  → Slugify Autores
-6  → Deduplicar
-7  → Review (classificação editorial + idioma)
-18 → Classificar Categorias Temáticas (LLM)
+5  → Gerar slugs
+6  → Slugify Autores
+7  → Deduplicar
+8  → Review (classificação editorial + idioma)
+9  → Classificar Categorias Temáticas (LLM)
 
 --- GERAÇÃO DE CONTEÚDO ---
-8  → Gerar sinopses (requer review concluído)
-9  → Gerar capas
+10 → Gerar sinopses (requer review concluído)
+11 → Gerar capas
 
 --- PUBLICAÇÃO ---
-10 → Quality Gate
-11 → Publicar Supabase
-12 → Publicar Autores
-13 → Publicar Ofertas
-14 → Gerar listas SEO automáticas
-20 → Publicar Categorias (requer step 18)
+12 → Quality Gate
+13 → Publicar Supabase
+14 → Publicar Autores
+15 → Publicar Ofertas
+16 → Gerar listas SEO automáticas
+20 → Publicar Categorias (requer step 9)
 
 --- MONITORAMENTO ---
-19 → Monitorar preços e disponibilidade de ofertas
+17 → Monitorar preços e disponibilidade de ofertas
 
 --- AUDITORIA ---
-15 → Auditar conectividade do site (sem LLM)
-16 → Auditar conteúdo publicado (LLM)
+18 → Auditar conectividade do site (sem LLM)
+19 → Auditar conteúdo publicado (LLM)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -200,63 +200,64 @@ def main():
 
         elif op == "4":
             pacote = escolher_pacote()
-            slugify.run(idioma, pacote)
-
-        elif op == "5":
-            log("Slugificando autores…")
-            slugify_autores.run()
-
-        elif op == "6":
-            pacote = escolher_pacote()
-            dedup.run(idioma, pacote)
-
-        elif op == "7":
-            pacote = escolher_pacote()
-            review.run(idioma, pacote)
-
-        elif op == "8":
-            pacote = escolher_pacote()
-            from core.markdown_executor import set_provider
-            set_provider(escolher_provider())
-            synopsis.run(idioma, pacote)
-
-        elif op == "9":
-            pacote = escolher_pacote()
-            covers.run(idioma, pacote)
-
-        elif op == "10":
-            pacote = escolher_pacote()
-            quality_gate.evaluate_quality(idioma, pacote)
-
-        elif op == "11":
-            pacote = escolher_pacote()
-            publish.run(idioma, pacote)
-
-        elif op == "12":
-            log("Publicando autores no Supabase…")
-            publish_autores.run()
-
-        elif op == "13":
-            log("Publicando ofertas no Supabase…")
-            publish_ofertas.run()
-
-        elif op == "14":
-            log("Gerando listas SEO automáticas…")
-            list_composer.run()
-
-        elif op == "17":
-            pacote = escolher_pacote()
             log("Enriquecendo via Marketplace Scraper…")
             marketplace_scraper.run(idioma, pacote)
 
-        elif op == "18":
+        elif op == "5":
+            pacote = escolher_pacote()
+            slugify.run(idioma, pacote)
+
+        elif op == "6":
+            log("Slugificando autores…")
+            slugify_autores.run()
+
+        elif op == "7":
+            pacote = escolher_pacote()
+            dedup.run(idioma, pacote)
+
+        elif op == "8":
+            pacote = escolher_pacote()
+            review.run(idioma, pacote)
+
+        elif op == "9":
             pacote = escolher_pacote()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
             log("Classificando categorias temáticas…")
             categorize.run(idioma, pacote)
 
-        elif op == "19":
+        elif op == "10":
+            pacote = escolher_pacote()
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+            synopsis.run(idioma, pacote)
+
+        elif op == "11":
+            pacote = escolher_pacote()
+            covers.run(idioma, pacote)
+
+        elif op == "12":
+            pacote = escolher_pacote()
+            quality_gate.evaluate_quality(idioma, pacote)
+
+        elif op == "13":
+            pacote = escolher_pacote()
+            publish.run(idioma, pacote)
+
+        elif op == "14":
+            pacote = escolher_pacote()
+            log("Publicando autores no Supabase…")
+            publish_autores.run(pacote)
+
+        elif op == "15":
+            log("Publicando ofertas no Supabase…")
+            publish_ofertas.run()
+
+        elif op == "16":
+            log("Gerando listas SEO automáticas…")
+            list_composer.run()
+
+        elif op == "17":
             print("""
 Limite de livros para monitorar:
 
@@ -273,13 +274,13 @@ Limite de livros para monitorar:
             log(f"Monitorando preços e disponibilidade (limit={limite}, dry_run={dry_run})…")
             offer_price_monitor.run(limit=limite, dry_run=dry_run)
 
-        elif op == "15":
+        elif op == "18":
             log("Auditando conectividade do site…")
             import argparse
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
-        elif op == "16":
+        elif op == "19":
             print("""
 Limite de livros para auditoria:
 

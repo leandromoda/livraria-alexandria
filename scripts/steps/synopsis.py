@@ -88,7 +88,7 @@ def run(idioma, pacote):
 
         heartbeat = int(time.time() - start_time)
 
-        log(f"[SYNOPSIS][{i}/{total}] {titulo} — heartbeat {heartbeat}s")
+        log(f"[SYNOPSIS][{i:03d}/{total:03d}] {titulo} — heartbeat {heartbeat}s")
 
         payload = {
             "titulo":        titulo,
