@@ -119,6 +119,14 @@ def ensure_schema(conn):
         ("offer_status",          "TEXT DEFAULT 'active'"),
         ("reactivation_pending",  "INTEGER DEFAULT 0"),
         ("status_categorize",     "INTEGER DEFAULT 0"),
+        ("editorial_score",       "INTEGER DEFAULT 0"),
+        ("sinopse",               "TEXT"),
+        ("is_book",               "INTEGER DEFAULT 1"),
+        ("is_publishable",        "INTEGER DEFAULT 0"),
+        ("offer_url",             "TEXT"),
+        ("marketplace",           "TEXT"),
+        ("lookup_query",          "TEXT"),
+        ("categoria",             "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
