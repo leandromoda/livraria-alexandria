@@ -1,0 +1,122 @@
+[
+  {
+    "titulo": "Romance do Pavão Misterioso",
+    "autor": "José Camelo de Melo Resende",
+    "marketplace": "amazon",
+    "lookup_query": "Romance do Pavão Misterioso José Camelo de Melo Resende livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1923,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "O Romance de João de Calais",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Romance de João de Calais Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1902,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "A Chegada de Lampião no Inferno",
+    "autor": "José Pacheco",
+    "marketplace": "amazon",
+    "lookup_query": "A Chegada de Lampião no Inferno José Pacheco livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1930,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "O Romance do Boi Misterioso",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Romance do Boi Misterioso Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1905,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "O Cavalo que Defecava Dinheiro",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "amazon",
+    "lookup_query": "O Cavalo que Defecava Dinheiro Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1913,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "A Vida de Cancão de Fogo",
+    "autor": "João Ferreira de Lima",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Vida de Cancão de Fogo João Ferreira de Lima livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1940,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "O Romance de Juvenal e o Dragão",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "amazon",
+    "lookup_query": "O Romance de Juvenal e o Dragão Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1910,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "O Soldado Jogador",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Soldado Jogador Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1908,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "História de Roberto do Diabo",
+    "autor": "Leandro Gomes de Barros",
+    "marketplace": "amazon",
+    "lookup_query": "História de Roberto do Diabo Leandro Gomes de Barros livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1907,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "O Romance do Valente Vilela",
+    "autor": "João Martins de Athayde",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Romance do Valente Vilela João Martins de Athayde livro",
+    "categoria": "cordel",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1935,
+    "popularidade_id": 2
+  }
+]

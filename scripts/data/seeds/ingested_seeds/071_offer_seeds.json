@@ -1,0 +1,62 @@
+[
+{"titulo":"Édipo Rei","autor":"Sófocles","marketplace":"amazon","lookup_query":"Édipo Rei Sófocles livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":429,"popularidade_id":5},
+{"titulo":"Antígona","autor":"Sófocles","marketplace":"mercado_livre","lookup_query":"Antígona Sófocles livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":441,"popularidade_id":5},
+{"titulo":"Electra","autor":"Sófocles","marketplace":"amazon","lookup_query":"Electra Sófocles livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":410,"popularidade_id":4},
+{"titulo":"Medeia","autor":"Eurípides","marketplace":"mercado_livre","lookup_query":"Medeia Eurípides livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":431,"popularidade_id":5},
+{"titulo":"As Bacantes","autor":"Eurípides","marketplace":"amazon","lookup_query":"As Bacantes Eurípides livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":405,"popularidade_id":4},
+{"titulo":"Hipólito","autor":"Eurípides","marketplace":"mercado_livre","lookup_query":"Hipólito Eurípides livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":428,"popularidade_id":4},
+{"titulo":"Prometeu Acorrentado","autor":"Ésquilo","marketplace":"amazon","lookup_query":"Prometeu Acorrentado Ésquilo livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":460,"popularidade_id":4},
+{"titulo":"Agamêmnon","autor":"Ésquilo","marketplace":"mercado_livre","lookup_query":"Agamêmnon Ésquilo livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":458,"popularidade_id":5},
+{"titulo":"Coéforas","autor":"Ésquilo","marketplace":"amazon","lookup_query":"Coéforas Ésquilo livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":458,"popularidade_id":4},
+{"titulo":"Eumênides","autor":"Ésquilo","marketplace":"mercado_livre","lookup_query":"Eumênides Ésquilo livro","categoria":"tragédia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":458,"popularidade_id":4},
+
+{"titulo":"Hamlet","autor":"William Shakespeare","marketplace":"amazon","lookup_query":"Hamlet William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1601,"popularidade_id":5},
+{"titulo":"Macbeth","autor":"William Shakespeare","marketplace":"mercado_livre","lookup_query":"Macbeth William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1606,"popularidade_id":5},
+{"titulo":"Otelo","autor":"William Shakespeare","marketplace":"amazon","lookup_query":"Otelo William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1603,"popularidade_id":5},
+
+{"titulo":"Romeu e Julieta","autor":"William Shakespeare","marketplace":"mercado_livre","lookup_query":"Romeu e Julieta William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1597,"popularidade_id":5},
+{"titulo":"Rei Lear","autor":"William Shakespeare","marketplace":"amazon","lookup_query":"Rei Lear William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1606,"popularidade_id":5},
+{"titulo":"Júlio César","autor":"William Shakespeare","marketplace":"mercado_livre","lookup_query":"Júlio César William Shakespeare livro","categoria":"tragédia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1599,"popularidade_id":4},
+
+{"titulo":"Fausto","autor":"Johann Wolfgang von Goethe","marketplace":"amazon","lookup_query":"Fausto Goethe livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":3,"ano_sorteado":1808,"popularidade_id":5},
+{"titulo":"Os Sofrimentos do Jovem Werther","autor":"Johann Wolfgang von Goethe","marketplace":"mercado_livre","lookup_query":"Os Sofrimentos do Jovem Werther Goethe livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":3,"ano_sorteado":1774,"popularidade_id":5},
+{"titulo":"Os Miseráveis","autor":"Victor Hugo","marketplace":"amazon","lookup_query":"Os Miseráveis Victor Hugo livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1862,"popularidade_id":5},
+{"titulo":"Madame Bovary","autor":"Gustave Flaubert","marketplace":"mercado_livre","lookup_query":"Madame Bovary Gustave Flaubert livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1857,"popularidade_id":5},
+{"titulo":"Anna Karenina","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"Anna Karenina Liev Tolstói livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1877,"popularidade_id":5},
+{"titulo":"Crime e Castigo","autor":"Fiódor Dostoiévski","marketplace":"mercado_livre","lookup_query":"Crime e Castigo Dostoiévski livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1866,"popularidade_id":5},
+{"titulo":"Os Irmãos Karamázov","autor":"Fiódor Dostoiévski","marketplace":"amazon","lookup_query":"Os Irmãos Karamázov Dostoiévski livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1880,"popularidade_id":5},
+{"titulo":"O Idiota","autor":"Fiódor Dostoiévski","marketplace":"mercado_livre","lookup_query":"O Idiota Dostoiévski livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1869,"popularidade_id":5},
+
+{"titulo":"A Morte de Ivan Ilitch","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"A Morte de Ivan Ilitch Tolstói livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"O Pai Goriot","autor":"Honoré de Balzac","marketplace":"mercado_livre","lookup_query":"O Pai Goriot Balzac livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1835,"popularidade_id":4},
+{"titulo":"Eugênia Grandet","autor":"Honoré de Balzac","marketplace":"amazon","lookup_query":"Eugênia Grandet Balzac livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1833,"popularidade_id":4},
+{"titulo":"Germinal","autor":"Émile Zola","marketplace":"mercado_livre","lookup_query":"Germinal Émile Zola livro","categoria":"tragédia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1885,"popularidade_id":5},
+
+{"titulo":"O Estrangeiro","autor":"Albert Camus","marketplace":"amazon","lookup_query":"O Estrangeiro Albert Camus livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"A Peste","autor":"Albert Camus","marketplace":"mercado_livre","lookup_query":"A Peste Albert Camus livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1947,"popularidade_id":5},
+{"titulo":"A Náusea","autor":"Jean-Paul Sartre","marketplace":"amazon","lookup_query":"A Náusea Sartre livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1938,"popularidade_id":4},
+{"titulo":"Entre Quatro Paredes","autor":"Jean-Paul Sartre","marketplace":"mercado_livre","lookup_query":"Entre Quatro Paredes Sartre livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1944,"popularidade_id":4},
+
+{"titulo":"O Processo","autor":"Franz Kafka","marketplace":"amazon","lookup_query":"O Processo Franz Kafka livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1925,"popularidade_id":5},
+{"titulo":"O Castelo","autor":"Franz Kafka","marketplace":"mercado_livre","lookup_query":"O Castelo Franz Kafka livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1926,"popularidade_id":4},
+{"titulo":"A Metamorfose","autor":"Franz Kafka","marketplace":"amazon","lookup_query":"A Metamorfose Franz Kafka livro","categoria":"tragédia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1915,"popularidade_id":5},
+
+{"titulo":"Grande Sertão: Veredas","autor":"João Guimarães Rosa","marketplace":"mercado_livre","lookup_query":"Grande Sertão Veredas Guimarães Rosa livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1956,"popularidade_id":5},
+{"titulo":"Vidas Secas","autor":"Graciliano Ramos","marketplace":"amazon","lookup_query":"Vidas Secas Graciliano Ramos livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1938,"popularidade_id":5},
+{"titulo":"São Bernardo","autor":"Graciliano Ramos","marketplace":"mercado_livre","lookup_query":"São Bernardo Graciliano Ramos livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1934,"popularidade_id":4},
+{"titulo":"Angústia","autor":"Graciliano Ramos","marketplace":"amazon","lookup_query":"Angústia Graciliano Ramos livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1936,"popularidade_id":4},
+
+{"titulo":"Dom Casmurro","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Dom Casmurro Machado de Assis livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Memórias Póstumas de Brás Cubas","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Memórias Póstumas de Brás Cubas livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1881,"popularidade_id":5},
+{"titulo":"Quincas Borba","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Quincas Borba Machado de Assis livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1891,"popularidade_id":4},
+
+{"titulo":"A Hora da Estrela","autor":"Clarice Lispector","marketplace":"amazon","lookup_query":"A Hora da Estrela Clarice Lispector livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1977,"popularidade_id":5},
+{"titulo":"Laços de Família","autor":"Clarice Lispector","marketplace":"mercado_livre","lookup_query":"Laços de Família Clarice Lispector livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1960,"popularidade_id":4},
+
+{"titulo":"O Quinze","autor":"Rachel de Queiroz","marketplace":"amazon","lookup_query":"O Quinze Rachel de Queiroz livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1930,"popularidade_id":4},
+{"titulo":"Capitães da Areia","autor":"Jorge Amado","marketplace":"mercado_livre","lookup_query":"Capitães da Areia Jorge Amado livro","categoria":"tragédia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1937,"popularidade_id":5},
+
+{"titulo":"Ensaio sobre a Cegueira","autor":"José Saramago","marketplace":"amazon","lookup_query":"Ensaio sobre a Cegueira Saramago livro","categoria":"tragédia","idioma":"PT","cluster_id":6,"nacionalidade_id":8,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"Todos os Nomes","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"Todos os Nomes Saramago livro","categoria":"tragédia","idioma":"PT","cluster_id":6,"nacionalidade_id":8,"ano_sorteado":1997,"popularidade_id":4},
+{"titulo":"O Evangelho Segundo Jesus Cristo","autor":"José Saramago","marketplace":"amazon","lookup_query":"O Evangelho Segundo Jesus Cristo Saramago livro","categoria":"tragédia","idioma":"PT","cluster_id":6,"nacionalidade_id":8,"ano_sorteado":1991,"popularidade_id":5}
+]

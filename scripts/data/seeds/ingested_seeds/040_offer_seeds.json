@@ -1,0 +1,102 @@
+[
+{"titulo":"Duna","autor":"Frank Herbert","marketplace":"amazon","lookup_query":"Duna Frank Herbert livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1965,"popularidade_id":5},
+{"titulo":"Neuromancer","autor":"William Gibson","marketplace":"mercado_livre","lookup_query":"Neuromancer William Gibson livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1984,"popularidade_id":5},
+{"titulo":"Fundação","autor":"Isaac Asimov","marketplace":"amazon","lookup_query":"Fundação Isaac Asimov livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1951,"popularidade_id":5},
+{"titulo":"Eu, Robô","autor":"Isaac Asimov","marketplace":"mercado_livre","lookup_query":"Eu, Robô Isaac Asimov livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1950,"popularidade_id":5},
+{"titulo":"O Fim da Eternidade","autor":"Isaac Asimov","marketplace":"amazon","lookup_query":"O Fim da Eternidade Isaac Asimov livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1955,"popularidade_id":4},
+{"titulo":"Admirável Mundo Novo","autor":"Aldous Huxley","marketplace":"mercado_livre","lookup_query":"Admirável Mundo Novo Aldous Huxley livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":1,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"1984","autor":"George Orwell","marketplace":"amazon","lookup_query":"1984 George Orwell livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":1,"ano_sorteado":1949,"popularidade_id":5},
+{"titulo":"Fahrenheit 451","autor":"Ray Bradbury","marketplace":"mercado_livre","lookup_query":"Fahrenheit 451 Ray Bradbury livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1953,"popularidade_id":5},
+{"titulo":"O Homem do Castelo Alto","autor":"Philip K. Dick","marketplace":"amazon","lookup_query":"O Homem do Castelo Alto Philip K Dick livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1962,"popularidade_id":4},
+{"titulo":"Androides Sonham com Ovelhas Elétricas?","autor":"Philip K. Dick","marketplace":"mercado_livre","lookup_query":"Androides Sonham com Ovelhas Elétricas Philip K Dick livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1968,"popularidade_id":5},
+{"titulo":"Ubik","autor":"Philip K. Dick","marketplace":"amazon","lookup_query":"Ubik Philip K Dick livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1969,"popularidade_id":4},
+{"titulo":"Solaris","autor":"Stanislaw Lem","marketplace":"mercado_livre","lookup_query":"Solaris Stanislaw Lem livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":3,"ano_sorteado":1961,"popularidade_id":4},
+{"titulo":"O Congresso Futuro","autor":"Stanislaw Lem","marketplace":"amazon","lookup_query":"O Congresso Futuro Stanislaw Lem livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":3,"ano_sorteado":1971,"popularidade_id":3},
+{"titulo":"A Mão Esquerda da Escuridão","autor":"Ursula K. Le Guin","marketplace":"mercado_livre","lookup_query":"A Mão Esquerda da Escuridão Ursula Le Guin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":6,"nacionalidade_id":2,"ano_sorteado":1969,"popularidade_id":5},
+{"titulo":"Os Despossuídos","autor":"Ursula K. Le Guin","marketplace":"amazon","lookup_query":"Os Despossuídos Ursula Le Guin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":6,"nacionalidade_id":2,"ano_sorteado":1974,"popularidade_id":5},
+{"titulo":"A Máquina do Tempo","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"A Máquina do Tempo HG Wells livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":7,"nacionalidade_id":1,"ano_sorteado":1895,"popularidade_id":5},
+{"titulo":"A Guerra dos Mundos","autor":"H. G. Wells","marketplace":"amazon","lookup_query":"A Guerra dos Mundos HG Wells livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":7,"nacionalidade_id":1,"ano_sorteado":1898,"popularidade_id":5},
+{"titulo":"Encontro com Rama","autor":"Arthur C. Clarke","marketplace":"mercado_livre","lookup_query":"Encontro com Rama Arthur C Clarke livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":1,"ano_sorteado":1973,"popularidade_id":5},
+{"titulo":"2001: Uma Odisseia no Espaço","autor":"Arthur C. Clarke","marketplace":"amazon","lookup_query":"2001 Uma Odisseia no Espaço Arthur C Clarke livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":1,"ano_sorteado":1968,"popularidade_id":5},
+{"titulo":"O Fim da Infância","autor":"Arthur C. Clarke","marketplace":"mercado_livre","lookup_query":"O Fim da Infância Arthur C Clarke livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":1,"ano_sorteado":1953,"popularidade_id":4},
+{"titulo":"Snow Crash","autor":"Neal Stephenson","marketplace":"amazon","lookup_query":"Snow Crash Neal Stephenson livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1992,"popularidade_id":5},
+{"titulo":"Criptonomicon","autor":"Neal Stephenson","marketplace":"mercado_livre","lookup_query":"Criptonomicon Neal Stephenson livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":4},
+{"titulo":"Jogador Número 1","autor":"Ernest Cline","marketplace":"amazon","lookup_query":"Jogador Número 1 Ernest Cline livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+{"titulo":"Artemis","autor":"Andy Weir","marketplace":"mercado_livre","lookup_query":"Artemis Andy Weir livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":4},
+{"titulo":"Perdido em Marte","autor":"Andy Weir","marketplace":"amazon","lookup_query":"Perdido em Marte Andy Weir livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+{"titulo":"A Guerra do Velho","autor":"John Scalzi","marketplace":"mercado_livre","lookup_query":"A Guerra do Velho John Scalzi livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":2005,"popularidade_id":4},
+{"titulo":"Redshirts","autor":"John Scalzi","marketplace":"amazon","lookup_query":"Redshirts John Scalzi livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":3},
+{"titulo":"Hyperion","autor":"Dan Simmons","marketplace":"mercado_livre","lookup_query":"Hyperion Dan Simmons livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":10,"nacionalidade_id":2,"ano_sorteado":1989,"popularidade_id":5},
+{"titulo":"A Queda de Hyperion","autor":"Dan Simmons","marketplace":"amazon","lookup_query":"A Queda de Hyperion Dan Simmons livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":10,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"Ilion","autor":"Dan Simmons","marketplace":"mercado_livre","lookup_query":"Ilion Dan Simmons livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":10,"nacionalidade_id":2,"ano_sorteado":2003,"popularidade_id":3},
+{"titulo":"O Problema dos Três Corpos","autor":"Liu Cixin","marketplace":"amazon","lookup_query":"O Problema dos Três Corpos Liu Cixin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":11,"nacionalidade_id":4,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"A Floresta Sombria","autor":"Liu Cixin","marketplace":"mercado_livre","lookup_query":"A Floresta Sombria Liu Cixin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":11,"nacionalidade_id":4,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"O Fim da Morte","autor":"Liu Cixin","marketplace":"amazon","lookup_query":"O Fim da Morte Liu Cixin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":11,"nacionalidade_id":4,"ano_sorteado":2010,"popularidade_id":5},
+{"titulo":"Contato","autor":"Carl Sagan","marketplace":"mercado_livre","lookup_query":"Contato Carl Sagan livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":1985,"popularidade_id":5},
+{"titulo":"O Jogo do Exterminador","autor":"Orson Scott Card","marketplace":"amazon","lookup_query":"O Jogo do Exterminador Orson Scott Card livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1985,"popularidade_id":5},
+{"titulo":"Speaker for the Dead","autor":"Orson Scott Card","marketplace":"mercado_livre","lookup_query":"Speaker for the Dead Orson Scott Card livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1986,"popularidade_id":4},
+{"titulo":"Duna Messias","autor":"Frank Herbert","marketplace":"amazon","lookup_query":"Duna Messias Frank Herbert livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1969,"popularidade_id":4},
+{"titulo":"Filhos de Duna","autor":"Frank Herbert","marketplace":"mercado_livre","lookup_query":"Filhos de Duna Frank Herbert livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1976,"popularidade_id":4},
+
+{"titulo":"A Cidade e as Estrelas","autor":"Arthur C. Clarke","marketplace":"amazon","lookup_query":"A Cidade e as Estrelas Arthur C Clarke livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":1,"ano_sorteado":1956,"popularidade_id":4},
+{"titulo":"Tau Zero","autor":"Poul Anderson","marketplace":"mercado_livre","lookup_query":"Tau Zero Poul Anderson livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":1970,"popularidade_id":3},
+{"titulo":"O Planeta dos Macacos","autor":"Pierre Boulle","marketplace":"amazon","lookup_query":"O Planeta dos Macacos Pierre Boulle livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":5,"ano_sorteado":1963,"popularidade_id":5},
+{"titulo":"Blade Runner","autor":"Philip K. Dick","marketplace":"mercado_livre","lookup_query":"Blade Runner Philip K Dick livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1968,"popularidade_id":4},
+
+{"titulo":"We","autor":"Yevgeny Zamyatin","marketplace":"amazon","lookup_query":"We Yevgeny Zamyatin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1924,"popularidade_id":4},
+{"titulo":"Parable of the Sower","autor":"Octavia Butler","marketplace":"mercado_livre","lookup_query":"Parable of the Sower Octavia Butler livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1993,"popularidade_id":4},
+{"titulo":"Kindred","autor":"Octavia Butler","marketplace":"amazon","lookup_query":"Kindred Octavia Butler livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":6,"nacionalidade_id":2,"ano_sorteado":1979,"popularidade_id":4},
+
+{"titulo":"The Stars My Destination","autor":"Alfred Bester","marketplace":"mercado_livre","lookup_query":"The Stars My Destination Alfred Bester livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1956,"popularidade_id":3},
+{"titulo":"A Canticle for Leibowitz","autor":"Walter M. Miller Jr.","marketplace":"amazon","lookup_query":"A Canticle for Leibowitz Walter Miller livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1959,"popularidade_id":4},
+
+{"titulo":"Ringworld","autor":"Larry Niven","marketplace":"mercado_livre","lookup_query":"Ringworld Larry Niven livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":1970,"popularidade_id":4},
+{"titulo":"Protector","autor":"Larry Niven","marketplace":"amazon","lookup_query":"Protector Larry Niven livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":1973,"popularidade_id":3},
+
+{"titulo":"The Forever War","autor":"Joe Haldeman","marketplace":"mercado_livre","lookup_query":"The Forever War Joe Haldeman livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1974,"popularidade_id":5},
+
+{"titulo":"Do Androids Dream of Electric Sheep","autor":"Philip K. Dick","marketplace":"amazon","lookup_query":"Do Androids Dream Philip K Dick livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1968,"popularidade_id":4},
+
+{"titulo":"The Dispossessed","autor":"Ursula K. Le Guin","marketplace":"mercado_livre","lookup_query":"The Dispossessed Ursula Le Guin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":6,"nacionalidade_id":2,"ano_sorteado":1974,"popularidade_id":4},
+
+{"titulo":"Childhood's End","autor":"Arthur C. Clarke","marketplace":"amazon","lookup_query":"Childhoods End Arthur Clarke livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":1,"ano_sorteado":1953,"popularidade_id":4},
+
+{"titulo":"The Moon is a Harsh Mistress","autor":"Robert A. Heinlein","marketplace":"mercado_livre","lookup_query":"The Moon is a Harsh Mistress Heinlein livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1966,"popularidade_id":5},
+{"titulo":"Starship Troopers","autor":"Robert A. Heinlein","marketplace":"amazon","lookup_query":"Starship Troopers Heinlein livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":9,"nacionalidade_id":2,"ano_sorteado":1959,"popularidade_id":5},
+
+{"titulo":"The Martian Chronicles","autor":"Ray Bradbury","marketplace":"mercado_livre","lookup_query":"The Martian Chronicles Ray Bradbury livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":1950,"popularidade_id":5},
+
+{"titulo":"Brave New World Revisited","autor":"Aldous Huxley","marketplace":"amazon","lookup_query":"Brave New World Revisited Huxley livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":1,"ano_sorteado":1958,"popularidade_id":3},
+
+{"titulo":"The Time Machine","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"The Time Machine HG Wells livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":7,"nacionalidade_id":1,"ano_sorteado":1895,"popularidade_id":4},
+
+{"titulo":"The War of the Worlds","autor":"H. G. Wells","marketplace":"amazon","lookup_query":"The War of the Worlds HG Wells livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":7,"nacionalidade_id":1,"ano_sorteado":1898,"popularidade_id":4},
+
+{"titulo":"The Invisible Man","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"The Invisible Man HG Wells livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":7,"nacionalidade_id":1,"ano_sorteado":1897,"popularidade_id":4},
+
+{"titulo":"Flatland","autor":"Edwin A. Abbott","marketplace":"amazon","lookup_query":"Flatland Edwin Abbott livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":1884,"popularidade_id":3},
+
+{"titulo":"The Road","autor":"Cormac McCarthy","marketplace":"mercado_livre","lookup_query":"The Road Cormac McCarthy livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2006,"popularidade_id":5},
+
+{"titulo":"Never Let Me Go","autor":"Kazuo Ishiguro","marketplace":"amazon","lookup_query":"Never Let Me Go Ishiguro livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":6,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":5},
+
+{"titulo":"Annihilation","autor":"Jeff VanderMeer","marketplace":"mercado_livre","lookup_query":"Annihilation Jeff VanderMeer livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":4},
+
+{"titulo":"Borne","autor":"Jeff VanderMeer","marketplace":"amazon","lookup_query":"Borne Jeff VanderMeer livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":3},
+
+{"titulo":"The Expanse: Leviathan Wakes","autor":"James S. A. Corey","marketplace":"mercado_livre","lookup_query":"Leviathan Wakes James Corey livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+
+{"titulo":"Caliban's War","autor":"James S. A. Corey","marketplace":"amazon","lookup_query":"Calibans War James Corey livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":4},
+
+{"titulo":"Abaddon's Gate","autor":"James S. A. Corey","marketplace":"mercado_livre","lookup_query":"Abaddons Gate James Corey livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":8,"nacionalidade_id":2,"ano_sorteado":2013,"popularidade_id":4},
+
+{"titulo":"Dhalgren","autor":"Samuel R. Delany","marketplace":"amazon","lookup_query":"Dhalgren Samuel Delany livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1975,"popularidade_id":3},
+
+{"titulo":"Nova","autor":"Samuel R. Delany","marketplace":"mercado_livre","lookup_query":"Nova Samuel Delany livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1968,"popularidade_id":3},
+
+{"titulo":"The Fifth Season","autor":"N. K. Jemisin","marketplace":"amazon","lookup_query":"The Fifth Season NK Jemisin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2015,"popularidade_id":5},
+
+{"titulo":"The Obelisk Gate","autor":"N. K. Jemisin","marketplace":"mercado_livre","lookup_query":"The Obelisk Gate NK Jemisin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"The Stone Sky","autor":"N. K. Jemisin","marketplace":"amazon","lookup_query":"The Stone Sky NK Jemisin livro","categoria":"ficcao_cientifica","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":4}
+]

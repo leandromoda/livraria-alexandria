@@ -1,0 +1,66 @@
+[
+  {"titulo":"O Código Da Vinci","autor":"Dan Brown","marketplace":"amazon","lookup_query":"O Código Da Vinci Dan Brown livro","categoria":"thriller","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2003,"popularidade_id":5},
+  {"titulo":"Anjos e Demônios","autor":"Dan Brown","marketplace":"mercado_livre","lookup_query":"Anjos e Demônios Dan Brown livro","categoria":"thriller","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2000,"popularidade_id":5},
+  {"titulo":"Inferno","autor":"Dan Brown","marketplace":"amazon","lookup_query":"Inferno Dan Brown livro","categoria":"thriller","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2013,"popularidade_id":5},
+  {"titulo":"O Silêncio dos Inocentes","autor":"Thomas Harris","marketplace":"mercado_livre","lookup_query":"O Silêncio dos Inocentes Thomas Harris livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1988,"popularidade_id":5},
+  {"titulo":"Dragão Vermelho","autor":"Thomas Harris","marketplace":"amazon","lookup_query":"Dragão Vermelho Thomas Harris livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1981,"popularidade_id":5},
+  {"titulo":"Hannibal","autor":"Thomas Harris","marketplace":"mercado_livre","lookup_query":"Hannibal Thomas Harris livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1999,"popularidade_id":5},
+  {"titulo":"A Garota no Trem","autor":"Paula Hawkins","marketplace":"amazon","lookup_query":"A Garota no Trem Paula Hawkins livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2015,"popularidade_id":5},
+  {"titulo":"Em Águas Sombrias","autor":"Paula Hawkins","marketplace":"mercado_livre","lookup_query":"Em Águas Sombrias Paula Hawkins livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":4},
+  {"titulo":"Garota Exemplar","autor":"Gillian Flynn","marketplace":"amazon","lookup_query":"Garota Exemplar Gillian Flynn livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"Objetos Cortantes","autor":"Gillian Flynn","marketplace":"mercado_livre","lookup_query":"Objetos Cortantes Gillian Flynn livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2006,"popularidade_id":4},
+  {"titulo":"Lugares Escuros","autor":"Gillian Flynn","marketplace":"amazon","lookup_query":"Lugares Escuros Gillian Flynn livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2009,"popularidade_id":4},
+  {"titulo":"O Homem de Giz","autor":"C.J. Tudor","marketplace":"mercado_livre","lookup_query":"O Homem de Giz C.J. Tudor livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2018,"popularidade_id":4},
+  {"titulo":"As Outras Pessoas","autor":"C.J. Tudor","marketplace":"amazon","lookup_query":"As Outras Pessoas C.J. Tudor livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2020,"popularidade_id":3},
+  {"titulo":"O Que Aconteceu com Annie","autor":"C.J. Tudor","marketplace":"mercado_livre","lookup_query":"O Que Aconteceu com Annie C.J. Tudor livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2022,"popularidade_id":3},
+  {"titulo":"A Paciente Silenciosa","autor":"Alex Michaelides","marketplace":"amazon","lookup_query":"A Paciente Silenciosa Alex Michaelides livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":5},
+  {"titulo":"As Musas","autor":"Alex Michaelides","marketplace":"mercado_livre","lookup_query":"As Musas Alex Michaelides livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2021,"popularidade_id":4},
+  {"titulo":"O Colecionador","autor":"John Fowles","marketplace":"amazon","lookup_query":"O Colecionador John Fowles livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1963,"popularidade_id":4},
+  {"titulo":"Janela Indiscreta","autor":"Cornell Woolrich","marketplace":"mercado_livre","lookup_query":"Janela Indiscreta Cornell Woolrich livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1942,"popularidade_id":4},
+  {"titulo":"O Talentoso Ripley","autor":"Patricia Highsmith","marketplace":"amazon","lookup_query":"O Talentoso Ripley Patricia Highsmith livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1955,"popularidade_id":5},
+  {"titulo":"Ripley Subterrâneo","autor":"Patricia Highsmith","marketplace":"mercado_livre","lookup_query":"Ripley Subterrâneo Patricia Highsmith livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1970,"popularidade_id":4},
+  {"titulo":"O Jogo de Ripper","autor":"Isabel Allende","marketplace":"amazon","lookup_query":"O Jogo de Ripper Isabel Allende livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":3,"ano_sorteado":2014,"popularidade_id":4},
+  {"titulo":"A Verdade Sobre o Caso Harry Quebert","autor":"Joël Dicker","marketplace":"mercado_livre","lookup_query":"A Verdade Sobre o Caso Harry Quebert Joël Dicker livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"O Desaparecimento de Stephanie Mailer","autor":"Joël Dicker","marketplace":"amazon","lookup_query":"O Desaparecimento de Stephanie Mailer Joël Dicker livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":2018,"popularidade_id":4},
+  {"titulo":"O Caso Alaska Sanders","autor":"Joël Dicker","marketplace":"mercado_livre","lookup_query":"O Caso Alaska Sanders Joël Dicker livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":2022,"popularidade_id":4},
+
+  {"titulo":"A Garota do Lago","autor":"Charlie Donlea","marketplace":"amazon","lookup_query":"A Garota do Lago Charlie Donlea livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2016,"popularidade_id":5},
+  {"titulo":"Não Confie em Ninguém","autor":"Charlie Donlea","marketplace":"mercado_livre","lookup_query":"Não Confie em Ninguém Charlie Donlea livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2018,"popularidade_id":4},
+  {"titulo":"Deixada para Trás","autor":"Charlie Donlea","marketplace":"amazon","lookup_query":"Deixada para Trás Charlie Donlea livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2017,"popularidade_id":4},
+
+  {"titulo":"Caixa de Pássaros","autor":"Josh Malerman","marketplace":"mercado_livre","lookup_query":"Caixa de Pássaros Josh Malerman livro","categoria":"thriller","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":2014,"popularidade_id":5},
+  {"titulo":"Malorie","autor":"Josh Malerman","marketplace":"amazon","lookup_query":"Malorie Josh Malerman livro","categoria":"thriller","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":2020,"popularidade_id":4},
+
+  {"titulo":"O Iluminado","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"O Iluminado Stephen King livro","categoria":"thriller","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":1977,"popularidade_id":5},
+  {"titulo":"Misery","autor":"Stephen King","marketplace":"amazon","lookup_query":"Misery Stephen King livro","categoria":"thriller","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":1987,"popularidade_id":5},
+  {"titulo":"O Instituto","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"O Instituto Stephen King livro","categoria":"thriller","idioma":"PT","cluster_id":5,"nacionalidade_id":1,"ano_sorteado":2019,"popularidade_id":4},
+
+  {"titulo":"O Homem de Areia","autor":"Lars Kepler","marketplace":"amazon","lookup_query":"O Homem de Areia Lars Kepler livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2012,"popularidade_id":4},
+  {"titulo":"Hipnotista","autor":"Lars Kepler","marketplace":"mercado_livre","lookup_query":"Hipnotista Lars Kepler livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2009,"popularidade_id":5},
+
+  {"titulo":"Os Homens que Não Amavam as Mulheres","autor":"Stieg Larsson","marketplace":"amazon","lookup_query":"Os Homens que Não Amavam as Mulheres Stieg Larsson livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2005,"popularidade_id":5},
+  {"titulo":"A Menina que Brincava com Fogo","autor":"Stieg Larsson","marketplace":"mercado_livre","lookup_query":"A Menina que Brincava com Fogo Stieg Larsson livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2006,"popularidade_id":5},
+
+  {"titulo":"Antes de Dormir","autor":"S.J. Watson","marketplace":"amazon","lookup_query":"Antes de Dormir S.J. Watson livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+  {"titulo":"Segunda Vida","autor":"S.J. Watson","marketplace":"mercado_livre","lookup_query":"Segunda Vida S.J. Watson livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2015,"popularidade_id":4},
+
+  {"titulo":"O Quarto de Jack","autor":"Emma Donoghue","marketplace":"amazon","lookup_query":"O Quarto de Jack Emma Donoghue livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"O Homem Duplicado","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"O Homem Duplicado José Saramago livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":2002,"popularidade_id":4},
+
+  {"titulo":"O Vilarejo","autor":"Raphael Montes","marketplace":"amazon","lookup_query":"O Vilarejo Raphael Montes livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":7,"ano_sorteado":2015,"popularidade_id":5},
+  {"titulo":"Dias Perfeitos","autor":"Raphael Montes","marketplace":"mercado_livre","lookup_query":"Dias Perfeitos Raphael Montes livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":7,"ano_sorteado":2014,"popularidade_id":5},
+  {"titulo":"Suicidas","autor":"Raphael Montes","marketplace":"amazon","lookup_query":"Suicidas Raphael Montes livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":7,"ano_sorteado":2012,"popularidade_id":4},
+
+  {"titulo":"Jantar Secreto","autor":"Raphael Montes","marketplace":"mercado_livre","lookup_query":"Jantar Secreto Raphael Montes livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":7,"ano_sorteado":2016,"popularidade_id":5},
+
+  {"titulo":"O Segredo do Meu Marido","autor":"Liane Moriarty","marketplace":"amazon","lookup_query":"O Segredo do Meu Marido Liane Moriarty livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":8,"ano_sorteado":2013,"popularidade_id":4},
+  {"titulo":"Pequenas Grandes Mentiras","autor":"Liane Moriarty","marketplace":"mercado_livre","lookup_query":"Pequenas Grandes Mentiras Liane Moriarty livro","categoria":"thriller","idioma":"PT","cluster_id":3,"nacionalidade_id":8,"ano_sorteado":2014,"popularidade_id":5},
+
+  {"titulo":"O Homem de Neve","autor":"Jo Nesbø","marketplace":"amazon","lookup_query":"O Homem de Neve Jo Nesbø livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2007,"popularidade_id":5},
+  {"titulo":"A Estrela do Diabo","autor":"Jo Nesbø","marketplace":"mercado_livre","lookup_query":"A Estrela do Diabo Jo Nesbø livro","categoria":"thriller","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":2003,"popularidade_id":4},
+
+  {"titulo":"A Ilha","autor":"Adrian McKinty","marketplace":"amazon","lookup_query":"A Ilha Adrian McKinty livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2022,"popularidade_id":4},
+  {"titulo":"A Corrente","autor":"Adrian McKinty","marketplace":"mercado_livre","lookup_query":"A Corrente Adrian McKinty livro","categoria":"thriller","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":5}
+
+  
+]

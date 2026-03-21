@@ -1,0 +1,85 @@
+[
+  {"titulo":"A Garota no Trem","autor":"Paula Hawkins","marketplace":"amazon","lookup_query":"A Garota no Trem Paula Hawkins livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2015,"popularidade_id":5},
+  {"titulo":"Garota Exemplar","autor":"Gillian Flynn","marketplace":"mercado_livre","lookup_query":"Garota Exemplar Gillian Flynn livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"A Culpa é das Estrelas","autor":"John Green","marketplace":"amazon","lookup_query":"A Culpa é das Estrelas John Green livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"Jogos Vorazes","autor":"Suzanne Collins","marketplace":"mercado_livre","lookup_query":"Jogos Vorazes Suzanne Collins livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"Em Chamas","autor":"Suzanne Collins","marketplace":"amazon","lookup_query":"Em Chamas Suzanne Collins livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"A Esperança","autor":"Suzanne Collins","marketplace":"mercado_livre","lookup_query":"A Esperança Suzanne Collins livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"Divergente","autor":"Veronica Roth","marketplace":"amazon","lookup_query":"Divergente Veronica Roth livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+  {"titulo":"Insurgente","autor":"Veronica Roth","marketplace":"mercado_livre","lookup_query":"Insurgente Veronica Roth livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"Convergente","autor":"Veronica Roth","marketplace":"amazon","lookup_query":"Convergente Veronica Roth livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2013,"popularidade_id":5},
+  {"titulo":"A Seleção","autor":"Kiera Cass","marketplace":"mercado_livre","lookup_query":"A Seleção Kiera Cass livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+  {"titulo":"O Silêncio dos Inocentes","autor":"Thomas Harris","marketplace":"amazon","lookup_query":"O Silêncio dos Inocentes Thomas Harris livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":4},
+  {"titulo":"A Paciente Silenciosa","autor":"Alex Michaelides","marketplace":"mercado_livre","lookup_query":"A Paciente Silenciosa Alex Michaelides livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":5},
+  {"titulo":"Pequenos Incêndios por Toda Parte","autor":"Celeste Ng","marketplace":"amazon","lookup_query":"Pequenos Incêndios por Toda Parte Celeste Ng livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":4},
+  {"titulo":"Normal People","autor":"Sally Rooney","marketplace":"mercado_livre","lookup_query":"Normal People Sally Rooney livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2018,"popularidade_id":4},
+  {"titulo":"Conversas Entre Amigos","autor":"Sally Rooney","marketplace":"amazon","lookup_query":"Conversas Entre Amigos Sally Rooney livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2017,"popularidade_id":4},
+
+  {"titulo":"Sapiens","autor":"Yuval Noah Harari","marketplace":"mercado_livre","lookup_query":"Sapiens Yuval Noah Harari livro","categoria":"nao_ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":2014,"popularidade_id":5},
+  {"titulo":"Homo Deus","autor":"Yuval Noah Harari","marketplace":"amazon","lookup_query":"Homo Deus Yuval Noah Harari livro","categoria":"nao_ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":2016,"popularidade_id":5},
+  {"titulo":"21 Lições para o Século 21","autor":"Yuval Noah Harari","marketplace":"mercado_livre","lookup_query":"21 Lições para o Século 21 Yuval Noah Harari livro","categoria":"nao_ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":2018,"popularidade_id":5},
+
+  {"titulo":"Essencialismo","autor":"Greg McKeown","marketplace":"amazon","lookup_query":"Essencialismo Greg McKeown livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":5},
+  {"titulo":"Mindset","autor":"Carol S. Dweck","marketplace":"mercado_livre","lookup_query":"Mindset Carol Dweck livro","categoria":"psicologia","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"Rápido e Devagar","autor":"Daniel Kahneman","marketplace":"amazon","lookup_query":"Rápido e Devagar Daniel Kahneman livro","categoria":"psicologia","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+
+  {"titulo":"A Sutil Arte de Ligar o F*da-se","autor":"Mark Manson","marketplace":"mercado_livre","lookup_query":"A Sutil Arte de Ligar o F da se Mark Manson livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+  {"titulo":"O Poder do Hábito","autor":"Charles Duhigg","marketplace":"amazon","lookup_query":"O Poder do Hábito Charles Duhigg livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"Hábitos Atômicos","autor":"James Clear","marketplace":"mercado_livre","lookup_query":"Hábitos Atômicos James Clear livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2018,"popularidade_id":5},
+
+  {"titulo":"O Milagre da Manhã","autor":"Hal Elrod","marketplace":"amazon","lookup_query":"O Milagre da Manhã Hal Elrod livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"Pai Rico Pai Pobre","autor":"Robert Kiyosaki","marketplace":"mercado_livre","lookup_query":"Pai Rico Pai Pobre Robert Kiyosaki livro","categoria":"financas","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"O Andar do Bêbado","autor":"Leonard Mlodinow","marketplace":"amazon","lookup_query":"O Andar do Bêbado Leonard Mlodinow livro","categoria":"ciencia","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":4},
+  {"titulo":"Breves Respostas para Grandes Questões","autor":"Stephen Hawking","marketplace":"mercado_livre","lookup_query":"Breves Respostas para Grandes Questões Stephen Hawking livro","categoria":"ciencia","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":2018,"popularidade_id":5},
+
+  {"titulo":"A Cabana","autor":"William P. Young","marketplace":"amazon","lookup_query":"A Cabana William Young livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"Extraordinário","autor":"R.J. Palacio","marketplace":"mercado_livre","lookup_query":"Extraordinário RJ Palacio livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+  {"titulo":"O Código da Vinci","autor":"Dan Brown","marketplace":"amazon","lookup_query":"O Código da Vinci Dan Brown livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"Inferno","autor":"Dan Brown","marketplace":"mercado_livre","lookup_query":"Inferno Dan Brown livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2013,"popularidade_id":5},
+  {"titulo":"Origem","autor":"Dan Brown","marketplace":"amazon","lookup_query":"Origem Dan Brown livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":5},
+
+  {"titulo":"O Homem Mais Rico da Babilônia","autor":"George S. Clason","marketplace":"mercado_livre","lookup_query":"O Homem Mais Rico da Babilônia George Clason livro","categoria":"financas","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"Antifrágil","autor":"Nassim Nicholas Taleb","marketplace":"amazon","lookup_query":"Antifrágil Nassim Taleb livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":5,"ano_sorteado":2012,"popularidade_id":5},
+  {"titulo":"A Lógica do Cisne Negro","autor":"Nassim Nicholas Taleb","marketplace":"mercado_livre","lookup_query":"A Lógica do Cisne Negro Nassim Taleb livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":5,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"A Revolução dos Bichos","autor":"George Orwell","marketplace":"amazon","lookup_query":"A Revolução dos Bichos George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":5},
+  {"titulo":"1984","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"1984 George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"O Pequeno Príncipe","autor":"Antoine de Saint-Exupéry","marketplace":"amazon","lookup_query":"O Pequeno Príncipe Antoine de Saint Exupery livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"A Garota do Lago","autor":"Charlie Donlea","marketplace":"mercado_livre","lookup_query":"A Garota do Lago Charlie Donlea livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+
+  {"titulo":"Verity","autor":"Colleen Hoover","marketplace":"amazon","lookup_query":"Verity Colleen Hoover livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2018,"popularidade_id":5},
+  {"titulo":"É Assim que Acaba","autor":"Colleen Hoover","marketplace":"mercado_livre","lookup_query":"É Assim que Acaba Colleen Hoover livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+
+  {"titulo":"O Alquimista","autor":"Paulo Coelho","marketplace":"amazon","lookup_query":"O Alquimista Paulo Coelho livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"A Coragem de Ser Imperfeito","autor":"Brené Brown","marketplace":"mercado_livre","lookup_query":"A Coragem de Ser Imperfeito Brene Brown livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+  {"titulo":"O Ego é Seu Inimigo","autor":"Ryan Holiday","marketplace":"amazon","lookup_query":"O Ego é Seu Inimigo Ryan Holiday livro","categoria":"filosofia","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+  {"titulo":"O Obstáculo é o Caminho","autor":"Ryan Holiday","marketplace":"mercado_livre","lookup_query":"O Obstáculo é o Caminho Ryan Holiday livro","categoria":"filosofia","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":5},
+
+  {"titulo":"O Poder do Agora","autor":"Eckhart Tolle","marketplace":"amazon","lookup_query":"O Poder do Agora Eckhart Tolle livro","categoria":"espiritualidade","idioma":"PT","cluster_id":5,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"O Segredo","autor":"Rhonda Byrne","marketplace":"mercado_livre","lookup_query":"O Segredo Rhonda Byrne livro","categoria":"autoajuda","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"Trabalhe 4 Horas por Semana","autor":"Timothy Ferriss","marketplace":"amazon","lookup_query":"Trabalhe 4 Horas por Semana Timothy Ferriss livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2010,"popularidade_id":5},
+
+  {"titulo":"Comece Pelo Porquê","autor":"Simon Sinek","marketplace":"mercado_livre","lookup_query":"Comece Pelo Porquê Simon Sinek livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":3,"ano_sorteado":2011,"popularidade_id":5},
+
+  {"titulo":"A Startup Enxuta","autor":"Eric Ries","marketplace":"amazon","lookup_query":"A Startup Enxuta Eric Ries livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2011,"popularidade_id":5},
+
+  {"titulo":"De Zero a Um","autor":"Peter Thiel","marketplace":"mercado_livre","lookup_query":"De Zero a Um Peter Thiel livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":5},
+
+  {"titulo":"Hooked","autor":"Nir Eyal","marketplace":"amazon","lookup_query":"Hooked Nir Eyal livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":4},
+
+  {"titulo":"Storytelling com Dados","autor":"Cole Nussbaumer Knaflic","marketplace":"mercado_livre","lookup_query":"Storytelling com Dados Cole Nussbaumer livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2015,"popularidade_id":4},
+
+  {"titulo":"Sprint","autor":"Jake Knapp","marketplace":"amazon","lookup_query":"Sprint Jake Knapp livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":4},
+
+  {"titulo":"A Regra é Não Ter Regras","autor":"Reed Hastings","marketplace":"mercado_livre","lookup_query":"A Regra é Não Ter Regras Reed Hastings livro","categoria":"negocios","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":5}
+]

@@ -1,0 +1,65 @@
+[{"titulo":"Toda Mafalda","autor":"Quino","marketplace":"amazon","lookup_query":"Toda Mafalda Quino livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1993,"popularidade_id":5},
+{"titulo":"Mafalda Inédita","autor":"Quino","marketplace":"mercado_livre","lookup_query":"Mafalda Inédita Quino livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2009,"popularidade_id":4},
+{"titulo":"Toda Garfield Vol. 1","autor":"Jim Davis","marketplace":"amazon","lookup_query":"Toda Garfield Vol 1 Jim Davis livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":5},
+{"titulo":"Toda Garfield Vol. 2","autor":"Jim Davis","marketplace":"mercado_livre","lookup_query":"Toda Garfield Vol 2 Jim Davis livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"Calvin e Haroldo Vol. 1","autor":"Bill Watterson","marketplace":"amazon","lookup_query":"Calvin e Haroldo Vol 1 Bill Watterson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"Calvin e Haroldo Vol. 2","autor":"Bill Watterson","marketplace":"mercado_livre","lookup_query":"Calvin e Haroldo Vol 2 Bill Watterson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"Peanuts Completo Vol. 1","autor":"Charles M. Schulz","marketplace":"amazon","lookup_query":"Peanuts Completo Vol 1 Charles Schulz livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2004,"popularidade_id":5},
+{"titulo":"Peanuts Completo Vol. 2","autor":"Charles M. Schulz","marketplace":"mercado_livre","lookup_query":"Peanuts Completo Vol 2 Charles Schulz livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":5},
+{"titulo":"Níquel Náusea: Tiras Completas Vol. 1","autor":"Fernando Gonsales","marketplace":"amazon","lookup_query":"Níquel Náusea Tiras Completas Fernando Gonsales livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2012,"popularidade_id":4},
+{"titulo":"Níquel Náusea: Tiras Completas Vol. 2","autor":"Fernando Gonsales","marketplace":"mercado_livre","lookup_query":"Níquel Náusea Tiras Completas Vol 2 Fernando Gonsales livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2013,"popularidade_id":4},
+
+{"titulo":"Hagar, o Horrível: As Melhores Tiras","autor":"Dik Browne","marketplace":"amazon","lookup_query":"Hagar o Horrível Dik Browne livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2001,"popularidade_id":4},
+{"titulo":"Hagar: Mais Tiras","autor":"Dik Browne","marketplace":"mercado_livre","lookup_query":"Hagar Mais Tiras Dik Browne livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2003,"popularidade_id":4},
+{"titulo":"Recruta Zero: Tiras Clássicas","autor":"Mort Walker","marketplace":"amazon","lookup_query":"Recruta Zero Mort Walker livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1998,"popularidade_id":4},
+{"titulo":"Recruta Zero: Novas Tiras","autor":"Mort Walker","marketplace":"mercado_livre","lookup_query":"Recruta Zero Novas Tiras Mort Walker livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2000,"popularidade_id":4},
+{"titulo":"Dilbert: Princípio de Dilbert","autor":"Scott Adams","marketplace":"amazon","lookup_query":"Dilbert Princípio de Dilbert Scott Adams livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"Dilbert: O Futuro é Estúpido","autor":"Scott Adams","marketplace":"mercado_livre","lookup_query":"Dilbert O Futuro é Estúpido Scott Adams livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1999,"popularidade_id":5},
+{"titulo":"Turma da Mônica: Tirinhas Vol. 1","autor":"Mauricio de Sousa","marketplace":"amazon","lookup_query":"Turma da Mônica Tirinhas Mauricio de Sousa livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":5},
+{"titulo":"Turma da Mônica: Tirinhas Vol. 2","autor":"Mauricio de Sousa","marketplace":"mercado_livre","lookup_query":"Turma da Mônica Tirinhas Vol 2 Mauricio de Sousa livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2011,"popularidade_id":5},
+{"titulo":"Dr. Pepper: Tiras","autor":"Angeli","marketplace":"amazon","lookup_query":"Dr Pepper Angeli tiras livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2002,"popularidade_id":4},
+{"titulo":"Chiclete com Banana: Tiras","autor":"Angeli","marketplace":"mercado_livre","lookup_query":"Chiclete com Banana Angeli livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1995,"popularidade_id":5},
+
+{"titulo":"Los Tres Amigos: Tiras","autor":"Laerte","marketplace":"amazon","lookup_query":"Los Tres Amigos Laerte livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"Piratas do Tietê","autor":"Laerte","marketplace":"mercado_livre","lookup_query":"Piratas do Tietê Laerte livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1992,"popularidade_id":5},
+{"titulo":"Geraldão","autor":"Glauco","marketplace":"amazon","lookup_query":"Geraldão Glauco livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1988,"popularidade_id":4},
+{"titulo":"Dona Marta","autor":"Glauco","marketplace":"mercado_livre","lookup_query":"Dona Marta Glauco livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1991,"popularidade_id":3},
+
+{"titulo":"Bichinhos de Jardim","autor":"Clara Gomes","marketplace":"amazon","lookup_query":"Bichinhos de Jardim Clara Gomes livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2015,"popularidade_id":4},
+{"titulo":"Vida de Suporte","autor":"André Dahmer","marketplace":"mercado_livre","lookup_query":"Vida de Suporte André Dahmer livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2014,"popularidade_id":4},
+{"titulo":"Malvados","autor":"André Dahmer","marketplace":"amazon","lookup_query":"Malvados André Dahmer livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"Um Sábado Qualquer Vol. 1","autor":"Carlos Ruas","marketplace":"mercado_livre","lookup_query":"Um Sábado Qualquer Carlos Ruas livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2012,"popularidade_id":5},
+{"titulo":"Um Sábado Qualquer Vol. 2","autor":"Carlos Ruas","marketplace":"amazon","lookup_query":"Um Sábado Qualquer Vol 2 Carlos Ruas livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2013,"popularidade_id":5},
+{"titulo":"Will Tirando","autor":"Will Leite","marketplace":"mercado_livre","lookup_query":"Will Tirando Will Leite livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"Mentirinhas","autor":"Fábio Coala","marketplace":"amazon","lookup_query":"Mentirinhas Fabio Coala livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2014,"popularidade_id":5},
+{"titulo":"Monstros","autor":"Gustavo Duarte","marketplace":"mercado_livre","lookup_query":"Monstros Gustavo Duarte livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2012,"popularidade_id":4},
+
+{"titulo":"Zits: Adolescência","autor":"Jerry Scott","marketplace":"amazon","lookup_query":"Zits Jerry Scott livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2003,"popularidade_id":4},
+{"titulo":"Zits: Crescendo","autor":"Jerry Scott","marketplace":"mercado_livre","lookup_query":"Zits Crescendo Jerry Scott livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":4},
+
+{"titulo":"Baby Blues","autor":"Rick Kirkman","marketplace":"amazon","lookup_query":"Baby Blues Rick Kirkman livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2002,"popularidade_id":4},
+{"titulo":"Baby Blues: Família","autor":"Rick Kirkman","marketplace":"mercado_livre","lookup_query":"Baby Blues Família Rick Kirkman livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2004,"popularidade_id":4},
+
+{"titulo":"Get Fuzzy","autor":"Darby Conley","marketplace":"amazon","lookup_query":"Get Fuzzy Darby Conley livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2001,"popularidade_id":4},
+{"titulo":"Get Fuzzy Vol. 2","autor":"Darby Conley","marketplace":"mercado_livre","lookup_query":"Get Fuzzy Vol 2 Darby Conley livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2003,"popularidade_id":4},
+
+{"titulo":"Cyanide & Happiness","autor":"Kris Wilson","marketplace":"amazon","lookup_query":"Cyanide & Happiness Kris Wilson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2010,"popularidade_id":5},
+{"titulo":"Cyanide & Happiness Vol. 2","autor":"Kris Wilson","marketplace":"mercado_livre","lookup_query":"Cyanide & Happiness Vol 2 Kris Wilson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2012,"popularidade_id":5},
+
+{"titulo":"Sarah's Scribbles","autor":"Sarah Andersen","marketplace":"amazon","lookup_query":"Sarah Scribbles Sarah Andersen livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2016,"popularidade_id":5},
+{"titulo":"Adulthood is a Myth","autor":"Sarah Andersen","marketplace":"mercado_livre","lookup_query":"Adulthood is a Myth Sarah Andersen livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2016,"popularidade_id":5},
+
+{"titulo":"Hyperbole and a Half","autor":"Allie Brosh","marketplace":"amazon","lookup_query":"Hyperbole and a Half Allie Brosh livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2013,"popularidade_id":5},
+{"titulo":"Dinosaur Comics","autor":"Ryan North","marketplace":"mercado_livre","lookup_query":"Dinosaur Comics Ryan North livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":4},
+
+{"titulo":"As Tiras do Armandinho","autor":"Alexandre Beck","marketplace":"amazon","lookup_query":"Armandinho Alexandre Beck livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2015,"popularidade_id":5},
+{"titulo":"Armandinho Vol. 2","autor":"Alexandre Beck","marketplace":"mercado_livre","lookup_query":"Armandinho Vol 2 Alexandre Beck livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2016,"popularidade_id":5},
+
+{"titulo":"Minduim e Charlie Brown","autor":"Charles M. Schulz","marketplace":"amazon","lookup_query":"Minduim Charlie Brown Schulz livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1985,"popularidade_id":5},
+{"titulo":"Garfield: Barriga Cheia","autor":"Jim Davis","marketplace":"mercado_livre","lookup_query":"Garfield Barriga Cheia Jim Davis livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1998,"popularidade_id":5},
+
+{"titulo":"Calvin e Haroldo: Yukon Ho!","autor":"Bill Watterson","marketplace":"amazon","lookup_query":"Calvin e Haroldo Yukon Ho Bill Watterson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"Calvin e Haroldo: Scientific Progress","autor":"Bill Watterson","marketplace":"mercado_livre","lookup_query":"Calvin e Haroldo Scientific Progress Bill Watterson livro","categoria":"tirinha","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1991,"popularidade_id":5}
+
+]

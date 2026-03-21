@@ -1,0 +1,64 @@
+[{"titulo":"Os Lusíadas","autor":"Luís de Camões","marketplace":"amazon","lookup_query":"Os Lusíadas Luís de Camões livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1572,"popularidade_id":3},
+{"titulo":"Mensagem","autor":"Fernando Pessoa","marketplace":"mercado_livre","lookup_query":"Mensagem Fernando Pessoa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1934,"popularidade_id":3},
+{"titulo":"Cântico dos Cânticos","autor":"Bíblia Hebraica","marketplace":"amazon","lookup_query":"Cântico dos Cânticos Bíblia livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-500,"popularidade_id":3},
+{"titulo":"O Guardador de Rebanhos","autor":"Alberto Caeiro","marketplace":"mercado_livre","lookup_query":"O Guardador de Rebanhos Alberto Caeiro livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1914,"popularidade_id":3},
+{"titulo":"Claro Enigma","autor":"Carlos Drummond de Andrade","marketplace":"amazon","lookup_query":"Claro Enigma Carlos Drummond de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1951,"popularidade_id":3},
+{"titulo":"A Rosa do Povo","autor":"Carlos Drummond de Andrade","marketplace":"mercado_livre","lookup_query":"A Rosa do Povo Carlos Drummond de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1945,"popularidade_id":3},
+{"titulo":"Sentimento do Mundo","autor":"Carlos Drummond de Andrade","marketplace":"amazon","lookup_query":"Sentimento do Mundo Carlos Drummond de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1940,"popularidade_id":3},
+{"titulo":"Libertinagem","autor":"Manuel Bandeira","marketplace":"mercado_livre","lookup_query":"Libertinagem Manuel Bandeira livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1930,"popularidade_id":3},
+{"titulo":"Estrela da Vida Inteira","autor":"Manuel Bandeira","marketplace":"amazon","lookup_query":"Estrela da Vida Inteira Manuel Bandeira livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1966,"popularidade_id":3},
+{"titulo":"Morte e Vida Severina","autor":"João Cabral de Melo Neto","marketplace":"mercado_livre","lookup_query":"Morte e Vida Severina João Cabral de Melo Neto livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1955,"popularidade_id":3},
+
+{"titulo":"Poemas Escolhidos","autor":"Cecília Meireles","marketplace":"amazon","lookup_query":"Poemas Escolhidos Cecília Meireles livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1963,"popularidade_id":3},
+{"titulo":"Romanceiro da Inconfidência","autor":"Cecília Meireles","marketplace":"mercado_livre","lookup_query":"Romanceiro da Inconfidência Cecília Meireles livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1953,"popularidade_id":3},
+{"titulo":"Poema Sujo","autor":"Ferreira Gullar","marketplace":"amazon","lookup_query":"Poema Sujo Ferreira Gullar livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1976,"popularidade_id":3},
+{"titulo":"Dentro da Noite Veloz","autor":"Ferreira Gullar","marketplace":"mercado_livre","lookup_query":"Dentro da Noite Veloz Ferreira Gullar livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1975,"popularidade_id":2},
+{"titulo":"Toda Poesia","autor":"Paulo Leminski","marketplace":"amazon","lookup_query":"Toda Poesia Paulo Leminski livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2013,"popularidade_id":3},
+{"titulo":"Caprichos e Relaxos","autor":"Paulo Leminski","marketplace":"mercado_livre","lookup_query":"Caprichos e Relaxos Paulo Leminski livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1983,"popularidade_id":2},
+{"titulo":"Poesia Completa","autor":"Gregório de Matos","marketplace":"amazon","lookup_query":"Poesia Completa Gregório de Matos livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1690,"popularidade_id":2},
+{"titulo":"Lira dos Vinte Anos","autor":"Álvares de Azevedo","marketplace":"mercado_livre","lookup_query":"Lira dos Vinte Anos Álvares de Azevedo livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1853,"popularidade_id":3},
+{"titulo":"Espumas Flutuantes","autor":"Castro Alves","marketplace":"amazon","lookup_query":"Espumas Flutuantes Castro Alves livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1870,"popularidade_id":3},
+{"titulo":"Navio Negreiro","autor":"Castro Alves","marketplace":"mercado_livre","lookup_query":"Navio Negreiro Castro Alves livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1869,"popularidade_id":3},
+
+{"titulo":"Primeiros Cantos","autor":"Gonçalves Dias","marketplace":"amazon","lookup_query":"Primeiros Cantos Gonçalves Dias livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1846,"popularidade_id":3},
+{"titulo":"Últimos Cantos","autor":"Gonçalves Dias","marketplace":"mercado_livre","lookup_query":"Últimos Cantos Gonçalves Dias livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1851,"popularidade_id":2},
+{"titulo":"Os Timbiras","autor":"Gonçalves Dias","marketplace":"amazon","lookup_query":"Os Timbiras Gonçalves Dias livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1857,"popularidade_id":2},
+{"titulo":"Eu e Outras Poesias","autor":"Augusto dos Anjos","marketplace":"mercado_livre","lookup_query":"Eu e Outras Poesias Augusto dos Anjos livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1912,"popularidade_id":3},
+{"titulo":"Martim Cererê","autor":"Cassiano Ricardo","marketplace":"amazon","lookup_query":"Martim Cererê Cassiano Ricardo livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1928,"popularidade_id":2},
+{"titulo":"Pauliceia Desvairada","autor":"Mário de Andrade","marketplace":"mercado_livre","lookup_query":"Pauliceia Desvairada Mário de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1922,"popularidade_id":3},
+{"titulo":"Poesias Completas","autor":"Vinicius de Moraes","marketplace":"amazon","lookup_query":"Poesias Completas Vinicius de Moraes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1960,"popularidade_id":3},
+{"titulo":"Antologia Poética","autor":"Vinicius de Moraes","marketplace":"mercado_livre","lookup_query":"Antologia Poética Vinicius de Moraes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1971,"popularidade_id":3},
+{"titulo":"Poemas Negros","autor":"Jorge de Lima","marketplace":"amazon","lookup_query":"Poemas Negros Jorge de Lima livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1947,"popularidade_id":2},
+{"titulo":"Invenção de Orfeu","autor":"Jorge de Lima","marketplace":"mercado_livre","lookup_query":"Invenção de Orfeu Jorge de Lima livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1952,"popularidade_id":2},
+
+{"titulo":"Hinos Homéricos","autor":"Homero","marketplace":"amazon","lookup_query":"Hinos Homéricos Homero livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":-700,"popularidade_id":3},
+{"titulo":"Teogonia","autor":"Hesíodo","marketplace":"mercado_livre","lookup_query":"Teogonia Hesíodo livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":-700,"popularidade_id":3},
+{"titulo":"Trabalhos e Dias","autor":"Hesíodo","marketplace":"amazon","lookup_query":"Trabalhos e Dias Hesíodo livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":-700,"popularidade_id":2},
+{"titulo":"Divina Comédia","autor":"Dante Alighieri","marketplace":"mercado_livre","lookup_query":"Divina Comédia Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1320,"popularidade_id":3},
+{"titulo":"Paraíso Perdido","autor":"John Milton","marketplace":"amazon","lookup_query":"Paraíso Perdido John Milton livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1667,"popularidade_id":3},
+
+{"titulo":"Canções","autor":"Luís de Camões","marketplace":"mercado_livre","lookup_query":"Canções Luís de Camões livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1580,"popularidade_id":2},
+{"titulo":"Sonetos","autor":"Luís de Camões","marketplace":"amazon","lookup_query":"Sonetos Luís de Camões livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1595,"popularidade_id":3},
+
+{"titulo":"Odes Modernas","autor":"Antero de Quental","marketplace":"mercado_livre","lookup_query":"Odes Modernas Antero de Quental livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1865,"popularidade_id":2},
+{"titulo":"Sonetos Completos","autor":"Antero de Quental","marketplace":"amazon","lookup_query":"Sonetos Completos Antero de Quental livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1886,"popularidade_id":2},
+
+{"titulo":"O Livro de Cesário Verde","autor":"Cesário Verde","marketplace":"mercado_livre","lookup_query":"O Livro de Cesário Verde livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1887,"popularidade_id":2},
+
+{"titulo":"Poemas","autor":"Sophia de Mello Breyner Andresen","marketplace":"amazon","lookup_query":"Poemas Sophia de Mello Breyner livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1960,"popularidade_id":2},
+
+{"titulo":"Antologia Poética","autor":"Herberto Helder","marketplace":"mercado_livre","lookup_query":"Antologia Poética Herberto Helder livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1990,"popularidade_id":2},
+
+{"titulo":"Poesia Completa","autor":"Adélia Prado","marketplace":"amazon","lookup_query":"Poesia Completa Adélia Prado livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2014,"popularidade_id":3},
+
+{"titulo":"Bagagem","autor":"Adélia Prado","marketplace":"mercado_livre","lookup_query":"Bagagem Adélia Prado livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1976,"popularidade_id":3},
+
+{"titulo":"Toda Via","autor":"Cora Coralina","marketplace":"amazon","lookup_query":"Toda Via Cora Coralina livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1980,"popularidade_id":2},
+
+{"titulo":"Poemas dos Becos de Goiás","autor":"Cora Coralina","marketplace":"mercado_livre","lookup_query":"Poemas dos Becos de Goiás Cora Coralina livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1965,"popularidade_id":2},
+
+{"titulo":"Toda Poesia","autor":"Chacal","marketplace":"amazon","lookup_query":"Toda Poesia Chacal livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":1},
+
+{"titulo":"Poética","autor":"Aristóteles","marketplace":"mercado_livre","lookup_query":"Poética Aristóteles livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":-330,"popularidade_id":3}
+
+]

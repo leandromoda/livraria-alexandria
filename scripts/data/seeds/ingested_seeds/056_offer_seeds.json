@@ -1,0 +1,73 @@
+[
+{"titulo":"O Estrangeiro","autor":"Albert Camus","marketplace":"amazon","lookup_query":"O Estrangeiro Albert Camus livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"A Peste","autor":"Albert Camus","marketplace":"mercado_livre","lookup_query":"A Peste Albert Camus livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1947,"popularidade_id":5},
+{"titulo":"1984","autor":"George Orwell","marketplace":"amazon","lookup_query":"1984 George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1949,"popularidade_id":5},
+{"titulo":"A Revolução dos Bichos","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"A Revolucao dos Bichos George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"O Pequeno Príncipe","autor":"Antoine de Saint-Exupéry","marketplace":"amazon","lookup_query":"O Pequeno Principe Antoine de Saint Exupery livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1943,"popularidade_id":5},
+{"titulo":"O Segundo Sexo","autor":"Simone de Beauvoir","marketplace":"mercado_livre","lookup_query":"O Segundo Sexo Simone de Beauvoir livro","categoria":"filosofia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1949,"popularidade_id":5},
+{"titulo":"A Náusea","autor":"Jean-Paul Sartre","marketplace":"amazon","lookup_query":"A Nausea Jean Paul Sartre livro","categoria":"filosofia","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1943,"popularidade_id":4},
+{"titulo":"Entre Quatro Paredes","autor":"Jean-Paul Sartre","marketplace":"mercado_livre","lookup_query":"Entre Quatro Paredes Jean Paul Sartre livro","categoria":"teatro","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1944,"popularidade_id":4},
+{"titulo":"O Caminho para a Servidão","autor":"Friedrich Hayek","marketplace":"amazon","lookup_query":"O Caminho para a Servidao Friedrich Hayek livro","categoria":"economia","idioma":"PT","cluster_id":3,"nacionalidade_id":4,"ano_sorteado":1944,"popularidade_id":5},
+{"titulo":"A Condição Humana","autor":"Hannah Arendt","marketplace":"mercado_livre","lookup_query":"A Condicao Humana Hannah Arendt livro","categoria":"filosofia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1949,"popularidade_id":5},
+
+{"titulo":"A Lua é uma Dona Severina","autor":"Rachel de Queiroz","marketplace":"amazon","lookup_query":"A Lua e uma Dona Severina Rachel de Queiroz livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1940,"popularidade_id":3},
+{"titulo":"Sagarana","autor":"João Guimarães Rosa","marketplace":"mercado_livre","lookup_query":"Sagarana Joao Guimaraes Rosa livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1946,"popularidade_id":5},
+{"titulo":"Fogo Morto","autor":"José Lins do Rego","marketplace":"amazon","lookup_query":"Fogo Morto Jose Lins do Rego livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1943,"popularidade_id":4},
+{"titulo":"Terras do Sem Fim","autor":"Jorge Amado","marketplace":"mercado_livre","lookup_query":"Terras do Sem Fim Jorge Amado livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1943,"popularidade_id":5},
+{"titulo":"São Bernardo","autor":"Graciliano Ramos","marketplace":"amazon","lookup_query":"Sao Bernardo Graciliano Ramos livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"O Quinze","autor":"Rachel de Queiroz","marketplace":"mercado_livre","lookup_query":"O Quinze Rachel de Queiroz livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1940,"popularidade_id":4},
+{"titulo":"For Whom the Bell Tolls","autor":"Ernest Hemingway","marketplace":"amazon","lookup_query":"For Whom the Bell Tolls Ernest Hemingway livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"The Heart is a Lonely Hunter","autor":"Carson McCullers","marketplace":"mercado_livre","lookup_query":"The Heart is a Lonely Hunter Carson McCullers livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":4},
+{"titulo":"Native Son","autor":"Richard Wright","marketplace":"amazon","lookup_query":"Native Son Richard Wright livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Black Boy","autor":"Richard Wright","marketplace":"mercado_livre","lookup_query":"Black Boy Richard Wright livro","categoria":"biografia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1945,"popularidade_id":4},
+
+{"titulo":"The Glass Bead Game","autor":"Hermann Hesse","marketplace":"amazon","lookup_query":"The Glass Bead Game Hermann Hesse livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1943,"popularidade_id":5},
+{"titulo":"Doctor Faustus","autor":"Thomas Mann","marketplace":"mercado_livre","lookup_query":"Doctor Faustus Thomas Mann livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1947,"popularidade_id":5},
+{"titulo":"The Plague","autor":"Albert Camus","marketplace":"amazon","lookup_query":"The Plague Albert Camus livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1947,"popularidade_id":5},
+{"titulo":"The Stranger","autor":"Albert Camus","marketplace":"mercado_livre","lookup_query":"The Stranger Albert Camus livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"All the King's Men","autor":"Robert Penn Warren","marketplace":"amazon","lookup_query":"All the Kings Men Robert Penn Warren livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1946,"popularidade_id":5},
+{"titulo":"The Naked and the Dead","autor":"Norman Mailer","marketplace":"mercado_livre","lookup_query":"The Naked and the Dead Norman Mailer livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1948,"popularidade_id":5},
+{"titulo":"Cry, the Beloved Country","autor":"Alan Paton","marketplace":"amazon","lookup_query":"Cry the Beloved Country Alan Paton livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1948,"popularidade_id":5},
+{"titulo":"The Big Sleep","autor":"Raymond Chandler","marketplace":"mercado_livre","lookup_query":"The Big Sleep Raymond Chandler livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Farewell, My Lovely","autor":"Raymond Chandler","marketplace":"amazon","lookup_query":"Farewell My Lovely Raymond Chandler livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":4},
+{"titulo":"The Lady in the Lake","autor":"Raymond Chandler","marketplace":"mercado_livre","lookup_query":"The Lady in the Lake Raymond Chandler livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1943,"popularidade_id":4},
+
+{"titulo":"Brideshead Revisited","autor":"Evelyn Waugh","marketplace":"amazon","lookup_query":"Brideshead Revisited Evelyn Waugh livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"The Loved One","autor":"Evelyn Waugh","marketplace":"mercado_livre","lookup_query":"The Loved One Evelyn Waugh livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1948,"popularidade_id":4},
+{"titulo":"The Razor's Edge","autor":"W. Somerset Maugham","marketplace":"amazon","lookup_query":"The Razors Edge Somerset Maugham livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1944,"popularidade_id":5},
+{"titulo":"The Power and the Glory","autor":"Graham Greene","marketplace":"mercado_livre","lookup_query":"The Power and the Glory Graham Greene livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"The Heart of the Matter","autor":"Graham Greene","marketplace":"amazon","lookup_query":"The Heart of the Matter Graham Greene livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1948,"popularidade_id":5},
+{"titulo":"The Ministry of Fear","autor":"Graham Greene","marketplace":"mercado_livre","lookup_query":"The Ministry of Fear Graham Greene livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1943,"popularidade_id":4},
+{"titulo":"The End of the Affair","autor":"Graham Greene","marketplace":"amazon","lookup_query":"The End of the Affair Graham Greene livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1948,"popularidade_id":5},
+{"titulo":"Cannery Row","autor":"John Steinbeck","marketplace":"mercado_livre","lookup_query":"Cannery Row John Steinbeck livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"The Moon Is Down","autor":"John Steinbeck","marketplace":"amazon","lookup_query":"The Moon Is Down John Steinbeck livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1942,"popularidade_id":4},
+{"titulo":"East of Eden","autor":"John Steinbeck","marketplace":"mercado_livre","lookup_query":"East of Eden John Steinbeck livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1952,"popularidade_id":5},
+
+{"titulo":"The Hobbit","autor":"J.R.R. Tolkien","marketplace":"amazon","lookup_query":"The Hobbit Tolkien livro","categoria":"fantasia","idioma":"PT","cluster_id":5,"nacionalidade_id":3,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Animal Farm","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"Animal Farm George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1945,"popularidade_id":5},
+
+{"titulo":"Nightwood","autor":"Djuna Barnes","marketplace":"amazon","lookup_query":"Nightwood Djuna Barnes livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":3},
+{"titulo":"Miss Lonelyhearts","autor":"Nathanael West","marketplace":"mercado_livre","lookup_query":"Miss Lonelyhearts Nathanael West livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":3},
+
+{"titulo":"The Man Who Loved Children","autor":"Christina Stead","marketplace":"amazon","lookup_query":"The Man Who Loved Children Christina Stead livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":8,"ano_sorteado":1940,"popularidade_id":3},
+{"titulo":"The Wayward Bus","autor":"John Steinbeck","marketplace":"mercado_livre","lookup_query":"The Wayward Bus John Steinbeck livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1947,"popularidade_id":4},
+
+{"titulo":"The Wall","autor":"John Hersey","marketplace":"amazon","lookup_query":"The Wall John Hersey livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1950,"popularidade_id":4},
+{"titulo":"Hiroshima","autor":"John Hersey","marketplace":"mercado_livre","lookup_query":"Hiroshima John Hersey livro","categoria":"reportagem","idioma":"PT","cluster_id":6,"nacionalidade_id":6,"ano_sorteado":1946,"popularidade_id":5},
+
+{"titulo":"The Great Gatsby","autor":"F. Scott Fitzgerald","marketplace":"amazon","lookup_query":"The Great Gatsby Fitzgerald livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Tender Is the Night","autor":"F. Scott Fitzgerald","marketplace":"mercado_livre","lookup_query":"Tender Is the Night Fitzgerald livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1940,"popularidade_id":4},
+
+{"titulo":"The Pursuit of Love","autor":"Nancy Mitford","marketplace":"amazon","lookup_query":"The Pursuit of Love Nancy Mitford livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1945,"popularidade_id":4},
+{"titulo":"Love in a Cold Climate","autor":"Nancy Mitford","marketplace":"mercado_livre","lookup_query":"Love in a Cold Climate Nancy Mitford livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1949,"popularidade_id":4},
+
+{"titulo":"The Fountainhead","autor":"Ayn Rand","marketplace":"amazon","lookup_query":"The Fountainhead Ayn Rand livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":9,"ano_sorteado":1943,"popularidade_id":5},
+{"titulo":"We the Living","autor":"Ayn Rand","marketplace":"mercado_livre","lookup_query":"We the Living Ayn Rand livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":9,"ano_sorteado":1940,"popularidade_id":4},
+
+{"titulo":"The Makioka Sisters","autor":"Junichiro Tanizaki","marketplace":"amazon","lookup_query":"The Makioka Sisters Tanizaki livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":1948,"popularidade_id":5},
+{"titulo":"Snow Country","autor":"Yasunari Kawabata","marketplace":"mercado_livre","lookup_query":"Snow Country Kawabata livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":1947,"popularidade_id":5},
+
+{"titulo":"The Garden of the Finzi-Continis","autor":"Giorgio Bassani","marketplace":"amazon","lookup_query":"The Garden of the Finzi Continis Bassani livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":11,"ano_sorteado":1942,"popularidade_id":4},
+{"titulo":"Christ Stopped at Eboli","autor":"Carlo Levi","marketplace":"mercado_livre","lookup_query":"Christ Stopped at Eboli Carlo Levi livro","categoria":"memorias","idioma":"PT","cluster_id":4,"nacionalidade_id":11,"ano_sorteado":1945,"popularidade_id":5}
+
+]

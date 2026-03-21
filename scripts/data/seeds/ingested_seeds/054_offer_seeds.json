@@ -1,0 +1,47 @@
+[
+{"titulo":"Memórias Póstumas de Brás Cubas","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Memórias Póstumas de Brás Cubas Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1881,"popularidade_id":5},
+{"titulo":"O Mulato","autor":"Aluísio Azevedo","marketplace":"mercado_livre","lookup_query":"O Mulato Aluísio Azevedo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1881,"popularidade_id":4},
+{"titulo":"Quincas Borba","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Quincas Borba Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"Casa de Pensão","autor":"Aluísio Azevedo","marketplace":"mercado_livre","lookup_query":"Casa de Pensão Aluísio Azevedo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1884,"popularidade_id":4},
+{"titulo":"O Ateneu","autor":"Raul Pompeia","marketplace":"amazon","lookup_query":"O Ateneu Raul Pompeia livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1888,"popularidade_id":5},
+{"titulo":"A Relíquia","autor":"Eça de Queirós","marketplace":"mercado_livre","lookup_query":"A Relíquia Eça de Queirós livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1887,"popularidade_id":5},
+{"titulo":"Os Maias","autor":"Eça de Queirós","marketplace":"amazon","lookup_query":"Os Maias Eça de Queirós livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1888,"popularidade_id":5},
+{"titulo":"A Cidade e as Serras","autor":"Eça de Queirós","marketplace":"mercado_livre","lookup_query":"A Cidade e as Serras Eça de Queirós livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1880,"popularidade_id":4},
+{"titulo":"Nana","autor":"Émile Zola","marketplace":"amazon","lookup_query":"Nana Émile Zola livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1880,"popularidade_id":5},
+{"titulo":"Germinal","autor":"Émile Zola","marketplace":"mercado_livre","lookup_query":"Germinal Émile Zola livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1885,"popularidade_id":5},
+{"titulo":"Bel-Ami","autor":"Guy de Maupassant","marketplace":"amazon","lookup_query":"Bel-Ami Guy de Maupassant livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1885,"popularidade_id":5},
+{"titulo":"A Joia","autor":"Guy de Maupassant","marketplace":"mercado_livre","lookup_query":"A Joia Guy de Maupassant livro","categoria":"conto","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1883,"popularidade_id":4},
+{"titulo":"A Morte de Ivan Ilitch","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"A Morte de Ivan Ilitch Liev Tolstói livro","categoria":"novela","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"Sonata a Kreutzer","autor":"Liev Tolstói","marketplace":"mercado_livre","lookup_query":"Sonata a Kreutzer Liev Tolstói livro","categoria":"novela","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1889,"popularidade_id":5},
+{"titulo":"O Retrato de Dorian Gray","autor":"Oscar Wilde","marketplace":"amazon","lookup_query":"O Retrato de Dorian Gray Oscar Wilde livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1889,"popularidade_id":5},
+{"titulo":"As Aventuras de Huckleberry Finn","autor":"Mark Twain","marketplace":"mercado_livre","lookup_query":"As Aventuras de Huckleberry Finn Mark Twain livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1884,"popularidade_id":5},
+{"titulo":"A Ilha do Tesouro","autor":"Robert Louis Stevenson","marketplace":"amazon","lookup_query":"A Ilha do Tesouro Robert Louis Stevenson livro","categoria":"aventura","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1883,"popularidade_id":5},
+{"titulo":"O Médico e o Monstro","autor":"Robert Louis Stevenson","marketplace":"mercado_livre","lookup_query":"O Médico e o Monstro Robert Louis Stevenson livro","categoria":"terror","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"O Cortiço","autor":"Aluísio Azevedo","marketplace":"amazon","lookup_query":"O Cortiço Aluísio Azevedo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1880,"popularidade_id":5},
+{"titulo":"Histórias Sem Data","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Histórias Sem Data Machado de Assis livro","categoria":"conto","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1884,"popularidade_id":4},
+
+{"titulo":"A Esfinge","autor":"Coelho Neto","marketplace":"amazon","lookup_query":"A Esfinge Coelho Neto livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1880,"popularidade_id":3},
+{"titulo":"Mistério da Estrada de Sintra","autor":"Eça de Queirós","marketplace":"mercado_livre","lookup_query":"Mistério da Estrada de Sintra Eça de Queirós livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1880,"popularidade_id":4},
+
+{"titulo":"The Bostonians","autor":"Henry James","marketplace":"amazon","lookup_query":"The Bostonians Henry James livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1886,"popularidade_id":4},
+{"titulo":"The Princess Casamassima","autor":"Henry James","marketplace":"mercado_livre","lookup_query":"The Princess Casamassima Henry James livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1886,"popularidade_id":4},
+
+{"titulo":"Flatland","autor":"Edwin A. Abbott","marketplace":"amazon","lookup_query":"Flatland Edwin A. Abbott livro","categoria":"ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1884,"popularidade_id":5},
+{"titulo":"Kidnapped","autor":"Robert Louis Stevenson","marketplace":"mercado_livre","lookup_query":"Kidnapped Robert Louis Stevenson livro","categoria":"aventura","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1886,"popularidade_id":4},
+
+{"titulo":"La Terre","autor":"Émile Zola","marketplace":"amazon","lookup_query":"La Terre Émile Zola livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1887,"popularidade_id":4},
+{"titulo":"Pierre et Jean","autor":"Guy de Maupassant","marketplace":"mercado_livre","lookup_query":"Pierre et Jean Guy de Maupassant livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1888,"popularidade_id":5},
+
+{"titulo":"The Black Arrow","autor":"Robert Louis Stevenson","marketplace":"amazon","lookup_query":"The Black Arrow Robert Louis Stevenson livro","categoria":"aventura","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1888,"popularidade_id":4},
+{"titulo":"The Happy Prince and Other Tales","autor":"Oscar Wilde","marketplace":"mercado_livre","lookup_query":"The Happy Prince Oscar Wilde livro","categoria":"conto","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1888,"popularidade_id":5},
+
+{"titulo":"O Crime do Padre Amaro","autor":"Eça de Queirós","marketplace":"amazon","lookup_query":"O Crime do Padre Amaro Eça de Queirós livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1880,"popularidade_id":5},
+{"titulo":"Contos Fluminenses","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Contos Fluminenses Machado de Assis livro","categoria":"conto","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1880,"popularidade_id":4},
+
+{"titulo":"The Strange Case of Dr Jekyll and Mr Hyde","autor":"Robert Louis Stevenson","marketplace":"amazon","lookup_query":"The Strange Case of Dr Jekyll and Mr Hyde Stevenson livro","categoria":"terror","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"A Mulher de Trinta Anos","autor":"Honoré de Balzac","marketplace":"mercado_livre","lookup_query":"A Mulher de Trinta Anos Balzac livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1880,"popularidade_id":4},
+
+{"titulo":"A Confissão de Lúcio","autor":"Mário de Sá-Carneiro","marketplace":"amazon","lookup_query":"A Confissão de Lúcio livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1880,"popularidade_id":3},
+{"titulo":"The Dynamiter","autor":"Robert Louis Stevenson","marketplace":"mercado_livre","lookup_query":"The Dynamiter Stevenson livro","categoria":"ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1885,"popularidade_id":3}
+
+]

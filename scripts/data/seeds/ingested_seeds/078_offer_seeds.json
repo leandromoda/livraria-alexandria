@@ -1,0 +1,55 @@
+[
+  {"titulo":"Sonetos","autor":"Luís de Camões","marketplace":"amazon","lookup_query":"Sonetos Luís de Camões livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1595,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"William Shakespeare","marketplace":"mercado_livre","lookup_query":"Sonetos William Shakespeare livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1609,"popularidade_id":5},
+  {"titulo":"Cancioneiro (com sonetos)","autor":"Francesco Petrarca","marketplace":"amazon","lookup_query":"Cancioneiro Francesco Petrarca livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1374,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Florbela Espanca","marketplace":"mercado_livre","lookup_query":"Sonetos Florbela Espanca livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1930,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Vinicius de Moraes","marketplace":"amazon","lookup_query":"Sonetos Vinicius de Moraes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1957,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Olavo Bilac","marketplace":"mercado_livre","lookup_query":"Sonetos Olavo Bilac livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1888,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Antero de Quental","marketplace":"amazon","lookup_query":"Sonetos Antero de Quental livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1886,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Gregório de Matos","marketplace":"mercado_livre","lookup_query":"Sonetos Gregorio de Matos livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1690,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Bocage","marketplace":"amazon","lookup_query":"Sonetos Bocage livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1805,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Alphonsus de Guimaraens","marketplace":"mercado_livre","lookup_query":"Sonetos Alphonsus de Guimaraens livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1902,"popularidade_id":4},
+
+  {"titulo":"Sonetos de Amor","autor":"Pablo Neruda","marketplace":"amazon","lookup_query":"Sonetos de Amor Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1959,"popularidade_id":5},
+  {"titulo":"Cem Sonetos de Amor","autor":"Pablo Neruda","marketplace":"mercado_livre","lookup_query":"Cem Sonetos de Amor Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1959,"popularidade_id":5},
+
+  {"titulo":"Sonetos","autor":"Augusto dos Anjos","marketplace":"amazon","lookup_query":"Sonetos Augusto dos Anjos livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1912,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Teixeira de Pascoaes","marketplace":"mercado_livre","lookup_query":"Sonetos Teixeira de Pascoaes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1915,"popularidade_id":3},
+  {"titulo":"Sonetos","autor":"Raul de Leoni","marketplace":"amazon","lookup_query":"Sonetos Raul de Leoni livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1926,"popularidade_id":3},
+  {"titulo":"Sonetos","autor":"Cruz e Sousa","marketplace":"mercado_livre","lookup_query":"Sonetos Cruz e Sousa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1893,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Castro Alves","marketplace":"amazon","lookup_query":"Sonetos Castro Alves livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1870,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Manuel Bandeira","marketplace":"mercado_livre","lookup_query":"Sonetos Manuel Bandeira livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1936,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Carlos Drummond de Andrade","marketplace":"amazon","lookup_query":"Sonetos Carlos Drummond de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1945,"popularidade_id":5},
+  {"titulo":"Sonetos","autor":"Mário de Andrade","marketplace":"mercado_livre","lookup_query":"Sonetos Mario de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1922,"popularidade_id":4},
+
+  {"titulo":"Sonetos","autor":"Fernando Pessoa","marketplace":"amazon","lookup_query":"Sonetos Fernando Pessoa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1934,"popularidade_id":5},
+  {"titulo":"35 Sonnets","autor":"Fernando Pessoa","marketplace":"mercado_livre","lookup_query":"35 Sonnets Fernando Pessoa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1918,"popularidade_id":4},
+
+  {"titulo":"Sonetos","autor":"Edgar Allan Poe","marketplace":"amazon","lookup_query":"Sonetos Edgar Allan Poe livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1845,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Elizabeth Barrett Browning","marketplace":"mercado_livre","lookup_query":"Sonetos Elizabeth Barrett Browning livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1850,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"John Milton","marketplace":"amazon","lookup_query":"Sonetos John Milton livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1673,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"John Keats","marketplace":"mercado_livre","lookup_query":"Sonetos John Keats livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1820,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Percy Bysshe Shelley","marketplace":"amazon","lookup_query":"Sonetos Percy Shelley livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1821,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"William Wordsworth","marketplace":"mercado_livre","lookup_query":"Sonetos William Wordsworth livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1807,"popularidade_id":4},
+
+  {"titulo":"Sonetos","autor":"Torquato Tasso","marketplace":"amazon","lookup_query":"Sonetos Torquato Tasso livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1580,"popularidade_id":3},
+  {"titulo":"Sonetos","autor":"Giovanni Boccaccio","marketplace":"mercado_livre","lookup_query":"Sonetos Giovanni Boccaccio livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1375,"popularidade_id":3},
+  {"titulo":"Sonetos","autor":"Dante Alighieri","marketplace":"amazon","lookup_query":"Sonetos Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1320,"popularidade_id":5},
+  {"titulo":"Vita Nuova","autor":"Dante Alighieri","marketplace":"mercado_livre","lookup_query":"Vita Nuova Dante Alighieri livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1295,"popularidade_id":5},
+
+  {"titulo":"Sonetos","autor":"Garcilaso de la Vega","marketplace":"amazon","lookup_query":"Sonetos Garcilaso de la Vega livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1543,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Luis de Góngora","marketplace":"mercado_livre","lookup_query":"Sonetos Luis de Gongora livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1627,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Francisco de Quevedo","marketplace":"amazon","lookup_query":"Sonetos Francisco de Quevedo livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1648,"popularidade_id":4},
+
+  {"titulo":"Sonetos","autor":"Sor Juana Inés de la Cruz","marketplace":"mercado_livre","lookup_query":"Sonetos Sor Juana Ines de la Cruz livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1691,"popularidade_id":4},
+
+  {"titulo":"Sonetos","autor":"Rubén Darío","marketplace":"amazon","lookup_query":"Sonetos Ruben Dario livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":8,"ano_sorteado":1905,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Jorge Luis Borges","marketplace":"mercado_livre","lookup_query":"Sonetos Jorge Luis Borges livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":9,"ano_sorteado":1960,"popularidade_id":5},
+
+  {"titulo":"Sonetos","autor":"Manuel Maria Barbosa du Bocage","marketplace":"amazon","lookup_query":"Sonetos Bocage livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1790,"popularidade_id":4},
+  {"titulo":"Sonetos","autor":"Cesário Verde","marketplace":"mercado_livre","lookup_query":"Sonetos Cesario Verde livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1886,"popularidade_id":3},
+
+  {"titulo":"Sonetos","autor":"Rainer Maria Rilke","marketplace":"amazon","lookup_query":"Sonetos Rainer Maria Rilke livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":1923,"popularidade_id":4},
+  {"titulo":"Sonetos a Orfeu","autor":"Rainer Maria Rilke","marketplace":"mercado_livre","lookup_query":"Sonetos a Orfeu Rilke livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":1923,"popularidade_id":5}
+
+]

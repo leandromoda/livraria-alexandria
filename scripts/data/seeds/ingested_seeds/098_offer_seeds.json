@@ -1,0 +1,72 @@
+[
+{"titulo":"O Iluminado","autor":"Stephen King","marketplace":"amazon","lookup_query":"O Iluminado Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1977,"popularidade_id":5},
+{"titulo":"Psicose","autor":"Robert Bloch","marketplace":"mercado_livre","lookup_query":"Psicose Robert Bloch livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1959,"popularidade_id":5},
+{"titulo":"A Assombração da Casa da Colina","autor":"Shirley Jackson","marketplace":"amazon","lookup_query":"A Assombração da Casa da Colina Shirley Jackson livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1959,"popularidade_id":5},
+{"titulo":"Outra Volta do Parafuso","autor":"Henry James","marketplace":"mercado_livre","lookup_query":"Outra Volta do Parafuso Henry James livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1898,"popularidade_id":5},
+{"titulo":"O Bebê de Rosemary","autor":"Ira Levin","marketplace":"amazon","lookup_query":"O Bebê de Rosemary Ira Levin livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1967,"popularidade_id":5},
+{"titulo":"Misery","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"Misery Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1987,"popularidade_id":5},
+{"titulo":"O Exorcista","autor":"William Peter Blatty","marketplace":"amazon","lookup_query":"O Exorcista William Peter Blatty livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1971,"popularidade_id":5},
+{"titulo":"Clube da Luta","autor":"Chuck Palahniuk","marketplace":"mercado_livre","lookup_query":"Clube da Luta Chuck Palahniuk livro","categoria":"terror psicologico","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1996,"popularidade_id":5},
+{"titulo":"American Psycho","autor":"Bret Easton Ellis","marketplace":"amazon","lookup_query":"American Psycho Bret Easton Ellis livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1991,"popularidade_id":5},
+{"titulo":"O Colecionador","autor":"John Fowles","marketplace":"mercado_livre","lookup_query":"O Colecionador John Fowles livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1963,"popularidade_id":5},
+{"titulo":"Eu Sou a Lenda","autor":"Richard Matheson","marketplace":"amazon","lookup_query":"Eu Sou a Lenda Richard Matheson livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1954,"popularidade_id":5},
+{"titulo":"Bird Box","autor":"Josh Malerman","marketplace":"mercado_livre","lookup_query":"Bird Box Josh Malerman livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":5},
+{"titulo":"O Homem de Giz","autor":"C. J. Tudor","marketplace":"amazon","lookup_query":"O Homem de Giz C. J. Tudor livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2018,"popularidade_id":5},
+{"titulo":"Caixa de Pássaros","autor":"Josh Malerman","marketplace":"mercado_livre","lookup_query":"Caixa de Pássaros Josh Malerman livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2014,"popularidade_id":5},
+{"titulo":"A Garota do Lago","autor":"Charlie Donlea","marketplace":"amazon","lookup_query":"A Garota do Lago Charlie Donlea livro","categoria":"terror psicologico","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":5},
+{"titulo":"Precisamos Falar Sobre o Kevin","autor":"Lionel Shriver","marketplace":"mercado_livre","lookup_query":"Precisamos Falar Sobre o Kevin Lionel Shriver livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2003,"popularidade_id":5},
+{"titulo":"A Estrada da Noite","autor":"Joe Hill","marketplace":"amazon","lookup_query":"A Estrada da Noite Joe Hill livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"O Ritual","autor":"Adam Nevill","marketplace":"mercado_livre","lookup_query":"O Ritual Adam Nevill livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2011,"popularidade_id":5},
+{"titulo":"A Paciente Silenciosa","autor":"Alex Michaelides","marketplace":"amazon","lookup_query":"A Paciente Silenciosa Alex Michaelides livro","categoria":"terror psicologico","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":2019,"popularidade_id":5},
+{"titulo":"O Apartamento 16","autor":"Adam Nevill","marketplace":"mercado_livre","lookup_query":"O Apartamento 16 Adam Nevill livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2010,"popularidade_id":4},
+
+{"titulo":"A Sombra do Vento","autor":"Carlos Ruiz Zafón","marketplace":"amazon","lookup_query":"A Sombra do Vento Carlos Ruiz Zafón livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":2001,"popularidade_id":5},
+{"titulo":"O Nome da Rosa","autor":"Umberto Eco","marketplace":"mercado_livre","lookup_query":"O Nome da Rosa Umberto Eco livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1980,"popularidade_id":5},
+
+{"titulo":"Drácula","autor":"Bram Stoker","marketplace":"amazon","lookup_query":"Drácula Bram Stoker livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1897,"popularidade_id":5},
+{"titulo":"Frankenstein","autor":"Mary Shelley","marketplace":"mercado_livre","lookup_query":"Frankenstein Mary Shelley livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1818,"popularidade_id":5},
+{"titulo":"O Médico e o Monstro","autor":"Robert Louis Stevenson","marketplace":"amazon","lookup_query":"O Médico e o Monstro Robert Louis Stevenson livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1886,"popularidade_id":5},
+{"titulo":"O Corvo","autor":"Edgar Allan Poe","marketplace":"mercado_livre","lookup_query":"O Corvo Edgar Allan Poe livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1845,"popularidade_id":5},
+{"titulo":"Contos de Terror","autor":"Edgar Allan Poe","marketplace":"amazon","lookup_query":"Contos de Terror Edgar Allan Poe livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1840,"popularidade_id":5},
+{"titulo":"O Chamado de Cthulhu","autor":"H. P. Lovecraft","marketplace":"mercado_livre","lookup_query":"O Chamado de Cthulhu H P Lovecraft livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1928,"popularidade_id":5},
+{"titulo":"Nas Montanhas da Loucura","autor":"H. P. Lovecraft","marketplace":"amazon","lookup_query":"Nas Montanhas da Loucura H P Lovecraft livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1936,"popularidade_id":5},
+{"titulo":"O Caso de Charles Dexter Ward","autor":"H. P. Lovecraft","marketplace":"mercado_livre","lookup_query":"O Caso de Charles Dexter Ward H P Lovecraft livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1941,"popularidade_id":4},
+
+{"titulo":"O Cemitério","autor":"Stephen King","marketplace":"amazon","lookup_query":"O Cemitério Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1983,"popularidade_id":5},
+{"titulo":"Carrie","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"Carrie Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1974,"popularidade_id":5},
+{"titulo":"A Hora do Vampiro","autor":"Stephen King","marketplace":"amazon","lookup_query":"A Hora do Vampiro Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1975,"popularidade_id":5},
+
+{"titulo":"Hex","autor":"Thomas Olde Heuvelt","marketplace":"mercado_livre","lookup_query":"Hex Thomas Olde Heuvelt livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":2013,"popularidade_id":4},
+{"titulo":"A Casa Infernal","autor":"Richard Matheson","marketplace":"amazon","lookup_query":"A Casa Infernal Richard Matheson livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1971,"popularidade_id":5},
+{"titulo":"O Demonologista","autor":"Andrew Pyper","marketplace":"mercado_livre","lookup_query":"O Demonologista Andrew Pyper livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":2013,"popularidade_id":4},
+
+{"titulo":"Ensaio sobre a Cegueira","autor":"José Saramago","marketplace":"amazon","lookup_query":"Ensaio sobre a Cegueira José Saramago livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"O Processo","autor":"Franz Kafka","marketplace":"mercado_livre","lookup_query":"O Processo Franz Kafka livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":9,"ano_sorteado":1925,"popularidade_id":5},
+
+{"titulo":"A Menina Submersa","autor":"Caitlín R. Kiernan","marketplace":"amazon","lookup_query":"A Menina Submersa Caitlin R Kiernan livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":3},
+{"titulo":"Casa de Folhas","autor":"Mark Z. Danielewski","marketplace":"mercado_livre","lookup_query":"Casa de Folhas Mark Z Danielewski livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2000,"popularidade_id":5},
+{"titulo":"O Troca-Troca","autor":"Victor LaValle","marketplace":"amazon","lookup_query":"O Troca Troca Victor LaValle livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2017,"popularidade_id":4},
+{"titulo":"A Casa no Lago","autor":"Kate Morton","marketplace":"mercado_livre","lookup_query":"A Casa no Lago Kate Morton livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":10,"ano_sorteado":2015,"popularidade_id":4},
+
+{"titulo":"O Silêncio dos Inocentes","autor":"Thomas Harris","marketplace":"amazon","lookup_query":"O Silêncio dos Inocentes Thomas Harris livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1988,"popularidade_id":5},
+{"titulo":"Dragão Vermelho","autor":"Thomas Harris","marketplace":"mercado_livre","lookup_query":"Dragão Vermelho Thomas Harris livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1981,"popularidade_id":5},
+
+{"titulo":"O Jardim das Borboletas","autor":"Dot Hutchison","marketplace":"amazon","lookup_query":"O Jardim das Borboletas Dot Hutchison livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2016,"popularidade_id":4},
+{"titulo":"Garota Exemplar","autor":"Gillian Flynn","marketplace":"mercado_livre","lookup_query":"Garota Exemplar Gillian Flynn livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+{"titulo":"Objetos Cortantes","autor":"Gillian Flynn","marketplace":"amazon","lookup_query":"Objetos Cortantes Gillian Flynn livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2006,"popularidade_id":5},
+
+{"titulo":"O Nevoeiro","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"O Nevoeiro Stephen King livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1980,"popularidade_id":5},
+
+{"titulo":"A Cabana","autor":"William P. Young","marketplace":"amazon","lookup_query":"A Cabana William P Young livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2007,"popularidade_id":5},
+
+{"titulo":"O Vilarejo","autor":"Raphael Montes","marketplace":"mercado_livre","lookup_query":"O Vilarejo Raphael Montes livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2015,"popularidade_id":5},
+{"titulo":"Jantar Secreto","autor":"Raphael Montes","marketplace":"amazon","lookup_query":"Jantar Secreto Raphael Montes livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2016,"popularidade_id":5},
+
+{"titulo":"Dias Perfeitos","autor":"Raphael Montes","marketplace":"mercado_livre","lookup_query":"Dias Perfeitos Raphael Montes livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2014,"popularidade_id":5},
+
+{"titulo":"O Amigo Imaginário","autor":"Stephen Chbosky","marketplace":"amazon","lookup_query":"O Amigo Imaginário Stephen Chbosky livro","categoria":"terror psicologico","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2019,"popularidade_id":4},
+
+{"titulo":"A Garota no Trem","autor":"Paula Hawkins","marketplace":"mercado_livre","lookup_query":"A Garota no Trem Paula Hawkins livro","categoria":"limítrofe","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":2015,"popularidade_id":5}
+
+]

@@ -1,0 +1,48 @@
+[
+{"titulo":"Dom Casmurro","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Dom Casmurro Machado de Assis livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Memórias Póstumas de Brás Cubas","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Memórias Póstumas de Brás Cubas Machado de Assis livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1881,"popularidade_id":5},
+{"titulo":"Quincas Borba","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Quincas Borba Machado de Assis livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1891,"popularidade_id":4},
+{"titulo":"Senhora","autor":"José de Alencar","marketplace":"mercado_livre","lookup_query":"Senhora José de Alencar livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1875,"popularidade_id":4},
+{"titulo":"Lucíola","autor":"José de Alencar","marketplace":"amazon","lookup_query":"Lucíola José de Alencar livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1862,"popularidade_id":4},
+{"titulo":"A Moreninha","autor":"Joaquim Manuel de Macedo","marketplace":"mercado_livre","lookup_query":"A Moreninha Joaquim Manuel de Macedo livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1844,"popularidade_id":3},
+{"titulo":"O Cortiço","autor":"Aluísio Azevedo","marketplace":"amazon","lookup_query":"O Cortiço Aluísio Azevedo livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"Casa de Pensão","autor":"Aluísio Azevedo","marketplace":"mercado_livre","lookup_query":"Casa de Pensão Aluísio Azevedo livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1884,"popularidade_id":3},
+{"titulo":"Os Maias","autor":"Eça de Queirós","marketplace":"amazon","lookup_query":"Os Maias Eça de Queirós livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1888,"popularidade_id":5},
+{"titulo":"O Primo Basílio","autor":"Eça de Queirós","marketplace":"mercado_livre","lookup_query":"O Primo Basílio Eça de Queirós livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1878,"popularidade_id":5},
+{"titulo":"A Relíquia","autor":"Eça de Queirós","marketplace":"amazon","lookup_query":"A Relíquia Eça de Queirós livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1887,"popularidade_id":3},
+{"titulo":"Amor de Perdição","autor":"Camilo Castelo Branco","marketplace":"mercado_livre","lookup_query":"Amor de Perdição Camilo Castelo Branco livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1862,"popularidade_id":4},
+{"titulo":"A Brasileira de Prazins","autor":"Camilo Castelo Branco","marketplace":"amazon","lookup_query":"A Brasileira de Prazins Camilo Castelo Branco livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1882,"popularidade_id":3},
+{"titulo":"Orgulho e Preconceito","autor":"Jane Austen","marketplace":"mercado_livre","lookup_query":"Orgulho e Preconceito Jane Austen livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1813,"popularidade_id":5},
+{"titulo":"Razão e Sensibilidade","autor":"Jane Austen","marketplace":"amazon","lookup_query":"Razão e Sensibilidade Jane Austen livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1811,"popularidade_id":5},
+{"titulo":"Emma","autor":"Jane Austen","marketplace":"mercado_livre","lookup_query":"Emma Jane Austen livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1815,"popularidade_id":4},
+{"titulo":"Madame Bovary","autor":"Gustave Flaubert","marketplace":"amazon","lookup_query":"Madame Bovary Gustave Flaubert livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1857,"popularidade_id":5},
+{"titulo":"A Educação Sentimental","autor":"Gustave Flaubert","marketplace":"mercado_livre","lookup_query":"A Educação Sentimental Gustave Flaubert livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1869,"popularidade_id":4},
+{"titulo":"Pai Goriot","autor":"Honoré de Balzac","marketplace":"amazon","lookup_query":"Pai Goriot Honoré de Balzac livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1835,"popularidade_id":5},
+{"titulo":"Ilusões Perdidas","autor":"Honoré de Balzac","marketplace":"mercado_livre","lookup_query":"Ilusões Perdidas Honoré de Balzac livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1837,"popularidade_id":5},
+
+{"titulo":"O Vermelho e o Negro","autor":"Stendhal","marketplace":"amazon","lookup_query":"O Vermelho e o Negro Stendhal livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1830,"popularidade_id":5},
+{"titulo":"A Cartuxa de Parma","autor":"Stendhal","marketplace":"mercado_livre","lookup_query":"A Cartuxa de Parma Stendhal livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1839,"popularidade_id":4},
+
+{"titulo":"Anna Kariênina","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"Anna Kariênina Liev Tolstói livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1877,"popularidade_id":5},
+{"titulo":"Guerra e Paz","autor":"Liev Tolstói","marketplace":"mercado_livre","lookup_query":"Guerra e Paz Liev Tolstói livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1869,"popularidade_id":5},
+
+{"titulo":"Os Demônios","autor":"Fiódor Dostoiévski","marketplace":"amazon","lookup_query":"Os Demônios Fiódor Dostoiévski livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1872,"popularidade_id":4},
+{"titulo":"O Idiota","autor":"Fiódor Dostoiévski","marketplace":"mercado_livre","lookup_query":"O Idiota Fiódor Dostoiévski livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1869,"popularidade_id":5},
+
+{"titulo":"Buddenbrooks","autor":"Thomas Mann","marketplace":"amazon","lookup_query":"Buddenbrooks Thomas Mann livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1901,"popularidade_id":5},
+
+{"titulo":"Os Buddenbrooks","autor":"Thomas Mann","marketplace":"mercado_livre","lookup_query":"Os Buddenbrooks Thomas Mann livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1901,"popularidade_id":4},
+
+{"titulo":"Mrs Dalloway","autor":"Virginia Woolf","marketplace":"amazon","lookup_query":"Mrs Dalloway Virginia Woolf livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1925,"popularidade_id":5},
+
+{"titulo":"Ao Farol","autor":"Virginia Woolf","marketplace":"mercado_livre","lookup_query":"Ao Farol Virginia Woolf livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1927,"popularidade_id":4},
+
+{"titulo":"O Som e a Fúria","autor":"William Faulkner","marketplace":"amazon","lookup_query":"O Som e a Fúria William Faulkner livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1929,"popularidade_id":4},
+
+{"titulo":"As I Lay Dying","autor":"William Faulkner","marketplace":"mercado_livre","lookup_query":"As I Lay Dying William Faulkner livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1930,"popularidade_id":3},
+
+{"titulo":"Os Miseráveis","autor":"Victor Hugo","marketplace":"amazon","lookup_query":"Os Miseráveis Victor Hugo livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1862,"popularidade_id":5},
+
+{"titulo":"Notre-Dame de Paris","autor":"Victor Hugo","marketplace":"mercado_livre","lookup_query":"Notre-Dame de Paris Victor Hugo livro","categoria":"romance de costumes","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1831,"popularidade_id":4}
+
+]

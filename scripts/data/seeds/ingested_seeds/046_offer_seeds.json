@@ -1,0 +1,84 @@
+[
+{"titulo":"O Som e a Fúria","autor":"William Faulkner","marketplace":"amazon","lookup_query":"O Som e a Fúria William Faulkner livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Enquanto Agonizo","autor":"William Faulkner","marketplace":"mercado_livre","lookup_query":"Enquanto Agonizo William Faulkner livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Luz em Agosto","autor":"William Faulkner","marketplace":"amazon","lookup_query":"Luz em Agosto William Faulkner livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"Admirável Mundo Novo","autor":"Aldous Huxley","marketplace":"mercado_livre","lookup_query":"Admirável Mundo Novo Aldous Huxley livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"Assassinato no Expresso do Oriente","autor":"Agatha Christie","marketplace":"amazon","lookup_query":"Assassinato no Expresso do Oriente Agatha Christie livro","categoria":"policial","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1934,"popularidade_id":5},
+{"titulo":"Morte no Nilo","autor":"Agatha Christie","marketplace":"mercado_livre","lookup_query":"Morte no Nilo Agatha Christie livro","categoria":"policial","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"O Carteiro Sempre Toca Duas Vezes","autor":"James M. Cain","marketplace":"amazon","lookup_query":"O Carteiro Sempre Toca Duas Vezes James M Cain livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1934,"popularidade_id":5},
+{"titulo":"O Grande Sono","autor":"Raymond Chandler","marketplace":"mercado_livre","lookup_query":"O Grande Sono Raymond Chandler livro","categoria":"policial","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1939,"popularidade_id":5},
+{"titulo":"E Não Sobrou Nenhum","autor":"Agatha Christie","marketplace":"amazon","lookup_query":"E Não Sobrou Nenhum Agatha Christie livro","categoria":"policial","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1939,"popularidade_id":5},
+{"titulo":"A Condição Humana","autor":"André Malraux","marketplace":"mercado_livre","lookup_query":"A Condição Humana André Malraux livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1933,"popularidade_id":4},
+{"titulo":"Viagem ao Fim da Noite","autor":"Louis-Ferdinand Céline","marketplace":"amazon","lookup_query":"Viagem ao Fim da Noite Louis Ferdinand Céline livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"O Lobo da Estepe","autor":"Hermann Hesse","marketplace":"mercado_livre","lookup_query":"O Lobo da Estepe Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Sidarta","autor":"Hermann Hesse","marketplace":"amazon","lookup_query":"Sidarta Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1931,"popularidade_id":5},
+{"titulo":"O Jogo das Contas de Vidro","autor":"Hermann Hesse","marketplace":"mercado_livre","lookup_query":"O Jogo das Contas de Vidro Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1935,"popularidade_id":4},
+{"titulo":"Adeus às Armas","autor":"Ernest Hemingway","marketplace":"amazon","lookup_query":"Adeus às Armas Ernest Hemingway livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Por Quem os Sinos Dobram","autor":"Ernest Hemingway","marketplace":"mercado_livre","lookup_query":"Por Quem os Sinos Dobram Ernest Hemingway livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1939,"popularidade_id":5},
+{"titulo":"Ratos e Homens","autor":"John Steinbeck","marketplace":"amazon","lookup_query":"Ratos e Homens John Steinbeck livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"As Vinhas da Ira","autor":"John Steinbeck","marketplace":"mercado_livre","lookup_query":"As Vinhas da Ira John Steinbeck livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1939,"popularidade_id":5},
+{"titulo":"O Hobbit","autor":"J. R. R. Tolkien","marketplace":"amazon","lookup_query":"O Hobbit J R R Tolkien livro","categoria":"fantasia","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"A Terra Inútil","autor":"T. S. Eliot","marketplace":"mercado_livre","lookup_query":"A Terra Inútil T S Eliot livro","categoria":"poesia","idioma":"PT","cluster_id":6,"nacionalidade_id":2,"ano_sorteado":1930,"popularidade_id":4},
+
+{"titulo":"Noite na Taverna","autor":"Álvares de Azevedo","marketplace":"amazon","lookup_query":"Noite na Taverna Álvares de Azevedo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1931,"popularidade_id":3},
+{"titulo":"Capitães da Areia","autor":"Jorge Amado","marketplace":"mercado_livre","lookup_query":"Capitães da Areia Jorge Amado livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"Cacau","autor":"Jorge Amado","marketplace":"amazon","lookup_query":"Cacau Jorge Amado livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1933,"popularidade_id":4},
+{"titulo":"Suor","autor":"Jorge Amado","marketplace":"mercado_livre","lookup_query":"Suor Jorge Amado livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1934,"popularidade_id":4},
+{"titulo":"O Quinze","autor":"Rachel de Queiroz","marketplace":"amazon","lookup_query":"O Quinze Rachel de Queiroz livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Menino de Engenho","autor":"José Lins do Rego","marketplace":"mercado_livre","lookup_query":"Menino de Engenho José Lins do Rego livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"Doidinho","autor":"José Lins do Rego","marketplace":"amazon","lookup_query":"Doidinho José Lins do Rego livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1933,"popularidade_id":4},
+{"titulo":"Banguê","autor":"José Lins do Rego","marketplace":"mercado_livre","lookup_query":"Banguê José Lins do Rego livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1934,"popularidade_id":4},
+{"titulo":"Angústia","autor":"Graciliano Ramos","marketplace":"amazon","lookup_query":"Angústia Graciliano Ramos livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1936,"popularidade_id":5},
+{"titulo":"Vidas Secas","autor":"Graciliano Ramos","marketplace":"mercado_livre","lookup_query":"Vidas Secas Graciliano Ramos livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1938,"popularidade_id":5},
+
+{"titulo":"A Revolução dos Bichos","autor":"George Orwell","marketplace":"amazon","lookup_query":"A Revolução dos Bichos George Orwell livro","categoria":"ficcao","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1935,"popularidade_id":5},
+{"titulo":"Na Pior em Paris e Londres","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"Na Pior em Paris e Londres George Orwell livro","categoria":"memorias","idioma":"PT","cluster_id":7,"nacionalidade_id":2,"ano_sorteado":1933,"popularidade_id":4},
+{"titulo":"O Caminho para Wigan Pier","autor":"George Orwell","marketplace":"amazon","lookup_query":"O Caminho para Wigan Pier George Orwell livro","categoria":"reportagem","idioma":"PT","cluster_id":7,"nacionalidade_id":2,"ano_sorteado":1937,"popularidade_id":4},
+{"titulo":"Declínio e Queda","autor":"Evelyn Waugh","marketplace":"mercado_livre","lookup_query":"Declínio e Queda Evelyn Waugh livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1930,"popularidade_id":4},
+{"titulo":"Um Punhado de Pó","autor":"Evelyn Waugh","marketplace":"amazon","lookup_query":"Um Punhado de Pó Evelyn Waugh livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1934,"popularidade_id":4},
+{"titulo":"A Glória Efêmera","autor":"Evelyn Waugh","marketplace":"mercado_livre","lookup_query":"A Glória Efêmera Evelyn Waugh livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1930,"popularidade_id":3},
+
+{"titulo":"Trópico de Câncer","autor":"Henry Miller","marketplace":"amazon","lookup_query":"Trópico de Câncer Henry Miller livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1934,"popularidade_id":5},
+{"titulo":"Trópico de Capricórnio","autor":"Henry Miller","marketplace":"mercado_livre","lookup_query":"Trópico de Capricórnio Henry Miller livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1939,"popularidade_id":5},
+
+{"titulo":"O Mito de Sísifo","autor":"Albert Camus","marketplace":"amazon","lookup_query":"O Mito de Sísifo Albert Camus livro","categoria":"filosofia","idioma":"PT","cluster_id":4,"nacionalidade_id":3,"ano_sorteado":1938,"popularidade_id":5},
+{"titulo":"Calígula","autor":"Albert Camus","marketplace":"mercado_livre","lookup_query":"Calígula Albert Camus livro","categoria":"teatro","idioma":"PT","cluster_id":8,"nacionalidade_id":3,"ano_sorteado":1938,"popularidade_id":4},
+
+{"titulo":"Auto da Barca do Inferno","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Barca do Inferno Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":8,"nacionalidade_id":6,"ano_sorteado":1931,"popularidade_id":3},
+
+{"titulo":"O Processo","autor":"Franz Kafka","marketplace":"mercado_livre","lookup_query":"O Processo Franz Kafka livro","categoria":"romance","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1935,"popularidade_id":5},
+{"titulo":"O Castelo","autor":"Franz Kafka","marketplace":"amazon","lookup_query":"O Castelo Franz Kafka livro","categoria":"romance","idioma":"PT","cluster_id":4,"nacionalidade_id":4,"ano_sorteado":1930,"popularidade_id":5},
+
+{"titulo":"Os Buddenbrooks","autor":"Thomas Mann","marketplace":"mercado_livre","lookup_query":"Os Buddenbrooks Thomas Mann livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1930,"popularidade_id":4},
+{"titulo":"A Montanha Mágica","autor":"Thomas Mann","marketplace":"amazon","lookup_query":"A Montanha Mágica Thomas Mann livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1932,"popularidade_id":5},
+
+{"titulo":"Morte em Veneza","autor":"Thomas Mann","marketplace":"mercado_livre","lookup_query":"Morte em Veneza Thomas Mann livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1930,"popularidade_id":5},
+
+{"titulo":"O Retrato de Dorian Gray","autor":"Oscar Wilde","marketplace":"amazon","lookup_query":"O Retrato de Dorian Gray Oscar Wilde livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1931,"popularidade_id":5},
+
+{"titulo":"O Mundo de Ontem","autor":"Stefan Zweig","marketplace":"mercado_livre","lookup_query":"O Mundo de Ontem Stefan Zweig livro","categoria":"memorias","idioma":"PT","cluster_id":7,"nacionalidade_id":4,"ano_sorteado":1939,"popularidade_id":5},
+
+{"titulo":"Carta de uma Desconhecida","autor":"Stefan Zweig","marketplace":"amazon","lookup_query":"Carta de uma Desconhecida Stefan Zweig livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1932,"popularidade_id":5},
+
+{"titulo":"Medo","autor":"Stefan Zweig","marketplace":"mercado_livre","lookup_query":"Medo Stefan Zweig livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1933,"popularidade_id":4},
+
+{"titulo":"O Grande Gatsby","autor":"F. Scott Fitzgerald","marketplace":"amazon","lookup_query":"O Grande Gatsby F Scott Fitzgerald livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1930,"popularidade_id":5},
+
+{"titulo":"Suave é a Noite","autor":"F. Scott Fitzgerald","marketplace":"mercado_livre","lookup_query":"Suave é a Noite F Scott Fitzgerald livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1934,"popularidade_id":5},
+
+{"titulo":"O Poder e a Glória","autor":"Graham Greene","marketplace":"amazon","lookup_query":"O Poder e a Glória Graham Greene livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1939,"popularidade_id":5},
+
+{"titulo":"O Coração da Matéria","autor":"Graham Greene","marketplace":"mercado_livre","lookup_query":"O Coração da Matéria Graham Greene livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1938,"popularidade_id":4},
+
+{"titulo":"A Estrada de Ferro","autor":"Érico Veríssimo","marketplace":"amazon","lookup_query":"A Estrada de Ferro Érico Veríssimo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1933,"popularidade_id":4},
+
+{"titulo":"Caminhos Cruzados","autor":"Érico Veríssimo","marketplace":"mercado_livre","lookup_query":"Caminhos Cruzados Érico Veríssimo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1935,"popularidade_id":5},
+
+{"titulo":"Um Lugar ao Sol","autor":"Érico Veríssimo","marketplace":"amazon","lookup_query":"Um Lugar ao Sol Érico Veríssimo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1936,"popularidade_id":4},
+
+{"titulo":"Olhai os Lírios do Campo","autor":"Érico Veríssimo","marketplace":"mercado_livre","lookup_query":"Olhai os Lírios do Campo Érico Veríssimo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1938,"popularidade_id":5},
+
+{"titulo":"Os Ratos","autor":"Dyonelio Machado","marketplace":"amazon","lookup_query":"Os Ratos Dyonelio Machado livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1935,"popularidade_id":4},
+
+{"titulo":"Navios Iluminados","autor":"Ranulfo Prata","marketplace":"mercado_livre","lookup_query":"Navios Iluminados Ranulfo Prata livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1937,"popularidade_id":3}
+]
