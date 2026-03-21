@@ -48,7 +48,7 @@ def fetch_pendentes(conn, pacote):
             offer_url,
             preco
         FROM livros
-        WHERE offer_status          = 1
+        WHERE CAST(offer_status AS TEXT) IN ('1', 'active')
           AND status_publish        = 1
           AND status_publish_oferta = 0
           AND offer_url             IS NOT NULL
@@ -93,6 +93,56 @@ def upsert(url, payload, headers):
 
 
 # =========================
+# MIGRAÇÃO: normaliza offer_status='active' → 1 e reseta flag
+# =========================
+
+def fix_offer_status(conn=None):
+    """Converte offer_status='active' para 1 (inteiro) e reseta status_publish_oferta=0.
+
+    Livros seeds importados com offer_status='active' (texto) nunca eram
+    elegíveis para step 17 (exige offer_status=1 inteiro). Esta função
+    corrige o estado para que possam ser publicados.
+    """
+    from core.db import get_conn as _get_conn
+    close_conn = conn is None
+    if conn is None:
+        conn = _get_conn()
+
+    cur = conn.cursor()
+
+    # 1. Normaliza offer_status texto → inteiro e reseta o flag de publicação
+    cur.execute("""
+        UPDATE livros
+        SET offer_status         = 1,
+            status_publish_oferta = 0,
+            updated_at           = CURRENT_TIMESTAMP
+        WHERE offer_status = 'active'
+          AND offer_url IS NOT NULL
+    """)
+    conn.commit()
+    com_url = cur.rowcount
+
+    # 2. Reseta flag para livros 'active' sem offer_url (serão resolvidos no step 3)
+    cur.execute("""
+        UPDATE livros
+        SET status_publish_oferta = 0,
+            updated_at            = CURRENT_TIMESTAMP
+        WHERE offer_status = 'active'
+          AND offer_url IS NULL
+    """)
+    conn.commit()
+    sem_url = cur.rowcount
+
+    if close_conn:
+        conn.close()
+
+    log(f"[OFERTAS] fix_offer_status: {com_url} offer_status normalizados → 1 (offer_url preenchida)")
+    if sem_url:
+        log(f"[OFERTAS] fix_offer_status: {sem_url} livros com offer_url vazia — rodar step 3 primeiro")
+    return com_url, sem_url
+
+
+# =========================
 # FLAG LOCAL
 # =========================
 
@@ -130,12 +180,12 @@ def run(pacote=100):
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
-        "Prefer": "return=representation",
+        # upsert por livro_id: cria se não existe, atualiza se já existe
+        "Prefer": "resolution=merge-duplicates,return=representation",
     }
 
-    # fetch_pendentes só retorna registros com status_publish_oferta=0,
-    # portanto re-runs não geram duplicatas sem precisar de on_conflict
-    ofertas_url = f"{supabase_url}/rest/v1/ofertas"
+    # ?on_conflict=livro_id ativa upsert no Supabase REST API
+    ofertas_url = f"{supabase_url}/rest/v1/ofertas?on_conflict=livro_id"
 
     rows = fetch_pendentes(conn, pacote)
 

@@ -111,7 +111,7 @@ def _recuperar_supabase(conn):
                     status_review, status_synopsis, status_cover,
                     status_publish, status_publish_oferta,
                     supabase_id, created_at, updated_at
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,1,1,1,1,1,1,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,1,1,1,1,1,1,0,?,?,?)
             """, (
                 local_id,
                 l.get("titulo"),

@@ -285,6 +285,9 @@ S  → Status do pipeline (gargalos)
             publish_categorias.run()
 
         elif op == "17":
+            fix = input_safe("Normalizar offer_status='active' → 1 (recomendado na 1ª vez)? [s/N] ").strip().lower()
+            if fix == "s":
+                publish_ofertas.fix_offer_status()
             pacote = escolher_pacote()
             log("Publicando ofertas no Supabase…")
             publish_ofertas.run(pacote)
