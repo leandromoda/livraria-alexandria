@@ -34,7 +34,7 @@ GENERIC_SYNOPSIS_MARKERS = [
 # FETCH
 # =========================
 
-def fetch_candidates(conn, limit):
+def fetch_candidates(conn, idioma, limit):
 
     cur = conn.cursor()
 
@@ -53,8 +53,9 @@ def fetch_candidates(conn, limit):
             status_cover
         FROM livros
         WHERE status_publish = 0
+          AND idioma = ?
         LIMIT ?
-    """, (limit,))
+    """, (idioma, limit))
 
     return cur.fetchall()
 
@@ -132,7 +133,7 @@ def run(idioma_base="PT", pacote=20):
 
     conn = get_conn()
 
-    rows = fetch_candidates(conn, pacote)
+    rows = fetch_candidates(conn, idioma_base, pacote)
 
     if not rows:
         log("QUALITY GATE — Nada para validar.")
