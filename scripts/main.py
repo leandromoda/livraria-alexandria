@@ -1,12 +1,14 @@
 import time
 import threading
 
+from steps import pipeline_status
 from steps import offer_seed
 from steps import enrich_descricao
 from steps import offer_resolver
 from steps import slugify
 from steps import slugify_autores
 from steps import dedup
+from steps import dedup_autores
 from steps import review
 from steps import synopsis
 from steps import covers
@@ -137,6 +139,8 @@ def main():
         print("""
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
+S  → Status do pipeline (gargalos)
+
 --- INGESTÃO ---
 1  → Importar Offer Seeds
 2  → Enriquecer descrições (Google Books / OpenLibrary)
@@ -146,6 +150,7 @@ def main():
 --- PRÉ-PROCESSAMENTO ---
 5  → Gerar slugs
 6  → Slugify Autores
+6b → Deduplicar Autores
 7  → Deduplicar
 8  → Review (classificação editorial + idioma)
 9  → Classificar Categorias Temáticas (LLM)
@@ -182,6 +187,9 @@ def main():
         if op == "0":
             break
 
+        elif op in ("s", "S"):
+            pipeline_status.run()
+
         elif op == "1":
             log("Importando Offer Seeds…")
             offer_seed.run()
@@ -208,6 +216,10 @@ def main():
         elif op == "6":
             log("Slugificando autores…")
             slugify_autores.run()
+
+        elif op == "6b":
+            log("Deduplicando autores…")
+            dedup_autores.run()
 
         elif op == "7":
             pacote = escolher_pacote()
