@@ -151,29 +151,29 @@ S  → Status do pipeline (gargalos)
 --- PRÉ-PROCESSAMENTO ---
 5  → Gerar slugs
 6  → Slugify Autores
-6b → Deduplicar Autores
-7  → Deduplicar
-8  → Review (classificação editorial + idioma)
-9  → Classificar Categorias Temáticas (LLM)
+7  → Deduplicar Autores
+8  → Deduplicar
+9  → Review (classificação editorial + idioma)
+10 → Classificar Categorias Temáticas (LLM)
 
 --- GERAÇÃO DE CONTEÚDO ---
-10 → Gerar sinopses (requer review concluído)
-11 → Gerar capas
+11 → Gerar sinopses (requer review concluído)
+12 → Gerar capas
 
 --- PUBLICAÇÃO ---
-12 → Quality Gate
-13 → Publicar Supabase
-14 → Publicar Autores
-15 → Publicar Ofertas
-16 → Gerar listas SEO automáticas
-20 → Publicar Categorias (requer step 9)
+13 → Quality Gate
+14 → Publicar Supabase
+15 → Publicar Autores
+16 → Publicar Categorias (requer step 10)
+17 → Publicar Ofertas
+18 → Gerar listas SEO automáticas
 
 --- MONITORAMENTO ---
-17 → Monitorar preços e disponibilidade de ofertas
+19 → Monitorar preços e disponibilidade de ofertas
 
 --- AUDITORIA ---
-18 → Auditar conectividade do site (sem LLM)
-19 → Auditar conteúdo publicado (LLM)
+20 → Auditar conectividade do site (sem LLM)
+21 → Auditar conteúdo publicado (LLM)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -219,57 +219,61 @@ S  → Status do pipeline (gargalos)
             log("Slugificando autores…")
             slugify_autores.run()
 
-        elif op == "6b":
+        elif op == "7":
             log("Deduplicando autores…")
             dedup_autores.run()
 
-        elif op == "7":
+        elif op == "8":
             pacote = escolher_pacote()
             dedup.run(idioma, pacote)
 
-        elif op == "8":
+        elif op == "9":
             pacote = escolher_pacote()
             review.run(idioma, pacote)
 
-        elif op == "9":
+        elif op == "10":
             pacote = escolher_pacote()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
             log("Classificando categorias temáticas…")
             categorize.run(idioma, pacote)
 
-        elif op == "10":
+        elif op == "11":
             pacote = escolher_pacote()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
             synopsis.run(idioma, pacote)
 
-        elif op == "11":
+        elif op == "12":
             pacote = escolher_pacote()
             covers.run(idioma, pacote)
 
-        elif op == "12":
+        elif op == "13":
             pacote = escolher_pacote()
             quality_gate.evaluate_quality(idioma, pacote)
 
-        elif op == "13":
+        elif op == "14":
             pacote = escolher_pacote()
             publish.run(idioma, pacote)
 
-        elif op == "14":
+        elif op == "15":
             pacote = escolher_pacote()
             log("Publicando autores no Supabase…")
             publish_autores.run(pacote)
 
-        elif op == "15":
+        elif op == "16":
+            log("Publicando categorias temáticas no Supabase…")
+            publish_categorias.run()
+
+        elif op == "17":
             log("Publicando ofertas no Supabase…")
             publish_ofertas.run()
 
-        elif op == "16":
+        elif op == "18":
             log("Gerando listas SEO automáticas…")
             list_composer.run()
 
-        elif op == "17":
+        elif op == "19":
             print("""
 Limite de livros para monitorar:
 
@@ -286,13 +290,13 @@ Limite de livros para monitorar:
             log(f"Monitorando preços e disponibilidade (limit={limite}, dry_run={dry_run})…")
             offer_price_monitor.run(limit=limite, dry_run=dry_run)
 
-        elif op == "18":
+        elif op == "20":
             log("Auditando conectividade do site…")
             import argparse
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
-        elif op == "19":
+        elif op == "21":
             print("""
 Limite de livros para auditoria:
 
@@ -313,10 +317,6 @@ Limite de livros para auditoria:
             import argparse
             args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
             auditor.run(args)
-
-        elif op == "20":
-            log("Publicando categorias temáticas no Supabase…")
-            publish_categorias.run()
 
         elif op == "91":
             log("Exportando Site Bootstrap…")
