@@ -245,6 +245,9 @@ S  → Status do pipeline (gargalos)
 
         elif op == "10":
             pacote = escolher_pacote()
+            reset = input_safe("Resetar livros com falha anterior? [s/N] ").strip().lower()
+            if reset == "s":
+                categorize.reset_failed()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
             log("Classificando categorias temáticas…")

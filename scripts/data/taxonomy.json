@@ -157,5 +157,40 @@
   {"id": "literatura-juvenil", "slug": "literatura-juvenil", "label": "Literatura Juvenil", "group": "Infantil e Juvenil"},
   {"id": "young-adult", "slug": "young-adult", "label": "Young Adult", "group": "Infantil e Juvenil"},
   {"id": "fantasia-juvenil", "slug": "fantasia-juvenil", "label": "Fantasia Juvenil", "group": "Infantil e Juvenil"},
-  {"id": "aventura-juvenil", "slug": "aventura-juvenil", "label": "Aventura Juvenil", "group": "Infantil e Juvenil"}
+  {"id": "aventura-juvenil", "slug": "aventura-juvenil", "label": "Aventura Juvenil", "group": "Infantil e Juvenil"},
+
+  {"id": "biografia-narrativa", "slug": "biografia-narrativa", "label": "Biografia Narrativa", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "autobiografia-e-memorias", "slug": "autobiografia-e-memorias", "label": "Autobiografia e Memórias", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "memorias-e-diarios", "slug": "memorias-e-diarios", "label": "Memórias e Diários", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "jornalismo-literario", "slug": "jornalismo-literario", "label": "Jornalismo Literário", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "reportagem-literaria", "slug": "reportagem-literaria", "label": "Reportagem Literária", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "biografia-romanceada", "slug": "biografia-romanceada", "label": "Biografia Romanceada", "group": "Biografia, Memória e Jornalismo"},
+  {"id": "nao-ficcao-narrativa", "slug": "nao-ficcao-narrativa", "label": "Não-Ficção Narrativa", "group": "Biografia, Memória e Jornalismo"},
+
+  {"id": "teatro-classico", "slug": "teatro-classico", "label": "Teatro Clássico", "group": "Teatro e Dramaturgia"},
+  {"id": "teatro-moderno-e-contemporaneo", "slug": "teatro-moderno-e-contemporaneo", "label": "Teatro Moderno e Contemporâneo", "group": "Teatro e Dramaturgia"},
+  {"id": "teatro-epico", "slug": "teatro-epico", "label": "Teatro Épico", "group": "Teatro e Dramaturgia"},
+  {"id": "teatro-experimental-e-absurdo", "slug": "teatro-experimental-e-absurdo", "label": "Teatro Experimental e do Absurdo", "group": "Teatro e Dramaturgia"},
+  {"id": "teatro-politico-e-documental", "slug": "teatro-politico-e-documental", "label": "Teatro Político e Documental", "group": "Teatro e Dramaturgia"},
+  {"id": "teoria-e-critica-teatral", "slug": "teoria-e-critica-teatral", "label": "Teoria e Crítica Teatral", "group": "Teatro e Dramaturgia"},
+
+  {"id": "hq-e-graphic-novel", "slug": "hq-e-graphic-novel", "label": "HQ e Graphic Novel", "group": "Quadrinhos, HQ e Mangá"},
+  {"id": "manga", "slug": "manga", "label": "Mangá", "group": "Quadrinhos, HQ e Mangá"},
+  {"id": "quadrinho-autobiografico", "slug": "quadrinho-autobiografico", "label": "Quadrinho Autobiográfico", "group": "Quadrinhos, HQ e Mangá"},
+  {"id": "jornalismo-em-quadrinhos", "slug": "jornalismo-em-quadrinhos", "label": "Jornalismo em Quadrinhos", "group": "Quadrinhos, HQ e Mangá"},
+  {"id": "hq-brasileira", "slug": "hq-brasileira", "label": "HQ Brasileira", "group": "Quadrinhos, HQ e Mangá"},
+
+  {"id": "contos-de-fada-e-fabulas", "slug": "contos-de-fada-e-fabulas", "label": "Contos de Fada e Fábulas", "group": "Folclore e Literatura Popular"},
+  {"id": "folclore-brasileiro", "slug": "folclore-brasileiro", "label": "Folclore Brasileiro", "group": "Folclore e Literatura Popular"},
+  {"id": "mitologia-e-lendas", "slug": "mitologia-e-lendas", "label": "Mitologia e Lendas", "group": "Folclore e Literatura Popular"},
+  {"id": "literatura-oral-e-popular", "slug": "literatura-oral-e-popular", "label": "Literatura Oral e Popular", "group": "Folclore e Literatura Popular"},
+
+  {"id": "true-crime", "slug": "true-crime", "label": "True Crime", "group": "Crime Real e Investigação"},
+  {"id": "criminologia-e-perfilamento", "slug": "criminologia-e-perfilamento", "label": "Criminologia e Perfilamento", "group": "Crime Real e Investigação"},
+  {"id": "investigacao-jornalistica", "slug": "investigacao-jornalistica", "label": "Investigação Jornalística", "group": "Crime Real e Investigação"},
+  {"id": "casos-criminais-brasileiros", "slug": "casos-criminais-brasileiros", "label": "Casos Criminais Brasileiros", "group": "Crime Real e Investigação"},
+
+  {"id": "sociologia-e-antropologia", "slug": "sociologia-e-antropologia", "label": "Sociologia e Antropologia", "group": "Não-Ficção Humanística"},
+  {"id": "economia-e-pensamento-economico", "slug": "economia-e-pensamento-economico", "label": "Economia e Pensamento Econômico", "group": "Não-Ficção Humanística"},
+  {"id": "poesia-slam-e-marginal", "slug": "poesia-slam-e-marginal", "label": "Poesia Slam e Marginal", "group": "Literatura Brasileira"}
 ]
