@@ -50,14 +50,24 @@ def taxonomy_slugs_list(taxonomy):
 
 def fetch_pending(conn, pacote):
     cur = conn.cursor()
-    cur.execute("""
-        SELECT id, titulo, autor, descricao, sinopse, cluster
-        FROM livros
-        WHERE status_categorize = 0
-          AND status_review = 1
-        ORDER BY created_at ASC
-        LIMIT ?
-    """, (pacote,))
+    try:
+        cur.execute("""
+            SELECT id, titulo, autor, descricao, sinopse, cluster
+            FROM livros
+            WHERE status_categorize = 0
+              AND status_review = 1
+            ORDER BY created_at ASC
+            LIMIT ?
+        """, (pacote,))
+    except Exception:
+        cur.execute("""
+            SELECT id, titulo, autor, descricao, NULL as sinopse, NULL as cluster
+            FROM livros
+            WHERE status_categorize = 0
+              AND status_review = 1
+            ORDER BY created_at ASC
+            LIMIT ?
+        """, (pacote,))
     return cur.fetchall()
 
 

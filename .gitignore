@@ -48,3 +48,4 @@ runtime/tmp/
 scripts/alexandria.db
 scripts/data/*.db-wal
 scripts/data/*.db-shm
+scripts/data/books.db
