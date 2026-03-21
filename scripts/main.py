@@ -32,6 +32,90 @@ from steps import db_recover
 
 
 # =========================
+# MENU EM COLUNAS
+# =========================
+
+def _build_menu():
+    """Retorna o menu principal formatado em duas colunas."""
+
+    W = 45   # largura da coluna esquerda (preenchida com espaços)
+    SEP = "  "
+
+    def h(label):
+        """Cabeçalho de seção — preenche com traços até W."""
+        bar = label + " " + "-" * max(0, W - len(label) - 1)
+        return bar[:W]
+
+    left = [
+        "  S   Status do pipeline (gargalos)",
+        h("- INGESTAO"),
+        "   1  Importar Seeds (lote)",
+        "   2  Enriquecer descricoes",
+        "   3  Resolver Ofertas",
+        "   4  Marketplace Scraper",
+        h("- PRE-PROCESSAMENTO"),
+        "   5  Gerar slugs",
+        "   6  Slugify Autores",
+        "   7  Deduplicar Autores",
+        "   8  Deduplicar",
+        "   9  Review editorial + idioma",
+        "  10  Categorias Tematicas (LLM)",
+        h("- GERACAO DE CONTEUDO"),
+        "  11  Gerar sinopses",
+        "  12  Gerar capas",
+        h("- PUBLICACAO"),
+        "  13  Quality Gate",
+        "  14  Publicar Supabase",
+        "  15  Publicar Autores",
+        "  16  Publicar Categorias",
+        "  17  Publicar Ofertas",
+        "  18  Gerar listas SEO",
+        "  19  Publicar Listas",
+        h("- MONITORAMENTO"),
+        "  20  Monitorar precos e ofertas",
+    ]
+
+    right = [
+        h("- AUDITORIA"),
+        "  21  Auditar conectividade do site",
+        "  22  Auditar conteudo (LLM)",
+        "  23  Reparar publicacoes ruins",
+        "",
+        h("- BANCO DE DADOS"),
+        "  95  Backup do banco local",
+        "  96  Restaurar backup",
+        "  97  Recuperar do Supabase + backup",
+        "",
+        h("- EXPORTS"),
+        "  91  Site Bootstrap",
+        "  92  Pipeline Summary",
+        "  93  Database Transcript",
+        "  94  Project Tree",
+        "",
+        "   0  Sair",
+    ]
+
+    header = [
+        "",
+        "=" * (W + len(SEP) + W),
+        " LIVRARIA ALEXANDRIA — INGEST PIPELINE ".center(W + len(SEP) + W, "="),
+        "=" * (W + len(SEP) + W),
+        "",
+        f"{'  PIPELINE':<{W}}{SEP}{'  UTILITARIOS'}",
+        f"{'  ' + '-' * (W - 2):<{W}}{SEP}{'  ' + '-' * (W - 2)}",
+    ]
+
+    rows = []
+    max_rows = max(len(left), len(right))
+    for i in range(max_rows):
+        l = left[i]  if i < len(left)  else ""
+        r = right[i] if i < len(right) else ""
+        rows.append(f"{l:<{W}}{SEP}{r}")
+
+    return "\n".join(header + rows + [""])
+
+
+# =========================
 # INPUT CONTROL
 # =========================
 
@@ -142,59 +226,7 @@ def main():
 
     while True:
 
-        print("""
-=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
-
-S  → Status do pipeline (gargalos)
-
---- INGESTÃO ---
-1  → Importar Offer Seeds
-2  → Enriquecer descrições (Google Books / OpenLibrary)
-3  → Resolver Ofertas (lookup → URL afiliado)
-4  → Enriquecer via Marketplace Scraper (capa + descrição + preço)
-
---- PRÉ-PROCESSAMENTO ---
-5  → Gerar slugs
-6  → Slugify Autores
-7  → Deduplicar Autores
-8  → Deduplicar
-9  → Review (classificação editorial + idioma)
-10 → Classificar Categorias Temáticas (LLM)
-
---- GERAÇÃO DE CONTEÚDO ---
-11 → Gerar sinopses (requer review concluído)
-12 → Gerar capas
-
---- PUBLICAÇÃO ---
-13 → Quality Gate
-14 → Publicar Supabase
-15 → Publicar Autores
-16 → Publicar Categorias (requer step 10)
-17 → Publicar Ofertas
-18 → Gerar listas SEO automáticas
-19 → Publicar Listas (requer step 18)
-
---- MONITORAMENTO ---
-20 → Monitorar preços e disponibilidade de ofertas
-
---- AUDITORIA ---
-21 → Auditar conectividade do site (sem LLM)
-22 → Auditar conteúdo publicado (LLM)
-23 → Reparar publicações com dados ruins (sinopse, capa, preço)
-
---- BANCO DE DADOS ---
-95 → Fazer backup do banco local
-96 → Restaurar banco de backup
-97 → Recuperar banco do Supabase + backup
-
---- EXPORTS ---
-91 → Export Site Bootstrap
-92 → Export Pipeline Summary
-93 → Export Database Transcript
-94 → Export Project Tree (JSON)
-
-0  → Sair
-""")
+        print(_build_menu())
 
         op = input_safe("Opção: ")
 
@@ -205,8 +237,9 @@ S  → Status do pipeline (gargalos)
             pipeline_status.run()
 
         elif op == "1":
-            log("Importando Offer Seeds…")
-            offer_seed.run()
+            pacote = escolher_pacote()
+            log(f"Importando Offer Seeds… (lote: {pacote})")
+            offer_seed.run(limite=pacote)
 
         elif op == "2":
             pacote = escolher_pacote()

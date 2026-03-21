@@ -372,7 +372,14 @@ def insert_seed(conn, seed):
 # PROCESS ONE FILE
 # =========================
 
-def process_file(conn, filename, filepath):
+def process_file(conn, filename, filepath, limite=None, ja_inseridos=0):
+    """
+    Processa um arquivo de seed.
+
+    limite      — número máximo de livros a inserir no total da sessão (None = sem limite)
+    ja_inseridos — quantos já foram inseridos antes deste arquivo
+    Retorna (inserted, skipped, atingiu_limite).
+    """
 
     log(f"Processando {filename}…")
 
@@ -381,14 +388,27 @@ def process_file(conn, filename, filepath):
     except Exception as e:
         log(f"[ERRO] Falha ao carregar {filename}: {e}")
         log(f"[ERRO] Arquivo ignorado — corrija o conteúdo e execute novamente.")
-        return None, None
+        return None, None, False
 
     total  = len(seeds)
     counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0, "error": 0}
 
+    atingiu_limite = False
+
     for i, seed in enumerate(seeds, start=1):
+
+        # Verificação de lote antes de cada inserção
+        if limite is not None and (ja_inseridos + counts["inserted"]) >= limite:
+            atingiu_limite = True
+            log(f"[SEED] Limite de {limite} livros atingido — interrompendo.")
+            break
+
         titulo_log = seed.get("titulo", "?")
-        print(f"[SEED][{i:03d}/{total:03d}] → {titulo_log}")
+
+        restam = ""
+        if limite is not None:
+            restam = f" | faltam {limite - ja_inseridos - counts['inserted']}"
+        print(f"[SEED][{i:03d}/{total:03d}{restam}] → {titulo_log}")
 
         try:
             result = insert_seed(conn, seed)
@@ -407,19 +427,25 @@ def process_file(conn, filename, filepath):
         f"OK: {inserted} | "
         f"Falhas: {counts['error']} | "
         f"Pulados: {skipped} | "
-        f"Total: {total}"
+        f"Total processado: {i}/{total}"
     )
 
-    return inserted, skipped
+    return inserted, skipped, atingiu_limite
 
 
 # =========================
 # RUN
 # =========================
 
-def run():
+def run(limite=None):
+    """
+    limite — número máximo de livros a inserir (None = todos os seeds disponíveis).
+    """
 
-    log("Iniciando Offer Seed Import...")
+    if limite is not None:
+        log(f"Iniciando Offer Seed Import… (lote: {limite})")
+    else:
+        log("Iniciando Offer Seed Import… (sem limite de lote)")
 
     conn = get_conn()
 
@@ -429,7 +455,7 @@ def run():
 
     if not seed_files:
         log("Nenhum arquivo de seed encontrado em scripts/data/seeds/")
-        log("Padrão esperado: NNN_offer_seeds.json (ex: 001_offer_seeds.json)")
+        log("Padrao esperado: NNN_offer_seeds.json (ex: 001_offer_seeds.json)")
         conn.close()
         return
 
@@ -440,14 +466,25 @@ def run():
     for filename, filepath in seed_files:
 
         if already_imported(conn, filename):
-            log(f"[SKIP] {filename} — já importado anteriormente")
+            log(f"[SKIP] {filename} — ja importado anteriormente")
             continue
 
-        inserted, skipped = process_file(conn, filename, filepath)
+        inserted, skipped, atingiu = process_file(
+            conn, filename, filepath,
+            limite=limite,
+            ja_inseridos=total_inserted,
+        )
 
         if inserted is None:
-            log(f"[SKIP] {filename} não marcado como importado — arquivo permanece em seeds/ para correção.")
+            log(f"[SKIP] {filename} nao marcado como importado — arquivo permanece em seeds/ para correcao.")
             continue
+
+        # Arquivo parcialmente processado: não move nem marca como importado
+        if atingiu:
+            conn.close()
+            log(f"Lote concluido — {total_inserted + inserted} livros inseridos.")
+            log("Execute novamente para continuar a partir deste arquivo.")
+            return
 
         mark_imported(conn, filename, inserted, skipped)
         move_to_ingested(filepath, filename)
@@ -461,5 +498,5 @@ def run():
     if processed == 0:
         log("Nenhum arquivo novo para importar.")
     else:
-        log(f"Importação concluída → {processed} arquivo(s)")
+        log(f"Importacao concluida → {processed} arquivo(s)")
         log(f"Total inseridos: {total_inserted} | Total pulados: {total_skipped}")
