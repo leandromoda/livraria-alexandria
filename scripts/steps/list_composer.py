@@ -97,7 +97,7 @@ def fetch_categorias_validas():
         categoria,
         COUNT(*) as total
     FROM livros
-    WHERE editorial_score >= 2
+    WHERE editorial_score >= 1
     AND status_publish = 1
     GROUP BY categoria
     HAVING COUNT(*) >= ?
@@ -126,7 +126,7 @@ def fetch_livros_categoria(categoria):
         editorial_score
     FROM livros
     WHERE categoria = ?
-    AND editorial_score >= 2
+    AND editorial_score >= 1
     AND status_publish = 1
     ORDER BY editorial_score DESC
     LIMIT ?
@@ -151,7 +151,7 @@ def categoria_tem_qualidade(livros):
 
         score = livro[1]
 
-        if score >= 3:
+        if score >= 1:
             fortes += 1
 
     return fortes >= 2

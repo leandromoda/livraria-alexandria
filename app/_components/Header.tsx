@@ -39,8 +39,8 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 bg-[#0D1B2A] text-[#F5F0E8] border-b border-[#1B263B] transition-all ${
-        scrolled ? "py-2 shadow-lg" : "py-3"
+      className={`sticky top-0 z-50 bg-[#0D1B2A] text-[#F5F0E8] border-b border-[#1B263B] py-3 transition-shadow ${
+        scrolled ? "shadow-lg" : ""
       }`}
     >
 
