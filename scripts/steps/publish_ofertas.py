@@ -159,7 +159,6 @@ def run():
             "preco":       preco,
             "ativa":       True,
             "created_at":  now,
-            "updated_at":  now,
         }
 
         ok = upsert(ofertas_url, payload, headers)
