@@ -22,6 +22,7 @@ from steps import marketplace_scraper
 from steps import categorize
 from steps import offer_price_monitor
 from steps import publish_categorias
+from steps import publish_listas
 
 from steps.export_state_transcript import export_state_transcript
 
@@ -167,13 +168,14 @@ S  → Status do pipeline (gargalos)
 16 → Publicar Categorias (requer step 10)
 17 → Publicar Ofertas
 18 → Gerar listas SEO automáticas
+19 → Publicar Listas (requer step 18)
 
 --- MONITORAMENTO ---
-19 → Monitorar preços e disponibilidade de ofertas
+20 → Monitorar preços e disponibilidade de ofertas
 
 --- AUDITORIA ---
-20 → Auditar conectividade do site (sem LLM)
-21 → Auditar conteúdo publicado (LLM)
+21 → Auditar conectividade do site (sem LLM)
+22 → Auditar conteúdo publicado (LLM)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -275,6 +277,10 @@ S  → Status do pipeline (gargalos)
             list_composer.run()
 
         elif op == "19":
+            log("Publicando listas no Supabase…")
+            publish_listas.run()
+
+        elif op == "20":
             print("""
 Limite de livros para monitorar:
 
@@ -291,13 +297,13 @@ Limite de livros para monitorar:
             log(f"Monitorando preços e disponibilidade (limit={limite}, dry_run={dry_run})…")
             offer_price_monitor.run(limit=limite, dry_run=dry_run)
 
-        elif op == "20":
+        elif op == "21":
             log("Auditando conectividade do site…")
             import argparse
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
-        elif op == "21":
+        elif op == "22":
             print("""
 Limite de livros para auditoria:
 
