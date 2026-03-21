@@ -26,6 +26,9 @@ from steps import publish_listas
 from steps import repair
 
 from steps.export_state_transcript import export_state_transcript
+from steps import db_backup
+from steps import db_restore
+from steps import db_recover
 
 
 # =========================
@@ -179,6 +182,11 @@ S  → Status do pipeline (gargalos)
 22 → Auditar conteúdo publicado (LLM)
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 
+--- BANCO DE DADOS ---
+95 → Fazer backup do banco local
+96 → Restaurar banco de backup
+97 → Recuperar banco do Supabase + backup
+
 --- EXPORTS ---
 91 → Export Site Bootstrap
 92 → Export Pipeline Summary
@@ -330,6 +338,18 @@ Limite de livros para auditoria:
         elif op == "23":
             log("Reparando publicações com dados ruins…")
             repair.run()
+
+        elif op == "95":
+            log("Fazendo backup do banco local…")
+            db_backup.run()
+
+        elif op == "96":
+            log("Restaurando banco de backup…")
+            db_restore.run()
+
+        elif op == "97":
+            log("Recuperando banco do Supabase + backup local…")
+            db_recover.run()
 
         elif op == "91":
             log("Exportando Site Bootstrap…")

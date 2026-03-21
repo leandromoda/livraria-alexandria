@@ -49,3 +49,8 @@ scripts/alexandria.db
 scripts/data/*.db-wal
 scripts/data/*.db-shm
 scripts/data/books.db
+scripts/data/backup/*.db
+scripts/data/audit_*.json
+
+# state exports (auto-gerados)
+state/
