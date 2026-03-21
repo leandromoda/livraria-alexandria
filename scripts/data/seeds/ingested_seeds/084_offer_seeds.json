@@ -1,0 +1,26 @@
+[
+  {
+    "titulo": "Madrigais",
+    "autor": "Claudio Monteverdi",
+    "marketplace": "amazon",
+    "lookup_query": "Madrigais Claudio Monteverdi livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 3,
+    "ano_sorteado": 1605,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Il primo libro de' madrigali",
+    "autor": "Luca Marenzio",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Il primo libro de' madrigali Luca Marenzio livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 3,
+    "ano_sorteado": 1580,
+    "popularidade_id": 2
+  }
+]

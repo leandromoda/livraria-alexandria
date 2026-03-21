@@ -1,0 +1,42 @@
+[
+{"titulo":"Trilha Estreita ao Norte Profundo","autor":"Matsuo Basho","marketplace":"amazon","lookup_query":"Trilha Estreita ao Norte Profundo Matsuo Basho livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1689,"popularidade_id":5},
+{"titulo":"O Livro de Haicais","autor":"Matsuo Basho","marketplace":"mercado_livre","lookup_query":"O Livro de Haicais Matsuo Basho livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1694,"popularidade_id":5},
+{"titulo":"Haicais de Basho","autor":"Matsuo Basho","marketplace":"amazon","lookup_query":"Haicais de Basho Matsuo Basho livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1680,"popularidade_id":5},
+
+{"titulo":"Haicais de Buson","autor":"Yosa Buson","marketplace":"mercado_livre","lookup_query":"Haicais de Buson Yosa Buson livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1770,"popularidade_id":4},
+{"titulo":"Poemas de Buson","autor":"Yosa Buson","marketplace":"amazon","lookup_query":"Poemas de Buson Yosa Buson livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1780,"popularidade_id":4},
+{"titulo":"Antologia de Buson","autor":"Yosa Buson","marketplace":"mercado_livre","lookup_query":"Antologia de Buson Yosa Buson livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1775,"popularidade_id":4},
+
+{"titulo":"Haicais de Issa","autor":"Kobayashi Issa","marketplace":"amazon","lookup_query":"Haicais de Issa Kobayashi Issa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1810,"popularidade_id":5},
+{"titulo":"O Mundo de Issa","autor":"Kobayashi Issa","marketplace":"mercado_livre","lookup_query":"O Mundo de Issa Kobayashi Issa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1820,"popularidade_id":4},
+{"titulo":"Antologia de Issa","autor":"Kobayashi Issa","marketplace":"amazon","lookup_query":"Antologia de Issa Kobayashi Issa livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1815,"popularidade_id":4},
+
+{"titulo":"Haicais de Shiki","autor":"Masaoka Shiki","marketplace":"mercado_livre","lookup_query":"Haicais de Shiki Masaoka Shiki livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1895,"popularidade_id":5},
+{"titulo":"O Haicai Moderno","autor":"Masaoka Shiki","marketplace":"amazon","lookup_query":"O Haicai Moderno Masaoka Shiki livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1900,"popularidade_id":4},
+{"titulo":"Poemas de Shiki","autor":"Masaoka Shiki","marketplace":"mercado_livre","lookup_query":"Poemas de Shiki Masaoka Shiki livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1898,"popularidade_id":4},
+
+{"titulo":"Haicais no Brasil","autor":"Guilherme de Almeida","marketplace":"amazon","lookup_query":"Haicais no Brasil Guilherme de Almeida livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Pequena Antologia de Haicais","autor":"Guilherme de Almeida","marketplace":"mercado_livre","lookup_query":"Pequena Antologia de Haicais Guilherme de Almeida livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"Haicais Escolhidos","autor":"Guilherme de Almeida","marketplace":"amazon","lookup_query":"Haicais Escolhidos Guilherme de Almeida livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1950,"popularidade_id":4},
+
+{"titulo":"Haicai: Antologia","autor":"Paulo Leminski","marketplace":"mercado_livre","lookup_query":"Haicai Antologia Paulo Leminski livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1983,"popularidade_id":5},
+{"titulo":"Caprichos & Relaxos","autor":"Paulo Leminski","marketplace":"amazon","lookup_query":"Caprichos Relaxos Paulo Leminski livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1983,"popularidade_id":5},
+{"titulo":"Toda Poesia","autor":"Paulo Leminski","marketplace":"mercado_livre","lookup_query":"Toda Poesia Paulo Leminski livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2013,"popularidade_id":5},
+
+{"titulo":"Haicais Tropicais","autor":"Millôr Fernandes","marketplace":"amazon","lookup_query":"Haicais Tropicais Millor Fernandes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1970,"popularidade_id":4},
+{"titulo":"Poemas Curtos","autor":"Millôr Fernandes","marketplace":"mercado_livre","lookup_query":"Poemas Curtos Millor Fernandes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1980,"popularidade_id":4},
+{"titulo":"Millôr Definitivo","autor":"Millôr Fernandes","marketplace":"amazon","lookup_query":"Millor Definitivo Millor Fernandes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1994,"popularidade_id":4},
+
+{"titulo":"Haicais","autor":"Alice Ruiz","marketplace":"mercado_livre","lookup_query":"Haicais Alice Ruiz livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1980,"popularidade_id":5},
+{"titulo":"Dois em Um","autor":"Alice Ruiz","marketplace":"amazon","lookup_query":"Dois em Um Alice Ruiz livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":4},
+{"titulo":"Jardim de Haicais","autor":"Alice Ruiz","marketplace":"mercado_livre","lookup_query":"Jardim de Haicais Alice Ruiz livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2010,"popularidade_id":4},
+
+{"titulo":"Haicai: Introdução e Prática","autor":"Teruko Oda","marketplace":"amazon","lookup_query":"Haicai Introducao e Pratica Teruko Oda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1995,"popularidade_id":4},
+{"titulo":"Caminho do Haicai","autor":"Teruko Oda","marketplace":"mercado_livre","lookup_query":"Caminho do Haicai Teruko Oda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2000,"popularidade_id":4},
+{"titulo":"Haicais do Cotidiano","autor":"Teruko Oda","marketplace":"amazon","lookup_query":"Haicais do Cotidiano Teruko Oda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":4},
+
+{"titulo":"O Livro do Haicai","autor":"Rodrigo Garcia Lopes","marketplace":"mercado_livre","lookup_query":"O Livro do Haicai Rodrigo Garcia Lopes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2002,"popularidade_id":4},
+{"titulo":"Antologia do Haicai Japonês","autor":"Rodrigo Garcia Lopes","marketplace":"amazon","lookup_query":"Antologia do Haicai Japones Rodrigo Garcia Lopes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2003,"popularidade_id":5},
+{"titulo":"Poemas Breves","autor":"Rodrigo Garcia Lopes","marketplace":"mercado_livre","lookup_query":"Poemas Breves Rodrigo Garcia Lopes livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2005,"popularidade_id":4}
+
+]

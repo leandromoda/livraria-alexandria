@@ -1,0 +1,90 @@
+[
+{"titulo":"Naruto","autor":"Masashi Kishimoto","marketplace":"amazon","lookup_query":"Naruto Masashi Kishimoto livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2002,"popularidade_id":5},
+{"titulo":"One Piece","autor":"Eiichiro Oda","marketplace":"mercado_livre","lookup_query":"One Piece Eiichiro Oda livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2001,"popularidade_id":5},
+{"titulo":"Dragon Ball","autor":"Akira Toriyama","marketplace":"amazon","lookup_query":"Dragon Ball Akira Toriyama livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1998,"popularidade_id":5},
+{"titulo":"Death Note","autor":"Tsugumi Ohba","marketplace":"mercado_livre","lookup_query":"Death Note Tsugumi Ohba livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"Attack on Titan","autor":"Hajime Isayama","marketplace":"amazon","lookup_query":"Attack on Titan Hajime Isayama livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2013,"popularidade_id":5},
+{"titulo":"Fullmetal Alchemist","autor":"Hiromu Arakawa","marketplace":"mercado_livre","lookup_query":"Fullmetal Alchemist Hiromu Arakawa livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2005,"popularidade_id":5},
+{"titulo":"Bleach","autor":"Tite Kubo","marketplace":"amazon","lookup_query":"Bleach Tite Kubo livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2004,"popularidade_id":5},
+{"titulo":"My Hero Academia","autor":"Kohei Horikoshi","marketplace":"mercado_livre","lookup_query":"My Hero Academia Kohei Horikoshi livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":5},
+{"titulo":"Demon Slayer","autor":"Koyoharu Gotouge","marketplace":"amazon","lookup_query":"Demon Slayer Koyoharu Gotouge livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2019,"popularidade_id":5},
+{"titulo":"Tokyo Ghoul","autor":"Sui Ishida","marketplace":"mercado_livre","lookup_query":"Tokyo Ghoul Sui Ishida livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2014,"popularidade_id":5},
+
+{"titulo":"Hunter x Hunter","autor":"Yoshihiro Togashi","marketplace":"amazon","lookup_query":"Hunter x Hunter Yoshihiro Togashi livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2003,"popularidade_id":5},
+{"titulo":"Yu Yu Hakusho","autor":"Yoshihiro Togashi","marketplace":"mercado_livre","lookup_query":"Yu Yu Hakusho Yoshihiro Togashi livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1997,"popularidade_id":4},
+{"titulo":"Jujutsu Kaisen","autor":"Gege Akutami","marketplace":"amazon","lookup_query":"Jujutsu Kaisen Gege Akutami livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2020,"popularidade_id":5},
+{"titulo":"Chainsaw Man","autor":"Tatsuki Fujimoto","marketplace":"mercado_livre","lookup_query":"Chainsaw Man Tatsuki Fujimoto livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2021,"popularidade_id":5},
+{"titulo":"Fire Punch","autor":"Tatsuki Fujimoto","marketplace":"amazon","lookup_query":"Fire Punch Tatsuki Fujimoto livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2018,"popularidade_id":4},
+{"titulo":"One Punch Man","autor":"ONE","marketplace":"mercado_livre","lookup_query":"One Punch Man ONE livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":5},
+{"titulo":"Mob Psycho 100","autor":"ONE","marketplace":"amazon","lookup_query":"Mob Psycho 100 ONE livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2017,"popularidade_id":5},
+{"titulo":"Berserk","autor":"Kentaro Miura","marketplace":"mercado_livre","lookup_query":"Berserk Kentaro Miura livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2001,"popularidade_id":5},
+{"titulo":"Vagabond","autor":"Takehiko Inoue","marketplace":"amazon","lookup_query":"Vagabond Takehiko Inoue livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2002,"popularidade_id":5},
+{"titulo":"Slam Dunk","autor":"Takehiko Inoue","marketplace":"mercado_livre","lookup_query":"Slam Dunk Takehiko Inoue livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1996,"popularidade_id":5},
+
+{"titulo":"Real","autor":"Takehiko Inoue","marketplace":"amazon","lookup_query":"Real Takehiko Inoue livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2004,"popularidade_id":4},
+{"titulo":"Black Clover","autor":"Yuki Tabata","marketplace":"mercado_livre","lookup_query":"Black Clover Yuki Tabata livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2017,"popularidade_id":5},
+{"titulo":"Fairy Tail","autor":"Hiro Mashima","marketplace":"amazon","lookup_query":"Fairy Tail Hiro Mashima livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2010,"popularidade_id":5},
+{"titulo":"Edens Zero","autor":"Hiro Mashima","marketplace":"mercado_livre","lookup_query":"Edens Zero Hiro Mashima livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2019,"popularidade_id":4},
+{"titulo":"Rave Master","autor":"Hiro Mashima","marketplace":"amazon","lookup_query":"Rave Master Hiro Mashima livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2002,"popularidade_id":4},
+{"titulo":"Haikyuu!!","autor":"Haruichi Furudate","marketplace":"mercado_livre","lookup_query":"Haikyuu Haruichi Furudate livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2015,"popularidade_id":5},
+{"titulo":"Kuroko no Basket","autor":"Tadatoshi Fujimaki","marketplace":"amazon","lookup_query":"Kuroko no Basket Tadatoshi Fujimaki livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2013,"popularidade_id":4},
+{"titulo":"Blue Lock","autor":"Muneyuki Kaneshiro","marketplace":"mercado_livre","lookup_query":"Blue Lock Muneyuki Kaneshiro livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2022,"popularidade_id":5},
+{"titulo":"Dr. Stone","autor":"Riichiro Inagaki","marketplace":"amazon","lookup_query":"Dr Stone Riichiro Inagaki livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2019,"popularidade_id":5},
+{"titulo":"Eyeshield 21","autor":"Riichiro Inagaki","marketplace":"mercado_livre","lookup_query":"Eyeshield 21 Riichiro Inagaki livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2005,"popularidade_id":4},
+
+{"titulo":"Gantz","autor":"Hiroya Oku","marketplace":"amazon","lookup_query":"Gantz Hiroya Oku livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2003,"popularidade_id":5},
+{"titulo":"Inuyashiki","autor":"Hiroya Oku","marketplace":"mercado_livre","lookup_query":"Inuyashiki Hiroya Oku livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"Parasyte","autor":"Hitoshi Iwaaki","marketplace":"amazon","lookup_query":"Parasyte Hitoshi Iwaaki livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2000,"popularidade_id":5},
+{"titulo":"Akira","autor":"Katsuhiro Otomo","marketplace":"mercado_livre","lookup_query":"Akira Katsuhiro Otomo livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"Ghost in the Shell","autor":"Masamune Shirow","marketplace":"amazon","lookup_query":"Ghost in the Shell Masamune Shirow livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1998,"popularidade_id":5},
+
+{"titulo":"Claymore","autor":"Norihiro Yagi","marketplace":"mercado_livre","lookup_query":"Claymore Norihiro Yagi livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"Noragami","autor":"Adachitoka","marketplace":"amazon","lookup_query":"Noragami Adachitoka livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2014,"popularidade_id":4},
+{"titulo":"Dorohedoro","autor":"Q Hayashida","marketplace":"mercado_livre","lookup_query":"Dorohedoro Q Hayashida livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2012,"popularidade_id":4},
+
+{"titulo":"Made in Abyss","autor":"Akihito Tsukushi","marketplace":"amazon","lookup_query":"Made in Abyss Akihito Tsukushi livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2018,"popularidade_id":5},
+{"titulo":"The Promised Neverland","autor":"Kaiu Shirai","marketplace":"mercado_livre","lookup_query":"The Promised Neverland Kaiu Shirai livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2019,"popularidade_id":5},
+
+{"titulo":"Monster","autor":"Naoki Urasawa","marketplace":"amazon","lookup_query":"Monster Naoki Urasawa livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2004,"popularidade_id":5},
+{"titulo":"20th Century Boys","autor":"Naoki Urasawa","marketplace":"mercado_livre","lookup_query":"20th Century Boys Naoki Urasawa livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"Pluto","autor":"Naoki Urasawa","marketplace":"amazon","lookup_query":"Pluto Naoki Urasawa livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2009,"popularidade_id":5},
+
+{"titulo":"Vinland Saga","autor":"Makoto Yukimura","marketplace":"mercado_livre","lookup_query":"Vinland Saga Makoto Yukimura livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2015,"popularidade_id":5},
+
+{"titulo":"Ajin","autor":"Gamon Sakurai","marketplace":"amazon","lookup_query":"Ajin Gamon Sakurai livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"Terra Formars","autor":"Yu Sasuga","marketplace":"mercado_livre","lookup_query":"Terra Formars Yu Sasuga livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2015,"popularidade_id":4},
+
+{"titulo":"Elfen Lied","autor":"Lynn Okamoto","marketplace":"amazon","lookup_query":"Elfen Lied Lynn Okamoto livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2007,"popularidade_id":4},
+
+{"titulo":"Deadman Wonderland","autor":"Jinsei Kataoka","marketplace":"mercado_livre","lookup_query":"Deadman Wonderland Jinsei Kataoka livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2011,"popularidade_id":4},
+
+{"titulo":"Erased","autor":"Kei Sanbe","marketplace":"amazon","lookup_query":"Erased Kei Sanbe livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2017,"popularidade_id":5},
+
+{"titulo":"Orange","autor":"Ichigo Takano","marketplace":"mercado_livre","lookup_query":"Orange Ichigo Takano livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":4},
+
+{"titulo":"Ao Haru Ride","autor":"Io Sakisaka","marketplace":"amazon","lookup_query":"Ao Haru Ride Io Sakisaka livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2015,"popularidade_id":4},
+
+{"titulo":"Your Lie in April","autor":"Naoshi Arakawa","marketplace":"mercado_livre","lookup_query":"Your Lie in April Naoshi Arakawa livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2016,"popularidade_id":5},
+
+{"titulo":"Horimiya","autor":"HERO","marketplace":"amazon","lookup_query":"Horimiya HERO livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2020,"popularidade_id":4},
+
+{"titulo":"Kaguya-sama Love is War","autor":"Aka Akasaka","marketplace":"mercado_livre","lookup_query":"Kaguya sama Aka Akasaka livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2021,"popularidade_id":5},
+
+{"titulo":"Oyasumi Punpun","autor":"Inio Asano","marketplace":"amazon","lookup_query":"Oyasumi Punpun Inio Asano livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2014,"popularidade_id":5},
+
+{"titulo":"Solanin","autor":"Inio Asano","marketplace":"mercado_livre","lookup_query":"Solanin Inio Asano livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2012,"popularidade_id":4},
+
+{"titulo":"Goodnight World","autor":"Uru Okabe","marketplace":"amazon","lookup_query":"Goodnight World Uru Okabe livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2022,"popularidade_id":3},
+
+{"titulo":"Blame!","autor":"Tsutomu Nihei","marketplace":"mercado_livre","lookup_query":"Blame Tsutomu Nihei livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2006,"popularidade_id":4},
+
+{"titulo":"Knights of Sidonia","autor":"Tsutomu Nihei","marketplace":"amazon","lookup_query":"Knights of Sidonia Tsutomu Nihei livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2015,"popularidade_id":4},
+
+{"titulo":"Biomega","autor":"Tsutomu Nihei","marketplace":"mercado_livre","lookup_query":"Biomega Tsutomu Nihei livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2009,"popularidade_id":3},
+
+{"titulo":"Zetman","autor":"Masakazu Katsura","marketplace":"amazon","lookup_query":"Zetman Masakazu Katsura livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":2008,"popularidade_id":4},
+
+{"titulo":"Video Girl Ai","autor":"Masakazu Katsura","marketplace":"mercado_livre","lookup_query":"Video Girl Ai Masakazu Katsura livro","categoria":"manga","idioma":"PT","cluster_id":1,"nacionalidade_id":81,"ano_sorteado":1999,"popularidade_id":4}
+]

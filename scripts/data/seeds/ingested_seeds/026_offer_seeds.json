@@ -1,0 +1,65 @@
+[
+  {"titulo":"Veinte poemas de amor y una canción desesperada","autor":"Pablo Neruda","marketplace":"amazon","lookup_query":"Veinte poemas de amor y una canción desesperada Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1924,"popularidade_id":5},
+  {"titulo":"La casa de los espíritus","autor":"Isabel Allende","marketplace":"mercado_livre","lookup_query":"La casa de los espíritus Isabel Allende livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1982,"popularidade_id":5},
+  {"titulo":"2666","autor":"Roberto Bolaño","marketplace":"amazon","lookup_query":"2666 Roberto Bolaño livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2004,"popularidade_id":5},
+  {"titulo":"Los detectives salvajes","autor":"Roberto Bolaño","marketplace":"mercado_livre","lookup_query":"Los detectives salvajes Roberto Bolaño livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1998,"popularidade_id":5},
+  {"titulo":"El túnel","autor":"Ernesto Sabato","marketplace":"amazon","lookup_query":"El túnel Ernesto Sabato livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":32,"ano_sorteado":1948,"popularidade_id":4},
+  {"titulo":"Subterra","autor":"Baldomero Lillo","marketplace":"mercado_livre","lookup_query":"Subterra Baldomero Lillo livro","categoria":"contos","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1904,"popularidade_id":4},
+  {"titulo":"La amortajada","autor":"María Luisa Bombal","marketplace":"amazon","lookup_query":"La amortajada María Luisa Bombal livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1938,"popularidade_id":4},
+  {"titulo":"El lugar sin límites","autor":"José Donoso","marketplace":"mercado_livre","lookup_query":"El lugar sin límites José Donoso livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1966,"popularidade_id":4},
+  {"titulo":"Coronación","autor":"José Donoso","marketplace":"amazon","lookup_query":"Coronación José Donoso livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1957,"popularidade_id":4},
+  {"titulo":"El obsceno pájaro de la noche","autor":"José Donoso","marketplace":"mercado_livre","lookup_query":"El obsceno pájaro de la noche José Donoso livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1970,"popularidade_id":5},
+  {"titulo":"Alturas de Macchu Picchu","autor":"Pablo Neruda","marketplace":"amazon","lookup_query":"Alturas de Macchu Picchu Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1945,"popularidade_id":4},
+  {"titulo":"Canto general","autor":"Pablo Neruda","marketplace":"mercado_livre","lookup_query":"Canto general Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1950,"popularidade_id":5},
+  {"titulo":"No pasó nada","autor":"Antonio Skármeta","marketplace":"amazon","lookup_query":"No pasó nada Antonio Skármeta livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1980,"popularidade_id":3},
+  {"titulo":"Ardiente paciencia","autor":"Antonio Skármeta","marketplace":"mercado_livre","lookup_query":"Ardiente paciencia Antonio Skármeta livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1985,"popularidade_id":5},
+  {"titulo":"La ciudad y los perros","autor":"Mario Vargas Llosa","marketplace":"amazon","lookup_query":"La ciudad y los perros Mario Vargas Llosa livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":604,"ano_sorteado":1963,"popularidade_id":5},
+  {"titulo":"El desierto y su semilla","autor":"Jorge Barón Biza","marketplace":"mercado_livre","lookup_query":"El desierto y su semilla Jorge Barón Biza livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":32,"ano_sorteado":1998,"popularidade_id":3},
+  {"titulo":"Mano de obra","autor":"Diamela Eltit","marketplace":"amazon","lookup_query":"Mano de obra Diamela Eltit livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2002,"popularidade_id":3},
+  {"titulo":"Lumpérica","autor":"Diamela Eltit","marketplace":"mercado_livre","lookup_query":"Lumpérica Diamela Eltit livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1983,"popularidade_id":3},
+
+  {"titulo":"El cuarto mundo","autor":"Diamela Eltit","marketplace":"amazon","lookup_query":"El cuarto mundo Diamela Eltit livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1988,"popularidade_id":3},
+  {"titulo":"Los vigilantes","autor":"Diamela Eltit","marketplace":"mercado_livre","lookup_query":"Los vigilantes Diamela Eltit livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1994,"popularidade_id":3},
+
+  {"titulo":"La dimensión desconocida","autor":"Nona Fernández","marketplace":"amazon","lookup_query":"La dimensión desconocida Nona Fernández livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2016,"popularidade_id":4},
+  {"titulo":"Space Invaders","autor":"Nona Fernández","marketplace":"mercado_livre","lookup_query":"Space Invaders Nona Fernández livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2013,"popularidade_id":4},
+
+  {"titulo":"Formas de volver a casa","autor":"Alejandro Zambra","marketplace":"amazon","lookup_query":"Formas de volver a casa Alejandro Zambra livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2011,"popularidade_id":5},
+  {"titulo":"Bonsái","autor":"Alejandro Zambra","marketplace":"mercado_livre","lookup_query":"Bonsái Alejandro Zambra livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2006,"popularidade_id":4},
+  {"titulo":"La vida privada de los árboles","autor":"Alejandro Zambra","marketplace":"amazon","lookup_query":"La vida privada de los árboles Alejandro Zambra livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2007,"popularidade_id":4},
+
+  {"titulo":"Poemas y antipoemas","autor":"Nicanor Parra","marketplace":"mercado_livre","lookup_query":"Poemas y antipoemas Nicanor Parra livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1954,"popularidade_id":5},
+  {"titulo":"Artefactos","autor":"Nicanor Parra","marketplace":"amazon","lookup_query":"Artefactos Nicanor Parra livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1972,"popularidade_id":4},
+
+  {"titulo":"Desolación","autor":"Gabriela Mistral","marketplace":"mercado_livre","lookup_query":"Desolación Gabriela Mistral livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1922,"popularidade_id":5},
+  {"titulo":"Ternura","autor":"Gabriela Mistral","marketplace":"amazon","lookup_query":"Ternura Gabriela Mistral livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1924,"popularidade_id":4},
+  {"titulo":"Lagar","autor":"Gabriela Mistral","marketplace":"mercado_livre","lookup_query":"Lagar Gabriela Mistral livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1954,"popularidade_id":4},
+
+  {"titulo":"Mapocho","autor":"Nona Fernández","marketplace":"amazon","lookup_query":"Mapocho Nona Fernández livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2002,"popularidade_id":3},
+  {"titulo":"Av. 10 de Julio Huamachuco","autor":"Nona Fernández","marketplace":"mercado_livre","lookup_query":"Av. 10 de Julio Huamachuco Nona Fernández livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2007,"popularidade_id":3},
+
+  {"titulo":"El inútil de la familia","autor":"Jorge Edwards","marketplace":"amazon","lookup_query":"El inútil de la familia Jorge Edwards livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":2004,"popularidade_id":4},
+  {"titulo":"Persona non grata","autor":"Jorge Edwards","marketplace":"mercado_livre","lookup_query":"Persona non grata Jorge Edwards livro","categoria":"memórias","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1973,"popularidade_id":4},
+
+  {"titulo":"Hijo de ladrón","autor":"Manuel Rojas","marketplace":"amazon","lookup_query":"Hijo de ladrón Manuel Rojas livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1951,"popularidade_id":4},
+  {"titulo":"Sombras contra el muro","autor":"Manuel Rojas","marketplace":"mercado_livre","lookup_query":"Sombras contra el muro Manuel Rojas livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1964,"popularidade_id":3},
+
+  {"titulo":"Patas de perro","autor":"Carlos Droguett","marketplace":"amazon","lookup_query":"Patas de perro Carlos Droguett livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1965,"popularidade_id":3},
+  {"titulo":"Eloy","autor":"Carlos Droguett","marketplace":"mercado_livre","lookup_query":"Eloy Carlos Droguett livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1960,"popularidade_id":3},
+
+  {"titulo":"La última niebla","autor":"María Luisa Bombal","marketplace":"amazon","lookup_query":"La última niebla María Luisa Bombal livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1935,"popularidade_id":4},
+
+  {"titulo":"El cepo","autor":"Fernando Alegría","marketplace":"mercado_livre","lookup_query":"El cepo Fernando Alegría livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1958,"popularidade_id":3},
+
+  {"titulo":"La sangre y la esperanza","autor":"Nicómedes Guzmán","marketplace":"amazon","lookup_query":"La sangre y la esperanza Nicómedes Guzmán livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1943,"popularidade_id":3},
+
+  {"titulo":"El río","autor":"Alfredo Gómez Morel","marketplace":"mercado_livre","lookup_query":"El río Alfredo Gómez Morel livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1962,"popularidade_id":3},
+
+  {"titulo":"El anfitrión","autor":"Jorge Edwards","marketplace":"amazon","lookup_query":"El anfitrión Jorge Edwards livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":152,"ano_sorteado":1987,"popularidade_id":3},
+
+  {"titulo":"La casa de los conejos","autor":"Laura Alcoba","marketplace":"mercado_livre","lookup_query":"La casa de los conejos Laura Alcoba livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":32,"ano_sorteado":2008,"popularidade_id":4},
+
+  {"titulo":"El entenado","autor":"Juan José Saer","marketplace":"amazon","lookup_query":"El entenado Juan José Saer livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":32,"ano_sorteado":1983,"popularidade_id":4}
+
+  
+]

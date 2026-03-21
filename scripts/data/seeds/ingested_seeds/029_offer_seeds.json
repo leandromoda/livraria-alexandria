@@ -1,0 +1,51 @@
+[
+{"titulo":"Confissões","autor":"Agostinho de Hipona","marketplace":"amazon","lookup_query":"Confissões Agostinho de Hipona livro","categoria":"teologia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":400,"popularidade_id":5},
+{"titulo":"A Cidade de Deus","autor":"Agostinho de Hipona","marketplace":"mercado_livre","lookup_query":"A Cidade de Deus Agostinho de Hipona livro","categoria":"teologia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":410,"popularidade_id":5},
+{"titulo":"Suma Teológica","autor":"Tomás de Aquino","marketplace":"amazon","lookup_query":"Suma Teológica Tomás de Aquino livro","categoria":"teologia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1270,"popularidade_id":5},
+{"titulo":"Imitação de Cristo","autor":"Tomás de Kempis","marketplace":"mercado_livre","lookup_query":"Imitação de Cristo Tomás de Kempis livro","categoria":"teologia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1420,"popularidade_id":5},
+{"titulo":"Institutas da Religião Cristã","autor":"João Calvino","marketplace":"amazon","lookup_query":"Institutas da Religião Cristã João Calvino livro","categoria":"teologia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1536,"popularidade_id":5},
+{"titulo":"A Liberdade Cristã","autor":"Martinho Lutero","marketplace":"mercado_livre","lookup_query":"A Liberdade Cristã Martinho Lutero livro","categoria":"teologia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1520,"popularidade_id":5},
+{"titulo":"Teologia Sistemática","autor":"Wayne Grudem","marketplace":"amazon","lookup_query":"Teologia Sistemática Wayne Grudem livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1994,"popularidade_id":5},
+{"titulo":"Teologia Sistemática","autor":"Louis Berkhof","marketplace":"mercado_livre","lookup_query":"Teologia Sistemática Louis Berkhof livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1938,"popularidade_id":5},
+{"titulo":"O Conhecimento de Deus","autor":"J. I. Packer","marketplace":"amazon","lookup_query":"O Conhecimento de Deus J. I. Packer livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1973,"popularidade_id":5},
+{"titulo":"Cristianismo Puro e Simples","autor":"C. S. Lewis","marketplace":"mercado_livre","lookup_query":"Cristianismo Puro e Simples C. S. Lewis livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1952,"popularidade_id":5},
+
+{"titulo":"Cartas de um Diabo a seu Aprendiz","autor":"C. S. Lewis","marketplace":"amazon","lookup_query":"Cartas de um Diabo a seu Aprendiz C. S. Lewis livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"O Problema do Sofrimento","autor":"C. S. Lewis","marketplace":"mercado_livre","lookup_query":"O Problema do Sofrimento C. S. Lewis livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"A Cruz de Cristo","autor":"John Stott","marketplace":"amazon","lookup_query":"A Cruz de Cristo John Stott livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1986,"popularidade_id":5},
+{"titulo":"A Mensagem do Sermão do Monte","autor":"John Stott","marketplace":"mercado_livre","lookup_query":"A Mensagem do Sermão do Monte John Stott livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1978,"popularidade_id":4},
+{"titulo":"Teologia do Novo Testamento","autor":"George Eldon Ladd","marketplace":"amazon","lookup_query":"Teologia do Novo Testamento George Eldon Ladd livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1974,"popularidade_id":4},
+{"titulo":"Introdução ao Antigo Testamento","autor":"Gleason Archer","marketplace":"mercado_livre","lookup_query":"Introdução ao Antigo Testamento Gleason Archer livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1964,"popularidade_id":4},
+{"titulo":"A Teologia do Apóstolo Paulo","autor":"James D. G. Dunn","marketplace":"amazon","lookup_query":"A Teologia do Apóstolo Paulo James D. G. Dunn livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1998,"popularidade_id":4},
+{"titulo":"Teologia da Esperança","autor":"Jürgen Moltmann","marketplace":"mercado_livre","lookup_query":"Teologia da Esperança Jürgen Moltmann livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1964,"popularidade_id":4},
+{"titulo":"O Deus Crucificado","autor":"Jürgen Moltmann","marketplace":"amazon","lookup_query":"O Deus Crucificado Jürgen Moltmann livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1972,"popularidade_id":4},
+{"titulo":"Introdução ao Cristianismo","autor":"Joseph Ratzinger","marketplace":"mercado_livre","lookup_query":"Introdução ao Cristianismo Joseph Ratzinger livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1968,"popularidade_id":5},
+
+{"titulo":"Jesus de Nazaré","autor":"Joseph Ratzinger","marketplace":"amazon","lookup_query":"Jesus de Nazaré Joseph Ratzinger livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"O Espírito da Liturgia","autor":"Joseph Ratzinger","marketplace":"mercado_livre","lookup_query":"O Espírito da Liturgia Joseph Ratzinger livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":2000,"popularidade_id":4},
+
+{"titulo":"Dogmática Eclesiástica","autor":"Karl Barth","marketplace":"amazon","lookup_query":"Dogmática Eclesiástica Karl Barth livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":5,"ano_sorteado":1932,"popularidade_id":5},
+{"titulo":"Carta aos Romanos","autor":"Karl Barth","marketplace":"mercado_livre","lookup_query":"Carta aos Romanos Karl Barth livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":5,"ano_sorteado":1919,"popularidade_id":4},
+
+{"titulo":"Teologia Sistemática","autor":"Paul Tillich","marketplace":"amazon","lookup_query":"Teologia Sistemática Paul Tillich livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1951,"popularidade_id":4},
+{"titulo":"A Coragem de Ser","autor":"Paul Tillich","marketplace":"mercado_livre","lookup_query":"A Coragem de Ser Paul Tillich livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1952,"popularidade_id":4},
+
+{"titulo":"O Deus que Intervém","autor":"Francis Schaeffer","marketplace":"amazon","lookup_query":"O Deus que Intervém Francis Schaeffer livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1968,"popularidade_id":4},
+{"titulo":"Verdadeira Espiritualidade","autor":"Francis Schaeffer","marketplace":"mercado_livre","lookup_query":"Verdadeira Espiritualidade Francis Schaeffer livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1971,"popularidade_id":4},
+
+{"titulo":"O Deus Prodigo","autor":"Timothy Keller","marketplace":"amazon","lookup_query":"O Deus Prodigo Timothy Keller livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":5},
+{"titulo":"A Razão de Deus","autor":"Timothy Keller","marketplace":"mercado_livre","lookup_query":"A Razão de Deus Timothy Keller livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":2008,"popularidade_id":5},
+
+{"titulo":"Teologia Bíblica","autor":"Geerhardus Vos","marketplace":"amazon","lookup_query":"Teologia Bíblica Geerhardus Vos livro","categoria":"teologia","idioma":"PT","cluster_id":3,"nacionalidade_id":5,"ano_sorteado":1948,"popularidade_id":4},
+{"titulo":"Cristo e a Cultura","autor":"H. Richard Niebuhr","marketplace":"mercado_livre","lookup_query":"Cristo e a Cultura H. Richard Niebuhr livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":1,"ano_sorteado":1951,"popularidade_id":4},
+
+{"titulo":"A Teologia da Libertação","autor":"Gustavo Gutiérrez","marketplace":"amazon","lookup_query":"A Teologia da Libertação Gustavo Gutierrez livro","categoria":"teologia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1971,"popularidade_id":5},
+{"titulo":"Igreja: Carisma e Poder","autor":"Leonardo Boff","marketplace":"mercado_livre","lookup_query":"Igreja Carisma e Poder Leonardo Boff livro","categoria":"teologia","idioma":"PT","cluster_id":5,"nacionalidade_id":8,"ano_sorteado":1981,"popularidade_id":5},
+
+{"titulo":"Jesus Cristo Libertador","autor":"Jon Sobrino","marketplace":"amazon","lookup_query":"Jesus Cristo Libertador Jon Sobrino livro","categoria":"teologia","idioma":"PT","cluster_id":5,"nacionalidade_id":9,"ano_sorteado":1991,"popularidade_id":4},
+{"titulo":"O Deus dos Pobres","autor":"Gustavo Gutiérrez","marketplace":"mercado_livre","lookup_query":"O Deus dos Pobres Gustavo Gutierrez livro","categoria":"teologia","idioma":"PT","cluster_id":5,"nacionalidade_id":7,"ano_sorteado":1983,"popularidade_id":4},
+
+{"titulo":"Teologia Moral","autor":"Bernhard Häring","marketplace":"amazon","lookup_query":"Teologia Moral Bernhard Haring livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1954,"popularidade_id":3},
+{"titulo":"Fundamentos da Fé Cristã","autor":"Karl Rahner","marketplace":"mercado_livre","lookup_query":"Fundamentos da Fé Cristã Karl Rahner livro","categoria":"teologia","idioma":"PT","cluster_id":4,"nacionalidade_id":6,"ano_sorteado":1976,"popularidade_id":4}
+
+]

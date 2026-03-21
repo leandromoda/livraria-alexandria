@@ -1,0 +1,122 @@
+[
+  {
+    "titulo": "Teoria da Poesia Concreta",
+    "autor": "Augusto de Campos",
+    "marketplace": "amazon",
+    "lookup_query": "Teoria da Poesia Concreta Augusto de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1965,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Viva Vaia",
+    "autor": "Augusto de Campos",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Viva Vaia Augusto de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1979,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Poetamenos",
+    "autor": "Augusto de Campos",
+    "marketplace": "amazon",
+    "lookup_query": "Poetamenos Augusto de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1953,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "A Educação pela Pedra",
+    "autor": "João Cabral de Melo Neto",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Educação pela Pedra João Cabral de Melo Neto livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 2,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1966,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "Quase Sonetos",
+    "autor": "Décio Pignatari",
+    "marketplace": "amazon",
+    "lookup_query": "Quase Sonetos Décio Pignatari livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1992,
+    "popularidade_id": 2
+  },
+  {
+    "titulo": "Poesia Pois É Poesia",
+    "autor": "Décio Pignatari",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Poesia Pois É Poesia Décio Pignatari livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1977,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Teoria da Poesia Concreta",
+    "autor": "Haroldo de Campos",
+    "marketplace": "amazon",
+    "lookup_query": "Teoria da Poesia Concreta Haroldo de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1965,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Galáxias",
+    "autor": "Haroldo de Campos",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Galáxias Haroldo de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1984,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Xadrez de Estrelas",
+    "autor": "Haroldo de Campos",
+    "marketplace": "amazon",
+    "lookup_query": "Xadrez de Estrelas Haroldo de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1976,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "A Máquina do Mundo Repensada",
+    "autor": "Haroldo de Campos",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Máquina do Mundo Repensada Haroldo de Campos livro",
+    "categoria": "poesia",
+    "idioma": "PT",
+    "cluster_id": 2,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 2000,
+    "popularidade_id": 4
+  }
+]

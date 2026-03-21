@@ -1,0 +1,78 @@
+[
+{"titulo":"Odes","autor":"Horácio","marketplace":"amazon","lookup_query":"Odes Horácio livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":-23,"popularidade_id":3},
+{"titulo":"Odes","autor":"Píndaro","marketplace":"mercado_livre","lookup_query":"Odes Píndaro livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-450,"popularidade_id":3},
+{"titulo":"Odes e Elegias","autor":"Alceu","marketplace":"amazon","lookup_query":"Odes e Elegias Alceu livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-600,"popularidade_id":2},
+{"titulo":"Odes","autor":"Anacreonte","marketplace":"mercado_livre","lookup_query":"Odes Anacreonte livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-520,"popularidade_id":2},
+{"titulo":"Odes Píticas","autor":"Píndaro","marketplace":"amazon","lookup_query":"Odes Píticas Píndaro livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-470,"popularidade_id":3},
+{"titulo":"Odes Olímpicas","autor":"Píndaro","marketplace":"mercado_livre","lookup_query":"Odes Olímpicas Píndaro livro","categoria":"poesia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":-460,"popularidade_id":3},
+{"titulo":"Odes","autor":"John Keats","marketplace":"amazon","lookup_query":"Odes John Keats livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1820,"popularidade_id":5},
+{"titulo":"Ode a uma Urna Grega","autor":"John Keats","marketplace":"mercado_livre","lookup_query":"Ode a uma Urna Grega John Keats livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1820,"popularidade_id":5},
+{"titulo":"Ode ao Vento Oeste","autor":"Percy Bysshe Shelley","marketplace":"amazon","lookup_query":"Ode ao Vento Oeste Percy Bysshe Shelley livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1819,"popularidade_id":5},
+{"titulo":"Odes","autor":"Pablo Neruda","marketplace":"mercado_livre","lookup_query":"Odes Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1954,"popularidade_id":5},
+{"titulo":"Odes Elementares","autor":"Pablo Neruda","marketplace":"amazon","lookup_query":"Odes Elementares Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1954,"popularidade_id":5},
+{"titulo":"Novas Odes Elementares","autor":"Pablo Neruda","marketplace":"mercado_livre","lookup_query":"Novas Odes Elementares Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1956,"popularidade_id":5},
+{"titulo":"Terceiro Livro das Odes","autor":"Pablo Neruda","marketplace":"amazon","lookup_query":"Terceiro Livro das Odes Pablo Neruda livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1957,"popularidade_id":5},
+{"titulo":"Odes","autor":"Vinicius de Moraes","marketplace":"mercado_livre","lookup_query":"Odes Vinicius de Moraes livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1946,"popularidade_id":4},
+{"titulo":"Ode Marítima","autor":"Fernando Pessoa","marketplace":"amazon","lookup_query":"Ode Marítima Fernando Pessoa livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1915,"popularidade_id":5},
+{"titulo":"Odes de Ricardo Reis","autor":"Fernando Pessoa","marketplace":"mercado_livre","lookup_query":"Odes de Ricardo Reis Fernando Pessoa livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Ode Triunfal","autor":"Álvaro de Campos","marketplace":"amazon","lookup_query":"Ode Triunfal Álvaro de Campos livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1914,"popularidade_id":5},
+{"titulo":"Odes","autor":"Friedrich Schiller","marketplace":"mercado_livre","lookup_query":"Odes Friedrich Schiller livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":7,"ano_sorteado":1785,"popularidade_id":4},
+{"titulo":"Ode à Alegria","autor":"Friedrich Schiller","marketplace":"amazon","lookup_query":"Ode à Alegria Friedrich Schiller livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":7,"ano_sorteado":1785,"popularidade_id":5},
+{"titulo":"Odes","autor":"William Collins","marketplace":"mercado_livre","lookup_query":"Odes William Collins livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1746,"popularidade_id":3},
+{"titulo":"Odes","autor":"Thomas Gray","marketplace":"amazon","lookup_query":"Odes Thomas Gray livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1757,"popularidade_id":3},
+{"titulo":"Odes","autor":"Andrew Marvell","marketplace":"mercado_livre","lookup_query":"Odes Andrew Marvell livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1650,"popularidade_id":3},
+{"titulo":"Odes","autor":"Abraham Cowley","marketplace":"amazon","lookup_query":"Odes Abraham Cowley livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1656,"popularidade_id":2},
+{"titulo":"Odes","autor":"Pierre de Ronsard","marketplace":"mercado_livre","lookup_query":"Odes Pierre de Ronsard livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1550,"popularidade_id":3},
+{"titulo":"Odes","autor":"Victor Hugo","marketplace":"amazon","lookup_query":"Odes Victor Hugo livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1822,"popularidade_id":4},
+{"titulo":"Odes e Baladas","autor":"Victor Hugo","marketplace":"mercado_livre","lookup_query":"Odes e Baladas Victor Hugo livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1826,"popularidade_id":4},
+{"titulo":"Odes","autor":"Alfred de Musset","marketplace":"amazon","lookup_query":"Odes Alfred de Musset livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1830,"popularidade_id":3},
+{"titulo":"Odes","autor":"Lamartine","marketplace":"mercado_livre","lookup_query":"Odes Lamartine livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1820,"popularidade_id":3},
+{"titulo":"Odes","autor":"Leopardi","marketplace":"amazon","lookup_query":"Odes Leopardi livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":9,"ano_sorteado":1824,"popularidade_id":4},
+{"titulo":"Odes","autor":"Gabriele D’Annunzio","marketplace":"mercado_livre","lookup_query":"Odes Gabriele D’Annunzio livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":9,"ano_sorteado":1890,"popularidade_id":3},
+
+{"titulo":"Odes","autor":"Ricardo Reis","marketplace":"amazon","lookup_query":"Odes Ricardo Reis livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Odes Modernas","autor":"Carlos Drummond de Andrade","marketplace":"mercado_livre","lookup_query":"Odes Modernas Carlos Drummond de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1940,"popularidade_id":5},
+{"titulo":"Odes","autor":"Manuel Bandeira","marketplace":"amazon","lookup_query":"Odes Manuel Bandeira livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Odes","autor":"Murilo Mendes","marketplace":"mercado_livre","lookup_query":"Odes Murilo Mendes livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1945,"popularidade_id":4},
+{"titulo":"Odes","autor":"Jorge de Lima","marketplace":"amazon","lookup_query":"Odes Jorge de Lima livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1940,"popularidade_id":4},
+{"titulo":"Odes","autor":"Cecília Meireles","marketplace":"mercado_livre","lookup_query":"Odes Cecília Meireles livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"Odes","autor":"Sophia de Mello Breyner","marketplace":"amazon","lookup_query":"Odes Sophia de Mello Breyner livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1960,"popularidade_id":4},
+{"titulo":"Odes","autor":"Eugénio de Andrade","marketplace":"mercado_livre","lookup_query":"Odes Eugénio de Andrade livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1970,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Seamus Heaney","marketplace":"amazon","lookup_query":"Odes Seamus Heaney livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":10,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"Odes","autor":"W. H. Auden","marketplace":"mercado_livre","lookup_query":"Odes W. H. Auden livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1940,"popularidade_id":4},
+{"titulo":"Odes","autor":"T. S. Eliot","marketplace":"amazon","lookup_query":"Odes T. S. Eliot livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Odes","autor":"Ezra Pound","marketplace":"mercado_livre","lookup_query":"Odes Ezra Pound livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1915,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Octavio Paz","marketplace":"amazon","lookup_query":"Odes Octavio Paz livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":12,"ano_sorteado":1960,"popularidade_id":5},
+{"titulo":"Odes","autor":"Federico García Lorca","marketplace":"mercado_livre","lookup_query":"Odes Federico García Lorca livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1930,"popularidade_id":5},
+{"titulo":"Odes","autor":"Antonio Machado","marketplace":"amazon","lookup_query":"Odes Antonio Machado livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1912,"popularidade_id":4},
+{"titulo":"Odes","autor":"Rubén Darío","marketplace":"mercado_livre","lookup_query":"Odes Rubén Darío livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":14,"ano_sorteado":1905,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Camões","marketplace":"amazon","lookup_query":"Odes Camões livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":6,"ano_sorteado":1572,"popularidade_id":5},
+{"titulo":"Odes","autor":"Gregório de Matos","marketplace":"mercado_livre","lookup_query":"Odes Gregório de Matos livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1680,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Alexander Pope","marketplace":"amazon","lookup_query":"Odes Alexander Pope livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1717,"popularidade_id":4},
+{"titulo":"Odes","autor":"Samuel Taylor Coleridge","marketplace":"mercado_livre","lookup_query":"Odes Samuel Taylor Coleridge livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1802,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Lord Byron","marketplace":"amazon","lookup_query":"Odes Lord Byron livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1815,"popularidade_id":5},
+{"titulo":"Odes","autor":"William Wordsworth","marketplace":"mercado_livre","lookup_query":"Odes William Wordsworth livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1807,"popularidade_id":5},
+
+{"titulo":"Odes","autor":"Ralph Waldo Emerson","marketplace":"amazon","lookup_query":"Odes Ralph Waldo Emerson livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1840,"popularidade_id":4},
+{"titulo":"Odes","autor":"Walt Whitman","marketplace":"mercado_livre","lookup_query":"Odes Walt Whitman livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1855,"popularidade_id":5},
+
+{"titulo":"Odes","autor":"Emily Dickinson","marketplace":"amazon","lookup_query":"Odes Emily Dickinson livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1860,"popularidade_id":5},
+{"titulo":"Odes","autor":"Robert Frost","marketplace":"mercado_livre","lookup_query":"Odes Robert Frost livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1920,"popularidade_id":5},
+
+{"titulo":"Odes","autor":"Langston Hughes","marketplace":"amazon","lookup_query":"Odes Langston Hughes livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1930,"popularidade_id":4},
+{"titulo":"Odes","autor":"Allen Ginsberg","marketplace":"mercado_livre","lookup_query":"Odes Allen Ginsberg livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1956,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Sylvia Plath","marketplace":"amazon","lookup_query":"Odes Sylvia Plath livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":11,"ano_sorteado":1960,"popularidade_id":5},
+{"titulo":"Odes","autor":"Ted Hughes","marketplace":"mercado_livre","lookup_query":"Odes Ted Hughes livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1965,"popularidade_id":4},
+
+{"titulo":"Odes","autor":"Adélia Prado","marketplace":"amazon","lookup_query":"Odes Adélia Prado livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1980,"popularidade_id":4},
+{"titulo":"Odes","autor":"Ferreira Gullar","marketplace":"mercado_livre","lookup_query":"Odes Ferreira Gullar livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1975,"popularidade_id":5},
+
+{"titulo":"Odes","autor":"Haroldo de Campos","marketplace":"amazon","lookup_query":"Odes Haroldo de Campos livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1970,"popularidade_id":4},
+{"titulo":"Odes","autor":"Augusto de Campos","marketplace":"mercado_livre","lookup_query":"Odes Augusto de Campos livro","categoria":"poesia","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1960,"popularidade_id":4}
+]

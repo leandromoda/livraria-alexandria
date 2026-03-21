@@ -1,0 +1,12 @@
+[
+  {"titulo":"O Poderoso Chefão","autor":"Mario Puzo","marketplace":"amazon","lookup_query":"O Poderoso Chefão Mario Puzo livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1972,"popularidade_id":5},
+  {"titulo":"O Exorcista","autor":"William Peter Blatty","marketplace":"mercado_livre","lookup_query":"O Exorcista William Peter Blatty livro","categoria":"terror","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1971,"popularidade_id":5},
+  {"titulo":"Love Story","autor":"Erich Segal","marketplace":"amazon","lookup_query":"Love Story Erich Segal livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1970,"popularidade_id":5},
+  {"titulo":"Tubarão","autor":"Peter Benchley","marketplace":"mercado_livre","lookup_query":"Tubarão Peter Benchley livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1974,"popularidade_id":5},
+  {"titulo":"Carrie, a Estranha","autor":"Stephen King","marketplace":"amazon","lookup_query":"Carrie a Estranha Stephen King livro","categoria":"terror","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1974,"popularidade_id":5},
+  {"titulo":"O Caso dos Dez Negrinhos","autor":"Agatha Christie","marketplace":"mercado_livre","lookup_query":"O Caso dos Dez Negrinhos Agatha Christie livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1970,"popularidade_id":5},
+  {"titulo":"O Inverno de Nossa Desesperança","autor":"John Steinbeck","marketplace":"amazon","lookup_query":"O Inverno de Nossa Desesperança John Steinbeck livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1971,"popularidade_id":4},
+  {"titulo":"A Sangue Frio","autor":"Truman Capote","marketplace":"mercado_livre","lookup_query":"A Sangue Frio Truman Capote livro","categoria":"nao_ficcao","idioma":"PT","cluster_id":3,"nacionalidade_id":1,"ano_sorteado":1970,"popularidade_id":5},
+  {"titulo":"O Pássaro Pintado","autor":"Jerzy Kosinski","marketplace":"amazon","lookup_query":"O Pássaro Pintado Jerzy Kosinski livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1970,"popularidade_id":4},
+  {"titulo":"Laranja Mecânica","autor":"Anthony Burgess","marketplace":"mercado_livre","lookup_query":"Laranja Mecânica Anthony Burgess livro","categoria":"ficcao","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1971,"popularidade_id":5}
+]

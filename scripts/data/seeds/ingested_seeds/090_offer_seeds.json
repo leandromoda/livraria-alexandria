@@ -1,0 +1,88 @@
+[
+{"titulo":"O Apanhador no Campo de Centeio","autor":"J. D. Salinger","marketplace":"amazon","lookup_query":"O Apanhador no Campo de Centeio J. D. Salinger livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1951,"popularidade_id":5},
+{"titulo":"Jane Eyre","autor":"Charlotte Brontë","marketplace":"mercado_livre","lookup_query":"Jane Eyre Charlotte Brontë livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1847,"popularidade_id":5},
+{"titulo":"David Copperfield","autor":"Charles Dickens","marketplace":"amazon","lookup_query":"David Copperfield Charles Dickens livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1850,"popularidade_id":5},
+{"titulo":"Grandes Esperanças","autor":"Charles Dickens","marketplace":"mercado_livre","lookup_query":"Grandes Esperanças Charles Dickens livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1861,"popularidade_id":5},
+{"titulo":"O Vermelho e o Negro","autor":"Stendhal","marketplace":"amazon","lookup_query":"O Vermelho e o Negro Stendhal livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1830,"popularidade_id":5},
+{"titulo":"Os Anos de Aprendizado de Wilhelm Meister","autor":"Johann Wolfgang von Goethe","marketplace":"mercado_livre","lookup_query":"Os Anos de Aprendizado de Wilhelm Meister Goethe livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1796,"popularidade_id":4},
+{"titulo":"Demian","autor":"Hermann Hesse","marketplace":"amazon","lookup_query":"Demian Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1919,"popularidade_id":5},
+{"titulo":"Sidarta","autor":"Hermann Hesse","marketplace":"mercado_livre","lookup_query":"Sidarta Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1922,"popularidade_id":5},
+{"titulo":"O Lobo da Estepe","autor":"Hermann Hesse","marketplace":"amazon","lookup_query":"O Lobo da Estepe Hermann Hesse livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1927,"popularidade_id":5},
+{"titulo":"Retrato do Artista Quando Jovem","autor":"James Joyce","marketplace":"mercado_livre","lookup_query":"Retrato do Artista Quando Jovem James Joyce livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1916,"popularidade_id":5},
+{"titulo":"O Jovem Törless","autor":"Robert Musil","marketplace":"amazon","lookup_query":"O Jovem Törless Robert Musil livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1906,"popularidade_id":4},
+{"titulo":"O Apanhador de Sonhos","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"O Apanhador de Sonhos Stephen King livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2001,"popularidade_id":4},
+{"titulo":"As Vantagens de Ser Invisível","autor":"Stephen Chbosky","marketplace":"amazon","lookup_query":"As Vantagens de Ser Invisível Stephen Chbosky livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":5},
+{"titulo":"Norwegian Wood","autor":"Haruki Murakami","marketplace":"mercado_livre","lookup_query":"Norwegian Wood Haruki Murakami livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1987,"popularidade_id":5},
+{"titulo":"Kafka à Beira-Mar","autor":"Haruki Murakami","marketplace":"amazon","lookup_query":"Kafka à Beira-Mar Haruki Murakami livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":2002,"popularidade_id":5},
+{"titulo":"O Nome da Rosa","autor":"Umberto Eco","marketplace":"mercado_livre","lookup_query":"O Nome da Rosa Umberto Eco livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":8,"ano_sorteado":1980,"popularidade_id":5},
+{"titulo":"O Filho Eterno","autor":"Cristovão Tezza","marketplace":"amazon","lookup_query":"O Filho Eterno Cristovão Tezza livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"Dom Casmurro","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Dom Casmurro Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Capitães da Areia","autor":"Jorge Amado","marketplace":"amazon","lookup_query":"Capitães da Areia Jorge Amado livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1937,"popularidade_id":5},
+{"titulo":"O Ateneu","autor":"Raul Pompeia","marketplace":"mercado_livre","lookup_query":"O Ateneu Raul Pompeia livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1888,"popularidade_id":5},
+{"titulo":"A Moreninha","autor":"Joaquim Manuel de Macedo","marketplace":"amazon","lookup_query":"A Moreninha Joaquim Manuel de Macedo livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1844,"popularidade_id":4},
+{"titulo":"O Grande Gatsby","autor":"F. Scott Fitzgerald","marketplace":"mercado_livre","lookup_query":"O Grande Gatsby F. Scott Fitzgerald livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1925,"popularidade_id":5},
+{"titulo":"Mataram a Cotovia","autor":"Harper Lee","marketplace":"amazon","lookup_query":"Mataram a Cotovia Harper Lee livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1960,"popularidade_id":5},
+{"titulo":"O Senhor das Moscas","autor":"William Golding","marketplace":"mercado_livre","lookup_query":"O Senhor das Moscas William Golding livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1954,"popularidade_id":5},
+{"titulo":"Brooklyn","autor":"Colm Tóibín","marketplace":"amazon","lookup_query":"Brooklyn Colm Tóibín livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":2009,"popularidade_id":4},
+{"titulo":"Americanah","autor":"Chimamanda Ngozi Adichie","marketplace":"mercado_livre","lookup_query":"Americanah Chimamanda Ngozi Adichie livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":9,"ano_sorteado":2013,"popularidade_id":5},
+{"titulo":"Me Chame Pelo Seu Nome","autor":"André Aciman","marketplace":"amazon","lookup_query":"Me Chame Pelo Seu Nome André Aciman livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":2007,"popularidade_id":5},
+{"titulo":"A Educação de Little Tree","autor":"Forrest Carter","marketplace":"mercado_livre","lookup_query":"A Educação de Little Tree Forrest Carter livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1976,"popularidade_id":4},
+{"titulo":"Nunca Me Deixes","autor":"Kazuo Ishiguro","marketplace":"amazon","lookup_query":"Nunca Me Deixes Kazuo Ishiguro livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":2005,"popularidade_id":5},
+{"titulo":"A Vida Invisível de Addie LaRue","autor":"V. E. Schwab","marketplace":"mercado_livre","lookup_query":"A Vida Invisível de Addie LaRue V E Schwab livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2020,"popularidade_id":5},
+
+{"titulo":"O Sol é Para Todos","autor":"Harper Lee","marketplace":"amazon","lookup_query":"O Sol é Para Todos Harper Lee livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1960,"popularidade_id":5},
+{"titulo":"Lavoura Arcaica","autor":"Raduan Nassar","marketplace":"mercado_livre","lookup_query":"Lavoura Arcaica Raduan Nassar livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1975,"popularidade_id":5},
+{"titulo":"A Montanha Mágica","autor":"Thomas Mann","marketplace":"amazon","lookup_query":"A Montanha Mágica Thomas Mann livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1924,"popularidade_id":5},
+{"titulo":"Buddenbrooks","autor":"Thomas Mann","marketplace":"mercado_livre","lookup_query":"Buddenbrooks Thomas Mann livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1901,"popularidade_id":5},
+{"titulo":"A Educação Sentimental","autor":"Gustave Flaubert","marketplace":"amazon","lookup_query":"A Educação Sentimental Gustave Flaubert livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1869,"popularidade_id":5},
+{"titulo":"Os Miseráveis","autor":"Victor Hugo","marketplace":"mercado_livre","lookup_query":"Os Miseráveis Victor Hugo livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1862,"popularidade_id":5},
+{"titulo":"A Insustentável Leveza do Ser","autor":"Milan Kundera","marketplace":"amazon","lookup_query":"A Insustentável Leveza do Ser Milan Kundera livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":11,"ano_sorteado":1984,"popularidade_id":5},
+{"titulo":"O Perfume","autor":"Patrick Süskind","marketplace":"mercado_livre","lookup_query":"O Perfume Patrick Süskind livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":5,"ano_sorteado":1985,"popularidade_id":5},
+{"titulo":"Ensaio sobre a Cegueira","autor":"José Saramago","marketplace":"amazon","lookup_query":"Ensaio sobre a Cegueira José Saramago livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":12,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"Memorial do Convento","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"Memorial do Convento José Saramago livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":12,"ano_sorteado":1982,"popularidade_id":5},
+
+{"titulo":"O Estrangeiro","autor":"Albert Camus","marketplace":"amazon","lookup_query":"O Estrangeiro Albert Camus livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1942,"popularidade_id":5},
+{"titulo":"A Náusea","autor":"Jean-Paul Sartre","marketplace":"mercado_livre","lookup_query":"A Náusea Jean Paul Sartre livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":4,"ano_sorteado":1938,"popularidade_id":5},
+{"titulo":"O Idiota","autor":"Fiódor Dostoiévski","marketplace":"amazon","lookup_query":"O Idiota Fiódor Dostoiévski livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1869,"popularidade_id":5},
+{"titulo":"Crime e Castigo","autor":"Fiódor Dostoiévski","marketplace":"mercado_livre","lookup_query":"Crime e Castigo Fiódor Dostoiévski livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1866,"popularidade_id":5},
+
+{"titulo":"Anna Kariênina","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"Anna Kariênina Liev Tolstói livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1877,"popularidade_id":5},
+{"titulo":"Guerra e Paz","autor":"Liev Tolstói","marketplace":"mercado_livre","lookup_query":"Guerra e Paz Liev Tolstói livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":13,"ano_sorteado":1869,"popularidade_id":5},
+
+{"titulo":"O Retrato de Dorian Gray","autor":"Oscar Wilde","marketplace":"amazon","lookup_query":"O Retrato de Dorian Gray Oscar Wilde livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"Middlemarch","autor":"George Eliot","marketplace":"mercado_livre","lookup_query":"Middlemarch George Eliot livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1871,"popularidade_id":4},
+{"titulo":"O Morro dos Ventos Uivantes","autor":"Emily Brontë","marketplace":"amazon","lookup_query":"O Morro dos Ventos Uivantes Emily Brontë livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1847,"popularidade_id":5},
+
+{"titulo":"Persuasão","autor":"Jane Austen","marketplace":"mercado_livre","lookup_query":"Persuasão Jane Austen livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1817,"popularidade_id":5},
+{"titulo":"Emma","autor":"Jane Austen","marketplace":"amazon","lookup_query":"Emma Jane Austen livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1815,"popularidade_id":5},
+{"titulo":"Orgulho e Preconceito","autor":"Jane Austen","marketplace":"mercado_livre","lookup_query":"Orgulho e Preconceito Jane Austen livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1813,"popularidade_id":5},
+
+{"titulo":"O Menino do Pijama Listrado","autor":"John Boyne","marketplace":"amazon","lookup_query":"O Menino do Pijama Listrado John Boyne livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":2006,"popularidade_id":5},
+{"titulo":"Extraordinário","autor":"R. J. Palacio","marketplace":"mercado_livre","lookup_query":"Extraordinário R J Palacio livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+{"titulo":"A Culpa é das Estrelas","autor":"John Green","marketplace":"amazon","lookup_query":"A Culpa é das Estrelas John Green livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+{"titulo":"Cidades de Papel","autor":"John Green","marketplace":"mercado_livre","lookup_query":"Cidades de Papel John Green livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2008,"popularidade_id":5},
+
+{"titulo":"O Pequeno Príncipe","autor":"Antoine de Saint-Exupéry","marketplace":"amazon","lookup_query":"O Pequeno Príncipe Antoine de Saint Exupéry livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1943,"popularidade_id":5},
+
+{"titulo":"O Mundo de Sofia","autor":"Jostein Gaarder","marketplace":"mercado_livre","lookup_query":"O Mundo de Sofia Jostein Gaarder livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":14,"ano_sorteado":1991,"popularidade_id":5},
+
+{"titulo":"A Redoma de Vidro","autor":"Sylvia Plath","marketplace":"amazon","lookup_query":"A Redoma de Vidro Sylvia Plath livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1963,"popularidade_id":5},
+
+{"titulo":"O Caçador de Pipas","autor":"Khaled Hosseini","marketplace":"mercado_livre","lookup_query":"O Caçador de Pipas Khaled Hosseini livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":15,"ano_sorteado":2003,"popularidade_id":5},
+
+{"titulo":"Eleanor & Park","autor":"Rainbow Rowell","marketplace":"amazon","lookup_query":"Eleanor e Park Rainbow Rowell livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2012,"popularidade_id":5},
+
+{"titulo":"Garota, Interrompida","autor":"Susanna Kaysen","marketplace":"mercado_livre","lookup_query":"Garota Interrompida Susanna Kaysen livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1993,"popularidade_id":4},
+
+{"titulo":"O Lado Bom da Vida","autor":"Matthew Quick","marketplace":"amazon","lookup_query":"O Lado Bom da Vida Matthew Quick livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2008,"popularidade_id":5},
+
+{"titulo":"O Diário de Anne Frank","autor":"Anne Frank","marketplace":"mercado_livre","lookup_query":"O Diário de Anne Frank livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":16,"ano_sorteado":1947,"popularidade_id":5},
+
+{"titulo":"As Crônicas de Nárnia","autor":"C. S. Lewis","marketplace":"amazon","lookup_query":"As Crônicas de Nárnia C S Lewis livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1950,"popularidade_id":5},
+
+{"titulo":"Harry Potter e a Pedra Filosofal","autor":"J. K. Rowling","marketplace":"mercado_livre","lookup_query":"Harry Potter e a Pedra Filosofal J K Rowling livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1997,"popularidade_id":5},
+
+{"titulo":"Percy Jackson e o Ladrão de Raios","autor":"Rick Riordan","marketplace":"amazon","lookup_query":"Percy Jackson e o Ladrão de Raios Rick Riordan livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":2005,"popularidade_id":5},
+
+{"titulo":"Jogos Vorazes","autor":"Suzanne Collins","marketplace":"mercado_livre","lookup_query":"Jogos Vorazes Suzanne Collins livro","categoria":"romance","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":2008,"popularidade_id":5}
+]

@@ -1,0 +1,61 @@
+[
+{"titulo":"Dom Quixote","autor":"Miguel de Cervantes","marketplace":"amazon","lookup_query":"Dom Quixote Miguel de Cervantes livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1605,"popularidade_id":5},
+{"titulo":"As Viagens de Gulliver","autor":"Jonathan Swift","marketplace":"mercado_livre","lookup_query":"As Viagens de Gulliver Jonathan Swift livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1726,"popularidade_id":5},
+{"titulo":"A Vida e Opiniões de Tristram Shandy","autor":"Laurence Sterne","marketplace":"amazon","lookup_query":"A Vida e Opiniões de Tristram Shandy Laurence Sterne livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1759,"popularidade_id":4},
+{"titulo":"Orgulho e Preconceito e Zumbis","autor":"Seth Grahame-Smith","marketplace":"mercado_livre","lookup_query":"Orgulho e Preconceito e Zumbis Seth Grahame-Smith livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2009,"popularidade_id":5},
+{"titulo":"Abraham Lincoln: Caçador de Vampiros","autor":"Seth Grahame-Smith","marketplace":"amazon","lookup_query":"Abraham Lincoln Caçador de Vampiros Seth Grahame-Smith livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":2010,"popularidade_id":4},
+{"titulo":"O Guia do Mochileiro das Galáxias","autor":"Douglas Adams","marketplace":"mercado_livre","lookup_query":"O Guia do Mochileiro das Galáxias Douglas Adams livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1979,"popularidade_id":5},
+{"titulo":"Restaurante no Fim do Universo","autor":"Douglas Adams","marketplace":"amazon","lookup_query":"Restaurante no Fim do Universo Douglas Adams livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1980,"popularidade_id":5},
+{"titulo":"A Vida, o Universo e Tudo Mais","autor":"Douglas Adams","marketplace":"mercado_livre","lookup_query":"A Vida o Universo e Tudo Mais Douglas Adams livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1982,"popularidade_id":4},
+{"titulo":"Até Mais, e Obrigado pelos Peixes","autor":"Douglas Adams","marketplace":"amazon","lookup_query":"Até Mais e Obrigado pelos Peixes Douglas Adams livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1984,"popularidade_id":4},
+{"titulo":"Praticamente Inofensiva","autor":"Douglas Adams","marketplace":"mercado_livre","lookup_query":"Praticamente Inofensiva Douglas Adams livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1992,"popularidade_id":4},
+
+{"titulo":"Good Omens","autor":"Neil Gaiman","marketplace":"amazon","lookup_query":"Good Omens Neil Gaiman livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"O Evangelho Segundo Jesus Cristo","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"O Evangelho Segundo Jesus Cristo José Saramago livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1991,"popularidade_id":5},
+{"titulo":"O Nome da Rosa","autor":"Umberto Eco","marketplace":"amazon","lookup_query":"O Nome da Rosa Umberto Eco livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1980,"popularidade_id":5},
+{"titulo":"O Pêndulo de Foucault","autor":"Umberto Eco","marketplace":"mercado_livre","lookup_query":"O Pêndulo de Foucault Umberto Eco livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1988,"popularidade_id":4},
+{"titulo":"Baudolino","autor":"Umberto Eco","marketplace":"amazon","lookup_query":"Baudolino Umberto Eco livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":2000,"popularidade_id":4},
+
+{"titulo":"Memórias Póstumas de Brás Cubas","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Memórias Póstumas de Brás Cubas Machado de Assis livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1881,"popularidade_id":5},
+{"titulo":"O Alienista","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"O Alienista Machado de Assis livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1882,"popularidade_id":5},
+{"titulo":"Quincas Borba","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Quincas Borba Machado de Assis livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1891,"popularidade_id":4},
+
+{"titulo":"Macunaíma","autor":"Mário de Andrade","marketplace":"amazon","lookup_query":"Macunaíma Mário de Andrade livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1928,"popularidade_id":5},
+{"titulo":"O Auto da Compadecida","autor":"Ariano Suassuna","marketplace":"mercado_livre","lookup_query":"O Auto da Compadecida Ariano Suassuna livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1955,"popularidade_id":5},
+
+{"titulo":"Pantaleão e as Visitadoras","autor":"Mario Vargas Llosa","marketplace":"amazon","lookup_query":"Pantaleão e as Visitadoras Mario Vargas Llosa livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1973,"popularidade_id":4},
+
+{"titulo":"O Mestre e Margarida","autor":"Mikhail Bulgakov","marketplace":"mercado_livre","lookup_query":"O Mestre e Margarida Mikhail Bulgakov livro","categoria":"parodia","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1967,"popularidade_id":5},
+
+{"titulo":"Catch-22","autor":"Joseph Heller","marketplace":"amazon","lookup_query":"Catch-22 Joseph Heller livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1961,"popularidade_id":5},
+{"titulo":"Matadouro-Cinco","autor":"Kurt Vonnegut","marketplace":"mercado_livre","lookup_query":"Matadouro Cinco Kurt Vonnegut livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1969,"popularidade_id":5},
+{"titulo":"Cama de Gato","autor":"Kurt Vonnegut","marketplace":"amazon","lookup_query":"Cama de Gato Kurt Vonnegut livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1963,"popularidade_id":4},
+
+{"titulo":"Laranja Mecânica","autor":"Anthony Burgess","marketplace":"mercado_livre","lookup_query":"Laranja Mecânica Anthony Burgess livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1962,"popularidade_id":5},
+{"titulo":"American Psycho","autor":"Bret Easton Ellis","marketplace":"amazon","lookup_query":"American Psycho Bret Easton Ellis livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1991,"popularidade_id":5},
+
+{"titulo":"O Clube da Luta","autor":"Chuck Palahniuk","marketplace":"mercado_livre","lookup_query":"O Clube da Luta Chuck Palahniuk livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1996,"popularidade_id":5},
+{"titulo":"Sobrevivente","autor":"Chuck Palahniuk","marketplace":"amazon","lookup_query":"Sobrevivente Chuck Palahniuk livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1999,"popularidade_id":4},
+
+{"titulo":"A Revolução dos Bichos","autor":"George Orwell","marketplace":"mercado_livre","lookup_query":"A Revolução dos Bichos George Orwell livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1945,"popularidade_id":5},
+{"titulo":"1984","autor":"George Orwell","marketplace":"amazon","lookup_query":"1984 George Orwell livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1949,"popularidade_id":5},
+
+{"titulo":"Admirável Mundo Novo","autor":"Aldous Huxley","marketplace":"mercado_livre","lookup_query":"Admirável Mundo Novo Aldous Huxley livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1932,"popularidade_id":5},
+
+{"titulo":"O Apanhador no Campo de Centeio","autor":"J.D. Salinger","marketplace":"amazon","lookup_query":"O Apanhador no Campo de Centeio JD Salinger livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1951,"popularidade_id":5},
+
+{"titulo":"Lolita","autor":"Vladimir Nabokov","marketplace":"mercado_livre","lookup_query":"Lolita Vladimir Nabokov livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1955,"popularidade_id":5},
+
+{"titulo":"O Processo","autor":"Franz Kafka","marketplace":"amazon","lookup_query":"O Processo Franz Kafka livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1925,"popularidade_id":5},
+{"titulo":"A Metamorfose","autor":"Franz Kafka","marketplace":"mercado_livre","lookup_query":"A Metamorfose Franz Kafka livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1915,"popularidade_id":5},
+{"titulo":"O Castelo","autor":"Franz Kafka","marketplace":"amazon","lookup_query":"O Castelo Franz Kafka livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1926,"popularidade_id":4},
+
+{"titulo":"O Lobo da Estepe","autor":"Hermann Hesse","marketplace":"mercado_livre","lookup_query":"O Lobo da Estepe Hermann Hesse livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1927,"popularidade_id":5},
+{"titulo":"Demian","autor":"Hermann Hesse","marketplace":"amazon","lookup_query":"Demian Hermann Hesse livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1919,"popularidade_id":4},
+
+{"titulo":"Ensaio sobre a Cegueira","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"Ensaio sobre a Cegueira José Saramago livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1995,"popularidade_id":5},
+
+{"titulo":"Cem Anos de Solidão","autor":"Gabriel García Márquez","marketplace":"amazon","lookup_query":"Cem Anos de Solidão Gabriel García Márquez livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1967,"popularidade_id":5},
+{"titulo":"O Amor nos Tempos do Cólera","autor":"Gabriel García Márquez","marketplace":"mercado_livre","lookup_query":"O Amor nos Tempos do Cólera Gabriel García Márquez livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1985,"popularidade_id":5},
+{"titulo":"Crônica de uma Morte Anunciada","autor":"Gabriel García Márquez","marketplace":"amazon","lookup_query":"Crônica de uma Morte Anunciada Gabriel García Márquez livro","categoria":"satira","idioma":"PT","cluster_id":2,"nacionalidade_id":3,"ano_sorteado":1981,"popularidade_id":4}
+]

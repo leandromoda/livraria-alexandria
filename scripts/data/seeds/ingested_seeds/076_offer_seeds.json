@@ -1,0 +1,49 @@
+[
+{"titulo":"Auto da Barca do Inferno","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Barca do Inferno Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1517,"popularidade_id":5},
+{"titulo":"Auto da Barca do Purgatório","autor":"Gil Vicente","marketplace":"mercado_livre","lookup_query":"Auto da Barca do Purgatório Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1518,"popularidade_id":4},
+{"titulo":"Auto da Barca da Glória","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Barca da Glória Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1519,"popularidade_id":4},
+{"titulo":"Auto da Alma","autor":"Gil Vicente","marketplace":"mercado_livre","lookup_query":"Auto da Alma Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1518,"popularidade_id":4},
+{"titulo":"Auto da Fé","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Fé Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1510,"popularidade_id":3},
+{"titulo":"Auto Pastoril Português","autor":"Gil Vicente","marketplace":"mercado_livre","lookup_query":"Auto Pastoril Português Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1523,"popularidade_id":3},
+{"titulo":"Auto da Sibila Cassandra","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Sibila Cassandra Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1513,"popularidade_id":3},
+{"titulo":"Auto da Visitação","autor":"Gil Vicente","marketplace":"mercado_livre","lookup_query":"Auto da Visitação Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1502,"popularidade_id":3},
+{"titulo":"Auto da Índia","autor":"Gil Vicente","marketplace":"amazon","lookup_query":"Auto da Índia Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":2,"nacionalidade_id":1,"ano_sorteado":1509,"popularidade_id":4},
+{"titulo":"Auto da Cananeia","autor":"Gil Vicente","marketplace":"mercado_livre","lookup_query":"Auto da Cananeia Gil Vicente livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1534,"popularidade_id":3},
+
+{"titulo":"El gran teatro del mundo","autor":"Pedro Calderón de la Barca","marketplace":"amazon","lookup_query":"El gran teatro del mundo Calderón de la Barca livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1635,"popularidade_id":5},
+{"titulo":"La cena del rey Baltasar","autor":"Pedro Calderón de la Barca","marketplace":"mercado_livre","lookup_query":"La cena del rey Baltasar Calderón de la Barca livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1634,"popularidade_id":4},
+{"titulo":"El divino Orfeo","autor":"Pedro Calderón de la Barca","marketplace":"amazon","lookup_query":"El divino Orfeo Calderón de la Barca livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1663,"popularidade_id":3},
+{"titulo":"El gran mercado del mundo","autor":"Pedro Calderón de la Barca","marketplace":"mercado_livre","lookup_query":"El gran mercado del mundo Calderón de la Barca livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1640,"popularidade_id":3},
+{"titulo":"La devoción de la cruz","autor":"Pedro Calderón de la Barca","marketplace":"amazon","lookup_query":"La devoción de la cruz Calderón de la Barca livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1637,"popularidade_id":4},
+
+{"titulo":"Auto de los Reyes Magos","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Auto de los Reyes Magos livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1150,"popularidade_id":5},
+{"titulo":"Everyman","autor":"Anônimo","marketplace":"amazon","lookup_query":"Everyman morality play livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1500,"popularidade_id":5},
+{"titulo":"Mankind","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Mankind morality play livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1470,"popularidade_id":4},
+{"titulo":"The Castle of Perseverance","autor":"Anônimo","marketplace":"amazon","lookup_query":"The Castle of Perseverance livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1425,"popularidade_id":4},
+{"titulo":"Wisdom","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Wisdom morality play livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1460,"popularidade_id":3},
+
+{"titulo":"A Representação do Nascimento","autor":"Francisco de Sá de Miranda","marketplace":"amazon","lookup_query":"Representação do Nascimento Sá de Miranda livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1550,"popularidade_id":3},
+{"titulo":"Auto de São Martinho","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Auto de São Martinho livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1500,"popularidade_id":2},
+
+{"titulo":"Auto de la Pasión","autor":"Lucas Fernández","marketplace":"amazon","lookup_query":"Auto de la Pasión Lucas Fernández livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1500,"popularidade_id":3},
+{"titulo":"Farsa sacramental","autor":"Diego Sánchez de Badajoz","marketplace":"mercado_livre","lookup_query":"Farsa sacramental Diego Sánchez de Badajoz livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1550,"popularidade_id":3},
+
+{"titulo":"Auto da Paixão","autor":"Anônimo português","marketplace":"amazon","lookup_query":"Auto da Paixão medieval português livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1500,"popularidade_id":3},
+{"titulo":"Auto do Natal","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Auto do Natal medieval livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1500,"popularidade_id":3},
+
+{"titulo":"Mistério da Paixão de Cristo","autor":"Arnoul Gréban","marketplace":"amazon","lookup_query":"Mistério da Paixão Arnoul Gréban livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1450,"popularidade_id":4},
+{"titulo":"Mistério de Adão","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Mistério de Adão medieval livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1150,"popularidade_id":4},
+
+{"titulo":"Jeu d’Adam","autor":"Anônimo","marketplace":"amazon","lookup_query":"Jeu d Adam livro medieval","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1150,"popularidade_id":4},
+{"titulo":"Le Mystère de la Résurrection","autor":"Jean Michel","marketplace":"mercado_livre","lookup_query":"Mystère de la Résurrection Jean Michel livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1450,"popularidade_id":3},
+
+{"titulo":"Autos Sacramentales","autor":"Lope de Vega","marketplace":"amazon","lookup_query":"Autos Sacramentales Lope de Vega livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1620,"popularidade_id":4},
+{"titulo":"La siega","autor":"Lope de Vega","marketplace":"mercado_livre","lookup_query":"La siega Lope de Vega auto sacramental livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1610,"popularidade_id":3},
+
+{"titulo":"Auto del Divino Narciso","autor":"Sor Juana Inés de la Cruz","marketplace":"amazon","lookup_query":"Auto del Divino Narciso Sor Juana livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1689,"popularidade_id":4},
+{"titulo":"Auto de San Hermenegildo","autor":"Juan de Mal Lara","marketplace":"mercado_livre","lookup_query":"Auto de San Hermenegildo livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1561,"popularidade_id":3},
+
+{"titulo":"Auto da Criação do Mundo","autor":"Anônimo","marketplace":"amazon","lookup_query":"Auto da Criação do Mundo livro medieval","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1500,"popularidade_id":2},
+{"titulo":"Auto da Ressurreição","autor":"Anônimo","marketplace":"mercado_livre","lookup_query":"Auto da Ressurreição medieval livro","categoria":"teatro","idioma":"PT","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1500,"popularidade_id":2}
+
+]

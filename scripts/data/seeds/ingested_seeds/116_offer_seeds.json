@@ -1,0 +1,122 @@
+[
+  {
+    "titulo": "Circe",
+    "autor": "Madeline Miller",
+    "marketplace": "amazon",
+    "lookup_query": "Circe Madeline Miller livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2018,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "A Canção de Aquiles",
+    "autor": "Madeline Miller",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Canção de Aquiles Madeline Miller livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2012,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "O Conto da Aia",
+    "autor": "Margaret Atwood",
+    "marketplace": "amazon",
+    "lookup_query": "O Conto da Aia Margaret Atwood livro",
+    "categoria": "distopia",
+    "idioma": "PT",
+    "cluster_id": 2,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 1985,
+    "popularidade_id": 5
+  },
+  {
+    "titulo": "A Rainha Vermelha",
+    "autor": "Victoria Aveyard",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Rainha Vermelha Victoria Aveyard livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 3,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2015,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Cinder",
+    "autor": "Marissa Meyer",
+    "marketplace": "amazon",
+    "lookup_query": "Cinder Marissa Meyer livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 4,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2012,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Scarlet",
+    "autor": "Marissa Meyer",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Scarlet Marissa Meyer livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 4,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2013,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Cress",
+    "autor": "Marissa Meyer",
+    "marketplace": "amazon",
+    "lookup_query": "Cress Marissa Meyer livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 4,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2014,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Winter",
+    "autor": "Marissa Meyer",
+    "marketplace": "mercado_livre",
+    "lookup_query": "Winter Marissa Meyer livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 4,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2015,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Heartless",
+    "autor": "Marissa Meyer",
+    "marketplace": "amazon",
+    "lookup_query": "Heartless Marissa Meyer livro",
+    "categoria": "fantasia",
+    "idioma": "PT",
+    "cluster_id": 5,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2016,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "The Penelopiad",
+    "autor": "Margaret Atwood",
+    "marketplace": "mercado_livre",
+    "lookup_query": "The Penelopiad Margaret Atwood livro",
+    "categoria": "mitologia",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 2,
+    "ano_sorteado": 2005,
+    "popularidade_id": 3
+  }
+]

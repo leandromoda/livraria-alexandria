@@ -1,0 +1,36 @@
+[
+{"titulo":"O Retrato de Dorian Gray","autor":"Oscar Wilde","marketplace":"amazon","lookup_query":"O Retrato de Dorian Gray Oscar Wilde livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1891,"popularidade_id":5},
+{"titulo":"Tess dos d'Urbervilles","autor":"Thomas Hardy","marketplace":"mercado_livre","lookup_query":"Tess dos d'Urbervilles Thomas Hardy livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1891,"popularidade_id":5},
+{"titulo":"A Máquina do Tempo","autor":"H. G. Wells","marketplace":"amazon","lookup_query":"A Máquina do Tempo H. G. Wells livro","categoria":"ficção científica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1895,"popularidade_id":5},
+{"titulo":"Drácula","autor":"Bram Stoker","marketplace":"mercado_livre","lookup_query":"Drácula Bram Stoker livro","categoria":"terror","idioma":"PT","cluster_id":3,"nacionalidade_id":2,"ano_sorteado":1897,"popularidade_id":5},
+{"titulo":"O Livro da Selva","autor":"Rudyard Kipling","marketplace":"amazon","lookup_query":"O Livro da Selva Rudyard Kipling livro","categoria":"aventura","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1894,"popularidade_id":5},
+{"titulo":"O Sinal dos Quatro","autor":"Arthur Conan Doyle","marketplace":"mercado_livre","lookup_query":"O Sinal dos Quatro Arthur Conan Doyle livro","categoria":"mistério","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"As Aventuras de Sherlock Holmes","autor":"Arthur Conan Doyle","marketplace":"amazon","lookup_query":"As Aventuras de Sherlock Holmes Arthur Conan Doyle livro","categoria":"mistério","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":1892,"popularidade_id":5},
+{"titulo":"O Vale do Medo","autor":"Arthur Conan Doyle","marketplace":"mercado_livre","lookup_query":"O Vale do Medo Arthur Conan Doyle livro","categoria":"mistério","idioma":"PT","cluster_id":5,"nacionalidade_id":2,"ano_sorteado":1890,"popularidade_id":4},
+{"titulo":"O Livro da Selva II","autor":"Rudyard Kipling","marketplace":"amazon","lookup_query":"O Livro da Selva II Rudyard Kipling livro","categoria":"aventura","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1895,"popularidade_id":4},
+{"titulo":"A Ilha do Doutor Moreau","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"A Ilha do Doutor Moreau H. G. Wells livro","categoria":"ficção científica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1896,"popularidade_id":5},
+
+{"titulo":"Jude, o Obscuro","autor":"Thomas Hardy","marketplace":"amazon","lookup_query":"Jude o Obscuro Thomas Hardy livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1895,"popularidade_id":5},
+{"titulo":"A Roda do Tempo","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"A Roda do Tempo H. G. Wells livro","categoria":"ficção científica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1898,"popularidade_id":3},
+{"titulo":"Contos da Selva","autor":"Rudyard Kipling","marketplace":"amazon","lookup_query":"Contos da Selva Rudyard Kipling livro","categoria":"aventura","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1896,"popularidade_id":4},
+{"titulo":"A Guerra dos Mundos","autor":"H. G. Wells","marketplace":"mercado_livre","lookup_query":"A Guerra dos Mundos H. G. Wells livro","categoria":"ficção científica","idioma":"PT","cluster_id":2,"nacionalidade_id":2,"ano_sorteado":1898,"popularidade_id":5},
+{"titulo":"O Coração das Trevas","autor":"Joseph Conrad","marketplace":"amazon","lookup_query":"O Coração das Trevas Joseph Conrad livro","categoria":"novela","idioma":"PT","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Quo Vadis","autor":"Henryk Sienkiewicz","marketplace":"mercado_livre","lookup_query":"Quo Vadis Henryk Sienkiewicz livro","categoria":"romance histórico","idioma":"PT","cluster_id":6,"nacionalidade_id":3,"ano_sorteado":1896,"popularidade_id":5},
+{"titulo":"Fome","autor":"Knut Hamsun","marketplace":"amazon","lookup_query":"Fome Knut Hamsun livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"Pan","autor":"Knut Hamsun","marketplace":"mercado_livre","lookup_query":"Pan Knut Hamsun livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1894,"popularidade_id":4},
+{"titulo":"O Livro de San Michele","autor":"Axel Munthe","marketplace":"amazon","lookup_query":"O Livro de San Michele Axel Munthe livro","categoria":"memórias","idioma":"PT","cluster_id":7,"nacionalidade_id":3,"ano_sorteado":1897,"popularidade_id":3},
+{"titulo":"O Filho do Lobo","autor":"Jack London","marketplace":"mercado_livre","lookup_query":"O Filho do Lobo Jack London livro","categoria":"aventura","idioma":"PT","cluster_id":4,"nacionalidade_id":1,"ano_sorteado":1899,"popularidade_id":4},
+
+{"titulo":"O Marujo","autor":"Joseph Conrad","marketplace":"amazon","lookup_query":"O Marujo Joseph Conrad livro","categoria":"aventura","idioma":"PT","cluster_id":4,"nacionalidade_id":2,"ano_sorteado":1897,"popularidade_id":3},
+{"titulo":"Os Trabalhadores do Mar","autor":"Victor Hugo","marketplace":"mercado_livre","lookup_query":"Os Trabalhadores do Mar Victor Hugo livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1890,"popularidade_id":4},
+{"titulo":"A Morte de Ivan Ilitch","autor":"Liev Tolstói","marketplace":"amazon","lookup_query":"A Morte de Ivan Ilitch Tolstoi livro","categoria":"novela","idioma":"PT","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1890,"popularidade_id":5},
+{"titulo":"Contos de Tchékhov","autor":"Anton Tchékhov","marketplace":"mercado_livre","lookup_query":"Contos de Tchekhov livro","categoria":"contos","idioma":"PT","cluster_id":8,"nacionalidade_id":5,"ano_sorteado":1895,"popularidade_id":5},
+{"titulo":"O Jardim das Cerejeiras","autor":"Anton Tchékhov","marketplace":"amazon","lookup_query":"O Jardim das Cerejeiras Anton Tchekhov livro","categoria":"teatro","idioma":"PT","cluster_id":9,"nacionalidade_id":5,"ano_sorteado":1899,"popularidade_id":5},
+
+{"titulo":"A Casa das Sete Mulheres","autor":"José de Alencar","marketplace":"mercado_livre","lookup_query":"A Casa das Sete Mulheres Jose de Alencar livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1890,"popularidade_id":3},
+
+{"titulo":"Dom Casmurro","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Dom Casmurro Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Esaú e Jacó","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Esau e Jaco Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1899,"popularidade_id":5},
+{"titulo":"Memorial de Aires","autor":"Machado de Assis","marketplace":"amazon","lookup_query":"Memorial de Aires Machado de Assis livro","categoria":"romance","idioma":"PT","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1898,"popularidade_id":5}
+
+]

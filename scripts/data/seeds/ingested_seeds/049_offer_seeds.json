@@ -1,0 +1,92 @@
+[
+{"titulo":"O Alquimista","autor":"Paulo Coelho","marketplace":"amazon","lookup_query":"O Alquimista Paulo Coelho livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1993,"popularidade_id":5},
+{"titulo":"Ensaio sobre a Cegueira","autor":"José Saramago","marketplace":"mercado_livre","lookup_query":"Ensaio sobre a Cegueira José Saramago livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1995,"popularidade_id":5},
+{"titulo":"Harry Potter e a Pedra Filosofal","autor":"J.K. Rowling","marketplace":"amazon","lookup_query":"Harry Potter e a Pedra Filosofal J.K. Rowling livro","categoria":"fantasia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1997,"popularidade_id":5},
+{"titulo":"Jurassic Park","autor":"Michael Crichton","marketplace":"mercado_livre","lookup_query":"Jurassic Park Michael Crichton livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"O Código Da Vinci","autor":"Dan Brown","marketplace":"amazon","lookup_query":"O Código Da Vinci Dan Brown livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":5},
+{"titulo":"As Horas","autor":"Michael Cunningham","marketplace":"mercado_livre","lookup_query":"As Horas Michael Cunningham livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":4},
+{"titulo":"O Mundo de Sofia","autor":"Jostein Gaarder","marketplace":"amazon","lookup_query":"O Mundo de Sofia Jostein Gaarder livro","categoria":"filosofia","idioma":"pt","cluster_id":1,"nacionalidade_id":5,"ano_sorteado":1991,"popularidade_id":5},
+{"titulo":"Alta Fidelidade","autor":"Nick Hornby","marketplace":"mercado_livre","lookup_query":"Alta Fidelidade Nick Hornby livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1995,"popularidade_id":4},
+{"titulo":"Trainspotting","autor":"Irvine Welsh","marketplace":"amazon","lookup_query":"Trainspotting Irvine Welsh livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1993,"popularidade_id":4},
+{"titulo":"American Psycho","autor":"Bret Easton Ellis","marketplace":"mercado_livre","lookup_query":"American Psycho Bret Easton Ellis livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1991,"popularidade_id":4},
+
+{"titulo":"O Deus das Pequenas Coisas","autor":"Arundhati Roy","marketplace":"amazon","lookup_query":"O Deus das Pequenas Coisas Arundhati Roy livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":6,"ano_sorteado":1997,"popularidade_id":4},
+{"titulo":"Clube da Luta","autor":"Chuck Palahniuk","marketplace":"mercado_livre","lookup_query":"Clube da Luta Chuck Palahniuk livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1996,"popularidade_id":5},
+{"titulo":"Memórias de Minhas Putas Tristes","autor":"Gabriel García Márquez","marketplace":"amazon","lookup_query":"Memórias de Minhas Putas Tristes Gabriel García Márquez livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1994,"popularidade_id":4},
+{"titulo":"O Paciente Inglês","autor":"Michael Ondaatje","marketplace":"mercado_livre","lookup_query":"O Paciente Inglês Michael Ondaatje livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":8,"ano_sorteado":1992,"popularidade_id":4},
+{"titulo":"Desonra","autor":"J.M. Coetzee","marketplace":"amazon","lookup_query":"Desonra J.M. Coetzee livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":9,"ano_sorteado":1999,"popularidade_id":4},
+{"titulo":"A Casa dos Espíritos","autor":"Isabel Allende","marketplace":"mercado_livre","lookup_query":"A Casa dos Espíritos Isabel Allende livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":7,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"O Clube dos Anjos","autor":"Luis Fernando Verissimo","marketplace":"amazon","lookup_query":"O Clube dos Anjos Luis Fernando Verissimo livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1998,"popularidade_id":4},
+{"titulo":"A Menina que Roubava Livros","autor":"Markus Zusak","marketplace":"mercado_livre","lookup_query":"A Menina que Roubava Livros Markus Zusak livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":10,"ano_sorteado":1999,"popularidade_id":5},
+{"titulo":"O Caçador de Pipas","autor":"Khaled Hosseini","marketplace":"amazon","lookup_query":"O Caçador de Pipas Khaled Hosseini livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":11,"ano_sorteado":1999,"popularidade_id":5},
+{"titulo":"O Nome da Rosa","autor":"Umberto Eco","marketplace":"mercado_livre","lookup_query":"O Nome da Rosa Umberto Eco livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Talentoso Ripley","autor":"Patricia Highsmith","marketplace":"amazon","lookup_query":"O Talentoso Ripley Patricia Highsmith livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"As Virgens Suicidas","autor":"Jeffrey Eugenides","marketplace":"mercado_livre","lookup_query":"As Virgens Suicidas Jeffrey Eugenides livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1993,"popularidade_id":4},
+{"titulo":"O Quarto de Giovanni","autor":"James Baldwin","marketplace":"amazon","lookup_query":"O Quarto de Giovanni James Baldwin livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":4},
+{"titulo":"O Show do Milhão","autor":"Silvio Santos","marketplace":"mercado_livre","lookup_query":"O Show do Milhão Silvio Santos livro","categoria":"biografia","idioma":"pt","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1999,"popularidade_id":3},
+
+{"titulo":"Capitães da Areia","autor":"Jorge Amado","marketplace":"amazon","lookup_query":"Capitães da Areia Jorge Amado livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"Dom Casmurro","autor":"Machado de Assis","marketplace":"mercado_livre","lookup_query":"Dom Casmurro Machado de Assis livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":1,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Iluminado","autor":"Stephen King","marketplace":"amazon","lookup_query":"O Iluminado Stephen King livro","categoria":"terror","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"À Espera de um Milagre","autor":"Stephen King","marketplace":"mercado_livre","lookup_query":"À Espera de um Milagre Stephen King livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1996,"popularidade_id":5},
+{"titulo":"Insônia","autor":"Stephen King","marketplace":"amazon","lookup_query":"Insônia Stephen King livro","categoria":"terror","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1994,"popularidade_id":4},
+
+{"titulo":"O Diário de Bridget Jones","autor":"Helen Fielding","marketplace":"mercado_livre","lookup_query":"O Diário de Bridget Jones Helen Fielding livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1996,"popularidade_id":5},
+
+{"titulo":"O Perfume","autor":"Patrick Süskind","marketplace":"amazon","lookup_query":"O Perfume Patrick Süskind livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":12,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"A Estrada","autor":"Cormac McCarthy","marketplace":"mercado_livre","lookup_query":"A Estrada Cormac McCarthy livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":5},
+
+{"titulo":"O Poder do Hábito","autor":"Charles Duhigg","marketplace":"amazon","lookup_query":"O Poder do Hábito Charles Duhigg livro","categoria":"negocios","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":5},
+
+{"titulo":"Pai Rico Pai Pobre","autor":"Robert Kiyosaki","marketplace":"mercado_livre","lookup_query":"Pai Rico Pai Pobre Robert Kiyosaki livro","categoria":"negocios","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1997,"popularidade_id":5},
+
+{"titulo":"Quem Mexeu no Meu Queijo","autor":"Spencer Johnson","marketplace":"amazon","lookup_query":"Quem Mexeu no Meu Queijo Spencer Johnson livro","categoria":"negocios","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1998,"popularidade_id":5},
+
+{"titulo":"Os Sete Hábitos das Pessoas Altamente Eficazes","autor":"Stephen Covey","marketplace":"mercado_livre","lookup_query":"Os Sete Hábitos das Pessoas Altamente Eficazes Stephen Covey livro","categoria":"negocios","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Inteligência Emocional","autor":"Daniel Goleman","marketplace":"amazon","lookup_query":"Inteligência Emocional Daniel Goleman livro","categoria":"psicologia","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1995,"popularidade_id":5},
+
+{"titulo":"O Andar do Bêbado","autor":"Leonard Mlodinow","marketplace":"mercado_livre","lookup_query":"O Andar do Bêbado Leonard Mlodinow livro","categoria":"ciencia","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":4},
+
+{"titulo":"Breves Respostas para Grandes Questões","autor":"Stephen Hawking","marketplace":"amazon","lookup_query":"Breves Respostas para Grandes Questões Stephen Hawking livro","categoria":"ciencia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1999,"popularidade_id":5},
+
+{"titulo":"Uma Breve História do Tempo","autor":"Stephen Hawking","marketplace":"mercado_livre","lookup_query":"Uma Breve História do Tempo Stephen Hawking livro","categoria":"ciencia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Gene Egoísta","autor":"Richard Dawkins","marketplace":"amazon","lookup_query":"O Gene Egoísta Richard Dawkins livro","categoria":"ciencia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Relojoeiro Cego","autor":"Richard Dawkins","marketplace":"mercado_livre","lookup_query":"O Relojoeiro Cego Richard Dawkins livro","categoria":"ciencia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1991,"popularidade_id":4},
+
+{"titulo":"Sapiens","autor":"Yuval Noah Harari","marketplace":"amazon","lookup_query":"Sapiens Yuval Noah Harari livro","categoria":"historia","idioma":"pt","cluster_id":1,"nacionalidade_id":13,"ano_sorteado":1999,"popularidade_id":5},
+
+{"titulo":"Armas Germes e Aço","autor":"Jared Diamond","marketplace":"mercado_livre","lookup_query":"Armas Germes e Aço Jared Diamond livro","categoria":"historia","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1997,"popularidade_id":5},
+
+{"titulo":"Colapso","autor":"Jared Diamond","marketplace":"amazon","lookup_query":"Colapso Jared Diamond livro","categoria":"historia","idioma":"pt","cluster_id":1,"nacionalidade_id":2,"ano_sorteado":1999,"popularidade_id":4},
+
+{"titulo":"O Capital no Século XXI","autor":"Thomas Piketty","marketplace":"mercado_livre","lookup_query":"O Capital no Século XXI Thomas Piketty livro","categoria":"economia","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1999,"popularidade_id":5},
+
+{"titulo":"A Riqueza das Nações","autor":"Adam Smith","marketplace":"amazon","lookup_query":"A Riqueza das Nações Adam Smith livro","categoria":"economia","idioma":"pt","cluster_id":1,"nacionalidade_id":3,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Príncipe","autor":"Nicolau Maquiavel","marketplace":"mercado_livre","lookup_query":"O Príncipe Nicolau Maquiavel livro","categoria":"politica","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"A Arte da Guerra","autor":"Sun Tzu","marketplace":"amazon","lookup_query":"A Arte da Guerra Sun Tzu livro","categoria":"estrategia","idioma":"pt","cluster_id":1,"nacionalidade_id":14,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Meditacoes","autor":"Marco Aurelio","marketplace":"mercado_livre","lookup_query":"Meditacoes Marco Aurelio livro","categoria":"filosofia","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Assim Falou Zaratustra","autor":"Friedrich Nietzsche","marketplace":"amazon","lookup_query":"Assim Falou Zaratustra Friedrich Nietzsche livro","categoria":"filosofia","idioma":"pt","cluster_id":1,"nacionalidade_id":12,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Anticristo","autor":"Friedrich Nietzsche","marketplace":"mercado_livre","lookup_query":"O Anticristo Friedrich Nietzsche livro","categoria":"filosofia","idioma":"pt","cluster_id":1,"nacionalidade_id":12,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Crime e Castigo","autor":"Fiodor Dostoievski","marketplace":"amazon","lookup_query":"Crime e Castigo Fiodor Dostoievski livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":15,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Os Irmaos Karamazov","autor":"Fiodor Dostoievski","marketplace":"mercado_livre","lookup_query":"Os Irmaos Karamazov Fiodor Dostoievski livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":15,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Guerra e Paz","autor":"Leon Tolstoi","marketplace":"amazon","lookup_query":"Guerra e Paz Leon Tolstoi livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":15,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"Anna Karenina","autor":"Leon Tolstoi","marketplace":"mercado_livre","lookup_query":"Anna Karenina Leon Tolstoi livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":15,"ano_sorteado":1990,"popularidade_id":5},
+
+{"titulo":"O Estrangeiro","autor":"Albert Camus","marketplace":"amazon","lookup_query":"O Estrangeiro Albert Camus livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1990,"popularidade_id":5},
+{"titulo":"A Peste","autor":"Albert Camus","marketplace":"mercado_livre","lookup_query":"A Peste Albert Camus livro","categoria":"ficcao","idioma":"pt","cluster_id":1,"nacionalidade_id":4,"ano_sorteado":1990,"popularidade_id":5}
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "titulo": "Senhora",
+    "autor": "José de Alencar",
+    "marketplace": "amazon",
+    "lookup_query": "Senhora José de Alencar livro",
+    "categoria": "Romance Histórico",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1875,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "O Guarani",
+    "autor": "José de Alencar",
+    "marketplace": "mercado_livre",
+    "lookup_query": "O Guarani José de Alencar livro",
+    "categoria": "Romance Histórico",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1857,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "Iracema",
+    "autor": "José de Alencar",
+    "marketplace": "amazon",
+    "lookup_query": "Iracema José de Alencar livro",
+    "categoria": "Romance Histórico",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1865,
+    "popularidade_id": 4
+  },
+  {
+    "titulo": "A Moreninha",
+    "autor": "Joaquim Manuel de Macedo",
+    "marketplace": "mercado_livre",
+    "lookup_query": "A Moreninha Joaquim Manuel de Macedo livro",
+    "categoria": "Romance Histórico",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1844,
+    "popularidade_id": 3
+  },
+  {
+    "titulo": "Memórias de um Sargento de Milícias",
+    "autor": "Manuel Antônio de Almeida",
+    "marketplace": "amazon",
+    "lookup_query": "Memórias de um Sargento de Milícias Manuel Antônio de Almeida livro",
+    "categoria": "Romance Histórico",
+    "idioma": "PT",
+    "cluster_id": 1,
+    "nacionalidade_id": 1,
+    "ano_sorteado": 1854,
+    "popularidade_id": 4
+  }
+]
