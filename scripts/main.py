@@ -23,6 +23,7 @@ from steps import categorize
 from steps import offer_price_monitor
 from steps import publish_categorias
 from steps import publish_listas
+from steps import repair
 
 from steps.export_state_transcript import export_state_transcript
 
@@ -176,6 +177,7 @@ S  → Status do pipeline (gargalos)
 --- AUDITORIA ---
 21 → Auditar conectividade do site (sem LLM)
 22 → Auditar conteúdo publicado (LLM)
+23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 
 --- EXPORTS ---
 91 → Export Site Bootstrap
@@ -324,6 +326,10 @@ Limite de livros para auditoria:
             import argparse
             args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
             auditor.run(args)
+
+        elif op == "23":
+            log("Reparando publicações com dados ruins…")
+            repair.run()
 
         elif op == "91":
             log("Exportando Site Bootstrap…")
