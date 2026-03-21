@@ -486,6 +486,7 @@ def run(limite=None):
 
         if already_imported(conn, filename):
             log(f"[SKIP] {filename} — ja importado anteriormente")
+            move_to_ingested(filepath, filename)   # garante que o arquivo saia de seeds/
             continue
 
         inserted, skipped, atingiu = process_file(
