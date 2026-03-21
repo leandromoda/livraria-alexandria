@@ -129,11 +129,12 @@ def run():
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates,return=representation",
+        "Prefer": "return=representation",
     }
 
-    # on_conflict por livro + marketplace — evita duplicatas se re-rodado
-    ofertas_url = f"{supabase_url}/rest/v1/ofertas?on_conflict=livro_id,marketplace"
+    # fetch_pendentes só retorna registros com status_publish_oferta=0,
+    # portanto re-runs não geram duplicatas sem precisar de on_conflict
+    ofertas_url = f"{supabase_url}/rest/v1/ofertas"
 
     rows = fetch_pendentes(conn)
 

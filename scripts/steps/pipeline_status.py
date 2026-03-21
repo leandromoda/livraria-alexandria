@@ -99,7 +99,7 @@ def run():
     # Funil principal
     com_descricao      = q(conn, "SELECT COUNT(*) FROM livros WHERE descricao IS NOT NULL AND trim(descricao) != ''")
     com_offer_url      = q(conn, "SELECT COUNT(*) FROM livros WHERE offer_url IS NOT NULL AND trim(offer_url) != ''")
-    com_scraper        = q(conn, "SELECT COUNT(*) FROM livros WHERE status_enrich = 1")
+    com_scraper        = q(conn, "SELECT COUNT(*) FROM livros WHERE status_enrich IN (1, 2)")
     com_slug           = q(conn, "SELECT COUNT(*) FROM livros WHERE status_slug = 1")
     deduplicados       = q(conn, "SELECT COUNT(*) FROM livros WHERE status_dedup = 1")
     revisados          = q(conn, "SELECT COUNT(*) FROM livros WHERE status_review = 1")
@@ -109,6 +109,11 @@ def run():
     publicaveis        = q(conn, "SELECT COUNT(*) FROM livros WHERE is_publishable = 1")
     publicados         = q(conn, "SELECT COUNT(*) FROM livros WHERE status_publish = 1")
     oferta_publicada   = q(conn, "SELECT COUNT(*) FROM livros WHERE status_publish_oferta = 1")
+
+    # categorias temáticas publicadas (livros com ao menos 1 categoria publicada)
+    pub_categorias     = q(conn, """
+        SELECT COUNT(DISTINCT livro_id) FROM livros_categorias_tematicas
+    """)
 
     # Pendentes (gargalos)
     revisados_sem_sinopse  = q(conn, "SELECT COUNT(*) FROM livros WHERE status_review = 1 AND status_synopsis = 0")
@@ -129,7 +134,7 @@ def run():
     # ── Ofertas (tabela livros) ──────────────────────────────────
 
     total_com_oferta   = q(conn, "SELECT COUNT(*) FROM livros WHERE offer_url IS NOT NULL")
-    oferta_ativa       = q(conn, "SELECT COUNT(*) FROM livros WHERE offer_status = 'active' AND offer_url IS NOT NULL")
+    oferta_ativa       = q(conn, "SELECT COUNT(*) FROM livros WHERE COALESCE(offer_status, 'active') = 'active' AND offer_url IS NOT NULL")
     oferta_indisponivel = q(conn, "SELECT COUNT(*) FROM livros WHERE offer_status = 'unavailable'")
 
     conn.close()
@@ -156,19 +161,20 @@ def run():
 
     # Funil
     steps = [
-        ("1  Importados",         total,          total),
-        ("2  Com descrição",       com_descricao,  total),
-        ("3  Com offer_url",       com_offer_url,  total),
-        ("4  Marketplace scraper", com_scraper,    total),
-        ("5  Com slug",            com_slug,       total),
-        ("7  Deduplicados",        deduplicados,   total),
-        ("8  Com review",          revisados,      total),
-        ("9  Categorizados",       categorizados,  total),
-        ("10 Com sinopse",         com_sinopse,    total),
-        ("11 Com capa",            com_capa,       total),
-        ("12 Publicáveis (gate)",  publicaveis,    total),
-        ("13 Publicados",          publicados,     total),
-        ("15 Oferta publicada",    oferta_publicada, total),
+        ("1  Importados",          total,            total),
+        ("2  Com descrição",        com_descricao,    total),
+        ("3  Com offer_url",        com_offer_url,    total),
+        ("4  Marketplace scraper",  com_scraper,      total),
+        ("5  Com slug",             com_slug,         total),
+        ("8  Deduplicados",         deduplicados,     total),
+        ("9  Com review",           revisados,        total),
+        ("10 Categorizados",        categorizados,    total),
+        ("11 Com sinopse",          com_sinopse,      total),
+        ("12 Com capa",             com_capa,         total),
+        ("13 Publicáveis (gate)",   publicaveis,      total),
+        ("14 Publicados",           publicados,       total),
+        ("16 Cat. pub. (livros)",   pub_categorias,   total),
+        ("17 Oferta publicada",     oferta_publicada, total),
     ]
 
     print()
@@ -186,13 +192,13 @@ def run():
     gargalos = []
 
     if revisados_sem_sinopse > 0:
-        gargalos.append(f"Step 10 (Sinopses):         {revisados_sem_sinopse:>5,} com review mas sem sinopse")
+        gargalos.append(f"Step 11 (Sinopses):         {revisados_sem_sinopse:>5,} com review mas sem sinopse")
     if com_sinopse_sem_gate > 0:
-        gargalos.append(f"Step 12 (Quality Gate):     {com_sinopse_sem_gate:>5,} com sinopse mas não publicáveis")
+        gargalos.append(f"Step 13 (Quality Gate):     {com_sinopse_sem_gate:>5,} com sinopse mas não publicáveis")
     if publicaveis_nao_pub > 0:
-        gargalos.append(f"Step 13 (Publicar):         {publicaveis_nao_pub:>5,} publicáveis ainda não publicados")
+        gargalos.append(f"Step 14 (Publicar):         {publicaveis_nao_pub:>5,} publicáveis ainda não publicados")
     if pub_sem_oferta > 0:
-        gargalos.append(f"Step 15 (Pub. Ofertas):     {pub_sem_oferta:>5,} publicados sem oferta publicada")
+        gargalos.append(f"Step 17 (Pub. Ofertas):     {pub_sem_oferta:>5,} publicados sem oferta publicada")
     if seeds_pendentes > 0:
         gargalos.append(f"Step 1  (Seeds):            {seeds_pendentes:>5,} arquivo(s) aguardando ingestão")
 
