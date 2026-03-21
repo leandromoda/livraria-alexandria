@@ -266,8 +266,9 @@ S  → Status do pipeline (gargalos)
             publish_categorias.run()
 
         elif op == "17":
+            pacote = escolher_pacote()
             log("Publicando ofertas no Supabase…")
-            publish_ofertas.run()
+            publish_ofertas.run(pacote)
 
         elif op == "18":
             log("Gerando listas SEO automáticas…")

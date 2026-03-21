@@ -35,7 +35,7 @@ MAX_RETRIES = 3
 # FETCH
 # =========================
 
-def fetch_pendentes(conn):
+def fetch_pendentes(conn, pacote):
 
     cur = conn.cursor()
 
@@ -53,7 +53,8 @@ def fetch_pendentes(conn):
           AND status_publish_oferta = 0
           AND offer_url             IS NOT NULL
           AND supabase_id           IS NOT NULL
-    """)
+        LIMIT ?
+    """, (pacote,))
 
     return cur.fetchall()
 
@@ -113,7 +114,7 @@ def mark_published(conn, local_id):
 # RUN
 # =========================
 
-def run():
+def run(pacote=100):
 
     conn = get_conn()
 
@@ -136,7 +137,7 @@ def run():
     # portanto re-runs não geram duplicatas sem precisar de on_conflict
     ofertas_url = f"{supabase_url}/rest/v1/ofertas"
 
-    rows = fetch_pendentes(conn)
+    rows = fetch_pendentes(conn, pacote)
 
     if not rows:
         log("Nenhuma oferta pendente para publicação.")
