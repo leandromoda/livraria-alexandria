@@ -85,7 +85,7 @@ def build_prompt(titulo, autor, descricao, sinopse, slugs_list):
     texto_base = descricao or sinopse or ""
     texto_base = texto_base[:800] if len(texto_base) > 800 else texto_base
 
-    slugs_sample = slugs_list[:80]  # limitar para não estourar contexto
+    slugs_sample = slugs_list  # taxonomia completa (~190 slugs ≈ 1.400 tokens, seguro para Gemini)
 
     return f"""{SYSTEM_PROMPT}
 
@@ -165,6 +165,30 @@ def save_categories(conn, livro_id, slugs):
     """, (livro_id,))
 
     conn.commit()
+
+
+# =========================
+# RESET FAILED
+# =========================
+
+def reset_failed(conn=None):
+    """Reseta livros com status_categorize=2 para 0 para reprocessamento."""
+    close_conn = conn is None
+    if conn is None:
+        conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE livros
+        SET status_categorize = 0,
+            updated_at        = CURRENT_TIMESTAMP
+        WHERE status_categorize = 2
+    """)
+    conn.commit()
+    affected = cur.rowcount
+    if close_conn:
+        conn.close()
+    log(f"[CATEGORIZE] reset_failed: {affected} livro(s) revertidos para status_categorize=0")
+    return affected
 
 
 # =========================
