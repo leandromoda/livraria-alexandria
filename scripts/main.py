@@ -30,6 +30,8 @@ from steps import db_backup
 from steps import db_restore
 from steps import db_recover
 
+from core.version import get_version
+
 
 # =========================
 # INPUT CONTROL
@@ -372,6 +374,9 @@ Limite de livros para auditoria:
 
         else:
             print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
 
 
 # =========================
