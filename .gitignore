@@ -40,4 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 acess.txt
-.claude/worktrees/sharp-albattani/
+/.claude/worktrees/
+
+# pipeline artifacts
+runtime/tmp/
+**/__pycache__/
+scripts/alexandria.db
+scripts/data/*.db-wal
+scripts/data/*.db-shm
