@@ -52,7 +52,7 @@ def fetch_pending(conn, idioma, limit):
     cur.execute("""
         SELECT
             id, titulo, slug, autor,
-            sinopse, descricao, isbn, ano_publicacao,
+            sinopse, isbn, ano_publicacao,
             imagem_url, supabase_id,
             is_publishable, editorial_score,
             is_book, updated_at,
@@ -61,11 +61,9 @@ def fetch_pending(conn, idioma, limit):
         WHERE status_publish  = 0
           AND status_review   = 1
           AND is_publishable  = 1
-          AND (
-              (status_synopsis = 1 AND sinopse IS NOT NULL AND sinopse != '')
-              OR
-              (descricao IS NOT NULL AND length(descricao) >= 200)
-          )
+          AND status_synopsis = 1
+          AND sinopse IS NOT NULL
+          AND sinopse != ''
           AND idioma          = ?
         LIMIT ?
     """, (idioma, limit))
@@ -94,7 +92,7 @@ def build_payload(row):
     now = datetime.utcnow().isoformat()
 
     (local_id, titulo, slug, autor,
-     sinopse, descricao, isbn, ano_publicacao,
+     sinopse, isbn, ano_publicacao,
      imagem_url, existing_supabase_id,
      is_publishable, editorial_score,
      is_book, local_updated_at,
@@ -102,15 +100,12 @@ def build_payload(row):
 
     supabase_uuid = resolve_uuid(local_id, existing_supabase_id)
 
-    # Prefere sinopse LLM; fallback para descricao bruta quando sinopse ausente
-    texto_publicavel = sinopse if sinopse else descricao
-
     payload = {
         "id":                 supabase_uuid,
         "titulo":             titulo,
         "slug":               slug,
         "autor":              autor,
-        "descricao":          texto_publicavel,  # sinopse LLM ou descricao bruta
+        "descricao":          sinopse,      # campo no Supabase recebe a sinopse gerada
         "isbn":               isbn,
         "ano_publicacao":     ano_publicacao,
         "imagem_url":         imagem_url,
