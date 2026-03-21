@@ -86,7 +86,8 @@ def fetch_pending(conn, idioma, limit):
         FROM livros
         WHERE idioma = ?
           AND lookup_query IS NOT NULL
-          AND (offer_status IS NULL OR offer_status = 0)
+          AND offer_url IS NULL
+          AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')
         LIMIT ?
     """, (idioma, limit))
 

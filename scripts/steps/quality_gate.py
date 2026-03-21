@@ -15,7 +15,8 @@ from core.logger import log
 # CONFIG
 # =========================
 
-MIN_SYNOPSIS_LEN = 400
+MIN_SYNOPSIS_LEN  = 400
+MIN_DESCRICAO_LEN = 200  # descricao bruta (scraping/API) aceita com threshold menor
 
 GENERIC_SYNOPSIS_MARKERS = [
     "contexto não especificado",
@@ -43,6 +44,7 @@ def fetch_candidates(conn, limit):
             id,
             titulo,
             sinopse,
+            descricao,
             imagem_url,
             idioma,
             is_book,
@@ -148,7 +150,7 @@ def run(idioma_base="PT", pacote=20):
     for i, row in enumerate(rows, start=1):
 
         (
-            book_id, titulo, sinopse, imagem_url,
+            book_id, titulo, sinopse, descricao, imagem_url,
             idioma, is_book, editorial_score,
             status_slug, status_synopsis,
             status_review, status_cover
@@ -159,20 +161,21 @@ def run(idioma_base="PT", pacote=20):
         if status_slug != 1:
             motivos.append("Slug pendente")
 
-        if status_synopsis != 1:
-            motivos.append("Sinopse pendente")
-
         if status_review != 1:
             motivos.append("Review pendente")
 
         if status_cover not in (1, 2):
             motivos.append("Capa pendente")
 
-        if not check_synopsis_len(sinopse):
-            motivos.append("Sinopse curta ou ausente")
-
-        if check_synopsis_generic(sinopse):
-            motivos.append("Sinopse genérica (template LLM)")
+        # Aceita sinopse LLM ou descricao bruta com threshold menor
+        has_sinopse = (
+            status_synopsis == 1
+            and check_synopsis_len(sinopse)
+            and not check_synopsis_generic(sinopse)
+        )
+        has_descricao = bool(descricao) and len(descricao) >= MIN_DESCRICAO_LEN
+        if not has_sinopse and not has_descricao:
+            motivos.append("Sinopse/descrição insuficiente")
 
         lang_ok, lang_msg = check_language(idioma, idioma_base)
         if not lang_ok:
