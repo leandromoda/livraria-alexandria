@@ -17,6 +17,18 @@ from core.logger import log
 
 MIN_SYNOPSIS_LEN = 400
 
+GENERIC_SYNOPSIS_MARKERS = [
+    "contexto não especificado",
+    "escopo narrativo",
+    "jornada que convida o leitor",
+    "aspectos fundamentais da vida",
+    "complexidades de uma situação central",
+    "série de eventos que moldam",
+    "narrativa que se desenrola em um contexto",
+    "condição humana, às relações interpessoais",
+    "trama se desenvolve através de uma série",
+]
+
 
 # =========================
 # FETCH
@@ -55,6 +67,14 @@ def check_synopsis_len(texto):
     if not texto:
         return False
     return len(texto) >= MIN_SYNOPSIS_LEN
+
+
+def check_synopsis_generic(texto):
+    """Retorna True se a sinopse for um template genérico do LLM."""
+    if not texto:
+        return False
+    lower = texto.lower()
+    return any(marker in lower for marker in GENERIC_SYNOPSIS_MARKERS)
 
 
 def check_language(idioma_detectado, idioma_base):
@@ -150,6 +170,9 @@ def run(idioma_base="PT", pacote=20):
 
         if not check_synopsis_len(sinopse):
             motivos.append("Sinopse curta ou ausente")
+
+        if check_synopsis_generic(sinopse):
+            motivos.append("Sinopse genérica (template LLM)")
 
         lang_ok, lang_msg = check_language(idioma, idioma_base)
         if not lang_ok:
