@@ -147,7 +147,6 @@ def run():
             "slug":           lista["slug"],
             "titulo":         lista["titulo"],
             "introducao":     lista["descricao"],
-            "categoria_slug": lista["categoria_slug"],
             "status_publish": True,
         }
 
