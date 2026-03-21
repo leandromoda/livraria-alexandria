@@ -24,6 +24,7 @@ from steps import offer_price_monitor
 from steps import publish_categorias
 from steps import publish_listas
 from steps import repair
+from steps import targeted_repair
 
 from steps.export_state_transcript import export_state_transcript
 from steps import db_backup
@@ -183,6 +184,7 @@ S  → Status do pipeline (gargalos)
 21 → Auditar conectividade do site (sem LLM)
 22 → Auditar conteúdo publicado (LLM)
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
+24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 
 --- BANCO DE DADOS ---
 95 → Fazer backup do banco local
@@ -343,6 +345,30 @@ Limite de livros para auditoria:
         elif op == "23":
             log("Reparando publicações com dados ruins…")
             repair.run()
+
+        elif op == "24":
+            print("""
+Tipo de reset:
+
+sinopse → reseta sinopse + status_publish (re-rodar steps 11 → 13 → 14)
+capa    → reseta capa + status_publish    (re-rodar steps 12 → 13 → 14)
+ambos   → ambos acima
+""")
+            reset_type = input_safe("Reset type [sinopse/capa/ambos]: ").strip().lower()
+            if reset_type not in ("sinopse", "capa", "ambos"):
+                print("Tipo inválido. Use: sinopse | capa | ambos\n")
+            else:
+                print("Digite os slugs, um por linha. Linha vazia para encerrar:")
+                slugs = []
+                while True:
+                    s = input_safe("Slug: ").strip()
+                    if not s:
+                        break
+                    slugs.append(s)
+                if slugs:
+                    targeted_repair.run(slugs, reset_type)
+                else:
+                    print("Nenhum slug informado.\n")
 
         elif op == "95":
             log("Fazendo backup do banco local…")
