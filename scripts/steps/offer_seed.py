@@ -231,6 +231,9 @@ def ensure_tables(conn):
         ("status_publish_oferta",  "INTEGER DEFAULT 0"),
         ("status_enrich",          "INTEGER DEFAULT 0"),
         ("status_categorize",      "INTEGER DEFAULT 0"),
+        ("cluster_id",             "INTEGER"),
+        ("nacionalidade_id",       "INTEGER"),
+        ("popularidade_id",        "INTEGER"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
@@ -291,9 +294,25 @@ def move_to_ingested(filepath, filename):
 # =========================
 
 def load_seeds(filepath):
-
+    """
+    Suporta dois formatos:
+      - JSON array:  [{...}, {...}]          (formato legado, arquivos 001-117)
+      - NDJSON:      {...}\n{...}\n{...}     (formato novo, arquivos 118+)
+    """
     with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+        content = f.read().strip()
+
+    # Tenta array JSON primeiro
+    if content.startswith("["):
+        return json.loads(content)
+
+    # NDJSON: uma linha por objeto
+    seeds = []
+    for line in content.splitlines():
+        line = line.strip()
+        if line:
+            seeds.append(json.loads(line))
+    return seeds
 
 
 # =========================
