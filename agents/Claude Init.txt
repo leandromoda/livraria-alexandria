@@ -1,0 +1,14 @@
+[pipeline]
+
+Descreva a arquitetura atual do projeto e me diga quais arquivos são mais importantes. 
+Escopo: pipeline local do site Livraria Alexandria, pasta /scripts (o site em si é tratado em outro agente).
+
+
+[site]
+
+Descreva a arquitetura atual do projeto e me diga quais arquivos são mais importantes. 
+Escopo: site Livraria Alexandria (pipeline local tratado em outro agente).
+
+
+
+A recomendação geral: comece em Plan mode para tarefas novas, depois use Auto accept quando já tiver aprovado o plano.
