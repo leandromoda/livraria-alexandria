@@ -91,20 +91,22 @@ def fetch_categorias_validas():
     conn = get_conn()
     cur = conn.cursor()
 
-    cur.execute("""
+    try:
+        cur.execute("""
 
-    SELECT
-        categoria,
-        COUNT(*) as total
-    FROM livros
-    WHERE editorial_score >= 1
-    AND status_publish = 1
-    GROUP BY categoria
-    HAVING COUNT(*) >= ?
+        SELECT
+            categoria,
+            COUNT(*) as total
+        FROM livros
+        WHERE editorial_score >= 1
+        AND status_publish = 1
+        GROUP BY categoria
+        HAVING COUNT(*) >= ?
 
-    """, (MIN_LIVROS_LISTA,))
-
-    rows = cur.fetchall()
+        """, (MIN_LIVROS_LISTA,))
+        rows = cur.fetchall()
+    except Exception:
+        rows = []
     conn.close()
 
     return rows
@@ -512,9 +514,7 @@ def run():
     categorias = fetch_categorias_validas()
 
     if not categorias:
-
         log("Nenhuma categoria elegível encontrada.")
-        return
 
     listas_criadas  = 0
     total_categorias = len(categorias)
