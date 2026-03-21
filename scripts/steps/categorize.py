@@ -14,6 +14,8 @@
 import json
 import os
 
+MAX_CATEGORIZE_ATTEMPTS = int(os.getenv("MAX_CATEGORIZE_ATTEMPTS", "3"))
+
 from datetime import datetime
 from core.db import get_conn
 from core.logger import log
@@ -116,7 +118,8 @@ def parse_response(response_text, taxonomy):
         # Remover markdown code blocks se presentes
         text = response_text.strip()
         if "```" in text:
-            text = text.split("```")[1]
+            parts = text.split("```")
+            text = parts[1] if len(parts) >= 2 else text
             if text.startswith("json"):
                 text = text[4:]
         text = text.strip()
@@ -127,6 +130,7 @@ def parse_response(response_text, taxonomy):
     except Exception:
         # Fallback: extrair slugs com regex
         import re
+        log("[CATEGORIZE] WARN — fallback regex acionado (resposta LLM não é JSON válido)")
         slugs = re.findall(r'"([a-z][a-z0-9\-]+)"', response_text)
 
     # Validar slugs contra taxonomy
@@ -172,22 +176,35 @@ def save_categories(conn, livro_id, slugs):
 # =========================
 
 def reset_failed(conn=None):
-    """Reseta livros com status_categorize=2 para 0 para reprocessamento."""
+    """Reseta livros com status_categorize=2 para 0, respeitando MAX_CATEGORIZE_ATTEMPTS."""
     close_conn = conn is None
     if conn is None:
         conn = get_conn()
     cur = conn.cursor()
+
     cur.execute("""
         UPDATE livros
         SET status_categorize = 0,
             updated_at        = CURRENT_TIMESTAMP
         WHERE status_categorize = 2
-    """)
+          AND COALESCE(categorize_attempts, 0) < ?
+    """, (MAX_CATEGORIZE_ATTEMPTS,))
     conn.commit()
     affected = cur.rowcount
+
+    cur.execute("""
+        SELECT COUNT(*) FROM livros
+        WHERE status_categorize = 2
+          AND COALESCE(categorize_attempts, 0) >= ?
+    """, (MAX_CATEGORIZE_ATTEMPTS,))
+    exhausted = cur.fetchone()[0]
+
     if close_conn:
         conn.close()
+
     log(f"[CATEGORIZE] reset_failed: {affected} livro(s) revertidos para status_categorize=0")
+    if exhausted:
+        log(f"[CATEGORIZE] reset_failed: {exhausted} livro(s) ignorados (>= {MAX_CATEGORIZE_ATTEMPTS} tentativas sem categoria)")
     return affected
 
 
@@ -238,9 +255,12 @@ def run(idioma=None, pacote=50):
                 ok += 1
             else:
                 log(f"[CATEGORIZE] Sem categorias válidas para: {titulo}")
-                # Marca como tentado para não reprocessar infinitamente
+                # Marca como tentado e incrementa contador de tentativas
                 conn.execute("""
-                    UPDATE livros SET status_categorize = 2, updated_at = CURRENT_TIMESTAMP
+                    UPDATE livros
+                    SET status_categorize    = 2,
+                        categorize_attempts  = COALESCE(categorize_attempts, 0) + 1,
+                        updated_at           = CURRENT_TIMESTAMP
                     WHERE id = ?
                 """, (livro_id,))
                 conn.commit()

@@ -127,6 +127,7 @@ def ensure_schema(conn):
         ("marketplace",           "TEXT"),
         ("lookup_query",          "TEXT"),
         ("categoria",             "TEXT"),
+        ("categorize_attempts",   "INTEGER DEFAULT 0"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
