@@ -25,6 +25,7 @@ from steps import publish_categorias
 from steps import publish_listas
 from steps import repair
 from steps import targeted_repair
+from steps import autopilot
 
 from steps.export_state_transcript import export_state_transcript
 from steps import db_backup
@@ -149,6 +150,7 @@ def main():
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
 S  → Status do pipeline (gargalos)
+A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 
 --- INGESTÃO ---
 1  → Importar Offer Seeds
@@ -204,6 +206,11 @@ S  → Status do pipeline (gargalos)
 
         if op == "0":
             break
+
+        elif op.upper() == "A":
+            pacote = escolher_pacote()
+            log("Iniciando autopilot (sem LLM)...")
+            autopilot.run(idioma, pacote)
 
         elif op in ("s", "S"):
             pipeline_status.run()
