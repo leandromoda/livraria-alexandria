@@ -63,8 +63,8 @@ def generate_unique_slug(conn, nome):
 # FETCH
 # =========================
 
-def fetch_livros_com_autor(conn):
-    """Retorna todos os livros com campo autor preenchido."""
+def fetch_livros_com_autor(conn, pacote: int):
+    """Retorna até `pacote` livros com campo autor preenchido e sem relação já criada."""
 
     cur = conn.cursor()
 
@@ -73,7 +73,9 @@ def fetch_livros_com_autor(conn):
         FROM livros
         WHERE autor IS NOT NULL
           AND trim(autor) != ''
-    """)
+          AND id NOT IN (SELECT livro_id FROM livros_autores)
+        LIMIT ?
+    """, (pacote,))
 
     return cur.fetchall()
 
@@ -127,11 +129,11 @@ def insert_relacao(conn, livro_id, autor_id):
 # RUN
 # =========================
 
-def run():
+def run(pacote: int = 100):
 
     conn = get_conn()
 
-    rows = fetch_livros_com_autor(conn)
+    rows = fetch_livros_com_autor(conn, pacote)
 
     if not rows:
         log("Nenhum livro com autor encontrado.")

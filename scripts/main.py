@@ -241,8 +241,9 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
             slugify.run(idioma, pacote)
 
         elif op == "6":
+            pacote = escolher_pacote()
             log("Slugificando autores…")
-            slugify_autores.run()
+            slugify_autores.run(pacote)
 
         elif op == "7":
             log("Deduplicando autores…")
