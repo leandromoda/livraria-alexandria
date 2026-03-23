@@ -52,5 +52,6 @@ scripts/data/books.db
 scripts/data/backup/*.db
 scripts/data/audit_*.json
 
-# state exports (auto-gerados)
-state/
+# state exports (auto-gerados) — exceto o estado do projeto
+state/*
+!state/project_state.json
