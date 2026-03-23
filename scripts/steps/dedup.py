@@ -8,6 +8,7 @@
 
 import os
 import sqlite3
+import unicodedata
 from datetime import datetime
 from difflib import SequenceMatcher
 
@@ -50,8 +51,20 @@ def get_conn():
 # SIMILARITY
 # =========================
 
+def _norm(s):
+    """Normaliza texto para comparação: NFKD → ASCII → minúsculas."""
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
+
+
 def similar(a, b):
-    return SequenceMatcher(None, a, b).ratio()
+    return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
+
+
+def accent_score(s):
+    """Conta caracteres com acento/diacrítico (perdidos na conversão ASCII)."""
+    if not s:
+        return 0
+    return len(s) - len(s.encode("ascii", "ignore").decode("ascii"))
 
 
 # =========================
@@ -63,7 +76,7 @@ def fetch_pending(conn, idioma, limit):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, titulo, slug, isbn
+        SELECT id, titulo, slug, isbn, autor
         FROM livros
         WHERE status_dedup = 0
           AND idioma = ?
@@ -83,7 +96,7 @@ def find_duplicates(conn, book, idioma):
 
     cur.execute("""
         SELECT id, titulo, slug, isbn,
-               descricao, imagem_url, ano_publicacao
+               descricao, imagem_url, ano_publicacao, autor
         FROM livros
         WHERE id != ?
           AND idioma = ?
@@ -112,33 +125,44 @@ def find_duplicates(conn, book, idioma):
 # MERGE
 # =========================
 
-def merge_books(conn, master_id, dup_row):
+def merge_books(conn, master, dup_row):
 
     cur = conn.cursor()
 
-    dup_id = dup_row[0]
+    master_id  = master["id"]
+    dup_id     = dup_row[0]
+    dup_titulo = dup_row[1]
+    dup_autor  = dup_row[7]
 
-    # Preserva descricao e imagem do master; preenche se ausente
+    # Prefere o título/autor com mais acentos (grafia mais completa)
+    melhor_titulo = dup_titulo if accent_score(dup_titulo or "") > accent_score(master["titulo"] or "") else None
+    melhor_autor  = dup_autor  if accent_score(dup_autor  or "") > accent_score(master["autor"]  or "") else None
+
     cur.execute("""
         UPDATE livros
-        SET descricao      = COALESCE(descricao, ?),
+        SET titulo         = COALESCE(?, titulo),
+            autor          = COALESCE(?, autor),
+            descricao      = COALESCE(descricao, ?),
             imagem_url     = COALESCE(imagem_url, ?),
             ano_publicacao = COALESCE(ano_publicacao, ?),
             updated_at     = ?
         WHERE id = ?
     """, (
+        melhor_titulo,
+        melhor_autor,
         dup_row[4],
         dup_row[5],
         dup_row[6],
         datetime.utcnow().isoformat(),
-        master_id
+        master_id,
     ))
 
     cur.execute("DELETE FROM livros WHERE id = ?", (dup_id,))
 
     conn.commit()
 
-    log(f"MERGE | {dup_id} | {master_id}")
+    titulo_final = melhor_titulo or master["titulo"]
+    log(f"MERGE | {dup_id} → {master_id} | título: {titulo_final!r}")
 
 
 # =========================
@@ -180,12 +204,12 @@ def run(idioma, pacote=10):
 
     for i, r in enumerate(rows, start=1):
 
-        book = {"id": r[0], "titulo": r[1], "slug": r[2], "isbn": r[3]}
+        book = {"id": r[0], "titulo": r[1], "slug": r[2], "isbn": r[3], "autor": r[4]}
 
         duplicates = find_duplicates(conn, book, idioma)
 
         for dup in duplicates:
-            merge_books(conn, book["id"], dup)
+            merge_books(conn, book, dup)
             removed += 1
 
         mark_processed(conn, book["id"])
