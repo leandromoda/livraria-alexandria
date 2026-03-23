@@ -12,6 +12,11 @@ import unicodedata
 import uuid
 from datetime import datetime
 
+
+def _nfc(s: str) -> str:
+    """Normaliza para NFC — garante forma canônica composta do Unicode."""
+    return unicodedata.normalize("NFC", s)
+
 from core.db import get_conn
 
 
@@ -153,6 +158,7 @@ def run():
 
         for nome in nomes:
 
+            nome = _nfc(nome)  # normaliza antes de inserir ou buscar
             existing = get_autor_by_nome(conn, nome)
 
             if existing:

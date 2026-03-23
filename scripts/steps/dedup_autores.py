@@ -14,6 +14,7 @@
 #     (force re-publish para garantir consistência no Supabase)
 # ============================================================
 
+import unicodedata
 from difflib import SequenceMatcher
 
 from core.db import get_conn
@@ -56,8 +57,13 @@ def fetch_autores_com_contagem(conn):
 # SIMILARITY
 # =========================
 
+def _norm(s):
+    """Normaliza texto para comparação: NFKD → ASCII → minúsculas."""
+    return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
+
+
 def similar(a, b):
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
 
 
 # =========================

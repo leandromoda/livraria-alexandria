@@ -7,7 +7,7 @@ _VERSION_FILE = os.path.join(os.path.dirname(__file__), "..", "VERSION")
 def get_version() -> str:
     """Retorna versão no formato '1.0.0 (abc1234)' usando VERSION + git hash."""
     try:
-        with open(_VERSION_FILE) as f:
+        with open(_VERSION_FILE, encoding="utf-8") as f:
             ver = f.read().strip()
     except OSError:
         ver = "?.?.?"
