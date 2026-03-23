@@ -25,6 +25,7 @@ from steps import publish_categorias
 from steps import publish_listas
 from steps import repair
 from steps import targeted_repair
+from steps import apply_blacklist
 from steps import autopilot
 
 from steps.export_state_transcript import export_state_transcript
@@ -187,6 +188,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 22 → Auditar conteúdo publicado (LLM)
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
+25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
 
 --- BANCO DE DADOS ---
 95 → Fazer backup do banco local
@@ -239,8 +241,9 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
             slugify.run(idioma, pacote)
 
         elif op == "6":
+            pacote = escolher_pacote()
             log("Slugificando autores…")
-            slugify_autores.run()
+            slugify_autores.run(pacote)
 
         elif op == "7":
             log("Deduplicando autores…")
@@ -379,6 +382,12 @@ ambos   → ambos acima
                     targeted_repair.run(slugs, reset_type)
                 else:
                     print("Nenhum slug informado.\n")
+
+        elif op == "25":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Aplicando blacklist (dry_run={dry_run})…")
+            apply_blacklist.run(dry_run=dry_run)
 
         elif op == "95":
             log("Fazendo backup do banco local…")

@@ -6,14 +6,38 @@
 # Envia sinopse (campo gerado), não descricao (campo bruto).
 # ============================================================
 
+import json
+import os
 import requests
 import uuid
 import time
 
 from datetime import datetime
+from pathlib import Path
 
 from core.db import get_conn
 from core.logger import log
+
+
+# =========================
+# BLACKLIST
+# =========================
+
+BLACKLIST_PATH = Path(__file__).resolve().parents[1] / "data" / "blacklist.json"
+
+
+def _load_blacklist_slugs() -> set:
+    """Retorna conjunto de slugs bloqueados pela blacklist do auditor.
+    Retorna set vazio se o arquivo não existir ou estiver malformado."""
+    if not BLACKLIST_PATH.exists():
+        return set()
+    try:
+        with open(BLACKLIST_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        return {e["slug"] for e in data.get("entries", [])}
+    except Exception:
+        log("[PUBLISH] AVISO: blacklist.json ilegível — ignorando filtro")
+        return set()
 
 
 # =========================
@@ -197,6 +221,17 @@ def run(idioma, pacote=10):
 
     rows = fetch_pending(conn, idioma, pacote)
 
+    # Filtro blacklist — remove livros auditados e marcados para exclusão
+    blacklisted = _load_blacklist_slugs()
+    skipped = 0
+    if blacklisted:
+        log(f"[PUBLISH] Blacklist carregada: {len(blacklisted)} entradas")
+        original = len(rows)
+        rows = [r for r in rows if r[2] not in blacklisted]  # r[2] = slug
+        skipped = original - len(rows)
+        if skipped:
+            log(f"[PUBLISH] Bloqueados pela blacklist: {skipped}")
+
     if not rows:
         log(f"Nada pendente para publicação [{idioma}].")
         conn.close()
@@ -222,4 +257,4 @@ def run(idioma, pacote=10):
 
     conn.close()
 
-    log(f"Publicados: {inserted} | Falhas: {failed}")
+    log(f"Publicados: {inserted} | Falhas: {failed} | Bloqueados: {skipped}")
