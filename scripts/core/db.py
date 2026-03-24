@@ -147,10 +147,18 @@ def ensure_schema(conn):
         status_publish INTEGER DEFAULT 0,
         supabase_id TEXT,
 
+        deduped INTEGER DEFAULT 0,
+
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     """)
+
+    # Migração para bancos existentes
+    try:
+        cur.execute("ALTER TABLE autores ADD COLUMN deduped INTEGER DEFAULT 0")
+    except Exception:
+        pass  # coluna já existe
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS livros_autores (
