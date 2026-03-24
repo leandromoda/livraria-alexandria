@@ -21,8 +21,9 @@ import sqlite3
 import requests
 from datetime import datetime, timezone
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_ROOT = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(SCRIPTS_ROOT)
 if SCRIPTS_ROOT not in sys.path:
     sys.path.insert(0, SCRIPTS_ROOT)
 
@@ -50,13 +51,16 @@ log = _Logger()
 # ---------------------------------------------------------------------------
 
 def _load_env() -> tuple[str, str]:
-    env_path = os.path.join(SCRIPTS_ROOT, ".env")
-    if os.path.exists(env_path):
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(env_path)
-        except ImportError:
-            pass
+    try:
+        from dotenv import load_dotenv
+        env_local = os.path.join(PROJECT_ROOT, ".env.local")
+        if os.path.exists(env_local):
+            load_dotenv(env_local)
+        env_pipeline = os.path.join(SCRIPTS_ROOT, ".env")
+        if os.path.exists(env_pipeline):
+            load_dotenv(env_pipeline)
+    except ImportError:
+        pass
     url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
     return url, key

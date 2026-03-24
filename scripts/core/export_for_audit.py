@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_ROOT = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(SCRIPTS_ROOT)
 
 REQUEST_TIMEOUT = 30
 FIELDS          = "id,slug,titulo,autor,descricao,imagem_url"
@@ -46,33 +47,27 @@ def _load_env() -> tuple[str, str]:
     """Carrega credenciais Supabase.
 
     Ordem de precedência:
-    1. Variáveis de ambiente / .env  (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
-    2. Fallback: constantes hardcoded em steps/publish.py (mesmas usadas pelo pipeline)
+    1. PROJECT_ROOT/.env.local  (Next.js — contém SUPABASE_SERVICE_ROLE_KEY)
+    2. SCRIPTS_ROOT/.env        (pipeline Python — Gemini, Google Books etc.)
+    3. Variáveis de ambiente já definidas no sistema
     """
-    env_path = os.path.join(SCRIPTS_ROOT, ".env")
-    if os.path.exists(env_path):
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(env_path)
-        except ImportError:
-            pass
+    try:
+        from dotenv import load_dotenv
+        # .env.local tem precedência (override=False: não sobrescreve vars já carregadas)
+        env_local = os.path.join(PROJECT_ROOT, ".env.local")
+        if os.path.exists(env_local):
+            load_dotenv(env_local)
+        env_pipeline = os.path.join(SCRIPTS_ROOT, ".env")
+        if os.path.exists(env_pipeline):
+            load_dotenv(env_pipeline)
+    except ImportError:
+        pass
 
     url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
     key = (
         os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
         or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
     )
-
-    # Fallback: reutiliza as constantes já presentes no publish.py
-    if not url or not key:
-        try:
-            sys.path.insert(0, SCRIPTS_ROOT)
-            from steps.publish import SUPABASE_URL, SUPABASE_KEY
-            url = url or SUPABASE_URL
-            key = key or SUPABASE_KEY
-        except ImportError:
-            pass
-
     return url, key
 
 
