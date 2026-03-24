@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-23",
+    "last_updated": "2026-03-24",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -41,7 +41,9 @@
         "scripts/data/*.db-shm",
         "runtime/tmp/",
         "__pycache__/",
-        "scripts/data/seeds/ingested_seeds/"
+        "scripts/data/seeds/ingested_seeds/",
+        "state/* (exceto !state/project_state.json — versionado)",
+        "scripts/data/audit_*.json (exports de auditoria locais)"
       ],
       "artifacts_not_to_commit": [
         "scripts/data/books.db (pipeline state)",
@@ -633,7 +635,7 @@
         "order": 25,
         "name": "Apply Blacklist",
         "status": "operational",
-        "description": "Lê scripts/data/blacklist.json (gerado por agente Claude chat) e despublica livros com sinopse absurda ou capa incompatível. Processa apenas severity=medium|high.",
+        "description": "Lê scripts/data/blacklist.json (gerado por agente Claude Code) e despublica livros com sinopse absurda ou capa incompatível. Processa apenas severity=medium|high.",
         "script": "scripts/steps/apply_blacklist.py",
         "idioma_aware": false,
         "llm_required": false,
@@ -650,29 +652,61 @@
         },
         "flags": ["--dry-run"],
         "workflow": [
-          "python scripts/core/export_for_audit.py --limit 100",
-          "Claude chat: colar agents/title_auditor/prompt.md + audit_input.json",
-          "Salvar resposta em scripts/data/blacklist.json",
+          "Opção 26: exporta audit_input.json (catálogo completo ou lote rotativo)",
+          "Claude Code: lê audit_input.json + prompt.md → escreve blacklist.json",
           "Opção 25 (dry-run → confirmar → aplicar)"
         ],
         "pr": "PR #22"
+      },
+      {
+        "order": 26,
+        "name": "Export For Audit",
+        "status": "operational",
+        "description": "Exporta livros publicados do Supabase para audit_input.json (ou .csv). Rotação automática via audit_state.json quando limit>0. limit=0 exporta catálogo completo.",
+        "script": "scripts/core/export_for_audit.py",
+        "idioma_aware": false,
+        "llm_required": false,
+        "menu_option": 26,
+        "output_paths": {
+          "json": "scripts/data/audit_input.json",
+          "csv": "scripts/data/audit_input.csv"
+        },
+        "rotation": {
+          "state_file": "scripts/data/audit_state.json",
+          "gitignored": true,
+          "default_limit": 0,
+          "wrap_around": true,
+          "description": "limit=0 → catálogo completo (sem rotação). limit>0 → offset avança a cada execução, garantindo cobertura sistemática."
+        },
+        "flags": ["--limit N", "--format json|csv"],
+        "pr": "PR #24 + PR #25"
       }
     ]
   },
   "audit_agent": {
     "name": "Title Auditor",
-    "type": "claude_chat_manual",
+    "type": "claude_code",
     "prompt_path": "agents/title_auditor/prompt.md",
     "export_script": "scripts/core/export_for_audit.py",
     "apply_script": "scripts/steps/apply_blacklist.py",
     "input_source": "Supabase REST API (livros publicados: is_publishable=true, status=publish)",
+    "input_paths": {
+      "json": "scripts/data/audit_input.json",
+      "csv": "scripts/data/audit_input.csv"
+    },
     "input_fields": ["id", "slug", "titulo", "autor", "sinopse", "imagem_url"],
     "detects": [
       "sinopse_absurda: sinopse incoerente, alucinada ou incompatível com título/autor",
       "capa_incompativel: URL com segmentos de categoria não-livro ou imagem_url vazia"
     ],
     "output": "scripts/data/blacklist.json",
-    "pr": "PR #22"
+    "rotation": "audit_state.json — offset rotativo por lote; limit=0 exporta tudo",
+    "workflow": [
+      "Pipeline menu → opção 26 (exporta audit_input.json)",
+      "Claude Code: 'Leia audit_input.json, aplique agents/title_auditor/prompt.md, salve em blacklist.json'",
+      "Pipeline menu → opção 25 (aplica blacklist)"
+    ],
+    "pr": "PR #22 (criação) + PR #24 (Claude Code) + PR #25 (rotação)"
   },
   "documentation": {
     "claude_md_root": {
@@ -851,10 +885,10 @@
     },
     {
       "id": "TASK-AUDIT-002",
-      "description": "Rodar agente auditor de títulos (Claude chat) para varrer os 140 livros publicados e gerar blacklist.json",
+      "description": "Rodar agente auditor de títulos (Claude Code) para varrer os livros publicados e gerar blacklist.json",
       "priority": "medium",
       "status": "open",
-      "workflow": "export_for_audit.py --limit 140 → Claude chat → blacklist.json → opção 25"
+      "workflow": "opção 26 (catálogo completo) → Claude Code audita audit_input.json → blacklist.json → opção 25"
     },
     {
       "id": "TASK-SUPABASE-001",
