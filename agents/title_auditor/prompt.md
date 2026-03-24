@@ -1,14 +1,38 @@
 # Agente Auditor de Títulos — Livraria Alexandria
 
-## Como usar
+## Como usar (Claude Code)
 
-1. Exporte os livros do SQLite:
+1. Exporte os livros publicados do Supabase:
+   Via menu pipeline → **opção 26**
+   ou diretamente:
    ```bash
-   python scripts/core/export_for_audit.py --limit 100 --output audit_input.json
+   python scripts/core/export_for_audit.py --limit 100
    ```
-2. Abra uma conversa com Claude e cole este prompt completo
-3. Em seguida, cole o conteúdo de `audit_input.json`
-4. Salve a resposta de Claude em `scripts/data/blacklist.json`
+   → Salva em: `scripts/data/audit_input.json`
+
+2. No Claude Code, diga:
+   ```
+   Leia scripts/data/audit_input.json, aplique as regras de
+   agents/title_auditor/prompt.md e salve o resultado em
+   scripts/data/blacklist.json
+   ```
+
+3. Revise o blacklist gerado: `scripts/data/blacklist.json`
+
+4. Aplique a blacklist via pipeline → **opção 25**
+   ou diretamente:
+   ```bash
+   python scripts/steps/apply_blacklist.py [--dry-run]
+   ```
+
+### Caminhos canônicos
+
+| Arquivo | Caminho |
+|---------|---------|
+| Input (export JSON) | `scripts/data/audit_input.json` |
+| Input (export CSV)  | `scripts/data/audit_input.csv` |
+| Output (blacklist)  | `scripts/data/blacklist.json` |
+| Prompt de auditoria | `agents/title_auditor/prompt.md` |
 
 ---
 
