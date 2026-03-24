@@ -24,6 +24,7 @@ export async function generateMetadata({
     description: lista.introducao
       ? lista.introducao.slice(0, 160)
       : `Lista editorial: ${lista.titulo}`,
+    alternates: { canonical: `/listas/${slug}` },
   };
 }
 

@@ -22,6 +22,7 @@ export async function generateMetadata({
   return {
     title: autor.nome,
     description: `Livros de ${autor.nome}${autor.nacionalidade ? `, escritor(a) ${autor.nacionalidade}` : ""} disponíveis na Livraria Alexandria.`,
+    alternates: { canonical: `/autores/${slug}` },
   };
 }
 
