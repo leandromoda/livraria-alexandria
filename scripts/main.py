@@ -27,6 +27,7 @@ from steps import repair
 from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
+from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
 from steps import db_backup
@@ -189,6 +190,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
+26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
 
 --- BANCO DE DADOS ---
 95 → Fazer backup do banco local
@@ -388,6 +390,17 @@ ambos   → ambos acima
             dry_run = dry_op == "s"
             log(f"Aplicando blacklist (dry_run={dry_run})…")
             apply_blacklist.run(dry_run=dry_run)
+
+        elif op == "26":
+            try:
+                limite = int(input_safe("Limite de livros (padrão 100): ").strip() or "100")
+            except ValueError:
+                limite = 100
+            fmt = input_safe("Formato? [json/csv] (padrão: json): ").strip().lower() or "json"
+            if fmt not in ("json", "csv"):
+                fmt = "json"
+            log(f"Exportando {limite} livros para auditoria (formato={fmt})…")
+            _export_for_audit.run(limit=limite, fmt=fmt)
 
         elif op == "95":
             log("Fazendo backup do banco local…")

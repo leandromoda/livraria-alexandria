@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-17",
+    "last_updated": "2026-03-23",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -30,7 +30,7 @@
     },
     "version_control": {
       "provider": "GitHub",
-      "client": "git CLI (gh não instalado)",
+      "client": "git CLI + gh CLI (instalado e autenticado)",
       "branch_strategy": "feature-branch-via-worktree → merge-to-main",
       "commit_mode": "claude_code_assisted",
       "worktree_workflow": "Claude cria worktree (claude/<nome>), commita melhorias, merge --no-ff em main, push → Vercel deploy",
@@ -404,11 +404,14 @@
         "order": 5,
         "name": "Slugify Autores",
         "status": "operational",
-        "description": "Extrai autores únicos de livros.autor, gera slugs, popula tabelas autores e livros_autores no SQLite",
+        "description": "Extrai autores únicos de livros.autor, gera slugs, popula tabelas autores e livros_autores no SQLite. run(pacote) com LIMIT e filtro NOT IN livros_autores para evitar reprocessamento.",
         "script": "scripts/steps/slugify_autores.py",
         "idioma_aware": false,
         "multi_autor_support": true,
-        "separator": ";"
+        "separator": ";",
+        "batch_control": true,
+        "default_pacote": 100,
+        "fix_pr": "PR #22 — slugify_autores sem LIMIT causava varredura total do banco"
       },
       {
         "order": 6,
@@ -526,7 +529,8 @@
           "updated_at"
         ],
         "on_409": "UPSERT gracioso — marca como publicado localmente",
-        "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''"
+        "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''",
+        "blacklist_filter": "lê scripts/data/blacklist.json antes do loop de upsert; slugs presentes são pulados automaticamente"
       },
       {
         "order": 14,
@@ -624,8 +628,51 @@
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
         "flags": ["--limit N", "--dry-run"]
+      },
+      {
+        "order": 25,
+        "name": "Apply Blacklist",
+        "status": "operational",
+        "description": "Lê scripts/data/blacklist.json (gerado por agente Claude chat) e despublica livros com sinopse absurda ou capa incompatível. Processa apenas severity=medium|high.",
+        "script": "scripts/steps/apply_blacklist.py",
+        "idioma_aware": false,
+        "llm_required": false,
+        "menu_option": 25,
+        "unpublish_actions": [
+          "SQLite: is_publishable=0, status_publish=0 (lookup por slug)",
+          "Supabase: PATCH is_publishable=false (por slug)"
+        ],
+        "blacklist_format": {
+          "path": "scripts/data/blacklist.json",
+          "schema": "{version, generated_at, entries:[{slug, livro_id, reason, details, severity, added_at}]}",
+          "merge_strategy": "aditivo — entradas removidas apenas manualmente",
+          "severity_threshold": "medium ou high (low ignorado)"
+        },
+        "flags": ["--dry-run"],
+        "workflow": [
+          "python scripts/core/export_for_audit.py --limit 100",
+          "Claude chat: colar agents/title_auditor/prompt.md + audit_input.json",
+          "Salvar resposta em scripts/data/blacklist.json",
+          "Opção 25 (dry-run → confirmar → aplicar)"
+        ],
+        "pr": "PR #22"
       }
     ]
+  },
+  "audit_agent": {
+    "name": "Title Auditor",
+    "type": "claude_chat_manual",
+    "prompt_path": "agents/title_auditor/prompt.md",
+    "export_script": "scripts/core/export_for_audit.py",
+    "apply_script": "scripts/steps/apply_blacklist.py",
+    "input_source": "Supabase REST API (livros publicados: is_publishable=true, status=publish)",
+    "input_fields": ["id", "slug", "titulo", "autor", "sinopse", "imagem_url"],
+    "detects": [
+      "sinopse_absurda: sinopse incoerente, alucinada ou incompatível com título/autor",
+      "capa_incompativel: URL com segmentos de categoria não-livro ou imagem_url vazia"
+    ],
+    "output": "scripts/data/blacklist.json",
+    "pr": "PR #22"
   },
   "documentation": {
     "claude_md_root": {
@@ -668,24 +715,21 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-03-18",
+    "last_measured": "2026-03-23",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
-      "total": 2219,
-      "status_review_1": 196,
-      "status_synopsis_1": 112,
-      "status_synopsis_0_pendente": 84,
-      "status_publish_1": 112,
-      "status_enrich_lote_2026_03_18": 191,
-      "status_enrich_sem_desc_lote": 9,
-      "status_cover_1_ou_2": 244,
-      "nota": "step 1: +880 livros (seeds 030–093+059). step 2: 191/200 enriquecidos."
+      "total": "4041+",
+      "status_publish_1": 140,
+      "nota": "Seeds 118–172 ingeridos. 140 livros publicados no Supabase. 94 ofertas ativas em /ofertas."
     },
     "seeds": {
-      "ingested": "001–025 + 030–093 (incluindo 059 corrigido) — todos os seeds processados",
+      "ingested": "001–172 — todos os seeds processados",
       "pending": "nenhum"
     },
-    "gemini_usage_hoje": "0 req"
+    "supabase_publicados": 140,
+    "ofertas_ativas": 94,
+    "gargalo_principal": "step 11 (sinopse LLM) — 12 RPM Gemini Free, ~700 sinopses/dia",
+    "gemini_usage_hoje": "variável"
   },
   "validated_routes": [
     "/",
@@ -804,6 +848,13 @@
       "description": "Rodar auditor de conteúdo (opção 19) após completar publicação do lote principal",
       "priority": "medium",
       "status": "open"
+    },
+    {
+      "id": "TASK-AUDIT-002",
+      "description": "Rodar agente auditor de títulos (Claude chat) para varrer os 140 livros publicados e gerar blacklist.json",
+      "priority": "medium",
+      "status": "open",
+      "workflow": "export_for_audit.py --limit 140 → Claude chat → blacklist.json → opção 25"
     },
     {
       "id": "TASK-SUPABASE-001",
