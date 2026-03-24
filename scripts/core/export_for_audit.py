@@ -4,11 +4,17 @@ scripts/core/export_for_audit.py
 Exporta livros PUBLICADOS no Supabase para auditoria pelo agente auditor.
 
 Uso via menu do pipeline (opção 26) ou diretamente:
-    python scripts/core/export_for_audit.py [--limit 100] [--format json|csv]
+    python scripts/core/export_for_audit.py [--limit N] [--format json|csv]
 
 Caminhos canônicos de saída:
     scripts/data/audit_input.json   (padrão)
     scripts/data/audit_input.csv    (--format csv)
+
+Rotação automática (quando limit > 0):
+    O offset do último lote é salvo em scripts/data/audit_state.json.
+    Cada execução exporta um lote diferente, garantindo cobertura sistemática
+    do catálogo ao longo de múltiplas rodadas.
+    limit=0 (padrão) exporta todo o catálogo e não altera o estado de rotação.
 
 Requer variáveis de ambiente (ou scripts/.env):
     NEXT_PUBLIC_SUPABASE_URL
@@ -21,14 +27,20 @@ import csv
 import json
 import argparse
 import requests
+from datetime import datetime, timezone
 
-SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_ROOT = os.path.dirname(SCRIPT_DIR)
 
 REQUEST_TIMEOUT = 30
 FIELDS          = "id,slug,titulo,autor,descricao,imagem_url"
 FIELDNAMES      = ["id", "slug", "titulo", "autor", "sinopse", "imagem_url"]
+AUDIT_STATE     = os.path.join(SCRIPTS_ROOT, "data", "audit_state.json")
 
+
+# ---------------------------------------------------------------------------
+# Env
+# ---------------------------------------------------------------------------
 
 def _load_env() -> tuple[str, str]:
     """Carrega .env e retorna (supabase_url, supabase_key)."""
@@ -48,12 +60,12 @@ def _load_env() -> tuple[str, str]:
     return url, key
 
 
-def fetch_published(supabase_url: str, key: str, limit: int) -> list[dict]:
-    """Busca livros publicados no Supabase via REST API.
+# ---------------------------------------------------------------------------
+# Supabase
+# ---------------------------------------------------------------------------
 
-    limit=0  → exporta todo o catálogo (sem LIMIT na query).
-    limit>0  → exporta os primeiros N livros (ordem alfabética por título).
-    """
+def fetch_published(supabase_url: str, key: str) -> list[dict]:
+    """Busca TODOS os livros publicados no Supabase (ordem alfabética por título)."""
     headers = {
         "apikey":        key,
         "Authorization": f"Bearer {key}",
@@ -64,8 +76,6 @@ def fetch_published(supabase_url: str, key: str, limit: int) -> list[dict]:
         "status":         "eq.publish",
         "order":          "titulo.asc",
     }
-    if limit:
-        params["limit"] = limit
     url = f"{supabase_url}/rest/v1/livros"
 
     try:
@@ -88,12 +98,62 @@ def normalize(books: list[dict]) -> list[dict]:
             "slug":       b.get("slug", ""),
             "titulo":     b.get("titulo", ""),
             "autor":      b.get("autor", ""),
-            "sinopse":    b.get("descricao", ""),   # Supabase armazena sinopse como descricao
+            "sinopse":    b.get("descricao", ""),
             "imagem_url": b.get("imagem_url", ""),
         }
         for b in books
     ]
 
+
+# ---------------------------------------------------------------------------
+# Rotação
+# ---------------------------------------------------------------------------
+
+def _load_state() -> dict:
+    if os.path.exists(AUDIT_STATE):
+        try:
+            with open(AUDIT_STATE, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"offset": 0}
+
+
+def _save_state(offset: int, total: int) -> None:
+    os.makedirs(os.path.dirname(AUDIT_STATE), exist_ok=True)
+    state = {
+        "offset":            offset,
+        "total_at_last_run": total,
+        "last_run":          datetime.now(timezone.utc).isoformat(),
+    }
+    with open(AUDIT_STATE, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+
+def _rotate(books: list[dict], limit: int) -> tuple[list[dict], int, int]:
+    """
+    Retorna (lote, offset_usado, proximo_offset).
+
+    Aplica wrap-around: se o lote ultrapassa o fim do catálogo,
+    completa com livros do início da lista.
+    """
+    total = len(books)
+    state = _load_state()
+    offset = state.get("offset", 0) % total   # segurança contra catálogo encolhido
+
+    if offset + limit <= total:
+        lote = books[offset : offset + limit]
+    else:
+        # wrap-around: pega o restante + início da lista
+        lote = books[offset:] + books[: (offset + limit) % total]
+
+    proximo = (offset + limit) % total
+    return lote, offset, proximo
+
+
+# ---------------------------------------------------------------------------
+# I/O
+# ---------------------------------------------------------------------------
 
 def _save(books: list[dict], fmt: str) -> str:
     """Salva books no caminho canônico. Retorna o caminho usado."""
@@ -130,10 +190,15 @@ def _print_next_steps(output_path: str) -> None:
     print("     ou: python scripts/steps/apply_blacklist.py [--dry-run]")
 
 
+# ---------------------------------------------------------------------------
+# Entrypoints
+# ---------------------------------------------------------------------------
+
 def run(limit: int = 0, fmt: str = "json") -> None:
     """Entrypoint chamado pelo main.py (sem argparse).
 
-    limit=0 (padrão) exporta todo o catálogo publicado.
+    limit=0 (padrão) → exporta todo o catálogo; não altera o estado de rotação.
+    limit>0           → exporta um lote com rotação automática.
     """
     supabase_url, key = _load_env()
     if not supabase_url or not key:
@@ -141,17 +206,29 @@ def run(limit: int = 0, fmt: str = "json") -> None:
         print("Configure scripts/.env ou variáveis de ambiente.")
         return
 
-    descricao = f"até {limit}" if limit else "todos os"
-    print(f"Buscando {descricao} livros publicados no Supabase...")
-    raw   = fetch_published(supabase_url, key, limit)
-    books = normalize(raw)
+    print("Buscando catálogo publicado no Supabase...")
+    all_books = normalize(fetch_published(supabase_url, key))
+    total = len(all_books)
 
-    if not books:
+    if not total:
         print("Nenhum livro publicado encontrado.")
         return
 
-    output_path = _save(books, fmt)
-    print(f"Exportados: {len(books)} livros → {output_path}")
+    if limit == 0:
+        # Catálogo completo — sem rotação
+        lote = all_books
+        print(f"Exportando catálogo completo: {total} livros")
+    else:
+        lote, offset_usado, proximo_offset = _rotate(all_books, limit)
+        lotes_total = -(-total // limit)   # ceil division
+        lote_atual  = offset_usado // limit + 1
+        print(f"Rotação: lote {lote_atual}/{lotes_total} "
+              f"(livros {offset_usado + 1}–{offset_usado + len(lote)} de {total})")
+        print(f"Próxima execução começará no offset {proximo_offset}")
+        _save_state(proximo_offset, total)
+
+    output_path = _save(lote, fmt)
+    print(f"Exportados: {len(lote)} livros → {output_path}")
     _print_next_steps(output_path)
 
 
@@ -159,10 +236,15 @@ def main():
     parser = argparse.ArgumentParser(
         description="Exporta livros publicados do Supabase para auditoria via Claude Code"
     )
-    parser.add_argument("--limit",  type=int, default=100,
-                        help="Número máximo de livros (default=100)")
-    parser.add_argument("--format", type=str, default="json", choices=["json", "csv"],
-                        help="Formato de saída: json (default) ou csv")
+    parser.add_argument(
+        "--limit", type=int, default=0,
+        help="Tamanho do lote (padrão=0: catálogo completo). Com limit>0, "
+             "a rotação é automática via audit_state.json.",
+    )
+    parser.add_argument(
+        "--format", type=str, default="json", choices=["json", "csv"],
+        help="Formato de saída: json (padrão) ou csv",
+    )
     args = parser.parse_args()
     run(limit=args.limit, fmt=args.format)
 
