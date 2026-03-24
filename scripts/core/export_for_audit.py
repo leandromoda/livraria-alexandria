@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_ROOT = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(SCRIPTS_ROOT)
 
 REQUEST_TIMEOUT = 30
 FIELDS          = "id,slug,titulo,autor,descricao,imagem_url"
@@ -43,14 +44,24 @@ AUDIT_STATE     = os.path.join(SCRIPTS_ROOT, "data", "audit_state.json")
 # ---------------------------------------------------------------------------
 
 def _load_env() -> tuple[str, str]:
-    """Carrega .env e retorna (supabase_url, supabase_key)."""
-    env_path = os.path.join(SCRIPTS_ROOT, ".env")
-    if os.path.exists(env_path):
-        try:
-            from dotenv import load_dotenv
-            load_dotenv(env_path)
-        except ImportError:
-            pass
+    """Carrega credenciais Supabase.
+
+    Ordem de precedência:
+    1. PROJECT_ROOT/.env.local  (Next.js — contém SUPABASE_SERVICE_ROLE_KEY)
+    2. SCRIPTS_ROOT/.env        (pipeline Python — Gemini, Google Books etc.)
+    3. Variáveis de ambiente já definidas no sistema
+    """
+    try:
+        from dotenv import load_dotenv
+        # .env.local tem precedência (override=False: não sobrescreve vars já carregadas)
+        env_local = os.path.join(PROJECT_ROOT, ".env.local")
+        if os.path.exists(env_local):
+            load_dotenv(env_local)
+        env_pipeline = os.path.join(SCRIPTS_ROOT, ".env")
+        if os.path.exists(env_pipeline):
+            load_dotenv(env_pipeline)
+    except ImportError:
+        pass
 
     url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
     key = (
@@ -65,16 +76,20 @@ def _load_env() -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 def fetch_published(supabase_url: str, key: str) -> list[dict]:
-    """Busca TODOS os livros publicados no Supabase (ordem alfabética por título)."""
+    """Busca TODOS os livros com status=publish no Supabase (ordem alfabética por título).
+
+    Filtra apenas por status=publish — inclui livros com is_publishable=false
+    que foram despublicados após a publicação inicial (ex: quality gate retroativo,
+    auditor LLM, price monitor). O auditor deve cobrir esses livros também.
+    """
     headers = {
         "apikey":        key,
         "Authorization": f"Bearer {key}",
     }
     params = {
-        "select":         FIELDS,
-        "is_publishable": "eq.true",
-        "status":         "eq.publish",
-        "order":          "titulo.asc",
+        "select": FIELDS,
+        "status": "eq.publish",
+        "order":  "titulo.asc",
     }
     url = f"{supabase_url}/rest/v1/livros"
 
