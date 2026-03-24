@@ -180,12 +180,12 @@ def run(pacote=100):
         "apikey": supabase_key,
         "Authorization": f"Bearer {supabase_key}",
         "Content-Type": "application/json",
-        # upsert por livro_id: cria se não existe, atualiza se já existe
-        "Prefer": "resolution=merge-duplicates,return=representation",
+        # upsert por (livro_id, marketplace): cria se não existe, atualiza se já existe
+        "Prefer": "resolution=merge-duplicates,return=minimal",
     }
 
-    # ?on_conflict=livro_id ativa upsert no Supabase REST API
-    ofertas_url = f"{supabase_url}/rest/v1/ofertas?on_conflict=livro_id"
+    # on_conflict=(livro_id,marketplace) — requer UNIQUE(livro_id, marketplace) no Supabase
+    ofertas_url = f"{supabase_url}/rest/v1/ofertas?on_conflict=livro_id,marketplace"
 
     rows = fetch_pendentes(conn, pacote)
 
