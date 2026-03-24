@@ -43,7 +43,12 @@ AUDIT_STATE     = os.path.join(SCRIPTS_ROOT, "data", "audit_state.json")
 # ---------------------------------------------------------------------------
 
 def _load_env() -> tuple[str, str]:
-    """Carrega .env e retorna (supabase_url, supabase_key)."""
+    """Carrega credenciais Supabase.
+
+    Ordem de precedência:
+    1. Variáveis de ambiente / .env  (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
+    2. Fallback: constantes hardcoded em steps/publish.py (mesmas usadas pelo pipeline)
+    """
     env_path = os.path.join(SCRIPTS_ROOT, ".env")
     if os.path.exists(env_path):
         try:
@@ -57,6 +62,17 @@ def _load_env() -> tuple[str, str]:
         os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
         or os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", "")
     )
+
+    # Fallback: reutiliza as constantes já presentes no publish.py
+    if not url or not key:
+        try:
+            sys.path.insert(0, SCRIPTS_ROOT)
+            from steps.publish import SUPABASE_URL, SUPABASE_KEY
+            url = url or SUPABASE_URL
+            key = key or SUPABASE_KEY
+        except ImportError:
+            pass
+
     return url, key
 
 
@@ -65,16 +81,20 @@ def _load_env() -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 
 def fetch_published(supabase_url: str, key: str) -> list[dict]:
-    """Busca TODOS os livros publicados no Supabase (ordem alfabética por título)."""
+    """Busca TODOS os livros com status=publish no Supabase (ordem alfabética por título).
+
+    Filtra apenas por status=publish — inclui livros com is_publishable=false
+    que foram despublicados após a publicação inicial (ex: quality gate retroativo,
+    auditor LLM, price monitor). O auditor deve cobrir esses livros também.
+    """
     headers = {
         "apikey":        key,
         "Authorization": f"Bearer {key}",
     }
     params = {
-        "select":         FIELDS,
-        "is_publishable": "eq.true",
-        "status":         "eq.publish",
-        "order":          "titulo.asc",
+        "select": FIELDS,
+        "status": "eq.publish",
+        "order":  "titulo.asc",
     }
     url = f"{supabase_url}/rest/v1/livros"
 
