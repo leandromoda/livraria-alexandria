@@ -127,6 +127,15 @@ def run():
     conn = get_conn()
     cur  = conn.cursor()
 
+    # Early-exit: só roda a análise O(n²) se houver autores novos (deduped=0)
+    cur.execute("SELECT COUNT(*) FROM autores WHERE deduped = 0")
+    pendentes = cur.fetchone()[0]
+
+    if pendentes == 0:
+        log("[DEDUP_AUTORES] Nenhum autor novo — pulando.")
+        conn.close()
+        return
+
     rows = fetch_autores_com_contagem(conn)
 
     if not rows:
@@ -134,11 +143,11 @@ def run():
         conn.close()
         return
 
-    total     = len(rows)
-    removidos = 0
+    total      = len(rows)
+    removidos  = 0
     merged_ids = set()  # IDs já removidos — não processar como master
 
-    log(f"[DEDUP_AUTORES] Analisando {total} autores (limiar={SIMILARITY_THRESHOLD})…")
+    log(f"[DEDUP_AUTORES] Analisando {total} autores ({pendentes} novos, limiar={SIMILARITY_THRESHOLD})…")
 
     for i, master in enumerate(rows):
 
@@ -155,6 +164,17 @@ def run():
                 merge_autores(conn, master, dup)
                 merged_ids.add(dup["id"])
                 removidos += 1
+
+    # Marca todos os sobreviventes como deduplicados
+    if merged_ids:
+        placeholders = ",".join("?" * len(merged_ids))
+        cur.execute(
+            f"UPDATE autores SET deduped = 1 WHERE id NOT IN ({placeholders})",
+            list(merged_ids),
+        )
+    else:
+        cur.execute("UPDATE autores SET deduped = 1")
+    conn.commit()
 
     conn.close()
 

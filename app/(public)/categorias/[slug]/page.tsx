@@ -22,6 +22,7 @@ export async function generateMetadata({
   return {
     title: categoria.nome,
     description: `Explore livros de ${categoria.nome} com sinopses e as melhores ofertas.`,
+    alternates: { canonical: `/categorias/${slug}` },
   };
 }
 

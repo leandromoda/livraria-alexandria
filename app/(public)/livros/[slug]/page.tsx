@@ -13,17 +13,24 @@ export async function generateMetadata({
 
   const { data: livro } = await supabase
     .from("livros")
-    .select("titulo, descricao, autor")
+    .select("titulo, descricao, sinopse, autor, imagem_url")
     .eq("slug", slug)
     .single();
 
   if (!livro) return {};
 
+  const description = (livro.sinopse ?? livro.descricao)?.slice(0, 160)
+    ?? `Sinopse, ofertas e informações sobre ${livro.titulo}${livro.autor ? ` de ${livro.autor}` : ""}.`;
+
   return {
     title: livro.titulo,
-    description: livro.descricao
-      ? livro.descricao.slice(0, 160)
-      : `Sinopse, ofertas e informações sobre ${livro.titulo}${livro.autor ? ` de ${livro.autor}` : ""}.`,
+    description,
+    alternates: { canonical: `/livros/${slug}` },
+    openGraph: {
+      title: livro.titulo,
+      description,
+      ...(livro.imagem_url ? { images: [{ url: livro.imagem_url }] } : {}),
+    },
   };
 }
 
