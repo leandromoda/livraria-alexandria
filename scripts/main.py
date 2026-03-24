@@ -393,13 +393,15 @@ ambos   → ambos acima
 
         elif op == "26":
             try:
-                limite = int(input_safe("Limite de livros (padrão 100): ").strip() or "100")
+                limite_str = input_safe("Limite de livros (Enter = catálogo completo): ").strip()
+                limite = int(limite_str) if limite_str else 0
             except ValueError:
-                limite = 100
+                limite = 0
             fmt = input_safe("Formato? [json/csv] (padrão: json): ").strip().lower() or "json"
             if fmt not in ("json", "csv"):
                 fmt = "json"
-            log(f"Exportando {limite} livros para auditoria (formato={fmt})…")
+            descricao = str(limite) if limite else "catálogo completo"
+            log(f"Exportando {descricao} livros para auditoria (formato={fmt})…")
             _export_for_audit.run(limit=limite, fmt=fmt)
 
         elif op == "95":

@@ -49,7 +49,11 @@ def _load_env() -> tuple[str, str]:
 
 
 def fetch_published(supabase_url: str, key: str, limit: int) -> list[dict]:
-    """Busca livros publicados no Supabase via REST API."""
+    """Busca livros publicados no Supabase via REST API.
+
+    limit=0  → exporta todo o catálogo (sem LIMIT na query).
+    limit>0  → exporta os primeiros N livros (ordem alfabética por título).
+    """
     headers = {
         "apikey":        key,
         "Authorization": f"Bearer {key}",
@@ -58,9 +62,10 @@ def fetch_published(supabase_url: str, key: str, limit: int) -> list[dict]:
         "select":         FIELDS,
         "is_publishable": "eq.true",
         "status":         "eq.publish",
-        "limit":          limit,
-        "order":          "updated_at.desc",
+        "order":          "titulo.asc",
     }
+    if limit:
+        params["limit"] = limit
     url = f"{supabase_url}/rest/v1/livros"
 
     try:
@@ -125,15 +130,19 @@ def _print_next_steps(output_path: str) -> None:
     print("     ou: python scripts/steps/apply_blacklist.py [--dry-run]")
 
 
-def run(limit: int = 100, fmt: str = "json") -> None:
-    """Entrypoint chamado pelo main.py (sem argparse)."""
+def run(limit: int = 0, fmt: str = "json") -> None:
+    """Entrypoint chamado pelo main.py (sem argparse).
+
+    limit=0 (padrão) exporta todo o catálogo publicado.
+    """
     supabase_url, key = _load_env()
     if not supabase_url or not key:
         print("Erro: NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não configuradas.")
         print("Configure scripts/.env ou variáveis de ambiente.")
         return
 
-    print(f"Buscando até {limit} livros publicados no Supabase...")
+    descricao = f"até {limit}" if limit else "todos os"
+    print(f"Buscando {descricao} livros publicados no Supabase...")
     raw   = fetch_published(supabase_url, key, limit)
     books = normalize(raw)
 
