@@ -12,6 +12,7 @@
 
 from core.db import get_conn
 from core.logger import log
+from core.run_logger import StepRun
 
 from steps import (
     offer_seed,
@@ -106,7 +107,8 @@ def run(idioma: str, pacote: int):
             for nome, step_fn in STEPS:
                 log(f"[AUTOPILOT] -- {nome} --")
                 try:
-                    step_fn()
+                    with StepRun(nome, idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                        step_fn()
                 except Exception as e:
                     log(f"[AUTOPILOT] ERRO em {nome}: {e}")
 
