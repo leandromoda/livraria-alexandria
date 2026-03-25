@@ -78,8 +78,7 @@ def fetch_pending(conn, limit):
     cur.execute("""
         SELECT id, titulo, autor
         FROM livros
-        WHERE descricao IS NULL
-           OR TRIM(descricao) = ''
+        WHERE status_descricao = 0
         LIMIT ?
     """, (limit,))
 
@@ -101,27 +100,36 @@ def fetch_descricao(titulo, autor):
     if GOOGLE_BOOKS_API_KEY:
         params["key"] = GOOGLE_BOOKS_API_KEY
 
-    try:
-        res = requests.get(
-            GOOGLE_BOOKS_URL,
-            params=params,
-            timeout=15,
-        )
+    for tentativa in range(2):
+        try:
+            res = requests.get(
+                GOOGLE_BOOKS_URL,
+                params=params,
+                timeout=15,
+            )
 
-        if res.status_code != 200:
-            log(f"[ENRICH] HTTP {res.status_code} → {titulo}")
+            if res.status_code != 200:
+                log(f"[ENRICH] HTTP {res.status_code} → {titulo}")
+                return None
+
+            items = res.json().get("items", [])
+
+            for item in items:
+                info = item.get("volumeInfo", {})
+                descricao = info.get("description")
+                if descricao and len(descricao.strip()) >= MIN_DESC_LENGTH:
+                    return descricao.strip()
+
+            return None  # sem resultado de conteúdo — não adianta retry
+
+        except requests.RequestException as e:
+            log(f"[ENRICH] Falha de rede (tentativa {tentativa + 1}/2) → {e}")
+            if tentativa == 0:
+                time.sleep(3)
+
+        except Exception as e:
+            log(f"[ENRICH] Erro inesperado → {e}")
             return None
-
-        items = res.json().get("items", [])
-
-        for item in items:
-            info = item.get("volumeInfo", {})
-            descricao = info.get("description")
-            if descricao and len(descricao.strip()) >= MIN_DESC_LENGTH:
-                return descricao.strip()
-
-    except Exception as e:
-        log(f"[ENRICH] Falha Google Books → {e}")
 
     return None
 
@@ -130,16 +138,17 @@ def fetch_descricao(titulo, autor):
 # UPDATE
 # =========================
 
-def update_descricao(conn, livro_id, descricao):
+def update_descricao(conn, livro_id, descricao, status_descricao):
 
     cur = conn.cursor()
 
     cur.execute("""
         UPDATE livros
-        SET descricao  = ?,
-            updated_at = ?
+        SET descricao         = COALESCE(?, descricao),
+            status_descricao  = ?,
+            updated_at        = ?
         WHERE id = ?
-    """, (descricao, datetime.utcnow().isoformat(), livro_id))
+    """, (descricao, status_descricao, datetime.utcnow().isoformat(), livro_id))
 
     conn.commit()
 
@@ -187,10 +196,11 @@ def run(pacote=500):
         descricao = fetch_descricao(titulo, autor)
 
         if descricao:
-            update_descricao(conn, livro_id, descricao)
+            update_descricao(conn, livro_id, descricao, status_descricao=1)
             enriched += 1
             log(f"[OK] → {titulo}")
         else:
+            update_descricao(conn, livro_id, None, status_descricao=2)
             failed += 1
             log(f"[--] Sem descrição → {titulo}")
 

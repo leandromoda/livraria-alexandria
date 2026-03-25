@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-24 (sessão 2)",
+    "last_updated": "2026-03-25 (sessão 3 — otimização step 2 + run_logger + log em arquivo)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -43,7 +43,8 @@
         "__pycache__/",
         "scripts/data/seeds/ingested_seeds/",
         "state/* (exceto !state/project_state.json — versionado)",
-        "scripts/data/audit_*.json (exports de auditoria locais)"
+        "scripts/data/audit_*.json (exports de auditoria locais)",
+        "scripts/data/pipeline_*.log (logs de sessão — gerados automaticamente)"
       ],
       "artifacts_not_to_commit": [
         "scripts/data/books.db (pipeline state)",
@@ -301,7 +302,8 @@
         "connectivity_log",
         "seed_imports",
         "offer_price_log",
-        "livros_categorias_tematicas"
+        "livros_categorias_tematicas",
+        "pipeline_runs"
       ]
     }
   },
@@ -358,7 +360,8 @@
       "mode": "menu_driven",
       "interrupt_resume": true,
       "heartbeat": "30s",
-      "logging": "timestamped_terminal",
+      "logging": "timestamped_terminal_and_file (pipeline_YYYY-MM-DD_HH-MM-SS.log em scripts/data/)",
+      "run_tracking": "tabela pipeline_runs no SQLite — step_name, idioma, pacote, started_at, finished_at, duracao_s, status, erro_msg, invocado_por",
       "idioma_partitioning": true
     },
     "state_management": {
@@ -394,7 +397,10 @@
         "status": "operational",
         "idioma_aware": true,
         "persistence": "scripts/data/books.db",
-        "description": "Enriquece descricao via Google Books API (com key) ou OpenLibrary"
+        "description": "Enriquece descricao via Google Books API (com key) ou OpenLibrary",
+        "status_flag": "status_descricao (0=pendente, 1=OK, 2=skip) — adicionado 2026-03-25",
+        "update_mode": "COALESCE(?, descricao) — não sobrescreve dados melhores do step 4",
+        "retry": "1 retry com sleep(3) apenas para requests.RequestException"
       },
       {
         "order": 4,
@@ -988,6 +994,28 @@
       "priority": "medium",
       "status": "open",
       "current_count": "~2023 com status_slug=0 (1143 anteriores + 880 novos)"
+    },
+    {
+      "id": "TASK-PIPE-010",
+      "description": "Otimização step 2 (enrich_descricao): adicionado status_descricao flag, COALESCE no UPDATE e 1 retry de rede",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-25",
+      "resolution": "status_descricao (0/1/2) evita reprocessamento no autopilot. COALESCE preserva dados do step 4. Retry em RequestException com sleep(3)."
+    },
+    {
+      "id": "TASK-INFRA-001",
+      "description": "Adicionar log persistente de execução do pipeline (run_logger + arquivo de sessão)",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-25",
+      "resolution": "core/run_logger.py: StepRun context manager grava pipeline_runs no SQLite (step_name, duracao_s, status, erro_msg). core/logger.py: escreve simultaneamente em stdout e em scripts/data/pipeline_YYYY-MM-DD_HH-MM-SS.log. main.py e autopilot.py integrados com StepRun."
+    },
+    {
+      "id": "TASK-GITIGNORE-002",
+      "description": "Adicionar scripts/data/pipeline_*.log ao .gitignore",
+      "priority": "low",
+      "status": "open"
     }
   ]
 }
