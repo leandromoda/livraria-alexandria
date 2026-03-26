@@ -51,7 +51,12 @@ scripts/data/*.db-shm
 scripts/data/books.db
 scripts/data/backup/*.db
 scripts/data/audit_*.json
+scripts/data/blacklist.json
+scripts/data/gemini_usage.json
+scripts/data/pipeline_*.log
+test.txt
 
 # state exports (auto-gerados) — exceto o estado do projeto
 state/*
 !state/project_state.json
+/scripts/data/seeds
