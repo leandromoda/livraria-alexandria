@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-25 (sessão 3 — otimização step 2 + run_logger + log em arquivo)",
+    "last_updated": "2026-03-26 (sessão 4 — fix sitemap queries + GSC configurado)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -249,14 +249,30 @@
     "ofertas_page": "ItemList + Product + Offer",
     "categorias_page": "CollectionPage",
     "aggregate_offer": "pending",
+    "sitemap": {
+      "status": "implemented",
+      "implemented_on": "2026-03-24",
+      "file": "app/sitemap.ts",
+      "strategy": "dynamic — busca slugs publicados no Supabase (livros, listas, categorias, autores) + páginas estáticas",
+      "url": "https://livrariaalexandria.com.br/sitemap.xml",
+      "bug_fix": "2026-03-26 PR #29 — queries retornavam 0 URLs dinâmicas: livros usava coluna inexistente (status_publish) corrigida para status='publish'; listas/categorias/autores trocaram integer 1 por boolean true",
+      "gsc_status": "submitted_and_processed — 6 páginas (antes do fix); após merge PR #29 esperado ~300-500 URLs"
+    },
+    "robots": {
+      "status": "implemented",
+      "implemented_on": "2026-03-24",
+      "file": "app/robots.ts",
+      "rules": "Allow: / | Disallow: /admin, /api/"
+    },
     "generateMetadata": {
       "status": "implemented_all_dynamic_routes",
       "implemented_on": "2026-03-17",
+      "updated_on": "2026-03-24",
       "routes": [
-        "livros/[slug] — title: livro.titulo, description: descricao[:160]",
-        "autores/[slug] — title: autor.nome, description: livros de {nome}",
-        "listas/[slug] — title: lista.titulo, description: introducao[:160]",
-        "categorias/[slug] — title: categoria.nome, description: explore livros de {nome}",
+        "livros/[slug] — title, description (sinopse > descricao), alternates.canonical, openGraph (og:image via imagem_url)",
+        "autores/[slug] — title, description, alternates.canonical",
+        "listas/[slug] — title, description, alternates.canonical",
+        "categorias/[slug] — title, description, alternates.canonical",
         "livros/page — metadata estática",
         "ofertas/page — metadata estática"
       ]
@@ -795,6 +811,63 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-SEO-004",
+      "description": "Configurar Google Search Console — verificar domínio via registro TXT no DNS e submeter sitemap",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-03-26",
+      "resolution": "Propriedade tipo Domínio criada no GSC. Registro TXT adicionado no Cloudflare (nameservers do domínio). Sitemap submetido em https://www.livrariaalexandria.com.br/sitemap.xml — status 'processado' com 6 páginas (sitemap com bug de queries; corrigido no PR #29). Após merge do PR #29 o GSC receberá ~300-500 URLs na próxima leitura.",
+      "type": "manual"
+    },
+    {
+      "id": "TASK-SEO-009",
+      "description": "fix: sitemap.ts retornava apenas 6 URLs estáticas (0 páginas dinâmicas de livros/autores/categorias/listas)",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-03-26",
+      "resolution": "Correção das queries Supabase: livros usava coluna inexistente 'status_publish' → corrigida para status='publish'; listas/categorias/autores comparavam integer 1 contra coluna boolean → corrigido para true. PR #29."
+    },
+    {
+      "id": "TASK-SEO-005",
+      "description": "Criar app/sitemap.ts com geração dinâmica de todas as rotas públicas via Supabase",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-24",
+      "resolution": "app/sitemap.ts criado. Busca slugs publicados de livros (priority 0.9), listas (0.7), categorias (0.6), autores (0.6) + páginas estáticas (0.8). PR #26."
+    },
+    {
+      "id": "TASK-SEO-006",
+      "description": "Criar app/robots.ts bloqueando /admin e /api para crawlers",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-24",
+      "resolution": "app/robots.ts criado. Allow: /, Disallow: /admin, /api/. Aponta sitemap. PR #26."
+    },
+    {
+      "id": "TASK-SEO-007",
+      "description": "Adicionar alternates.canonical ao generateMetadata em todas as rotas dinâmicas",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-24",
+      "resolution": "canonical adicionado em livros/[slug], listas/[slug], categorias/[slug], autores/[slug]. PR #26."
+    },
+    {
+      "id": "TASK-SEO-008",
+      "description": "Configurar Open Graph (og:image) nas páginas de livro usando imagem_url da capa",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-24",
+      "resolution": "openGraph adicionado em livros/[slug] com og:title, og:description, og:image (condicional em imagem_url). description agora usa sinopse LLM quando disponível. PR #26."
+    },
+    {
+      "id": "TASK-PIPE-010",
+      "description": "fix: dedup_autores rodava análise O(n²) de ~5 min a cada ciclo do autopilot mesmo sem autores novos",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-24",
+      "resolution": "Adicionada coluna deduped INTEGER DEFAULT 0 na tabela autores (+ migração automática em ensure_schema). Step 7 faz early-exit quando COUNT(deduped=0)=0. Ao final do processamento, marca sobreviventes como deduped=1. PR #26."
+    },
     {
       "id": "TASK-TRACK-001",
       "description": "Deduplicação de cliques afiliados",
