@@ -5,10 +5,10 @@ const base = "https://livrariaalexandria.com.br";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [livros, listas, categorias, autores] = await Promise.all([
-    supabase.from("livros").select("slug, updated_at").eq("status_publish", 1),
-    supabase.from("listas").select("slug").eq("status_publish", 1),
-    supabase.from("categorias").select("slug").eq("status_publish", 1),
-    supabase.from("autores").select("slug").eq("status_publish", 1),
+    supabase.from("livros").select("slug, updated_at").eq("status", "publish"),
+    supabase.from("listas").select("slug").eq("status_publish", true),
+    supabase.from("categorias").select("slug").eq("status_publish", true),
+    supabase.from("autores").select("slug").eq("status_publish", true),
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
