@@ -254,7 +254,9 @@
       "implemented_on": "2026-03-24",
       "file": "app/sitemap.ts",
       "strategy": "dynamic — busca slugs publicados no Supabase (livros, listas, categorias, autores) + páginas estáticas",
-      "url": "https://livrariaalexandria.com.br/sitemap.xml"
+      "url": "https://livrariaalexandria.com.br/sitemap.xml",
+      "bug_fix": "2026-03-26 PR #29 — queries retornavam 0 URLs dinâmicas: livros usava coluna inexistente (status_publish) corrigida para status='publish'; listas/categorias/autores trocaram integer 1 por boolean true",
+      "gsc_status": "submitted_and_processed — 6 páginas (antes do fix); após merge PR #29 esperado ~300-500 URLs"
     },
     "robots": {
       "status": "implemented",
@@ -811,18 +813,20 @@
   "open_tasks": [
     {
       "id": "TASK-SEO-004",
-      "description": "Configurar Google Search Console — verificar domínio via registro TXT no DNS e submeter sitemap (https://www.livrariaalexandria.com.br/sitemap.xml)",
+      "description": "Configurar Google Search Console — verificar domínio via registro TXT no DNS e submeter sitemap",
       "priority": "critical",
-      "status": "open",
-      "type": "manual",
-      "steps": [
-        "Acessar https://search.google.com/search-console",
-        "Adicionar propriedade tipo Domínio: livrariaalexandria.com.br",
-        "Copiar registro TXT fornecido pelo GSC e adicionar no painel DNS do provedor",
-        "Aguardar propagação DNS (5–60 min) e verificar",
-        "Submeter sitemap: GSC → Indexação → Sitemaps → https://www.livrariaalexandria.com.br/sitemap.xml"
-      ],
-      "note": "sitemap.ts e robots.ts já implementados e deployados (PR #26, 2026-03-24)"
+      "status": "resolved",
+      "resolved_on": "2026-03-26",
+      "resolution": "Propriedade tipo Domínio criada no GSC. Registro TXT adicionado no Cloudflare (nameservers do domínio). Sitemap submetido em https://www.livrariaalexandria.com.br/sitemap.xml — status 'processado' com 6 páginas (sitemap com bug de queries; corrigido no PR #29). Após merge do PR #29 o GSC receberá ~300-500 URLs na próxima leitura.",
+      "type": "manual"
+    },
+    {
+      "id": "TASK-SEO-009",
+      "description": "fix: sitemap.ts retornava apenas 6 URLs estáticas (0 páginas dinâmicas de livros/autores/categorias/listas)",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-03-26",
+      "resolution": "Correção das queries Supabase: livros usava coluna inexistente 'status_publish' → corrigida para status='publish'; listas/categorias/autores comparavam integer 1 contra coluna boolean → corrigido para true. PR #29."
     },
     {
       "id": "TASK-SEO-005",
