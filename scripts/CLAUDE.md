@@ -3,6 +3,10 @@
 > Este arquivo é exclusivo do pipeline de ingestão (`/scripts`).
 > O CLAUDE.md da raiz cobre o site Next.js.
 
+## Estado do projeto
+
+O arquivo `state/project_state.json` (na raiz do repositório) é a fonte de verdade do estado atual do projeto: métricas do pipeline, steps ativos, tasks abertas, bugs conhecidos e decisões de arquitetura. Consulte-o antes de iniciar qualquer tarefa de maior escopo.
+
 ---
 
 ## Execução

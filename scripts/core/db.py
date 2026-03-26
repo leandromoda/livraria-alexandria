@@ -128,6 +128,7 @@ def ensure_schema(conn):
         ("lookup_query",          "TEXT"),
         ("categoria",             "TEXT"),
         ("categorize_attempts",   "INTEGER DEFAULT 0"),
+        ("status_descricao",      "INTEGER DEFAULT 0"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
@@ -250,6 +251,26 @@ def ensure_schema(conn):
     cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_lct_categoria_slug
     ON livros_categorias_tematicas(categoria_slug);
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS pipeline_runs (
+        id           TEXT PRIMARY KEY,
+        step_name    TEXT NOT NULL,
+        idioma       TEXT,
+        pacote       INTEGER,
+        started_at   TEXT NOT NULL,
+        finished_at  TEXT,
+        duracao_s    REAL,
+        status       TEXT DEFAULT 'running',
+        erro_msg     TEXT,
+        invocado_por TEXT DEFAULT 'manual'
+    );
+    """)
+
+    cur.execute("""
+    CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at
+    ON pipeline_runs(started_at);
     """)
 
     conn.commit()

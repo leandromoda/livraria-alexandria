@@ -27,6 +27,7 @@ from steps import repair
 from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
+from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
 from steps import db_backup
@@ -34,6 +35,7 @@ from steps import db_restore
 from steps import db_recover
 
 from core.version import get_version
+from core.run_logger import StepRun
 
 
 # =========================
@@ -189,6 +191,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
+26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
 
 --- BANCO DE DADOS ---
 95 → Fazer backup do banco local
@@ -219,43 +222,52 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 
         elif op == "1":
             log("Importando Offer Seeds…")
-            offer_seed.run()
+            with StepRun("offer_seed", idioma=idioma):
+                offer_seed.run()
 
         elif op == "2":
             pacote = escolher_pacote()
             log("Enriquecendo descrições via Google Books…")
-            enrich_descricao.run(pacote)
+            with StepRun("enrich_descricao", idioma=idioma, pacote=pacote):
+                enrich_descricao.run(pacote)
 
         elif op == "3":
             pacote = escolher_pacote()
             log("Resolvendo ofertas reais…")
-            offer_resolver.run(idioma, pacote)
+            with StepRun("offer_resolver", idioma=idioma, pacote=pacote):
+                offer_resolver.run(idioma, pacote)
 
         elif op == "4":
             pacote = escolher_pacote()
             log("Enriquecendo via Marketplace Scraper…")
-            marketplace_scraper.run(idioma, pacote)
+            with StepRun("marketplace_scraper", idioma=idioma, pacote=pacote):
+                marketplace_scraper.run(idioma, pacote)
 
         elif op == "5":
             pacote = escolher_pacote()
-            slugify.run(idioma, pacote)
+            with StepRun("slugify", idioma=idioma, pacote=pacote):
+                slugify.run(idioma, pacote)
 
         elif op == "6":
             pacote = escolher_pacote()
             log("Slugificando autores…")
-            slugify_autores.run(pacote)
+            with StepRun("slugify_autores", idioma=idioma, pacote=pacote):
+                slugify_autores.run(pacote)
 
         elif op == "7":
             log("Deduplicando autores…")
-            dedup_autores.run()
+            with StepRun("dedup_autores", idioma=idioma):
+                dedup_autores.run()
 
         elif op == "8":
             pacote = escolher_pacote()
-            dedup.run(idioma, pacote)
+            with StepRun("dedup", idioma=idioma, pacote=pacote):
+                dedup.run(idioma, pacote)
 
         elif op == "9":
             pacote = escolher_pacote()
-            review.run(idioma, pacote)
+            with StepRun("review", idioma=idioma, pacote=pacote):
+                review.run(idioma, pacote)
 
         elif op == "10":
             pacote = escolher_pacote()
@@ -265,34 +277,41 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
             log("Classificando categorias temáticas…")
-            categorize.run(idioma, pacote)
+            with StepRun("categorize", idioma=idioma, pacote=pacote):
+                categorize.run(idioma, pacote)
 
         elif op == "11":
             pacote = escolher_pacote()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
-            synopsis.run(idioma, pacote)
+            with StepRun("synopsis", idioma=idioma, pacote=pacote):
+                synopsis.run(idioma, pacote)
 
         elif op == "12":
             pacote = escolher_pacote()
-            covers.run(idioma, pacote)
+            with StepRun("covers", idioma=idioma, pacote=pacote):
+                covers.run(idioma, pacote)
 
         elif op == "13":
             pacote = escolher_pacote()
-            quality_gate.evaluate_quality(idioma, pacote)
+            with StepRun("quality_gate", idioma=idioma, pacote=pacote):
+                quality_gate.evaluate_quality(idioma, pacote)
 
         elif op == "14":
             pacote = escolher_pacote()
-            publish.run(idioma, pacote)
+            with StepRun("publish", idioma=idioma, pacote=pacote):
+                publish.run(idioma, pacote)
 
         elif op == "15":
             pacote = escolher_pacote()
             log("Publicando autores no Supabase…")
-            publish_autores.run(pacote)
+            with StepRun("publish_autores", idioma=idioma, pacote=pacote):
+                publish_autores.run(pacote)
 
         elif op == "16":
             log("Publicando categorias temáticas no Supabase…")
-            publish_categorias.run()
+            with StepRun("publish_categorias", idioma=idioma):
+                publish_categorias.run()
 
         elif op == "17":
             fix = input_safe("Normalizar offer_status='active' → 1 (recomendado na 1ª vez)? [s/N] ").strip().lower()
@@ -300,15 +319,18 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
                 publish_ofertas.fix_offer_status()
             pacote = escolher_pacote()
             log("Publicando ofertas no Supabase…")
-            publish_ofertas.run(pacote)
+            with StepRun("publish_ofertas", idioma=idioma, pacote=pacote):
+                publish_ofertas.run(pacote)
 
         elif op == "18":
             log("Gerando listas SEO automáticas…")
-            list_composer.run()
+            with StepRun("list_composer", idioma=idioma):
+                list_composer.run()
 
         elif op == "19":
             log("Publicando listas no Supabase…")
-            publish_listas.run()
+            with StepRun("publish_listas", idioma=idioma):
+                publish_listas.run()
 
         elif op == "20":
             print("""
@@ -388,6 +410,19 @@ ambos   → ambos acima
             dry_run = dry_op == "s"
             log(f"Aplicando blacklist (dry_run={dry_run})…")
             apply_blacklist.run(dry_run=dry_run)
+
+        elif op == "26":
+            try:
+                limite_str = input_safe("Limite de livros (Enter = catálogo completo): ").strip()
+                limite = int(limite_str) if limite_str else 0
+            except ValueError:
+                limite = 0
+            fmt = input_safe("Formato? [json/csv] (padrão: json): ").strip().lower() or "json"
+            if fmt not in ("json", "csv"):
+                fmt = "json"
+            descricao = str(limite) if limite else "catálogo completo"
+            log(f"Exportando {descricao} livros para auditoria (formato={fmt})…")
+            _export_for_audit.run(limit=limite, fmt=fmt)
 
         elif op == "95":
             log("Fazendo backup do banco local…")

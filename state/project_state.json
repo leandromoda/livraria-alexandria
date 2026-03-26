@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-24",
+    "last_updated": "2026-03-26 (sessão 4 — fix sitemap queries + GSC configurado)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -30,7 +30,7 @@
     },
     "version_control": {
       "provider": "GitHub",
-      "client": "git CLI (gh não instalado)",
+      "client": "git CLI + gh CLI (instalado e autenticado)",
       "branch_strategy": "feature-branch-via-worktree → merge-to-main",
       "commit_mode": "claude_code_assisted",
       "worktree_workflow": "Claude cria worktree (claude/<nome>), commita melhorias, merge --no-ff em main, push → Vercel deploy",
@@ -41,7 +41,10 @@
         "scripts/data/*.db-shm",
         "runtime/tmp/",
         "__pycache__/",
-        "scripts/data/seeds/ingested_seeds/"
+        "scripts/data/seeds/ingested_seeds/",
+        "state/* (exceto !state/project_state.json — versionado)",
+        "scripts/data/audit_*.json (exports de auditoria locais)",
+        "scripts/data/pipeline_*.log (logs de sessão — gerados automaticamente)"
       ],
       "artifacts_not_to_commit": [
         "scripts/data/books.db (pipeline state)",
@@ -313,7 +316,8 @@
         "connectivity_log",
         "seed_imports",
         "offer_price_log",
-        "livros_categorias_tematicas"
+        "livros_categorias_tematicas",
+        "pipeline_runs"
       ]
     }
   },
@@ -370,7 +374,8 @@
       "mode": "menu_driven",
       "interrupt_resume": true,
       "heartbeat": "30s",
-      "logging": "timestamped_terminal",
+      "logging": "timestamped_terminal_and_file (pipeline_YYYY-MM-DD_HH-MM-SS.log em scripts/data/)",
+      "run_tracking": "tabela pipeline_runs no SQLite — step_name, idioma, pacote, started_at, finished_at, duracao_s, status, erro_msg, invocado_por",
       "idioma_partitioning": true
     },
     "state_management": {
@@ -406,7 +411,10 @@
         "status": "operational",
         "idioma_aware": true,
         "persistence": "scripts/data/books.db",
-        "description": "Enriquece descricao via Google Books API (com key) ou OpenLibrary"
+        "description": "Enriquece descricao via Google Books API (com key) ou OpenLibrary",
+        "status_flag": "status_descricao (0=pendente, 1=OK, 2=skip) — adicionado 2026-03-25",
+        "update_mode": "COALESCE(?, descricao) — não sobrescreve dados melhores do step 4",
+        "retry": "1 retry com sleep(3) apenas para requests.RequestException"
       },
       {
         "order": 4,
@@ -418,11 +426,14 @@
         "order": 5,
         "name": "Slugify Autores",
         "status": "operational",
-        "description": "Extrai autores únicos de livros.autor, gera slugs, popula tabelas autores e livros_autores no SQLite",
+        "description": "Extrai autores únicos de livros.autor, gera slugs, popula tabelas autores e livros_autores no SQLite. run(pacote) com LIMIT e filtro NOT IN livros_autores para evitar reprocessamento.",
         "script": "scripts/steps/slugify_autores.py",
         "idioma_aware": false,
         "multi_autor_support": true,
-        "separator": ";"
+        "separator": ";",
+        "batch_control": true,
+        "default_pacote": 100,
+        "fix_pr": "PR #22 — slugify_autores sem LIMIT causava varredura total do banco"
       },
       {
         "order": 6,
@@ -540,7 +551,8 @@
           "updated_at"
         ],
         "on_409": "UPSERT gracioso — marca como publicado localmente",
-        "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''"
+        "fetch_guard": "status_synopsis=1 AND sinopse IS NOT NULL AND sinopse != ''",
+        "blacklist_filter": "lê scripts/data/blacklist.json antes do loop de upsert; slugs presentes são pulados automaticamente"
       },
       {
         "order": 14,
@@ -551,7 +563,7 @@
         "target": "Supabase.autores + Supabase.livros_autores",
         "upsert_mode": "POST ?on_conflict=slug",
         "idioma_aware": false,
-        "credentials": "lidas de os.environ em runtime (não hardcoded)"
+        "credentials": "lidas de PROJECT_ROOT/.env.local (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)"
       },
       {
         "order": 16,
@@ -638,8 +650,92 @@
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
         "flags": ["--limit N", "--dry-run"]
+      },
+      {
+        "order": 25,
+        "name": "Apply Blacklist",
+        "status": "operational",
+        "description": "Lê scripts/data/blacklist.json (gerado por agente Claude Code) e despublica livros com sinopse absurda ou capa incompatível. Processa apenas severity=medium|high.",
+        "script": "scripts/steps/apply_blacklist.py",
+        "idioma_aware": false,
+        "llm_required": false,
+        "menu_option": 25,
+        "unpublish_actions": [
+          "SQLite: is_publishable=0, status_publish=0 (lookup por slug)",
+          "Supabase: PATCH is_publishable=false (por slug)"
+        ],
+        "blacklist_format": {
+          "path": "scripts/data/blacklist.json",
+          "schema": "{version, generated_at, entries:[{slug, livro_id, reason, details, severity, added_at}]}",
+          "merge_strategy": "aditivo — entradas removidas apenas manualmente",
+          "severity_threshold": "medium ou high (low ignorado)"
+        },
+        "flags": ["--dry-run"],
+        "workflow": [
+          "Opção 26: exporta audit_input.json (catálogo completo ou lote rotativo)",
+          "Claude Code: lê audit_input.json + prompt.md → escreve blacklist.json",
+          "Opção 25 (dry-run → confirmar → aplicar)"
+        ],
+        "pr": "PR #22"
+      },
+      {
+        "order": 26,
+        "name": "Export For Audit",
+        "status": "operational",
+        "description": "Exporta livros com status=publish do Supabase para audit_input.json (ou .csv). Inclui livros despublicados após publicação (is_publishable=false). Rotação automática via audit_state.json quando limit>0. limit=0 exporta catálogo completo.",
+        "script": "scripts/core/export_for_audit.py",
+        "idioma_aware": false,
+        "llm_required": false,
+        "menu_option": 26,
+        "credentials": "PROJECT_ROOT/.env.local → NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY",
+        "supabase_filter": "status=eq.publish (não filtra is_publishable — audita tudo que já foi ao ar)",
+        "output_paths": {
+          "json": "scripts/data/audit_input.json",
+          "csv": "scripts/data/audit_input.csv"
+        },
+        "rotation": {
+          "state_file": "scripts/data/audit_state.json",
+          "gitignored": true,
+          "default_limit": 0,
+          "wrap_around": true,
+          "description": "limit=0 → catálogo completo (sem rotação). limit>0 → offset avança a cada execução, garantindo cobertura sistemática."
+        },
+        "flags": ["--limit N", "--format json|csv"],
+        "known_bugs_fixed": [
+          "credenciais: _load_env() procurava SUPABASE_URL em scripts/.env (não existe lá) → corrigido para .env.local",
+          "filtro: is_publishable=eq.true excluía livros despublicados pós-publicação (ex: A Cabana) → corrigido para status=eq.publish"
+        ],
+        "pr": "PR #24 + PR #25"
       }
     ]
+  },
+  "audit_agent": {
+    "name": "Title Auditor",
+    "type": "claude_code",
+    "prompt_path": "agents/title_auditor/prompt.md",
+    "export_script": "scripts/core/export_for_audit.py",
+    "apply_script": "scripts/steps/apply_blacklist.py",
+    "input_source": "Supabase REST API (livros publicados: is_publishable=true, status=publish)",
+    "input_paths": {
+      "json": "scripts/data/audit_input.json",
+      "csv": "scripts/data/audit_input.csv"
+    },
+    "input_fields": ["id", "slug", "titulo", "autor", "sinopse", "imagem_url"],
+    "detects": [
+      "sinopse_absurda: sinopse incoerente, alucinada ou incompatível com título/autor",
+      "capa_incompativel: URL com segmentos de categoria não-livro ou imagem_url vazia"
+    ],
+    "output": "scripts/data/blacklist.json",
+    "rotation": "audit_state.json — offset rotativo por lote; limit=0 exporta tudo",
+    "supabase_filter": "status=eq.publish — inclui livros com is_publishable=false despublicados pós-publicação",
+    "credentials_source": "PROJECT_ROOT/.env.local (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)",
+    "export_count_validated": 137,
+    "workflow": [
+      "Pipeline menu → opção 26 (exporta audit_input.json)",
+      "Claude Code: 'Leia audit_input.json, aplique agents/title_auditor/prompt.md, salve em blacklist.json'",
+      "Pipeline menu → opção 25 (aplica blacklist)"
+    ],
+    "pr": "PR #22 (criação) + PR #24 (Claude Code) + PR #25 (rotação + fixes)"
   },
   "documentation": {
     "claude_md_root": {
@@ -682,24 +778,22 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-03-18",
+    "last_measured": "2026-03-23",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
-      "total": 2219,
-      "status_review_1": 196,
-      "status_synopsis_1": 112,
-      "status_synopsis_0_pendente": 84,
-      "status_publish_1": 112,
-      "status_enrich_lote_2026_03_18": 191,
-      "status_enrich_sem_desc_lote": 9,
-      "status_cover_1_ou_2": 244,
-      "nota": "step 1: +880 livros (seeds 030–093+059). step 2: 191/200 enriquecidos."
+      "total": "4041+",
+      "status_publish_1": 140,
+      "nota": "Seeds 118–172 ingeridos. 140 livros publicados no Supabase. 94 ofertas ativas em /ofertas."
     },
     "seeds": {
-      "ingested": "001–025 + 030–093 (incluindo 059 corrigido) — todos os seeds processados",
+      "ingested": "001–172 — todos os seeds processados",
       "pending": "nenhum"
     },
-    "gemini_usage_hoje": "0 req"
+    "supabase_publicados": 137,
+    "nota_supabase_publicados": "137 com status=publish (alguns têm is_publishable=false por quality gate retroativo ou price monitor)",
+    "ofertas_ativas": 94,
+    "gargalo_principal": "step 11 (sinopse LLM) — 12 RPM Gemini Free, ~700 sinopses/dia",
+    "gemini_usage_hoje": "variável"
   },
   "validated_routes": [
     "/",
@@ -875,6 +969,14 @@
       "status": "open"
     },
     {
+      "id": "TASK-AUDIT-002",
+      "description": "Rodar agente auditor de títulos (Claude Code) para varrer os 137 livros publicados e gerar blacklist.json",
+      "priority": "medium",
+      "status": "ready",
+      "workflow": "opção 26 (catálogo completo) → Claude Code audita audit_input.json → blacklist.json → opção 25",
+      "known_candidates": ["A Cabana — sinopse genérica de placeholder (is_publishable=0, editorial_score=0)"]
+    },
+    {
       "id": "TASK-SUPABASE-001",
       "description": "Rodar migrations Supabase: ADD COLUMN preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ na tabela livros",
       "priority": "high",
@@ -961,6 +1063,28 @@
       "priority": "medium",
       "status": "open",
       "current_count": "~2023 com status_slug=0 (1143 anteriores + 880 novos)"
+    },
+    {
+      "id": "TASK-PIPE-010",
+      "description": "Otimização step 2 (enrich_descricao): adicionado status_descricao flag, COALESCE no UPDATE e 1 retry de rede",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-03-25",
+      "resolution": "status_descricao (0/1/2) evita reprocessamento no autopilot. COALESCE preserva dados do step 4. Retry em RequestException com sleep(3)."
+    },
+    {
+      "id": "TASK-INFRA-001",
+      "description": "Adicionar log persistente de execução do pipeline (run_logger + arquivo de sessão)",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-03-25",
+      "resolution": "core/run_logger.py: StepRun context manager grava pipeline_runs no SQLite (step_name, duracao_s, status, erro_msg). core/logger.py: escreve simultaneamente em stdout e em scripts/data/pipeline_YYYY-MM-DD_HH-MM-SS.log. main.py e autopilot.py integrados com StepRun."
+    },
+    {
+      "id": "TASK-GITIGNORE-002",
+      "description": "Adicionar scripts/data/pipeline_*.log ao .gitignore",
+      "priority": "low",
+      "status": "open"
     }
   ]
 }
