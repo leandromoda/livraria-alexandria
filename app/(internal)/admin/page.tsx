@@ -51,6 +51,7 @@ type VercelAnalyticsSummary = {
   totalViews: number;
   totalVisitors: number;
   history: PageViewDay[];
+  error?: string;
 };
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
@@ -206,47 +207,78 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   const projectName = "livraria-alexandria";
 
   if (!token) {
-    return { totalViews: 0, totalVisitors: 0, history: [] };
+    return { totalViews: 0, totalVisitors: 0, history: [], error: "VERCEL_ACCESS_TOKEN não configurado" };
   }
 
   try {
-    // Busca projeto pelo nome para obter teamId e projectId real
+    // Busca projeto pelo nome para obter projectId e teamId (se aplicável)
     const projectRes = await fetch(
       `https://api.vercel.com/v9/projects/${projectName}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
     const projectData = await projectRes.json();
     const projectId = projectData?.id;
-    const teamId = projectData?.accountId;
+    // Para contas pessoais, team é null — não passar teamId nesse caso
+    const teamId: string | null = projectData?.team?.id ?? null;
 
-    if (!projectId) return { totalViews: 0, totalVisitors: 0, history: [] };
+    if (!projectId) {
+      return {
+        totalViews: 0,
+        totalVisitors: 0,
+        history: [],
+        error: `Projeto "${projectName}" não encontrado na Vercel (status ${projectRes.status})`,
+      };
+    }
 
     const now = Date.now();
     const from = now - 30 * 24 * 60 * 60 * 1000;
+    const baseParams =
+      `projectId=${projectId}&from=${from}&to=${now}&granularity=1d&environment=production` +
+      (teamId ? `&teamId=${teamId}` : "");
 
-    const analyticsRes = await fetch(
-      `https://api.vercel.com/v1/web/insights/stats/pageviews` +
-        `?projectId=${projectId}&teamId=${teamId}` +
-        `&from=${from}&to=${now}&granularity=1d&environment=production`,
-      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
-    );
+    // Busca pageviews e visitantes únicos em paralelo
+    const [pvRes, visRes] = await Promise.all([
+      fetch(
+        `https://api.vercel.com/v1/web/insights/stats/pageviews?${baseParams}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      ),
+      fetch(
+        `https://api.vercel.com/v1/web/insights/stats/visitors?${baseParams}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+      ),
+    ]);
 
-    const analyticsData = await analyticsRes.json();
-    const dataPoints: Array<{ date: string; count: number; sessions: number }> =
-      analyticsData?.data ?? [];
+    const pvData = await pvRes.json();
+    const visData = await visRes.json();
 
-    const history: PageViewDay[] = dataPoints.map((d) => ({
-      date: d.date,
-      views: d.count ?? 0,
-      visitors: d.sessions ?? 0,
+    // Monta mapa de visitantes por data para fazer o join
+    const visitorsByDate: Record<string, number> = {};
+    for (const d of (visData?.data ?? []) as any[]) {
+      if (d.key) visitorsByDate[d.key] = d.total ?? 0;
+    }
+
+    // Campos reais da API Vercel: d.key (data) e d.total (pageviews)
+    const history: PageViewDay[] = ((pvData?.data ?? []) as any[]).map((d) => ({
+      date: d.key ?? "",
+      views: d.total ?? 0,
+      visitors: visitorsByDate[d.key] ?? 0,
     }));
+
+    if (history.length === 0) {
+      return {
+        totalViews: 0,
+        totalVisitors: 0,
+        history: [],
+        error: `API retornou dados vazios (status pv=${pvRes.status} vis=${visRes.status}) — verifique o token e o Web Analytics do projeto`,
+      };
+    }
 
     const totalViews = history.reduce((acc, d) => acc + d.views, 0);
     const totalVisitors = history.reduce((acc, d) => acc + d.visitors, 0);
 
     return { totalViews, totalVisitors, history };
-  } catch {
-    return { totalViews: 0, totalVisitors: 0, history: [] };
+  } catch (err) {
+    return { totalViews: 0, totalVisitors: 0, history: [], error: String(err) };
   }
 }
 
@@ -288,6 +320,10 @@ export default async function AdminPage() {
     analytics.history.length > 0
       ? Math.max(...analytics.history.map((d) => d.views), 1)
       : 1;
+
+  const last7 = analytics.history.slice(-7);
+  const views7d = last7.reduce((s, d) => s + d.views, 0);
+  const visitors7d = last7.reduce((s, d) => s + d.visitors, 0);
 
   return (
     <main className="admin-root">
@@ -360,9 +396,20 @@ export default async function AdminPage() {
       {/* ── Visitas ── */}
       <section className="section">
         <h2 className="section-title">Visitas ao Site — últimos 30 dias</h2>
+
+        {analytics.error && (
+          <div className="table-wrap" style={{ marginBottom: "1rem" }}>
+            <p className="empty" style={{ color: "#f87171" }}>
+              ⚠ Erro ao buscar dados da Vercel: {analytics.error}
+            </p>
+          </div>
+        )}
+
         <div className="stats-grid" style={{ marginBottom: "1.5rem" }}>
-          <StatCard label="Pageviews totais" value={analytics.totalViews} />
-          <StatCard label="Visitantes únicos" value={analytics.totalVisitors} />
+          <StatCard label="Pageviews (30 dias)" value={analytics.totalViews} />
+          <StatCard label="Visitantes (30 dias)" value={analytics.totalVisitors} />
+          <StatCard label="Pageviews (7 dias)" value={views7d} />
+          <StatCard label="Visitantes (7 dias)" value={visitors7d} />
         </div>
 
         {analytics.history.length > 0 ? (

@@ -181,7 +181,12 @@
           "Status do pipeline",
           "Top livros por cliques",
           "Cliques recentes",
-          "Visitas ao site (Vercel Analytics)"
+          "Visitas ao site (Vercel Analytics)",
+          "Métricas de 7 dias (pageviews + visitantes)",
+          "Exibição de erros da API Vercel"
+        ],
+        "fixes": [
+          "PR #31: corrigir mapeamento de campos da Vercel Analytics API (d.key/d.total em vez de d.date/d.count); visitantes buscados em endpoint separado (/stats/visitors); teamId removido para contas pessoais; erros da API agora visíveis no painel"
         ]
       }
     ]
@@ -208,7 +213,14 @@
       "status": "active",
       "env_var": "VERCEL_ACCESS_TOKEN",
       "team_slug": "leandro-modas-projects",
-      "project": "livraria-alexandria"
+      "project": "livraria-alexandria",
+      "admin_integration": "fixed_pr31",
+      "known_bugs_fixed": [
+        "campos errados na resposta da API (d.date→d.key, d.count→d.total)",
+        "teamId incorreto para conta pessoal Vercel (accountId→team.id)",
+        "visitantes buscados em endpoint separado /stats/visitors",
+        "erros da API engolidos silenciosamente — agora exibidos no painel"
+      ]
     }
   },
   "interlinking": {
