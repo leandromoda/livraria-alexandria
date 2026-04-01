@@ -1028,7 +1028,8 @@
       "priority": "high",
       "status": "resolved",
       "resolved_on": "2026-04-01",
-      "resolution": "export const dynamic = 'force-dynamic' adicionado em todas as páginas que consultam Supabase: /, /livros, /autores, /categorias, /listas, /ofertas, /admin. Corrigido também createClient inline em autores/page.tsx → importa lib/supabase.ts compartilhado."
+      "resolution": "export const dynamic = 'force-dynamic' adicionado em todas as páginas que consultam Supabase: /, /livros, /autores, /categorias, /listas, /ofertas, /admin. Corrigido também createClient inline em autores/page.tsx → importa lib/supabase.ts compartilhado.",
+      "pr": "PR #34"
     },
     {
       "id": "TASK-SITE-001",
