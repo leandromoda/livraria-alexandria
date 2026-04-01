@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-03-26 (sessão 4 — fix sitemap queries + GSC configurado)",
+    "last_updated": "2026-04-01 (sessão 5 — auditoria GSC + fix URLs canônicas www + fix status_publish autores/categorias — PR #32)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -254,20 +254,22 @@
       "implemented_on": "2026-03-24",
       "file": "app/sitemap.ts",
       "strategy": "dynamic — busca slugs publicados no Supabase (livros, listas, categorias, autores) + páginas estáticas",
-      "url": "https://livrariaalexandria.com.br/sitemap.xml",
+      "url": "https://www.livrariaalexandria.com.br/sitemap.xml",
       "bug_fix": "2026-03-26 PR #29 — queries retornavam 0 URLs dinâmicas: livros usava coluna inexistente (status_publish) corrigida para status='publish'; listas/categorias/autores trocaram integer 1 por boolean true",
-      "gsc_status": "submitted_and_processed — 6 páginas (antes do fix); após merge PR #29 esperado ~300-500 URLs"
+      "bug_fix_2": "2026-04-01 PR #32 — URLs do sitemap e metadataBase usavam non-www; domínio canônico é www → corrigido. autores e categorias retornavam 0 no sitemap pois publish_autores.py e publish_categorias.py não enviavam status_publish=True ao Supabase → corrigido.",
+      "gsc_status": "auditado_2026-04-01 — 12 indexadas / 178 não indexadas. Motivos: 'Página com redirecionamento' (3) + 'Cópia sem canônica' (2) causados por non-www → corrigido PR #32. Autores/categorias=0 no sitemap → corrigido PR #32. Após merge: re-rodar steps 14+16+19 do pipeline."
     },
     "robots": {
       "status": "implemented",
       "implemented_on": "2026-03-24",
       "file": "app/robots.ts",
-      "rules": "Allow: / | Disallow: /admin, /api/"
+      "rules": "Allow: / | Disallow: /admin, /api/",
+      "bug_fix": "2026-04-01 PR #32 — URL do sitemap no robots.ts corrigida para www"
     },
     "generateMetadata": {
       "status": "implemented_all_dynamic_routes",
       "implemented_on": "2026-03-17",
-      "updated_on": "2026-03-24",
+      "updated_on": "2026-04-01",
       "routes": [
         "livros/[slug] — title, description (sinopse > descricao), alternates.canonical, openGraph (og:image via imagem_url)",
         "autores/[slug] — title, description, alternates.canonical",
@@ -811,6 +813,20 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-SEO-010",
+      "description": "fix: URLs canônicas (sitemap, metadataBase, robots) usavam non-www; publish_autores e publish_categorias não enviavam status_publish=True ao Supabase",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-04-01",
+      "resolution": "PR #32 — sitemap.ts, layout.tsx, robots.ts: base URL corrigida para https://www.livrariaalexandria.com.br. publish_autores.py e publish_categorias.py: adicionado status_publish=True ao payload do upsert Supabase. Pendente: re-rodar steps 14 (autores) + 16 (categorias) + 16→19 (listas) no pipeline após merge."
+    },
+    {
+      "id": "TASK-SEO-011",
+      "description": "Após merge PR #32: re-rodar pipeline steps 14 (Publicar Autores), 16 (Publicar Categorias) e 16→19 (List Composer → Publicar Listas) para popular autores/categorias/listas no Supabase com status_publish=True",
+      "priority": "high",
+      "status": "open"
+    },
     {
       "id": "TASK-SEO-004",
       "description": "Configurar Google Search Console — verificar domínio via registro TXT no DNS e submeter sitemap",
