@@ -113,10 +113,11 @@ def upsert_autor(row, autores_url, headers):
     now = datetime.utcnow().isoformat()
 
     payload = {
-        "nome":          nome,
-        "slug":          slug,
-        "nacionalidade": nacionalidade,
-        "created_at":    now,
+        "nome":           nome,
+        "slug":           slug,
+        "nacionalidade":  nacionalidade,
+        "status_publish": True,
+        "created_at":     now,
     }
 
     return upsert(autores_url, payload, headers)
