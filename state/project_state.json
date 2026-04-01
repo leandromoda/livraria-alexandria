@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-01 (sessão 5 — auditoria GSC + fix URLs canônicas www + fix status_publish autores/categorias — PR #32)",
+    "last_updated": "2026-04-01 (sessão 5 — fix URLs canônicas www + status_publish autores/categorias PR #32; force-dynamic todas as páginas + análise TASK-TRACK-001/SEO-003/REVIEW-001 PR #34)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -899,12 +899,24 @@
     {
       "id": "TASK-TRACK-001",
       "description": "Deduplicação de cliques afiliados",
-      "priority": "medium"
+      "priority": "medium",
+      "status": "planned",
+      "analysis": "O edge function /api/click/[id] insere uma linha em oferta_clicks a cada request sem verificação de duplicata. Um usuário que clica 2x no mesmo link gera 2 linhas, inflando métricas no admin. A tabela já captura ip_hash e session_id — dados suficientes para dedup.",
+      "plan": [
+        "Fase 1 — query-time (sem latência de redirect): no admin, deduplicate getTopLivros() e getRecentClicks() por (ip_hash, oferta_id) em janela de 30 min. Zero impacto nos redirects.",
+        "Fase 2 — insert-time (opcional, quando tráfego crescer): antes de inserir, checar se (ip_hash, oferta_id) existe nos últimos 30 min. Se sim, só redirecionar. Adiciona 1 query ao critical path do redirect."
+      ],
+      "recommended_start": "Fase 1 — modificar getRecentClicks() e getTopLivros() em app/(internal)/admin/page.tsx"
     },
     {
       "id": "TASK-SEO-003",
       "description": "AggregateOffer por livro",
-      "priority": "medium"
+      "priority": "medium",
+      "status": "planned",
+      "analysis": "livros/[slug]/page.tsx já gera schema.org Product com array de Offer. Quando há múltiplas ofertas, o Google recomenda AggregateOffer com lowPrice, highPrice, offerCount. Atualmente o array é enviado diretamente sem wrapper — o Google pode não processar como rich result de preço.",
+      "plan": "No bloco `schema` de livros/[slug]/page.tsx: se ofertas.length > 1 → envolver em AggregateOffer com lowPrice=min(preco), highPrice=max(preco), priceCurrency=BRL, offerCount=N, offers=[...Offer]. Se length === 1 → manter Offer simples. Se 0 → omitir campo offers.",
+      "file": "app/(public)/livros/[slug]/page.tsx",
+      "effort": "pequeno — mudança cirúrgica no bloco schema (< 15 linhas)"
     },
     {
       "id": "TASK-INGEST-007",
@@ -968,12 +980,6 @@
       "resolution": "Steps 1-7 executados para 100 livros em 2026-03-15. Pipeline end-to-end validado."
     },
     {
-      "id": "TASK-PIPE-002",
-      "description": "Rodar step 7→10 para os ~37 livros com sinopse pendente",
-      "priority": "high",
-      "status": "open"
-    },
-    {
       "id": "TASK-PIPE-003",
       "description": "Rodar step 11 (SEO lists) após publicação completa",
       "priority": "medium",
@@ -981,32 +987,13 @@
       "resolution": "List Composer executado. Lista 'Melhores livros de Negócios' criada. Listas de autor adicionadas ao composer."
     },
     {
-      "id": "TASK-PIPE-004",
-      "description": "Gerar sinopses para 84 livros pendentes (status_synopsis=0, status_review=1, is_book=1). Usar Gemini (padrão). Antes usava Ollama — todos 30 livros do lote 2026-03-17 falharam por timeout (2 tok/s CPU).",
-      "priority": "high",
-      "status": "open",
-      "current_count": "84 pendentes",
-      "action": "Rodar step 10 → Enter (Gemini) → pacote 30"
-    },
-    {
       "id": "TASK-REVIEW-001",
       "description": "Investigar editorial_score sempre retornando 1 — impede filtros de qualidade do list_composer e quality_gate",
       "priority": "medium",
-      "status": "open"
-    },
-    {
-      "id": "TASK-AUDIT-001",
-      "description": "Rodar auditor de conteúdo (opção 19) após completar publicação do lote principal",
-      "priority": "medium",
-      "status": "open"
-    },
-    {
-      "id": "TASK-AUDIT-002",
-      "description": "Rodar agente auditor de títulos (Claude Code) para varrer os 137 livros publicados e gerar blacklist.json",
-      "priority": "medium",
-      "status": "ready",
-      "workflow": "opção 26 (catálogo completo) → Claude Code audita audit_input.json → blacklist.json → opção 25",
-      "known_candidates": ["A Cabana — sinopse genérica de placeholder (is_publishable=0, editorial_score=0)"]
+      "status": "diagnosed",
+      "root_cause": "calculate_editorial_score() em review.py inicia com score=1 (base para seeds curados) e só penaliza quando NON_BOOK_PATTERNS batem (journal, report, thesis, etc.). Títulos normais de livros nunca batem → score permanece 1. quality_gate bloqueia apenas score<0. list_composer ordena por editorial_score DESC, mas como todos têm 1 o ordenamento é neutro.",
+      "impact": "Baixo na fase atual — seeds são curados e todos são livros válidos. O score=1 é correto para o piloto. Impacto real quando o pipeline crescer com seeds de qualidade variável.",
+      "recommendation": "Não alterar retroativamente (afeta 140 livros publicados). Futuramente adicionar content_score baseado em: sinopse preenchida +1, imagem_url preenchida +1, isbn válido +1, descricao > 100 chars +1. Tratar junto com TASK-INGEST-007."
     },
     {
       "id": "TASK-SUPABASE-001",
@@ -1034,6 +1021,14 @@
       "description": "Rodar step 18 (Categorize) após review para classificar livros na nova taxonomia temática",
       "priority": "medium",
       "status": "open"
+    },
+    {
+      "id": "TASK-SITE-002",
+      "description": "fix: páginas do site serviam dados estáticos do deploy — livros deletados continuavam aparecendo",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-01",
+      "resolution": "export const dynamic = 'force-dynamic' adicionado em todas as páginas que consultam Supabase: /, /livros, /autores, /categorias, /listas, /ofertas, /admin. Corrigido também createClient inline em autores/page.tsx → importa lib/supabase.ts compartilhado."
     },
     {
       "id": "TASK-SITE-001",
