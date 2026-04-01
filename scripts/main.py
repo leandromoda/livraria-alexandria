@@ -1,3 +1,4 @@
+import argparse
 import time
 import threading
 
@@ -145,7 +146,11 @@ Modelo LLM:
 
 def main():
 
-    idioma = escolher_idioma()
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--lang", default="PT", choices=["PT", "EN", "ES", "IT"],
+                        help="Idioma base (padrão: PT)")
+    args, _ = parser.parse_known_args()
+    idioma = args.lang
 
     while True:
 
