@@ -13,6 +13,7 @@ import time
 from core.db import get_conn
 from core.logger import log
 from core.markdown_executor import execute_agent
+from steps.quality_gate import check_synopsis_generic
 
 
 # =========================
@@ -105,14 +106,16 @@ def run(idioma, pacote):
 
         sinopse_text = result.get("synopsis", "")
 
-        if sinopse_text:
+        if not sinopse_text:
+            log(f"[SYNOPSIS] Falha (sinopse vazia) → {titulo}")
+        elif check_synopsis_generic(sinopse_text):
+            log(f"[SYNOPSIS] Rejeitada (template genérico) → {titulo}")
+        else:
             log("[SYNOPSIS][TEXT_BEGIN]")
             log(sinopse_text)
             log("[SYNOPSIS][TEXT_END]")
             update_synopsis(conn, livro_id, sinopse_text)
             log(f"[SYNOPSIS] OK → {titulo}")
-        else:
-            log(f"[SYNOPSIS] Falha (sinopse vazia) → {titulo}")
 
     conn.close()
 
