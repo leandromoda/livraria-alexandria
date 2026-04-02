@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
 
-const base = "https://www.livrariaalexandria.com.br";
+const base = "https://livrariaalexandria.com.br";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [livros, listas, categorias, autores] = await Promise.all([

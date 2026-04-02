@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/admin", "/api/"],
     },
-    sitemap: "https://www.livrariaalexandria.com.br/sitemap.xml",
+    sitemap: "https://livrariaalexandria.com.br/sitemap.xml",
   };
 }
