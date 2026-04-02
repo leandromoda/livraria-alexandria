@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
   description:
     "Descubra livros, listas editoriais e as melhores ofertas em literatura nacional e internacional.",
-  metadataBase: new URL("https://www.livrariaalexandria.com.br"),
+  metadataBase: new URL("https://livrariaalexandria.com.br"),
 };
 
 export default function RootLayout({
