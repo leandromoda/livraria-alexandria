@@ -99,17 +99,19 @@ def upsert(url: str, payload: dict | list, headers: dict) -> bool:
 
 def lookup_categoria_id(supabase_url: str, slug: str, headers: dict) -> str | None:
     """Resolve o UUID da categoria no Supabase pelo slug."""
-    try:
-        res = requests.get(
-            f"{supabase_url}/rest/v1/categorias?slug=eq.{slug}&select=id",
-            headers=headers,
-            timeout=TIMEOUT,
-        )
-        data = res.json()
-        return data[0]["id"] if data else None
-    except Exception as e:
-        log(f"LOOKUP CATEGORIA ERRO ({slug}) → {e}")
-        return None
+    for attempt in range(MAX_RETRIES):
+        try:
+            res = requests.get(
+                f"{supabase_url}/rest/v1/categorias?slug=eq.{slug}&select=id",
+                headers=headers,
+                timeout=TIMEOUT,
+            )
+            data = res.json()
+            return data[0]["id"] if data else None
+        except Exception as e:
+            log(f"LOOKUP CATEGORIA ERRO ({slug}) tentativa {attempt + 1}/{MAX_RETRIES} → {e}")
+            time.sleep(2)
+    return None
 
 
 # =========================
@@ -175,9 +177,11 @@ def run():
     for i, (livro_supabase_id, cat_slug) in enumerate(pares, 1):
 
         if cat_slug not in cat_id_cache:
-            cat_id_cache[cat_slug] = lookup_categoria_id(supabase_url, cat_slug, headers)
-
-        cat_id = cat_id_cache[cat_slug]
+            cat_id = lookup_categoria_id(supabase_url, cat_slug, headers)
+            if cat_id is not None:
+                cat_id_cache[cat_slug] = cat_id
+        else:
+            cat_id = cat_id_cache[cat_slug]
 
         if not cat_id:
             log(f"[PUBLISH_CAT] SKIP vínculo — categoria não encontrada: {cat_slug}")
