@@ -31,7 +31,10 @@ export default async function OfertasPage() {
         isbn
       )
     `)
-    .eq("ativa", true);
+    .eq("ativa", true)
+    .not("preco", "is", null)
+    .gt("preco", 0)
+    .order("preco", { ascending: true });
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://livrariaalexandria.com.br";
