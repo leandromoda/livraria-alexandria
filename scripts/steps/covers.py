@@ -136,6 +136,7 @@ def fetch_pending(conn, idioma, limit):
         FROM livros
         WHERE status_cover = 0
           AND idioma = ?
+        ORDER BY priority_score DESC, created_at ASC
         LIMIT ?
     """, (idioma, limit))
     return cur.fetchall()

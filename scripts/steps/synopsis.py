@@ -38,6 +38,7 @@ def fetch_pending(conn, idioma, limit):
           AND status_review   = 1
           AND is_book         = 1
           AND idioma          = ?
+        ORDER BY priority_score DESC, created_at ASC
         LIMIT ?
     """, (idioma, limit))
 

@@ -227,3 +227,40 @@ def run(pacote=100):
     conn.close()
 
     log(f"Ofertas publicadas: {inserted} | Falhas: {failed}")
+
+
+# =========================
+# REPAIR
+# =========================
+
+def run_repair(pacote=200):
+    """Força republicação de todas as ofertas para livros publicados.
+
+    1. Normaliza offer_status='active' → 1
+    2. Reseta status_publish_oferta=0 para livros elegíveis
+    3. Chama run(pacote) — upsert idempotente via on_conflict
+    """
+    conn = get_conn()
+
+    # 1. Normaliza offer_status
+    fix_offer_status(conn)
+
+    # 2. Reseta flag para forçar re-upsert
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE livros
+        SET status_publish_oferta = 0,
+            updated_at            = CURRENT_TIMESTAMP
+        WHERE status_publish   = 1
+          AND offer_url        IS NOT NULL
+          AND CAST(offer_status AS TEXT) IN ('1', 'active')
+          AND supabase_id      IS NOT NULL
+    """)
+    conn.commit()
+    resetados = cur.rowcount
+    conn.close()
+
+    log(f"[REPAIR] {resetados} ofertas marcadas para republicação")
+
+    # 3. Re-publica
+    run(pacote)

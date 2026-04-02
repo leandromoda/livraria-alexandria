@@ -16,8 +16,10 @@ from core.run_logger import StepRun
 
 from steps import (
     offer_seed,
-    enrich_descricao,
+    # enrich_descricao removido — coberto pelo Step 4 (Scraper)
     offer_resolver,
+    priority_scorer,
+    autopilot_audit,
     marketplace_scraper,
     slugify,
     slugify_autores,
@@ -33,6 +35,19 @@ from steps import (
     list_composer,
     publish_listas,
 )
+
+
+# =========================
+# BATCH ADAPTATIVOS
+# =========================
+
+# Steps lentos (scraping/HTTP) usam batch menor que o base.
+# Steps rápidos (CPU/banco) recebem o `pacote` sem modificação.
+STEP_PACOTES = {
+    "3  Resolver Ofertas": lambda p: min(p, 50),   # HTTP com retry — lento
+    "4  Scraper":          lambda p: min(p, 20),   # scraping HTML — mais lento
+    "12 Capas":            lambda p: min(p, 50),   # API externa — médio
+}
 
 
 # =========================
@@ -64,7 +79,7 @@ def run(idioma: str, pacote: int):
 
     Para quando:
     - pending == 0: pipeline completamente exaurido
-    - pending nao diminuiu: bloqueado aguardando LLM (steps 10, 11)
+    - pending não diminuiu: bloqueado aguardando LLM (steps 10, 11)
     - Ctrl+C: interrompido pelo usuário
     """
 
@@ -76,24 +91,27 @@ def run(idioma: str, pacote: int):
     conn.close()
 
     STEPS = [
-        ("1  Seeds",             lambda: offer_seed.run()),
-        ("2  Enriquecer",        lambda: enrich_descricao.run(pacote)),
-        ("3  Resolver Ofertas",  lambda: offer_resolver.run(idioma, pacote)),
-        ("4  Scraper",           lambda: marketplace_scraper.run(idioma, pacote)),
-        ("5  Slugs",             lambda: slugify.run(idioma, pacote)),
-        ("6  Slugs Autores",     lambda: slugify_autores.run()),
-        ("7  Dedup Autores",     lambda: dedup_autores.run()),
-        ("8  Dedup",             lambda: dedup.run(idioma, pacote)),
-        ("9  Review",            lambda: review.run(idioma, pacote)),
-        ("12 Capas",             lambda: covers.run(idioma, pacote)),
-        ("13 Quality Gate",      lambda: quality_gate.evaluate_quality(idioma, pacote)),
-        ("14 Publicar Livros",   lambda: publish.run(idioma, pacote)),
-        ("15 Publicar Autores",  lambda: publish_autores.run(pacote)),
-        ("16 Publicar Cats",     lambda: publish_categorias.run()),
-        ("17 Publicar Ofertas",  lambda: publish_ofertas.run(pacote)),
-        ("18 Listas SEO",        lambda: list_composer.run()),
-        ("19 Publicar Listas",   lambda: publish_listas.run()),
+        ("1  Seeds",             lambda p: offer_seed.run()),
+        ("3  Resolver Ofertas",  lambda p: offer_resolver.run(idioma, p)),
+        ("4  Scraper",           lambda p: marketplace_scraper.run(idioma, p)),
+        ("5  Slugs",             lambda p: slugify.run(idioma, p)),
+        ("6  Slugs Autores",     lambda p: slugify_autores.run()),
+        ("7  Dedup Autores",     lambda p: dedup_autores.run()),
+        ("8  Dedup",             lambda p: dedup.run(idioma, p)),
+        ("9  Review",            lambda p: review.run(idioma, p)),
+        ("12 Capas",             lambda p: covers.run(idioma, p)),
+        ("13 Quality Gate",      lambda p: quality_gate.evaluate_quality(idioma, p)),
+        ("14 Publicar Livros",   lambda p: publish.run(idioma, p)),
+        ("15 Publicar Autores",  lambda p: publish_autores.run(p)),
+        ("16 Publicar Cats",     lambda p: publish_categorias.run()),
+        ("17 Publicar Ofertas",  lambda p: publish_ofertas.run(p)),
+        ("18 Listas SEO",        lambda p: list_composer.run()),
+        ("19 Publicar Listas",   lambda p: publish_listas.run()),
     ]
+
+    # Trigger de falha: conta quantas vezes consecutivas cada step não gerou progresso
+    FAILURE_THRESHOLD = 3
+    step_sem_progresso: dict = {}
 
     ciclo = 0
     try:
@@ -104,13 +122,39 @@ def run(idioma: str, pacote: int):
             log(f"[AUTOPILOT] Pendente no inicio: {pending_anterior}")
             log("=" * 52)
 
+            # Recalcula prioridades antes de processar os steps
+            conn = get_conn()
+            priority_scorer.recalculate_all(conn)
+            conn.close()
+
             for nome, step_fn in STEPS:
-                log(f"[AUTOPILOT] -- {nome} --")
+                pacote_efetivo = STEP_PACOTES.get(nome, lambda p: p)(pacote)
+                log(f"[AUTOPILOT] -- {nome} (pacote={pacote_efetivo}) --")
+
+                conn = get_conn()
+                pending_pre = count_pending(conn)
+                conn.close()
+
                 try:
-                    with StepRun(nome, idioma=idioma, pacote=pacote, invocado_por="autopilot"):
-                        step_fn()
+                    with StepRun(nome, idioma=idioma, pacote=pacote_efetivo, invocado_por="autopilot"):
+                        step_fn(pacote_efetivo)
                 except Exception as e:
                     log(f"[AUTOPILOT] ERRO em {nome}: {e}")
+
+                conn = get_conn()
+                pending_pos = count_pending(conn)
+                conn.close()
+
+                if pending_pos >= pending_pre:
+                    step_sem_progresso[nome] = step_sem_progresso.get(nome, 0) + 1
+                    n = step_sem_progresso[nome]
+                    if n >= FAILURE_THRESHOLD:
+                        log(
+                            f"[AUTOPILOT][⚠️ TRIGGER] Step '{nome}' executou {n}x consecutivas "
+                            f"sem gerar progresso. Possível bloqueio ou step sem pendências."
+                        )
+                else:
+                    step_sem_progresso[nome] = 0  # reset ao produzir progresso
 
             conn = get_conn()
             pending_atual = count_pending(conn)
@@ -120,11 +164,15 @@ def run(idioma: str, pacote: int):
 
             if pending_atual == 0:
                 log("[AUTOPILOT] Pipeline exaurido. Nada mais a processar.")
+                log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                autopilot_audit.run()
                 break
 
             if pending_atual >= pending_anterior:
                 log("[AUTOPILOT] Sem progresso. Pipeline aguardando steps LLM (10, 11).")
                 log("[AUTOPILOT] Rode step 10 (Categorizar) e step 11 (Sinopses) e repita.")
+                log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                autopilot_audit.run()
                 break
 
             pending_anterior = pending_atual
