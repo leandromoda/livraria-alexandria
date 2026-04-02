@@ -28,6 +28,9 @@ from steps import repair
 from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
+from steps import autopilot_audit
+from steps import priority_scorer
+from steps import author_bio
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -186,9 +189,13 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 17 → Publicar Ofertas
 18 → Gerar listas SEO automáticas
 19 → Publicar Listas (requer step 18)
+27 → Reparar Ofertas (força republicação de todas para livros publicados)
 
 --- MONITORAMENTO ---
 20 → Monitorar preços e disponibilidade de ofertas
+
+--- CONTEÚDO ---
+29 → Gerar Bios de Autores (LLM)
 
 --- AUDITORIA ---
 21 → Auditar conectividade do site (sem LLM)
@@ -197,6 +204,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
 26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
+28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
 
 --- BANCO DE DADOS ---
 95 → Fazer backup do banco local
@@ -238,9 +246,11 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 
         elif op == "3":
             pacote = escolher_pacote()
+            todos = input_safe("Processar todos os idiomas, incluindo UNKNOWN (recomendado)? [S/n] ").strip().lower()
+            idioma_resolver = None if todos != "n" else idioma
             log("Resolvendo ofertas reais…")
             with StepRun("offer_resolver", idioma=idioma, pacote=pacote):
-                offer_resolver.run(idioma, pacote)
+                offer_resolver.run(idioma_resolver, pacote)
 
         elif op == "4":
             pacote = escolher_pacote()
@@ -454,6 +464,25 @@ ambos   → ambos acima
         elif op == "94":
             log("Exportando Project Tree…")
             export_state_transcript("project_tree")
+
+        elif op == "27":
+            pacote = escolher_pacote()
+            log("Reparando ofertas — forçando republicação para todos os livros publicados…")
+            with StepRun("publish_ofertas_repair", idioma=idioma, pacote=pacote):
+                publish_ofertas.run_repair(pacote)
+
+        elif op == "28":
+            log("Auditoria de integridade do pipeline (sem LLM)…")
+            with StepRun("autopilot_audit", idioma=idioma):
+                autopilot_audit.run()
+
+        elif op == "29":
+            pacote = escolher_pacote()
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+            log("Gerando bios de autores (LLM)…")
+            with StepRun("author_bio", idioma=idioma, pacote=pacote):
+                author_bio.run(idioma, pacote)
 
         else:
             print("Opção inválida.\n")

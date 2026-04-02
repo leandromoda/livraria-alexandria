@@ -34,7 +34,7 @@ export default async function AutorPage({ params }: PageProps) {
    */
   const { data: autor } = await supabase
     .from("autores")
-    .select("id, nome, slug, nacionalidade")
+    .select("id, nome, slug, nacionalidade, descricao")
     .eq("slug", slug)
     .single();
 
@@ -93,6 +93,15 @@ export default async function AutorPage({ params }: PageProps) {
         </div>
 
       </header>
+
+      {/* =========================
+          BIO DO AUTOR
+      ========================== */}
+      {autor.descricao && (
+        <p className="text-sm text-[#4A4A4A] leading-relaxed max-w-2xl -mt-4">
+          {autor.descricao}
+        </p>
+      )}
 
       {/* =========================
           LIVROS DO AUTOR

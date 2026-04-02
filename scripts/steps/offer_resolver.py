@@ -81,15 +81,25 @@ def fetch_pending(conn, idioma, limit):
 
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, titulo, autor, marketplace, lookup_query
-        FROM livros
-        WHERE idioma = ?
-          AND lookup_query IS NOT NULL
-          AND offer_url IS NULL
-          AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')
-        LIMIT ?
-    """, (idioma, limit))
+    if idioma is None:
+        cur.execute("""
+            SELECT id, titulo, autor, marketplace, lookup_query
+            FROM livros
+            WHERE lookup_query IS NOT NULL
+              AND offer_url IS NULL
+              AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')
+            LIMIT ?
+        """, (limit,))
+    else:
+        cur.execute("""
+            SELECT id, titulo, autor, marketplace, lookup_query
+            FROM livros
+            WHERE idioma = ?
+              AND lookup_query IS NOT NULL
+              AND offer_url IS NULL
+              AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')
+            LIMIT ?
+        """, (idioma, limit))
 
     return cur.fetchall()
 

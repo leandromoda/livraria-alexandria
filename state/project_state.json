@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-02 (sessão 8 — análise de 3 logs de pipeline; fix adicional: publish_listas.py tinha o mesmo bug PGRST204 de status_publish — corrigido e adicionado ao PR #40; PR #40 agora cobre autores + categorias + listas; confirmado via log 06:29 que autores/categorias passaram a publicar corretamente após o fix)",
+    "last_updated": "2026-04-02 (sessão 9 — otimização do autopilot: batches adaptativos, priority scoring 0-1000, triggers de falha recorrente, auditoria sem LLM; fix ofertas: offer_resolver aceita idioma=None, publish_ofertas.run_repair(); fix scraper timeout: TIMEOUT_SCRAPING=10s vs TIMEOUT_API=20s; Step 2 soft-deprecado no autopilot; site: fix query categorias livros_categorias(livro_id), fix query listas sem categoria_slug, descricao de autores + author_bio.py; novos módulos: priority_scorer.py, autopilot_audit.py, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -394,7 +394,11 @@
       "heartbeat": "30s",
       "logging": "timestamped_terminal_and_file (pipeline_YYYY-MM-DD_HH-MM-SS.log em scripts/data/)",
       "run_tracking": "tabela pipeline_runs no SQLite — step_name, idioma, pacote, started_at, finished_at, duracao_s, status, erro_msg, invocado_por",
-      "idioma_partitioning": true
+      "idioma_partitioning": true,
+      "priority_scoring": "coluna priority_score em livros (0-1000) recalculada a cada ciclo do autopilot; steps com ORDER BY priority_score DESC: covers, publish, synopsis, categorize",
+      "adaptive_batching": "STEP_PACOTES no autopilot: scraper→20, resolver→50, capas→50; demais usam base",
+      "failure_triggers": "autopilot rastreia steps sem progresso; após 3x consecutivas sem resultado loga [⚠️ TRIGGER]",
+      "audit_autopilot": "autopilot_audit.py executa 8 checks sem LLM; chamado automaticamente ao exaurir pipeline"
     },
     "state_management": {
       "progress_storage": "SQLite",
@@ -426,13 +430,12 @@
       {
         "order": 2,
         "name": "Enrich Descricao",
-        "status": "operational",
+        "status": "soft_deprecated",
         "idioma_aware": true,
         "persistence": "scripts/data/books.db",
-        "description": "Enriquece descricao via Google Books API (com key) ou OpenLibrary",
-        "status_flag": "status_descricao (0=pendente, 1=OK, 2=skip) — adicionado 2026-03-25",
-        "update_mode": "COALESCE(?, descricao) — não sobrescreve dados melhores do step 4",
-        "retry": "1 retry com sleep(3) apenas para requests.RequestException"
+        "description": "Enriquece descricao via Google Books API. Soft-deprecated: removido do autopilot (coberto pelo Step 4 Scraper). Disponível como opção manual no menu.",
+        "deprecated_on": "2026-04-02",
+        "deprecated_reason": "Step 4 (Scraper) já cobre Open Library + Google Books com melhor fallback chain. Logs confirmaram baixa efetividade."
       },
       {
         "order": 4,
@@ -615,7 +618,8 @@
         "description": "Extrai capa, descrição e preço direto do marketplace para livros com offer_url resolvida. Fallback: Google Books → OpenLibrary.",
         "script": "scripts/steps/marketplace_scraper.py",
         "idioma_aware": false,
-        "menu_option": 4
+        "menu_option": 4,
+        "timeout_fix_2026_04_02": "TIMEOUT_SCRAPING=10s (HTML direto) e TIMEOUT_API=20s (Open Library, Google Books). ReadTimeout específico logado como [SCRAPER] TIMEOUT."
       },
       {
         "order": 9,
@@ -724,6 +728,42 @@
           "filtro: is_publishable=eq.true excluía livros despublicados pós-publicação (ex: A Cabana) → corrigido para status=eq.publish"
         ],
         "pr": "PR #24 + PR #25"
+      },
+      {
+        "order": "autopilot",
+        "name": "Priority Scorer",
+        "status": "operational",
+        "description": "Recalcula priority_score (0-1000) para todos os livros. Chamado no início de cada ciclo do autopilot.",
+        "script": "scripts/steps/priority_scorer.py",
+        "created_on": "2026-04-02"
+      },
+      {
+        "order": "audit",
+        "name": "Autopilot Audit",
+        "status": "operational",
+        "description": "8 checks de integridade sem LLM. Chamado automaticamente ao exaurir o autopilot.",
+        "script": "scripts/steps/autopilot_audit.py",
+        "menu_option": 28,
+        "created_on": "2026-04-02"
+      },
+      {
+        "order": 29,
+        "name": "Author Bio",
+        "status": "operational",
+        "description": "Gera bio de 2-3 frases para autores sem descricao usando LLM com fallback determinístico.",
+        "script": "scripts/steps/author_bio.py",
+        "llm_required": true,
+        "menu_option": 29,
+        "created_on": "2026-04-02"
+      },
+      {
+        "order": 27,
+        "name": "Repair Ofertas",
+        "status": "operational",
+        "description": "Força republicação de todas as ofertas para livros publicados. Normaliza offer_status, reseta flag e re-upserta.",
+        "script": "scripts/steps/publish_ofertas.py (run_repair)",
+        "menu_option": 27,
+        "created_on": "2026-04-02"
       }
     ]
   },
@@ -809,9 +849,16 @@
     },
     "supabase_publicados": 137,
     "nota_supabase_publicados": "137 com status=publish (alguns têm is_publishable=false por quality gate retroativo ou price monitor)",
-    "ofertas_ativas": 94,
+    "ofertas_ativas": "94 (pré-repair; pós opção 27 deve subir para ~140)",
     "gargalo_principal": "step 11 (sinopse LLM) — 12 RPM Gemini Free, ~700 sinopses/dia",
-    "gemini_usage_hoje": "variável"
+    "gemini_usage_hoje": "variável",
+    "autopilot_features_2026_04_02": {
+      "adaptive_batching": "scraper→20, resolver→50, capas→50; demais usam base",
+      "priority_scoring": "livros.priority_score (0-1000), recalculado por ciclo",
+      "failure_triggers": "3x consecutivas sem progresso → log [⚠️ TRIGGER]",
+      "audit_on_exhaust": "autopilot_audit.run() chamado automaticamente ao parar",
+      "step2_removed": "enrich_descricao removido do loop STEPS (soft-deprecated)"
+    }
   },
   "validated_routes": [
     "/",
@@ -1125,6 +1172,45 @@
       "status": "open",
       "created_on": "2026-04-02",
       "notes": "Ainda não planejado em detalhes."
+    },
+    {
+      "id": "TASK-OFERTAS-001",
+      "description": "46 livros publicados sem oferta ativa — offer_resolver.py filtrava por idioma, excluindo livros com idioma=UNKNOWN",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-04-02",
+      "resolution": "offer_resolver.py: fetch_pending() aceita idioma=None. publish_ofertas.py: run_repair() adicionado. main.py: opção 3 pergunta idioma; opção 27 força republicação. Sequência: opção 3 (todos idiomas) → opção 27."
+    },
+    {
+      "id": "TASK-PIPE-011",
+      "description": "Autopilot otimizado: batches adaptativos, priority scoring, triggers de falha, auditoria sem LLM, step 2 soft-deprecated",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-02",
+      "resolution": "autopilot.py reescrito: STEP_PACOTES (scraper→20, resolver→50, capas→50), priority_scorer.recalculate_all() a cada ciclo, FAILURE_THRESHOLD=3 com log [⚠️ TRIGGER], autopilot_audit.run() ao exaurir. Step 2 removido do loop (coberto pelo Step 4)."
+    },
+    {
+      "id": "TASK-SITE-003",
+      "description": "Categorias e listas não apareciam no site — query frontend com campo inexistente + dados não publicados",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-02",
+      "resolution": "categorias/page.tsx: livros_categorias(id) → livros_categorias(livro_id). listas/page.tsx: removido categoria_slug do select (campo inexistente no Supabase). Dados: rodar step 9 (Categorizar) + step 16 (Publicar Categorias) para popular."
+    },
+    {
+      "id": "TASK-SITE-004",
+      "description": "Adicionar campo descricao ao perfil de autores no site + step gerador via LLM",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-04-02",
+      "resolution": "db.py: coluna descricao em autores. author_bio.py (step 29): gera bio 2-3 frases via Gemini com fallback determinístico. publish_autores.py: inclui descricao no upsert. autores/[slug]/page.tsx: exibe bio abaixo do header. Supabase migration pendente: ALTER TABLE autores ADD COLUMN descricao TEXT."
+    },
+    {
+      "id": "TASK-SUPABASE-002",
+      "description": "Rodar migration Supabase: ALTER TABLE autores ADD COLUMN descricao TEXT",
+      "priority": "high",
+      "status": "open",
+      "created_on": "2026-04-02"
     }
   ]
 }

@@ -48,7 +48,7 @@ def fetch_autores_pendentes(conn, pacote):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, nome, slug, nacionalidade, supabase_id
+        SELECT id, nome, slug, nacionalidade, supabase_id, descricao
         FROM autores
         WHERE status_publish = 0
         LIMIT ?
@@ -108,7 +108,7 @@ def upsert(url, payload, headers):
 
 def upsert_autor(row, autores_url, headers):
 
-    (local_id, nome, slug, nacionalidade, existing_supabase_id) = row
+    (local_id, nome, slug, nacionalidade, existing_supabase_id, descricao) = row
 
     now = datetime.utcnow().isoformat()
 
@@ -118,6 +118,9 @@ def upsert_autor(row, autores_url, headers):
         "nacionalidade": nacionalidade,
         "created_at":    now,
     }
+
+    if descricao:
+        payload["descricao"] = descricao
 
     return upsert(autores_url, payload, headers)
 

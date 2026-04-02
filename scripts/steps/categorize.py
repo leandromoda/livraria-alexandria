@@ -58,7 +58,7 @@ def fetch_pending(conn, pacote):
             FROM livros
             WHERE status_categorize = 0
               AND status_review = 1
-            ORDER BY created_at ASC
+            ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
         """, (pacote,))
     except Exception:
@@ -67,7 +67,7 @@ def fetch_pending(conn, pacote):
             FROM livros
             WHERE status_categorize = 0
               AND status_review = 1
-            ORDER BY created_at ASC
+            ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
         """, (pacote,))
     return cur.fetchall()

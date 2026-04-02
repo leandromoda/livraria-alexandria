@@ -25,10 +25,12 @@ from core.logger import log
 # CONFIG
 # =========================
 
-TIMEOUT_CONNECT = 5
-TIMEOUT_READ    = 25
-RETRY_DELAY     = 3
-RETRY_MAX       = 2
+TIMEOUT_CONNECT   = 5
+TIMEOUT_SCRAPING  = 10   # scraping direto HTML (Amazon/ML) — mais propenso a ReadTimeout
+TIMEOUT_API       = 20   # chamadas de API (Open Library, Google Books) — mais estáveis
+TIMEOUT_READ      = TIMEOUT_SCRAPING  # compatibilidade: fetch_page usa este valor
+RETRY_DELAY       = 3
+RETRY_MAX         = 2
 MIN_IMG_BYTES = 5000
 MAX_DESC_CHARS = 2000
 
@@ -103,6 +105,8 @@ def fetch_page(url):
                 return None
         except KeyboardInterrupt:
             raise
+        except requests.exceptions.ReadTimeout:
+            log(f"[SCRAPER] TIMEOUT (tentativa {attempt + 1}) → {url[:80]}")
         except Exception as e:
             log(f"[SCRAPER] Erro HTTP (tentativa {attempt + 1}): {type(e).__name__}")
         if attempt < RETRY_MAX - 1:
@@ -237,7 +241,7 @@ def try_open_library(titulo, isbn=None, autor=None):
             q = titulo
         resp = requests.get(
             OL_SEARCH.format(q=requests.utils.quote(q)),
-            timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+            timeout=(TIMEOUT_CONNECT, TIMEOUT_API),
         )
         if resp.status_code != 200:
             return None
@@ -258,7 +262,7 @@ def try_open_library(titulo, isbn=None, autor=None):
             try:
                 w = requests.get(
                     OL_WORK.format(key=work_key),
-                    timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+                    timeout=(TIMEOUT_CONNECT, TIMEOUT_API),
                 )
                 if w.status_code == 200:
                     raw = w.json().get("description", "")
@@ -308,7 +312,7 @@ def try_google_books(isbn, titulo, autor):
     try:
         query = isbn if isbn else f"{titulo} {autor}"
         url   = f"https://www.googleapis.com/books/v1/volumes?q={requests.utils.quote(query)}&maxResults=1"
-        resp  = requests.get(url, timeout=10)
+        resp  = requests.get(url, timeout=(TIMEOUT_CONNECT, TIMEOUT_API))
 
         if resp.status_code != 200:
             return None

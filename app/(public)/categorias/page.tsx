@@ -17,7 +17,7 @@ export default async function CategoriasPage() {
       nome,
       slug,
       livros_categorias (
-        id
+        livro_id
       )
     `)
     .order("nome");

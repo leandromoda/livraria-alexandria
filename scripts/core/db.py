@@ -129,6 +129,7 @@ def ensure_schema(conn):
         ("categoria",             "TEXT"),
         ("categorize_attempts",   "INTEGER DEFAULT 0"),
         ("status_descricao",      "INTEGER DEFAULT 0"),
+        ("priority_score",        "INTEGER DEFAULT 0"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
@@ -155,11 +156,15 @@ def ensure_schema(conn):
     );
     """)
 
-    # Migração para bancos existentes
-    try:
-        cur.execute("ALTER TABLE autores ADD COLUMN deduped INTEGER DEFAULT 0")
-    except Exception:
-        pass  # coluna já existe
+    # Migrações para bancos existentes (autores)
+    for col, definition in [
+        ("deduped",   "INTEGER DEFAULT 0"),
+        ("descricao", "TEXT"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE autores ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS livros_autores (

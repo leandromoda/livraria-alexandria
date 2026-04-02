@@ -89,6 +89,7 @@ def fetch_pending(conn, idioma, limit):
           AND sinopse IS NOT NULL
           AND sinopse != ''
           AND idioma          = ?
+        ORDER BY priority_score DESC, created_at ASC
         LIMIT ?
     """, (idioma, limit))
 

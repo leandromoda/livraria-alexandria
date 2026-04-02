@@ -9,7 +9,7 @@ export default async function ListasPage() {
    */
   const { data: listas } = await supabase
     .from("listas")
-    .select("id, titulo, slug, introducao, categoria_slug")
+    .select("id, titulo, slug, introducao")
     .order("titulo");
 
   return (
@@ -44,7 +44,7 @@ export default async function ListasPage() {
           >
 
             <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider mb-2 block">
-              {l.categoria_slug ?? "Lista editorial"}
+              Lista editorial
             </span>
 
             <span className="block text-[#0D1B2A] font-serif font-semibold text-base leading-snug group-hover:text-[#4A1628] transition-colors mb-2">
