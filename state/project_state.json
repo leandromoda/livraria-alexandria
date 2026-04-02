@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-01 (sessão 5 — fix URLs canônicas www + status_publish autores/categorias PR #32; force-dynamic todas as páginas + análise TASK-TRACK-001/SEO-003/REVIEW-001 PR #34)",
+    "last_updated": "2026-04-02 (sessão 6 — fix PGRST204: status_publish removido do payload Supabase em publish_autores.py e publish_categorias.py — coluna não existe no Supabase, era flag interna SQLite enviada por engano; PR #40)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -268,7 +268,8 @@
       "strategy": "dynamic — busca slugs publicados no Supabase (livros, listas, categorias, autores) + páginas estáticas",
       "url": "https://www.livrariaalexandria.com.br/sitemap.xml",
       "bug_fix": "2026-03-26 PR #29 — queries retornavam 0 URLs dinâmicas: livros usava coluna inexistente (status_publish) corrigida para status='publish'; listas/categorias/autores trocaram integer 1 por boolean true",
-      "bug_fix_2": "2026-04-01 PR #32 — URLs do sitemap e metadataBase usavam non-www; domínio canônico é www → corrigido. autores e categorias retornavam 0 no sitemap pois publish_autores.py e publish_categorias.py não enviavam status_publish=True ao Supabase → corrigido.",
+      "bug_fix_2": "2026-04-01 PR #32 — URLs do sitemap e metadataBase usavam non-www; domínio canônico é www → corrigido. NOTA: a parte de publish_autores/publish_categorias do PR #32 estava errada (adicionou status_publish=True ao payload Supabase, mas a coluna não existe nessas tabelas remotas).",
+      "bug_fix_3": "2026-04-02 PR #40 — PGRST204 (400) em steps 15/16: publish_autores.py e publish_categorias.py enviavam status_publish=True ao Supabase mas a coluna não existe nas tabelas autores/categorias remotas. Correto: status_publish é flag interna do SQLite local. Removido do payload do upsert.",
       "gsc_status": "auditado_2026-04-01 — 12 indexadas / 178 não indexadas. Motivos: 'Página com redirecionamento' (3) + 'Cópia sem canônica' (2) causados por non-www → corrigido PR #32. Autores/categorias=0 no sitemap → corrigido PR #32. Após merge: re-rodar steps 14+16+19 do pipeline."
     },
     "robots": {
@@ -835,7 +836,7 @@
     },
     {
       "id": "TASK-SEO-011",
-      "description": "Após merge PR #32: re-rodar pipeline steps 14 (Publicar Autores), 16 (Publicar Categorias) e 16→19 (List Composer → Publicar Listas) para popular autores/categorias/listas no Supabase com status_publish=True",
+      "description": "Após merge PR #40: re-rodar pipeline steps 14 (Publicar Autores) e 16 (Publicar Categorias) para popular autores/categorias no Supabase sem o campo status_publish (fix PGRST204)",
       "priority": "high",
       "status": "open"
     },
