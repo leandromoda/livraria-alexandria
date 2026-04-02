@@ -4,28 +4,6 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Click = {
-  id: string;
-  created_at: string;
-  referer: string | null;
-  utm_source: string | null;
-  utm_campaign: string | null;
-  session_id: string | null;
-  ofertas: {
-    marketplace: string;
-    livros: {
-      titulo: string;
-      slug: string;
-    } | null;
-  } | null;
-};
-
-type TopLivro = {
-  livro_id: string;
-  titulo: string;
-  total: number;
-};
-
 type CatalogStats = {
   total: number;
   published: number;
@@ -53,46 +31,13 @@ type VercelAnalyticsSummary = {
   totalViews: number;
   totalVisitors: number;
   history: PageViewDay[];
+  topPages: { page: string; views: number }[];
+  topReferrers: { referrer: string; visitors: number }[];
+  topCountries: { country: string; visitors: number }[];
   error?: string;
 };
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
-
-async function getRecentClicks(): Promise<Click[]> {
-  const { data } = await supabaseAdmin
-    .from("oferta_clicks")
-    .select(
-      `id, created_at, referer, utm_source, utm_campaign, session_id,
-       ofertas ( marketplace, livros ( titulo, slug ) )`
-    )
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  return (data as unknown as Click[]) ?? [];
-}
-
-async function getTopLivros(): Promise<TopLivro[]> {
-  const { data } = await supabaseAdmin
-    .from("oferta_clicks")
-    .select("livro_id, livros ( titulo )")
-    .not("livro_id", "is", null);
-
-  if (!data) return [];
-
-  const counts: Record<string, { titulo: string; total: number }> = {};
-  for (const row of data as any[]) {
-    const id = row.livro_id;
-    if (!counts[id]) {
-      counts[id] = { titulo: row.livros?.titulo ?? "—", total: 0 };
-    }
-    counts[id].total++;
-  }
-
-  return Object.entries(counts)
-    .map(([livro_id, v]) => ({ livro_id, ...v }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
-}
 
 async function getCatalogStats(): Promise<CatalogStats> {
   const STAGES = ["slug", "dedup", "synopsis", "review", "cover", "publish"];
@@ -209,7 +154,7 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   const projectName = "livraria-alexandria";
 
   if (!token) {
-    return { totalViews: 0, totalVisitors: 0, history: [], error: "VERCEL_ACCESS_TOKEN não configurado" };
+    return { totalViews: 0, totalVisitors: 0, history: [], topPages: [], topReferrers: [], topCountries: [], error: "VERCEL_ACCESS_TOKEN não configurado" };
   }
 
   try {
@@ -228,6 +173,9 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
         totalViews: 0,
         totalVisitors: 0,
         history: [],
+        topPages: [],
+        topReferrers: [],
+        topCountries: [],
         error: `Projeto "${projectName}" não encontrado na Vercel (status ${projectRes.status})`,
       };
     }
@@ -237,21 +185,26 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
     const baseParams =
       `projectId=${projectId}&from=${from}&to=${now}&granularity=1d&environment=production` +
       (teamId ? `&teamId=${teamId}` : "");
+    const baseParamsNoGranularity =
+      `projectId=${projectId}&from=${from}&to=${now}&environment=production` +
+      (teamId ? `&teamId=${teamId}` : "");
 
-    // Busca pageviews e visitantes únicos em paralelo
-    const [pvRes, visRes] = await Promise.all([
-      fetch(
-        `https://api.vercel.com/v1/web/insights/stats/pageviews?${baseParams}`,
-        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
-      ),
-      fetch(
-        `https://api.vercel.com/v1/web/insights/stats/visitors?${baseParams}`,
-        { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
-      ),
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Busca todos os endpoints em paralelo
+    const [pvRes, visRes, pagesRes, referrersRes, countriesRes] = await Promise.all([
+      fetch(`https://api.vercel.com/v1/web/insights/stats/pageviews?${baseParams}`, { headers, cache: "no-store" }),
+      fetch(`https://api.vercel.com/v1/web/insights/stats/visitors?${baseParams}`, { headers, cache: "no-store" }),
+      fetch(`https://api.vercel.com/v1/web/insights/stats/pages?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
+      fetch(`https://api.vercel.com/v1/web/insights/stats/referrers?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
+      fetch(`https://api.vercel.com/v1/web/insights/stats/countries?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
     ]);
 
     const pvData = await pvRes.json();
     const visData = await visRes.json();
+    const pagesData = await pagesRes.json();
+    const referrersData = await referrersRes.json();
+    const countriesData = await countriesRes.json();
 
     // Monta mapa de visitantes por data para fazer o join
     const visitorsByDate: Record<string, number> = {};
@@ -271,6 +224,9 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
         totalViews: 0,
         totalVisitors: 0,
         history: [],
+        topPages: [],
+        topReferrers: [],
+        topCountries: [],
         error: `API retornou dados vazios (status pv=${pvRes.status} vis=${visRes.status}) — verifique o token e o Web Analytics do projeto`,
       };
     }
@@ -278,23 +234,28 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
     const totalViews = history.reduce((acc, d) => acc + d.views, 0);
     const totalVisitors = history.reduce((acc, d) => acc + d.visitors, 0);
 
-    return { totalViews, totalVisitors, history };
+    const topPages = ((pagesData?.data ?? []) as any[]).map((d) => ({
+      page: d.key ?? "",
+      views: d.total ?? 0,
+    }));
+
+    const topReferrers = ((referrersData?.data ?? []) as any[]).map((d) => ({
+      referrer: d.key ?? "(direto)",
+      visitors: d.total ?? 0,
+    }));
+
+    const topCountries = ((countriesData?.data ?? []) as any[]).map((d) => ({
+      country: d.key ?? "—",
+      visitors: d.total ?? 0,
+    }));
+
+    return { totalViews, totalVisitors, history, topPages, topReferrers, topCountries };
   } catch (err) {
-    return { totalViews: 0, totalVisitors: 0, history: [], error: String(err) };
+    return { totalViews: 0, totalVisitors: 0, history: [], topPages: [], topReferrers: [], topCountries: [], error: String(err) };
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function formatDay(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -310,9 +271,7 @@ function pct(a: number, b: number): number {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
-  const [clicks, topLivros, catalog, analytics, traffic] = await Promise.all([
-    getRecentClicks(),
-    getTopLivros(),
+  const [catalog, analytics, traffic] = await Promise.all([
     getCatalogStats(),
     getVercelAnalytics(),
     getTrafficSources(),
@@ -473,79 +432,106 @@ export default async function AdminPage() {
         )}
       </section>
 
-      {/* ── Top livros ── */}
+      {/* ── Top Páginas ── */}
       <section className="section">
-        <h2 className="section-title">Top Livros por Cliques</h2>
+        <h2 className="section-title">Top Páginas — últimos 30 dias</h2>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Título</th>
-                <th className="align-right">Cliques</th>
+                <th style={{ width: "2rem" }}>#</th>
+                <th>Página</th>
+                <th className="align-right">Pageviews</th>
               </tr>
             </thead>
             <tbody>
-              {topLivros.length === 0 && (
+              {analytics.topPages.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="empty">
                     Nenhum dado disponível
                   </td>
                 </tr>
+              ) : (
+                analytics.topPages.map((p, i) => (
+                  <tr key={p.page}>
+                    <td className="rank">{i + 1}</td>
+                    <td className="mono">{p.page}</td>
+                    <td className="align-right">
+                      <span className="pill">{p.views}</span>
+                    </td>
+                  </tr>
+                ))
               )}
-              {topLivros.map((l, i) => (
-                <tr key={l.livro_id}>
-                  <td className="rank">{i + 1}</td>
-                  <td>{l.titulo}</td>
-                  <td className="align-right">
-                    <span className="pill">{l.total}</span>
-                  </td>
-                </tr>
-              ))}
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* ── Cliques recentes ── */}
+      {/* ── Top Referrers ── */}
       <section className="section">
-        <h2 className="section-title">Cliques Recentes</h2>
+        <h2 className="section-title">Top Referrers — últimos 30 dias</h2>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
-                <th>Data</th>
-                <th>Livro</th>
-                <th>Marketplace</th>
-                <th>UTM Source</th>
-                <th>UTM Campaign</th>
-                <th>Referer</th>
-                <th>Session</th>
+                <th style={{ width: "2rem" }}>#</th>
+                <th>Domínio</th>
+                <th className="align-right">Visitantes</th>
               </tr>
             </thead>
             <tbody>
-              {clicks.length === 0 && (
+              {analytics.topReferrers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="empty">
-                    Nenhum clique registrado
+                  <td colSpan={3} className="empty">
+                    Nenhum dado disponível
                   </td>
                 </tr>
+              ) : (
+                analytics.topReferrers.map((r, i) => (
+                  <tr key={r.referrer}>
+                    <td className="rank">{i + 1}</td>
+                    <td>{r.referrer}</td>
+                    <td className="align-right">
+                      <span className="pill">{r.visitors}</span>
+                    </td>
+                  </tr>
+                ))
               )}
-              {clicks.map((c) => (
-                <tr key={c.id}>
-                  <td className="mono">{formatDate(c.created_at)}</td>
-                  <td>{c.ofertas?.livros?.titulo ?? "—"}</td>
-                  <td>
-                    <span className="tag">{c.ofertas?.marketplace ?? "—"}</span>
-                  </td>
-                  <td className="muted">{c.utm_source ?? "—"}</td>
-                  <td className="muted">{c.utm_campaign ?? "—"}</td>
-                  <td className="muted truncate">{c.referer ?? "—"}</td>
-                  <td className="mono muted">
-                    {c.session_id ? c.session_id.slice(0, 8) + "…" : "—"}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── Top Países ── */}
+      <section className="section">
+        <h2 className="section-title">Top Países — últimos 30 dias</h2>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: "2rem" }}>#</th>
+                <th>País</th>
+                <th className="align-right">Visitantes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analytics.topCountries.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="empty">
+                    Nenhum dado disponível
                   </td>
                 </tr>
-              ))}
+              ) : (
+                analytics.topCountries.map((c, i) => (
+                  <tr key={c.country}>
+                    <td className="rank">{i + 1}</td>
+                    <td>{c.country}</td>
+                    <td className="align-right">
+                      <span className="pill">{c.visitors}</span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
