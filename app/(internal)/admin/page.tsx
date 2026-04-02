@@ -183,7 +183,7 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
     const now = Date.now();
     const from = now - 30 * 24 * 60 * 60 * 1000;
     const baseParams =
-      `projectId=${projectId}&from=${from}&to=${now}&granularity=1d&environment=production` +
+      `projectId=${projectId}&from=${from}&to=${now}&granularity=day&environment=production` +
       (teamId ? `&teamId=${teamId}` : "");
     const baseParamsNoGranularity =
       `projectId=${projectId}&from=${from}&to=${now}&environment=production` +
