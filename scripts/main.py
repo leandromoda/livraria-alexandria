@@ -356,7 +356,6 @@ Limite de livros para monitorar:
 
         elif op == "21":
             log("Auditando conectividade do site…")
-            import argparse
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
@@ -378,7 +377,6 @@ Limite de livros para auditoria:
             set_provider(escolher_provider())
 
             log(f"Auditando conteúdo publicado (limit={limite}, dry_run={dry_run})…")
-            import argparse
             args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
             auditor.run(args)
 
