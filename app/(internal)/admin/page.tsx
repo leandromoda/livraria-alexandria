@@ -182,12 +182,9 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
 
     const now = Date.now();
     const from = now - 30 * 24 * 60 * 60 * 1000;
-    const baseParams =
-      `projectId=${projectId}&from=${from}&to=${now}&granularity=day&environment=production` +
-      (teamId ? `&teamId=${teamId}` : "");
-    const baseParamsNoGranularity =
-      `projectId=${projectId}&from=${from}&to=${now}&environment=production` +
-      (teamId ? `&teamId=${teamId}` : "");
+    const teamParam = teamId ? `&teamId=${teamId}` : "";
+    const baseParams = `projectId=${projectId}&from=${from}&to=${now}&granularity=day${teamParam}`;
+    const baseParamsNoGranularity = `projectId=${projectId}&from=${from}&to=${now}${teamParam}`;
 
     const headers = { Authorization: `Bearer ${token}` };
 
@@ -206,6 +203,19 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
     const referrersData = await referrersRes.json();
     const countriesData = await countriesRes.json();
 
+    if (pvRes.status !== 200) {
+      const errMsg = pvData?.error?.message ?? pvData?.message ?? JSON.stringify(pvData);
+      return {
+        totalViews: 0,
+        totalVisitors: 0,
+        history: [],
+        topPages: [],
+        topReferrers: [],
+        topCountries: [],
+        error: `Vercel API ${pvRes.status}: ${errMsg}`,
+      };
+    }
+
     // Monta mapa de visitantes por data para fazer o join
     const visitorsByDate: Record<string, number> = {};
     for (const d of (visData?.data ?? []) as any[]) {
@@ -218,18 +228,6 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
       views: d.total ?? 0,
       visitors: visitorsByDate[d.key] ?? 0,
     }));
-
-    if (history.length === 0) {
-      return {
-        totalViews: 0,
-        totalVisitors: 0,
-        history: [],
-        topPages: [],
-        topReferrers: [],
-        topCountries: [],
-        error: `API retornou dados vazios (status pv=${pvRes.status} vis=${visRes.status}) — verifique o token e o Web Analytics do projeto`,
-      };
-    }
 
     const totalViews = history.reduce((acc, d) => acc + d.views, 0);
     const totalVisitors = history.reduce((acc, d) => acc + d.visitors, 0);
