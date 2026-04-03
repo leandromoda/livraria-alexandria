@@ -144,9 +144,10 @@ def run():
         log(f"[PUBLISH_LISTAS][{i:03d}/{len(listas):03d}] → {lista['titulo']}")
 
         payload = {
-            "slug":      lista["slug"],
-            "titulo":    lista["titulo"],
-            "introducao": lista["descricao"],
+            "slug":        lista["slug"],
+            "titulo":      lista["titulo"],
+            "introducao":  lista["descricao"],
+            "status_publish": True,
         }
 
         result = upsert(listas_url, payload, headers)
