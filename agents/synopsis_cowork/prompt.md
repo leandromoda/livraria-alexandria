@@ -21,6 +21,7 @@ Você receberá um arquivo JSON em `scripts/data/synopsis_input.json` com a segu
   "livros": [
     {
       "id": "hex24chars",
+      "slug": "slug-do-livro",
       "titulo": "Título do Livro",
       "autor": "Nome do Autor",
       "idioma": "PT",
@@ -107,6 +108,22 @@ Se sua sinopse contiver qualquer um desses marcadores, REESCREVA antes de inclui
 
 ---
 
+## Detecção de problemas (blacklist)
+
+Enquanto processa cada livro, avalie se há problemas graves que justifiquem despublicação. Adicione ao array `blacklist` no output quando detectar:
+
+- **synopsis-incoherent** — `descricao` é texto sem sentido, gibberish, ou completamente incoerente
+- **synopsis-title-mismatch** — `titulo` contradiz a `descricao` de forma clara (ex: título sobre programação, descrição sobre culinária)
+- **synopsis-fabricated** — conteúdo parece fabricado/alucinado (strings aleatórias, Lorem Ipsum, texto repetitivo sem significado)
+
+Regras:
+- Só adicione à blacklist casos **claros e graves** — na dúvida, NÃO adicione
+- Use `severity: "medium"` para incoerências moderadas, `severity: "high"` para casos óbvios
+- Um livro pode estar na blacklist E ter status REJECTED nos resultados (são independentes)
+- Use o campo `slug` do input para identificar o livro na blacklist
+
+---
+
 ## Output
 
 Salve o resultado em `scripts/data/synopsis_output.json` com a seguinte estrutura:
@@ -132,6 +149,14 @@ Salve o resultado em `scripts/data/synopsis_output.json` com a seguinte estrutur
       "status": "REJECTED",
       "motivo": "descricao vazia"
     }
+  ],
+  "blacklist": [
+    {
+      "slug": "slug-do-livro",
+      "reason": "synopsis-incoherent",
+      "severity": "medium",
+      "details": "Descrição é texto aleatório sem relação com o título"
+    }
   ]
 }
 ```
@@ -143,6 +168,7 @@ Salve o resultado em `scripts/data/synopsis_output.json` com a seguinte estrutur
 - `motivo`: obrigatório quando `status` = "REJECTED" (ex: "descricao vazia", "descricao insuficiente")
 - `sinopse`: texto limpo, sem aspas escapadas desnecessárias
 - Os contadores em `meta` devem refletir os totais reais
+- `blacklist`: array de livros com problemas graves (pode ser vazio `[]` se nenhum problema detectado)
 
 ---
 
@@ -155,5 +181,6 @@ Ler synopsis_input.json
       → gerar sinopse 90-160 palavras no idioma correto
       → auto-validar (marcadores, tom, comprimento, idioma)
       → incluir no array de resultados
+      → se problema grave detectado, incluir no array blacklist
   → Salvar synopsis_output.json
 ```

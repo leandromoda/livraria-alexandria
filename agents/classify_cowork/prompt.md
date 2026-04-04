@@ -20,6 +20,7 @@ Você receberá um arquivo JSON em `scripts/data/categorize_input.json` com a se
   "livros": [
     {
       "id": "hex24chars",
+      "slug": "slug-do-livro",
       "titulo": "Título do Livro",
       "autor": "Nome do Autor",
       "descricao": "Descrição bruta do livro...",
@@ -118,6 +119,22 @@ Para cada livro no array:
 
 ---
 
+## Detecção de problemas (blacklist)
+
+Enquanto classifica cada livro, avalie se há problemas graves. Adicione ao array `blacklist` no output quando detectar:
+
+- **classify-not-a-book** — item claramente não é um livro (listagem de produto, gadget, URL aleatória)
+- **classify-misleading-title** — título é enganoso e não corresponde ao conteúdo descrito
+- **classify-wrong-language** — descrição está em idioma completamente errado E o conteúdo é inclassificável
+
+Regras:
+- Só adicione à blacklist casos **claros e graves** — na dúvida, NÃO adicione
+- Use `severity: "high"` para "not-a-book", `severity: "medium"` para os demais
+- Um livro pode estar na blacklist E ter status REJECTED nos resultados (são independentes)
+- Use o campo `slug` do input para identificar o livro na blacklist
+
+---
+
 ## Regras obrigatórias
 
 ### Slugs
@@ -165,6 +182,14 @@ Salve o resultado em `scripts/data/categorize_output.json` com a seguinte estrut
       "status": "REJECTED",
       "motivo": "informacao insuficiente para classificacao"
     }
+  ],
+  "blacklist": [
+    {
+      "slug": "slug-do-livro",
+      "reason": "classify-not-a-book",
+      "severity": "high",
+      "details": "Item é uma listagem de produto eletrônico, não um livro"
+    }
   ]
 }
 ```
@@ -175,6 +200,7 @@ Salve o resultado em `scripts/data/categorize_output.json` com a seguinte estrut
 - `status`: "CLASSIFIED" se ao menos 3 categorias foram atribuídas, "REJECTED" caso contrário
 - `motivo`: obrigatório quando `status` = "REJECTED"
 - Os contadores em `meta` devem refletir os totais reais
+- `blacklist`: array de livros com problemas graves (pode ser vazio `[]` se nenhum problema detectado)
 
 ---
 

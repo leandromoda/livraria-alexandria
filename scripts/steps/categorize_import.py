@@ -21,6 +21,7 @@ from core.logger import log
 BASE_DIR       = os.path.dirname(os.path.dirname(__file__))
 INPUT_PATH     = os.path.join(BASE_DIR, "data", "categorize_output.json")
 TAXONOMY_PATH  = os.path.join(BASE_DIR, "data", "taxonomy.json")
+BLACKLIST_PATH = os.path.join(BASE_DIR, "data", "blacklist.json")
 
 MAX_CATEGORIES = 5
 
@@ -159,6 +160,13 @@ def run():
             erros += 1
 
     conn.close()
+
+    # --- Blacklist merge ---
+    blacklist_entries = data.get("blacklist", [])
+    if blacklist_entries:
+        from core.blacklist_merge import merge_blacklist
+        added = merge_blacklist(blacklist_entries, BLACKLIST_PATH)
+        log(f"[CATEGORIZE_IMPORT] Blacklist: {added} nova(s) entrada(s) adicionada(s)")
 
     log("[CATEGORIZE_IMPORT] Finalizado")
     log(f"OK: {ok} | Rejeitados: {rejeitados} | Já processados: {ja_processados} | Erros: {erros} | Total: {len(resultados)}")

@@ -34,7 +34,7 @@ def fetch_pending(conn, pacote):
 
     try:
         cur.execute("""
-            SELECT id, titulo, autor, descricao, sinopse
+            SELECT id, titulo, slug, autor, descricao, sinopse
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
@@ -43,7 +43,7 @@ def fetch_pending(conn, pacote):
         """, (pacote,))
     except Exception:
         cur.execute("""
-            SELECT id, titulo, autor, descricao, NULL as sinopse
+            SELECT id, titulo, slug, autor, descricao, NULL as sinopse
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
@@ -77,12 +77,14 @@ def run(pacote):
 
         livro_id  = row["id"]
         titulo    = row["titulo"]
+        slug      = row["slug"]
         autor     = row["autor"]
         descricao = row["descricao"] or ""
         sinopse   = row["sinopse"] if row["sinopse"] else ""
 
         livros.append({
             "id":        livro_id,
+            "slug":      slug or "",
             "titulo":    titulo,
             "autor":     autor or "",
             "descricao": descricao[:MAX_TEXT_LEN],

@@ -31,7 +31,7 @@ def fetch_pending(conn, idioma, limit):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT id, titulo, autor, idioma, descricao
+        SELECT id, titulo, slug, autor, idioma, descricao
         FROM livros
         WHERE status_synopsis = 0
           AND status_review   = 1
@@ -64,7 +64,7 @@ def run(idioma, pacote):
     livros = []
     skipped = 0
 
-    for livro_id, titulo, autor, idioma_livro, descricao in rows:
+    for livro_id, titulo, slug, autor, idioma_livro, descricao in rows:
 
         if not descricao or not descricao.strip():
             log(f"[SYNOPSIS_EXPORT] Skip (descricao vazia) → {titulo}")
@@ -73,6 +73,7 @@ def run(idioma, pacote):
 
         livros.append({
             "id":        livro_id,
+            "slug":      slug or "",
             "titulo":    titulo,
             "autor":     autor or "",
             "idioma":    idioma_livro,
