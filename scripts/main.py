@@ -31,6 +31,7 @@ from steps import autopilot
 from steps import autopilot_audit
 from steps import priority_scorer
 from steps import author_bio
+from steps import offer_list_importer
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -190,6 +191,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 18 → Gerar listas SEO automáticas
 19 → Publicar Listas (requer step 18)
 27 → Reparar Ofertas (força republicação de todas para livros publicados)
+30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
 
 --- MONITORAMENTO ---
 20 → Monitorar preços e disponibilidade de ofertas
@@ -483,6 +485,12 @@ ambos   → ambos acima
             log("Gerando bios de autores (LLM)…")
             with StepRun("author_bio", idioma=idioma, pacote=pacote):
                 author_bio.run(idioma, pacote)
+
+        elif op == "30":
+            pacote = escolher_pacote()
+            log("Importando offer_list.json (agente offer_finder)…")
+            with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
+                offer_list_importer.run(pacote)
 
         else:
             print("Opção inválida.\n")
