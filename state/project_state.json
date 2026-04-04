@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-04 (sessão 10 — agente offer_finder criado: agents/offer_finder/{identity,rules,task,memory}.md; aciona via Claude Cowork; pergunta X ao usuário, busca book_list no Supabase, valida URLs via WebSearch+WebFetch, gera scripts/data/offer_list.json; prompt registrado em agent_memory. Step 30 criado: offer_list_importer.py — lê offer_list.json, upserta ofertas no Supabase, atualiza SQLite; ofertas low-confidence publicadas como ativa=false) | 2026-04-02 (sessão 9 — otimização do autopilot: batches adaptativos, priority scoring 0-1000, triggers de falha recorrente, auditoria sem LLM; fix ofertas: offer_resolver aceita idioma=None, publish_ofertas.run_repair(); fix scraper timeout: TIMEOUT_SCRAPING=10s vs TIMEOUT_API=20s; Step 2 soft-deprecado no autopilot; site: fix query categorias livros_categorias(livro_id), fix query listas sem categoria_slug, descricao de autores + author_bio.py; novos módulos: priority_scorer.py, autopilot_audit.py, author_bio.py)",
+    "last_updated": "2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: agents/synopsis_cowork/prompt.md e agents/classify_cowork/prompt.md; steps 31-34 export/import JSON; prompt.md único por agente Cowork, sem split identity/rules/task) | 2026-04-04 (sessão 10 — agente offer_finder criado: agents/offer_finder/{identity,rules,task,memory}.md; aciona via Claude Cowork; step 30 offer_list_importer.py) | 2026-04-02 (sessão 9 — otimização do autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -390,6 +390,29 @@
         "populated_by": ["offer_finder — após cada execução: search_patterns, failed_books, marketplace_notes"],
         "invocation": "Claude Code (Claude Cowork) — agente autônomo com WebSearch + WebFetch",
         "prompt": "Você é o agente Offer Finder.\n\nLeia agents/offer_finder/identity.md, rules.md e task.md para carregar suas instruções completas.\nLeia agents/offer_finder/memory.md para consultar padrões de busca anteriores e livros já confirmados sem oferta.\n\nExecute a tarefa find_valid_offers:\n- Pergunte ao usuário quantos livros deseja processar (padrão: 100)\n- Leia .env.local para obter NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY\n- Consulte o Supabase para obter livros publicados sem ofertas ativas\n- Pesquise e valide ofertas no Amazon BR e Mercado Livre via WebSearch + WebFetch\n- Grave o resultado em scripts/data/offer_list.json\n- Atualize agents/offer_finder/memory.md ao final"
+      },
+      {
+        "name": "synopsis_cowork",
+        "type": "claude_cowork",
+        "prompt_path": "agents/synopsis_cowork/prompt.md",
+        "structure": "single prompt.md (não usa split identity/rules/task)",
+        "input": "scripts/data/synopsis_input.json (gerado pelo step 31)",
+        "output": "scripts/data/synopsis_output.json (consumido pelo step 32)",
+        "batch_size_recommended": 25,
+        "invocation": "Leia agents/synopsis_cowork/prompt.md e aplique sobre scripts/data/synopsis_input.json. Salve em scripts/data/synopsis_output.json.",
+        "created_on": "2026-04-04"
+      },
+      {
+        "name": "classify_cowork",
+        "type": "claude_cowork",
+        "prompt_path": "agents/classify_cowork/prompt.md",
+        "structure": "single prompt.md (não usa split identity/rules/task)",
+        "input": "scripts/data/categorize_input.json (gerado pelo step 33)",
+        "output": "scripts/data/categorize_output.json (consumido pelo step 34)",
+        "batch_size_recommended": 50,
+        "taxonomy": "scripts/data/taxonomy.json (171 categorias, 23 grupos — embedada no prompt)",
+        "invocation": "Leia agents/classify_cowork/prompt.md e aplique sobre scripts/data/categorize_input.json. Salve em scripts/data/categorize_output.json.",
+        "created_on": "2026-04-04"
       }
     ]
   },
@@ -783,6 +806,52 @@
         "llm_required": false,
         "depends_on": ["agente offer_finder (gera offer_list.json)", "livros publicados (supabase_id preenchido)"],
         "output": "Supabase ofertas table + SQLite offer_url/marketplace/offer_status",
+        "idempotent": true,
+        "created_on": "2026-04-04"
+      },
+      {
+        "order": 31,
+        "name": "Synopsis Export (Cowork)",
+        "status": "operational",
+        "description": "Exporta livros pendentes de sinopse para scripts/data/synopsis_input.json. Consumido pelo agente Claude Cowork (agents/synopsis_cowork/prompt.md).",
+        "script": "scripts/steps/synopsis_export.py",
+        "menu_option": 31,
+        "llm_required": false,
+        "idioma_aware": true,
+        "created_on": "2026-04-04"
+      },
+      {
+        "order": 32,
+        "name": "Synopsis Import (Cowork)",
+        "status": "operational",
+        "description": "Importa sinopses de scripts/data/synopsis_output.json gerado pelo Claude Cowork. Valida com check_synopsis_generic + comprimento + artefatos meta antes de gravar.",
+        "script": "scripts/steps/synopsis_import.py",
+        "menu_option": 32,
+        "llm_required": false,
+        "idioma_aware": false,
+        "idempotent": true,
+        "created_on": "2026-04-04"
+      },
+      {
+        "order": 33,
+        "name": "Categorize Export (Cowork)",
+        "status": "operational",
+        "description": "Exporta livros pendentes de categorização para scripts/data/categorize_input.json. Consumido pelo agente Claude Cowork (agents/classify_cowork/prompt.md).",
+        "script": "scripts/steps/categorize_export.py",
+        "menu_option": 33,
+        "llm_required": false,
+        "idioma_aware": false,
+        "created_on": "2026-04-04"
+      },
+      {
+        "order": 34,
+        "name": "Categorize Import (Cowork)",
+        "status": "operational",
+        "description": "Importa categorias de scripts/data/categorize_output.json gerado pelo Claude Cowork. Valida slugs contra taxonomy.json, computa confidence/primary_cat no Python.",
+        "script": "scripts/steps/categorize_import.py",
+        "menu_option": 34,
+        "llm_required": false,
+        "idioma_aware": false,
         "idempotent": true,
         "created_on": "2026-04-04"
       }
