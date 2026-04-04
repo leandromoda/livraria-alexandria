@@ -1005,12 +1005,18 @@
     {
       "id": "TASK-AFF-002",
       "description": "Cadastro Mercado Livre Partners",
-      "priority": "high"
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-04",
+      "resolution": "Cadastro realizado diretamente no programa próprio do Mercado Livre Afiliados (não via Awin — programa ML não disponível na rede). Conta: leandro_moda, matt_tool: 45905535."
     },
     {
       "id": "TASK-AFF-003",
       "description": "Inserir IDs afiliados nas URLs de redirecionamento",
-      "priority": "high"
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-04",
+      "resolution": "inject_ml_affiliate() criada em offer_resolver.py (urllib.parse, idempotente). Aplicada em build_mercadolivre_url() e no loop de publish_ofertas.run(). Parâmetros: matt_word=leandro_moda&matt_tool=45905535. Testes unitários em scripts/test_inject_ml_affiliate.py (3 casos: sem params, idempotente, Amazon intacta). PR #50. Pendente: rodar opção 27 (run_repair) após merge."
     },
     {
       "id": "TASK-AFF-004",
