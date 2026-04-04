@@ -32,6 +32,8 @@ from steps import autopilot_audit
 from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
+from steps import synopsis_export
+from steps import synopsis_import
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -179,8 +181,10 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 10 → Classificar Categorias Temáticas (LLM)
 
 --- GERAÇÃO DE CONTEÚDO ---
-11 → Gerar sinopses (requer review concluído)
+11 → Gerar sinopses via Gemini (requer review concluído)
 12 → Gerar capas
+31 → Exportar livros para sinopse (gera synopsis_input.json para Claude Cowork)
+32 → Importar sinopses geradas (synopsis_output.json → SQLite)
 
 --- PUBLICAÇÃO ---
 13 → Quality Gate
@@ -491,6 +495,17 @@ ambos   → ambos acima
             log("Importando offer_list.json (agente offer_finder)…")
             with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
                 offer_list_importer.run(pacote)
+
+        elif op == "31":
+            pacote = escolher_pacote()
+            log("Exportando livros para sinopse (Claude Cowork)…")
+            with StepRun("synopsis_export", idioma=idioma, pacote=pacote):
+                synopsis_export.run(idioma, pacote)
+
+        elif op == "32":
+            log("Importando sinopses geradas pelo Claude Cowork…")
+            with StepRun("synopsis_import", idioma=idioma):
+                synopsis_import.run()
 
         else:
             print("Opção inválida.\n")
