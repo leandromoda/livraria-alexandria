@@ -998,7 +998,9 @@
     {
       "id": "TASK-AFF-001",
       "description": "Cadastro Amazon Associates",
-      "priority": "high"
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-04"
     },
     {
       "id": "TASK-AFF-002",

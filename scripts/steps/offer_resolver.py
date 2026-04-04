@@ -9,7 +9,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse, urlencode, parse_qs, urlunparse
 
 
 # =========================
@@ -46,6 +46,29 @@ def get_conn():
 
 
 # =========================
+# AFILIADO ML
+# =========================
+
+ML_AFFILIATE = {
+    "matt_word": "leandro_moda",
+    "matt_tool": "45905535",
+}
+
+
+def inject_ml_affiliate(url: str) -> str:
+    """Injeta parâmetros de afiliado ML na URL. Idempotente. Só atua em mercadolivre.com."""
+    parsed = urlparse(url)
+    if "mercadolivre.com" not in parsed.netloc:
+        return url
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    if "matt_tool" in params:
+        return url  # já tem — não duplicar
+    params.update({k: [v] for k, v in ML_AFFILIATE.items()})
+    new_query = urlencode({k: v[0] for k, v in params.items()})
+    return urlunparse(parsed._replace(query=new_query))
+
+
+# =========================
 # URL BUILDERS
 # =========================
 
@@ -56,7 +79,8 @@ def build_amazon_url(query: str) -> str:
 
 def build_mercadolivre_url(query: str) -> str:
     q = quote_plus(query)
-    return f"https://lista.mercadolivre.com.br/{q}"
+    url = f"https://lista.mercadolivre.com.br/{q}"
+    return inject_ml_affiliate(url)
 
 
 def resolve_offer(marketplace: str, lookup_query: str):
