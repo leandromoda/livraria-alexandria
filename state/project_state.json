@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-04 (sessão 10 — agente offer_finder criado: agents/offer_finder/{identity,rules,task,memory}.md; aciona via Claude Cowork; pergunta X ao usuário, busca book_list no Supabase, valida URLs via WebSearch+WebFetch, gera scripts/data/offer_list.json; prompt registrado em agent_memory) | 2026-04-02 (sessão 9 — otimização do autopilot: batches adaptativos, priority scoring 0-1000, triggers de falha recorrente, auditoria sem LLM; fix ofertas: offer_resolver aceita idioma=None, publish_ofertas.run_repair(); fix scraper timeout: TIMEOUT_SCRAPING=10s vs TIMEOUT_API=20s; Step 2 soft-deprecado no autopilot; site: fix query categorias livros_categorias(livro_id), fix query listas sem categoria_slug, descricao de autores + author_bio.py; novos módulos: priority_scorer.py, autopilot_audit.py, author_bio.py)",
+    "last_updated": "2026-04-04 (sessão 10 — agente offer_finder criado: agents/offer_finder/{identity,rules,task,memory}.md; aciona via Claude Cowork; pergunta X ao usuário, busca book_list no Supabase, valida URLs via WebSearch+WebFetch, gera scripts/data/offer_list.json; prompt registrado em agent_memory. Step 30 criado: offer_list_importer.py — lê offer_list.json, upserta ofertas no Supabase, atualiza SQLite; ofertas low-confidence publicadas como ativa=false) | 2026-04-02 (sessão 9 — otimização do autopilot: batches adaptativos, priority scoring 0-1000, triggers de falha recorrente, auditoria sem LLM; fix ofertas: offer_resolver aceita idioma=None, publish_ofertas.run_repair(); fix scraper timeout: TIMEOUT_SCRAPING=10s vs TIMEOUT_API=20s; Step 2 soft-deprecado no autopilot; site: fix query categorias livros_categorias(livro_id), fix query listas sem categoria_slug, descricao de autores + author_bio.py; novos módulos: priority_scorer.py, autopilot_audit.py, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -772,6 +772,19 @@
         "script": "scripts/steps/publish_ofertas.py (run_repair)",
         "menu_option": 27,
         "created_on": "2026-04-02"
+      },
+      {
+        "order": 30,
+        "name": "Offer List Importer",
+        "status": "operational",
+        "description": "Lê scripts/data/offer_list.json gerado pelo agente offer_finder. Para cada livro: localiza registro SQLite pelo supabase_id, atualiza offer_url/marketplace/offer_status=1, faz upsert de TODAS as ofertas (amazon + mercadolivre) no Supabase e marca status_publish_oferta=1. Ofertas com confiança 'low' são publicadas como ativa=false para revisão manual.",
+        "script": "scripts/steps/offer_list_importer.py",
+        "menu_option": 30,
+        "llm_required": false,
+        "depends_on": ["agente offer_finder (gera offer_list.json)", "livros publicados (supabase_id preenchido)"],
+        "output": "Supabase ofertas table + SQLite offer_url/marketplace/offer_status",
+        "idempotent": true,
+        "created_on": "2026-04-04"
       }
     ]
   },
