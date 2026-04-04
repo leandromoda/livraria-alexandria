@@ -34,12 +34,20 @@ export async function generateMetadata({
   };
 }
 
-function formatPrice(value: unknown): string {
-  return Number(value).toLocaleString("pt-BR", {
+function formatPrice(value: unknown): string | null {
+  const num = Number(value);
+  if (!value || num === 0) return null;
+  return num.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
+
+const MARKETPLACE_LABELS: Record<string, string> = {
+  amazon:         "Amazon",
+  mercadolivre:   "Mercado Livre",
+  mercado_livre:  "Mercado Livre",
+};
 
 export default async function LivroPage({ params }: PageProps) {
   const { slug } = await params;
@@ -144,12 +152,20 @@ export default async function LivroPage({ params }: PageProps) {
               src={livro.imagem_url}
               alt={livro.titulo}
               className="w-44 rounded-xl shadow-md border border-[#E6DED3]"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = "none";
+                const fallback = target.nextElementSibling as HTMLElement | null;
+                if (fallback) fallback.style.display = "flex";
+              }}
             />
-          ) : (
-            <div className="w-44 h-64 rounded-xl bg-[#4A1628] flex items-center justify-center">
-              <span className="text-[#C9A84C] text-5xl font-serif">A</span>
-            </div>
-          )}
+          ) : null}
+          <div
+            className="w-44 h-64 rounded-xl bg-[#4A1628] items-center justify-center"
+            style={{ display: livro.imagem_url ? "none" : "flex" }}
+          >
+            <span className="text-[#C9A84C] text-5xl font-serif">A</span>
+          </div>
         </div>
 
         {/* Dados */}
@@ -209,7 +225,10 @@ export default async function LivroPage({ params }: PageProps) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
-                Ver melhor oferta — R$ {formatPrice(ofertas[0].preco)}
+                {(() => {
+                  const price = formatPrice(ofertas[0].preco);
+                  return price ? `Ver melhor oferta — R$ ${price}` : "Ver melhor oferta";
+                })()}
               </a>
             </div>
           )}
@@ -221,7 +240,7 @@ export default async function LivroPage({ params }: PageProps) {
       {/* =========================
           SINOPSE
       ========================== */}
-      {livro.descricao && (
+      {(livro.sinopse ?? livro.descricao) && (
         <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
 
           <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
@@ -229,7 +248,7 @@ export default async function LivroPage({ params }: PageProps) {
           </h2>
 
           <p className="text-[#4A4A4A] leading-relaxed text-base">
-            {livro.descricao}
+            {livro.sinopse ?? livro.descricao}
           </p>
 
         </section>
@@ -252,32 +271,42 @@ export default async function LivroPage({ params }: PageProps) {
 
         <div className="space-y-3">
 
-          {ofertas?.map((o: any) => (
-            <div
-              key={o.id}
-              className="flex items-center justify-between bg-white border border-[#E6DED3] rounded-xl px-6 py-4 hover:border-[#C9A84C] transition-all"
-            >
-
-              <div>
-                <p className="font-medium text-[#0D1B2A] text-sm">
-                  {o.marketplace}
-                </p>
-                <p className="text-xl font-serif font-semibold text-[#4A1628] mt-0.5">
-                  R$ {formatPrice(o.preco)}
-                </p>
-              </div>
-
-              <a
-                href={`/api/click/${o.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
+          {ofertas?.map((o: any) => {
+            const price = formatPrice(o.preco);
+            const label = MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace;
+            return (
+              <div
+                key={o.id}
+                className="flex items-center justify-between bg-white border border-[#E6DED3] rounded-xl px-6 py-4 hover:border-[#C9A84C] transition-all"
               >
-                Ver oferta →
-              </a>
 
-            </div>
-          ))}
+                <div>
+                  <p className="font-medium text-[#0D1B2A] text-sm">
+                    {label}
+                  </p>
+                  {price ? (
+                    <p className="text-xl font-serif font-semibold text-[#4A1628] mt-0.5">
+                      R$ {price}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-[#7B5E3A] mt-0.5">
+                      Consulte o site
+                    </p>
+                  )}
+                </div>
+
+                <a
+                  href={`/api/click/${o.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
+                >
+                  Ver oferta →
+                </a>
+
+              </div>
+            );
+          })}
 
         </div>
 
