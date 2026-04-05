@@ -20,7 +20,8 @@ from steps.quality_gate import check_synopsis_generic
 # CONFIG
 # =========================
 
-INPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "synopsis_output.json")
+INPUT_PATH     = os.path.join(os.path.dirname(__file__), "..", "data", "synopsis_output.json")
+BLACKLIST_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "blacklist.json")
 
 MIN_SYNOPSIS_LEN = 400
 
@@ -141,6 +142,13 @@ def run():
             erros += 1
 
     conn.close()
+
+    # --- Blacklist merge ---
+    blacklist_entries = data.get("blacklist", [])
+    if blacklist_entries:
+        from core.blacklist_merge import merge_blacklist
+        added = merge_blacklist(blacklist_entries, BLACKLIST_PATH)
+        log(f"[SYNOPSIS_IMPORT] Blacklist: {added} nova(s) entrada(s) adicionada(s)")
 
     log("[SYNOPSIS_IMPORT] Finalizado")
     log(f"OK: {ok} | Rejeitados: {rejeitados} | Já processados: {ja_processados} | Erros: {erros} | Total: {len(resultados)}")

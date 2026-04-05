@@ -36,6 +36,7 @@ from steps import synopsis_export
 from steps import synopsis_import
 from steps import categorize_export
 from steps import categorize_import
+from steps import cowork_export
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -189,6 +190,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 32 → Importar sinopses geradas (synopsis_output.json → SQLite)
 33 → Exportar livros para categorização (gera categorize_input.json para Claude Cowork)
 34 → Importar categorias geradas (categorize_output.json → SQLite)
+35 → Exportar sinopse + categorização unificado (Claude Cowork Autopilot)
 
 --- PUBLICAÇÃO ---
 13 → Quality Gate
@@ -521,6 +523,12 @@ ambos   → ambos acima
             log("Importando categorias geradas pelo Claude Cowork…")
             with StepRun("categorize_import", idioma=idioma):
                 categorize_import.run()
+
+        elif op == "35":
+            pacote = escolher_pacote()
+            log("Exportando sinopse + categorização (Cowork Autopilot)…")
+            with StepRun("cowork_export", idioma=idioma, pacote=pacote):
+                cowork_export.run(idioma, pacote)
 
         else:
             print("Opção inválida.\n")

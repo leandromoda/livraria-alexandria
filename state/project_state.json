@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: agents/synopsis_cowork/prompt.md e agents/classify_cowork/prompt.md; steps 31-34 export/import JSON; prompt.md único por agente Cowork, sem split identity/rules/task) | 2026-04-04 (sessão 10 — agente offer_finder criado: agents/offer_finder/{identity,rules,task,memory}.md; aciona via Claude Cowork; step 30 offer_list_importer.py) | 2026-04-02 (sessão 9 — otimização do autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -412,6 +412,21 @@
         "batch_size_recommended": 50,
         "taxonomy": "scripts/data/taxonomy.json (171 categorias, 23 grupos — embedada no prompt)",
         "invocation": "Leia agents/classify_cowork/prompt.md e aplique sobre scripts/data/categorize_input.json. Salve em scripts/data/categorize_output.json.",
+        "created_on": "2026-04-04"
+      },
+      {
+        "name": "cowork_autopilot",
+        "type": "claude_cowork",
+        "prompt_path": "agents/cowork_autopilot/prompt.md",
+        "structure": "single prompt.md — agente unificado (sinopse + categorização + blacklist)",
+        "inputs": ["scripts/data/synopsis_input.json", "scripts/data/categorize_input.json"],
+        "outputs": ["scripts/data/synopsis_output.json", "scripts/data/categorize_output.json", "scripts/data/blacklist.json"],
+        "auto_generates_inputs": true,
+        "auto_imports_results": true,
+        "auto_applies_blacklist": true,
+        "batch_sizes": {"synopsis": 25, "categorize": 50},
+        "schedule": "pendente — */30 * * * * (a cada 30 min, via Claude Code /schedule)",
+        "invocation": "Leia agents/cowork_autopilot/prompt.md e execute as instruções.",
         "created_on": "2026-04-04"
       }
     ]
@@ -853,6 +868,17 @@
         "llm_required": false,
         "idioma_aware": false,
         "idempotent": true,
+        "created_on": "2026-04-04"
+      },
+      {
+        "order": 35,
+        "name": "Cowork Export (unificado)",
+        "status": "operational",
+        "description": "Roda synopsis_export + categorize_export em uma única chamada. Gera synopsis_input.json e categorize_input.json para o agente cowork_autopilot.",
+        "script": "scripts/steps/cowork_export.py",
+        "menu_option": 35,
+        "llm_required": false,
+        "idioma_aware": true,
         "created_on": "2026-04-04"
       }
     ]
