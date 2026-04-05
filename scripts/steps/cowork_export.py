@@ -21,7 +21,3 @@ def run(idioma, pacote):
     categorize_export.run(pacote)
 
     log("[COWORK_EXPORT] Exportação unificada concluída")
-    log("")
-    log("=== PRÓXIMO PASSO ===")
-    log("Execute o agente cowork_autopilot para processar ambos os inputs:")
-    log("  Leia agents/cowork_autopilot/prompt.md e execute as instruções.")
