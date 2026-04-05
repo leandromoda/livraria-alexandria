@@ -106,10 +106,3 @@ def run(pacote):
 
     log(f"[CATEGORIZE_EXPORT] Exportados: {len(livros)}")
     log(f"[CATEGORIZE_EXPORT] Arquivo: {os.path.abspath(OUTPUT_PATH)}")
-    log("")
-    log("=== PRÓXIMO PASSO ===")
-    log("1. Abra uma sessão Claude Cowork")
-    log("2. Peça para ler scripts/data/categorize_input.json")
-    log("3. Aplique as regras de agents/classify_cowork/prompt.md")
-    log("4. Salve o resultado em scripts/data/categorize_output.json")
-    log("5. Volte ao pipeline e rode a opção 34 (Importar Categorias)")

@@ -37,6 +37,7 @@ from steps import synopsis_import
 from steps import categorize_export
 from steps import categorize_import
 from steps import cowork_export
+from steps import cowork_import
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -186,11 +187,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
 --- GERAÇÃO DE CONTEÚDO ---
 11 → Gerar sinopses via Gemini (requer review concluído)
 12 → Gerar capas
-31 → Exportar livros para sinopse (gera synopsis_input.json para Claude Cowork)
-32 → Importar sinopses geradas (synopsis_output.json → SQLite)
-33 → Exportar livros para categorização (gera categorize_input.json para Claude Cowork)
-34 → Importar categorias geradas (categorize_output.json → SQLite)
-35 → Exportar sinopse + categorização unificado (Claude Cowork Autopilot)
+C  → Cowork Autopilot (sinopse + categorias via Claude)
 
 --- PUBLICAÇÃO ---
 13 → Quality Gate
@@ -502,33 +499,52 @@ ambos   → ambos acima
             with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
                 offer_list_importer.run(pacote)
 
-        elif op == "31":
-            pacote = escolher_pacote()
-            log("Exportando livros para sinopse (Claude Cowork)…")
-            with StepRun("synopsis_export", idioma=idioma, pacote=pacote):
-                synopsis_export.run(idioma, pacote)
+        elif op.upper() == "C":
+            import os
+            syn_out = os.path.join("data", "synopsis_output.json")
+            cat_out = os.path.join("data", "categorize_output.json")
+            has_outputs = os.path.exists(syn_out) or os.path.exists(cat_out)
 
-        elif op == "32":
-            log("Importando sinopses geradas pelo Claude Cowork…")
-            with StepRun("synopsis_import", idioma=idioma):
-                synopsis_import.run()
+            if has_outputs:
+                print("""
+Outputs do Cowork detectados. O que deseja fazer?
 
-        elif op == "33":
-            pacote = escolher_pacote()
-            log("Exportando livros para categorização (Claude Cowork)…")
-            with StepRun("categorize_export", idioma=idioma, pacote=pacote):
-                categorize_export.run(pacote)
+1 → Importar resultados (synopsis_output + categorize_output → SQLite)
+2 → Novo ciclo (exportar novos inputs — sobrescreve outputs antigos)
+""")
+                sub = input_safe("Opção: ")
+                if sub == "1":
+                    log("Importando resultados do Cowork…")
+                    with StepRun("cowork_import", idioma=idioma):
+                        cowork_import.run()
+                elif sub == "2":
+                    pacote = escolher_pacote()
+                    log("Exportando inputs para Cowork…")
+                    with StepRun("cowork_export", idioma=idioma, pacote=pacote):
+                        cowork_export.run(idioma, pacote)
+                    print("""
+=== PRÓXIMO PASSO ===
+Abra o Claude Code e diga:
 
-        elif op == "34":
-            log("Importando categorias geradas pelo Claude Cowork…")
-            with StepRun("categorize_import", idioma=idioma):
-                categorize_import.run()
+  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
 
-        elif op == "35":
-            pacote = escolher_pacote()
-            log("Exportando sinopse + categorização (Cowork Autopilot)…")
-            with StepRun("cowork_export", idioma=idioma, pacote=pacote):
-                cowork_export.run(idioma, pacote)
+Depois volte aqui e pressione C → 1 para importar.
+""")
+                else:
+                    print("Opção inválida.\n")
+            else:
+                pacote = escolher_pacote()
+                log("Exportando inputs para Cowork…")
+                with StepRun("cowork_export", idioma=idioma, pacote=pacote):
+                    cowork_export.run(idioma, pacote)
+                print("""
+=== PRÓXIMO PASSO ===
+Abra o Claude Code e diga:
+
+  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
+
+Depois volte aqui e pressione C → 1 para importar.
+""")
 
         else:
             print("Opção inválida.\n")

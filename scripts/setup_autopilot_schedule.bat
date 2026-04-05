@@ -4,7 +4,7 @@ REM Registra o Cowork Autopilot no Windows Task Scheduler
 REM Execute este script como administrador (clique direito > Executar como admin)
 REM ============================================================
 
-schtasks /create /tn "LivrariaAlexandria-CoworkAutopilot" /tr "C:\Users\Leandro Moda\livraria-alexandria\scripts\cowork_autopilot.bat" /sc minute /mo 30 /f
+schtasks /create /tn "LivrariaAlexandria-CoworkAutopilot" /tr "\"%~dp0cowork_autopilot.bat\"" /sc minute /mo 30 /f
 
 if %ERRORLEVEL% EQU 0 (
     echo.
