@@ -90,7 +90,7 @@ export default async function LivroPage({ params }: PageProps) {
     .select("listas ( titulo, slug )")
     .eq("livro_id", livro.id);
 
-  const listas = listasPivot?.map((l: any) => l.listas) ?? [];
+  const listas = listasPivot?.map((l: any) => l.listas).filter(Boolean) ?? [];
 
   /**
    * Schema.org
@@ -204,15 +204,17 @@ export default async function LivroPage({ params }: PageProps) {
               </span>
             )}
 
-            {livro.livros_categorias?.map((rel: any) => (
-              <a
-                key={rel.categorias.slug}
-                href={`/categorias/${rel.categorias.slug}`}
-                className="text-xs bg-[#4A1628] text-[#F5F0E8] px-3 py-1 rounded-full hover:bg-[#6B2238] transition-colors"
-              >
-                {rel.categorias.nome}
-              </a>
-            ))}
+            {livro.livros_categorias
+              ?.filter((rel: any) => rel.categorias)
+              .map((rel: any) => (
+                <a
+                  key={rel.categorias.slug}
+                  href={`/categorias/${rel.categorias.slug}`}
+                  className="text-xs bg-[#4A1628] text-[#F5F0E8] px-3 py-1 rounded-full hover:bg-[#6B2238] transition-colors"
+                >
+                  {rel.categorias.nome}
+                </a>
+              ))}
 
           </div>
 

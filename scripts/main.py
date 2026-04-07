@@ -151,96 +151,25 @@ Modelo LLM:
 
 
 # =========================
-# MAIN LOOP
+# SUBMENUS
 # =========================
 
-def main():
-
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--lang", default="PT", choices=["PT", "EN", "ES", "IT"],
-                        help="Idioma base (padrão: PT)")
-    args, _ = parser.parse_known_args()
-    idioma = args.lang
-
+def menu_ingestao(idioma):
     while True:
-
         print("""
-=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
-
-S  → Status do pipeline (gargalos)
-A  → Autopilot — roda todos os steps (sem LLM) em loop ate exaurir
-
 --- INGESTÃO ---
+
 1  → Importar Offer Seeds
 2  → Enriquecer descrições (Google Books / OpenLibrary)
 3  → Resolver Ofertas (lookup → URL afiliado)
 4  → Enriquecer via Marketplace Scraper (capa + descrição + preço)
 
---- PRÉ-PROCESSAMENTO ---
-5  → Gerar slugs
-6  → Slugify Autores
-7  → Deduplicar Autores
-8  → Deduplicar
-9  → Review (classificação editorial + idioma)
-10 → Classificar Categorias Temáticas (LLM)
-
---- GERAÇÃO DE CONTEÚDO ---
-11 → Gerar sinopses via Gemini (requer review concluído)
-12 → Gerar capas
-C  → Cowork Autopilot (sinopse + categorias via Claude)
-
---- PUBLICAÇÃO ---
-13 → Quality Gate
-14 → Publicar Supabase
-15 → Publicar Autores
-16 → Publicar Categorias (requer step 10)
-17 → Publicar Ofertas
-18 → Gerar listas SEO automáticas
-19 → Publicar Listas (requer step 18)
-27 → Reparar Ofertas (força republicação de todas para livros publicados)
-30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
-
---- MONITORAMENTO ---
-20 → Monitorar preços e disponibilidade de ofertas
-
---- CONTEÚDO ---
-29 → Gerar Bios de Autores (LLM)
-
---- AUDITORIA ---
-21 → Auditar conectividade do site (sem LLM)
-22 → Auditar conteúdo publicado (LLM)
-23 → Reparar publicações com dados ruins (sinopse, capa, preço)
-24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
-25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
-26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
-28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
-
---- BANCO DE DADOS ---
-95 → Fazer backup do banco local
-96 → Restaurar banco de backup
-97 → Recuperar banco do Supabase + backup
-
---- EXPORTS ---
-91 → Export Site Bootstrap
-92 → Export Pipeline Summary
-93 → Export Database Transcript
-94 → Export Project Tree (JSON)
-
-0  → Sair
+V  → Voltar
 """)
-
         op = input_safe("Opção: ")
 
-        if op == "0":
+        if op.upper() == "V":
             break
-
-        elif op.upper() == "A":
-            pacote = escolher_pacote()
-            log("Iniciando autopilot (sem LLM)...")
-            autopilot.run(idioma, pacote)
-
-        elif op in ("s", "S"):
-            pipeline_status.run()
 
         elif op == "1":
             log("Importando Offer Seeds…")
@@ -266,6 +195,31 @@ C  → Cowork Autopilot (sinopse + categorias via Claude)
             log("Enriquecendo via Marketplace Scraper…")
             with StepRun("marketplace_scraper", idioma=idioma, pacote=pacote):
                 marketplace_scraper.run(idioma, pacote)
+
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_preprocessamento(idioma):
+    while True:
+        print("""
+--- PRÉ-PROCESSAMENTO ---
+
+5  → Gerar slugs
+6  → Slugify Autores
+7  → Deduplicar Autores
+8  → Deduplicar
+9  → Review (classificação editorial + idioma)
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
 
         elif op == "5":
             pacote = escolher_pacote()
@@ -293,6 +247,30 @@ C  → Cowork Autopilot (sinopse + categorias via Claude)
             with StepRun("review", idioma=idioma, pacote=pacote):
                 review.run(idioma, pacote)
 
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_geracao_conteudo(idioma):
+    while True:
+        print("""
+--- GERAÇÃO DE CONTEÚDO ---
+
+10 → Classificar Categorias Temáticas (LLM)
+11 → Gerar sinopses via Gemini (requer review concluído)
+12 → Gerar capas
+29 → Gerar Bios de Autores (LLM)
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
+
         elif op == "10":
             pacote = escolher_pacote()
             reset = input_safe("Resetar livros com falha anterior? [s/N] ").strip().lower()
@@ -315,6 +293,43 @@ C  → Cowork Autopilot (sinopse + categorias via Claude)
             pacote = escolher_pacote()
             with StepRun("covers", idioma=idioma, pacote=pacote):
                 covers.run(idioma, pacote)
+
+        elif op == "29":
+            pacote = escolher_pacote()
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+            log("Gerando bios de autores (LLM)…")
+            with StepRun("author_bio", idioma=idioma, pacote=pacote):
+                author_bio.run(idioma, pacote)
+
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_publicacao(idioma):
+    while True:
+        print("""
+--- PUBLICAÇÃO ---
+
+13 → Quality Gate
+14 → Publicar Supabase
+15 → Publicar Autores
+16 → Publicar Categorias (requer step 10)
+17 → Publicar Ofertas
+18 → Gerar listas SEO automáticas
+19 → Publicar Listas (requer step 18)
+27 → Reparar Ofertas (força republicação de todas para livros publicados)
+30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
 
         elif op == "13":
             pacote = escolher_pacote()
@@ -355,6 +370,46 @@ C  → Cowork Autopilot (sinopse + categorias via Claude)
             log("Publicando listas no Supabase…")
             with StepRun("publish_listas", idioma=idioma):
                 publish_listas.run()
+
+        elif op == "27":
+            pacote = escolher_pacote()
+            log("Reparando ofertas — forçando republicação para todos os livros publicados…")
+            with StepRun("publish_ofertas_repair", idioma=idioma, pacote=pacote):
+                publish_ofertas.run_repair(pacote)
+
+        elif op == "30":
+            pacote = escolher_pacote()
+            log("Importando offer_list.json (agente offer_finder)…")
+            with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
+                offer_list_importer.run(pacote)
+
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_auditoria(idioma):
+    while True:
+        print("""
+--- AUDITORIA E MONITORAMENTO ---
+
+20 → Monitorar preços e disponibilidade de ofertas
+21 → Auditar conectividade do site (sem LLM)
+22 → Auditar conteúdo publicado (LLM)
+23 → Reparar publicações com dados ruins (sinopse, capa, preço)
+24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
+25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
+26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
+28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
 
         elif op == "20":
             print("""
@@ -446,6 +501,34 @@ ambos   → ambos acima
             log(f"Exportando {descricao} livros para auditoria (formato={fmt})…")
             _export_for_audit.run(limit=limite, fmt=fmt)
 
+        elif op == "28":
+            log("Auditoria de integridade do pipeline (sem LLM)…")
+            with StepRun("autopilot_audit", idioma=idioma):
+                autopilot_audit.run()
+
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_banco():
+    while True:
+        print("""
+--- BANCO DE DADOS ---
+
+95 → Fazer backup do banco local
+96 → Restaurar banco de backup
+97 → Recuperar banco do Supabase + backup
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
+
         elif op == "95":
             log("Fazendo backup do banco local…")
             db_backup.run()
@@ -457,6 +540,30 @@ ambos   → ambos acima
         elif op == "97":
             log("Recuperando banco do Supabase + backup local…")
             db_recover.run()
+
+        else:
+            print("Opção inválida.\n")
+            continue
+
+        log(f"[PIPELINE] v{get_version()}")
+
+
+def menu_exports():
+    while True:
+        print("""
+--- EXPORTS ---
+
+91 → Export Site Bootstrap
+92 → Export Pipeline Summary
+93 → Export Database Transcript
+94 → Export Project Tree (JSON)
+
+V  → Voltar
+""")
+        op = input_safe("Opção: ")
+
+        if op.upper() == "V":
+            break
 
         elif op == "91":
             log("Exportando Site Bootstrap…")
@@ -474,30 +581,58 @@ ambos   → ambos acima
             log("Exportando Project Tree…")
             export_state_transcript("project_tree")
 
-        elif op == "27":
-            pacote = escolher_pacote()
-            log("Reparando ofertas — forçando republicação para todos os livros publicados…")
-            with StepRun("publish_ofertas_repair", idioma=idioma, pacote=pacote):
-                publish_ofertas.run_repair(pacote)
+        else:
+            print("Opção inválida.\n")
+            continue
 
-        elif op == "28":
-            log("Auditoria de integridade do pipeline (sem LLM)…")
-            with StepRun("autopilot_audit", idioma=idioma):
-                autopilot_audit.run()
+        log(f"[PIPELINE] v{get_version()}")
 
-        elif op == "29":
-            pacote = escolher_pacote()
-            from core.markdown_executor import set_provider
-            set_provider(escolher_provider())
-            log("Gerando bios de autores (LLM)…")
-            with StepRun("author_bio", idioma=idioma, pacote=pacote):
-                author_bio.run(idioma, pacote)
 
-        elif op == "30":
-            pacote = escolher_pacote()
-            log("Importando offer_list.json (agente offer_finder)…")
-            with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
-                offer_list_importer.run(pacote)
+# =========================
+# MAIN LOOP
+# =========================
+
+def main():
+
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--lang", default="PT", choices=["PT", "EN", "ES", "IT"],
+                        help="Idioma base (padrão: PT)")
+    args, _ = parser.parse_known_args()
+    idioma = args.lang
+
+    while True:
+
+        print("""
+=== LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
+
+S  → Status do pipeline (gargalos)
+A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
+C  → Cowork Autopilot (sinopse + categorias via Claude)
+E  → Exports
+
+--- SUBMENUS ---
+1  → Ingestão
+2  → Pré-processamento
+3  → Geração de Conteúdo
+4  → Publicação
+5  → Auditoria e Monitoramento
+6  → Banco de Dados
+
+0  → Sair
+""")
+
+        op = input_safe("Opção: ")
+
+        if op == "0":
+            break
+
+        elif op in ("s", "S"):
+            pipeline_status.run()
+            input_safe("\nPressione Enter para voltar ao menu…")
+
+        elif op.upper() == "A":
+            log("Iniciando autopilot (sem LLM)...")
+            autopilot.run(idioma, 100)
 
         elif op.upper() == "C":
             import os
@@ -545,6 +680,27 @@ Abra o Claude Code e diga:
 
 Depois volte aqui e pressione C → 1 para importar.
 """)
+
+        elif op.upper() == "E":
+            menu_exports()
+
+        elif op == "1":
+            menu_ingestao(idioma)
+
+        elif op == "2":
+            menu_preprocessamento(idioma)
+
+        elif op == "3":
+            menu_geracao_conteudo(idioma)
+
+        elif op == "4":
+            menu_publicacao(idioma)
+
+        elif op == "5":
+            menu_auditoria(idioma)
+
+        elif op == "6":
+            menu_banco()
 
         else:
             print("Opção inválida.\n")
