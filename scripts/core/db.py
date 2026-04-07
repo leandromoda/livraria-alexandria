@@ -130,11 +130,18 @@ def ensure_schema(conn):
         ("categorize_attempts",   "INTEGER DEFAULT 0"),
         ("status_descricao",      "INTEGER DEFAULT 0"),
         ("priority_score",        "INTEGER DEFAULT 0"),
+        ("status_publish_cat",    "INTEGER DEFAULT 0"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
         except Exception:
             pass  # coluna já existe
+
+    # Normaliza idioma para uppercase (dados legados podem ter "pt" minúsculo)
+    try:
+        cur.execute("UPDATE livros SET idioma = UPPER(idioma) WHERE idioma != UPPER(idioma)")
+    except Exception:
+        pass
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS autores (

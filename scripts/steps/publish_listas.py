@@ -147,7 +147,6 @@ def run():
             "slug":        lista["slug"],
             "titulo":      lista["titulo"],
             "introducao":  lista["descricao"],
-            "status_publish": True,
         }
 
         result = upsert(listas_url, payload, headers)
