@@ -293,7 +293,21 @@ def move_to_ingested(filepath, filename):
 def load_seeds(filepath):
 
     with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+        text = f.read().strip()
+
+    # Tenta JSON padrão (array ou objeto)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback: JSONL (um objeto JSON por linha)
+    items = []
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            items.append(json.loads(line))
+    return items
 
 
 # =========================
