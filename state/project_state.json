@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -271,6 +271,7 @@
       "bug_fix_2": "2026-04-01 PR #32 — URLs do sitemap e metadataBase usavam non-www; domínio canônico é www → corrigido. NOTA: a parte de publish_autores/publish_categorias do PR #32 estava errada (adicionou status_publish=True ao payload Supabase, mas a coluna não existe nessas tabelas remotas).",
       "bug_fix_3": "2026-04-02 PR #40 — PGRST204 (400) em steps 15/16: publish_autores.py e publish_categorias.py enviavam status_publish=True ao Supabase mas a coluna não existe nas tabelas autores/categorias remotas. Correto: status_publish é flag interna do SQLite local. Removido do payload do upsert.",
       "bug_fix_4": "2026-04-02 PR #40 (commit adicional) — mesmo bug PGRST204 encontrado em publish_listas.py (step 19): tabela listas no Supabase também não tem coluna status_publish. Removido do payload. Confirmado via log 06:29: após fix, steps 15+16 publicaram 10 autores e 71 categorias sem erros.",
+      "bug_fix_5": "2026-04-07 PR #57 — publish_listas.py ainda enviava status_publish=True (regressão ou fix parcial anterior). Removido definitivamente. publish_categorias.py reprocessava todos os pares a cada ciclo do autopilot (~25x): adicionado status_publish_cat flag + tracking por livro. Crash no detalhe do livro: joins com categorias/listas retornavam null quando não publicados — adicionados null guards (.filter). Idioma PT vs pt normalizado via migração UPPER().",
       "gsc_status": "auditado_2026-04-01 — 12 indexadas / 178 não indexadas. Motivos: 'Página com redirecionamento' (3) + 'Cópia sem canônica' (2) causados por non-www → corrigido PR #32. Autores/categorias não apareciam no sitemap: publish_autores.py/publish_categorias.py enviavam status_publish inexistente ao Supabase → corrigido PR #40 (2026-04-02). Após merge: re-rodar steps 14+16+19 do pipeline."
     },
     "robots": {
@@ -435,14 +436,14 @@
     "status": "operational_idioma_editorial_aware",
     "execution": {
       "entrypoint": "scripts/main.py",
-      "mode": "menu_driven",
+      "mode": "submenu_driven",
       "interrupt_resume": true,
       "heartbeat": "30s",
       "logging": "timestamped_terminal_and_file (pipeline_YYYY-MM-DD_HH-MM-SS.log em scripts/data/)",
       "run_tracking": "tabela pipeline_runs no SQLite — step_name, idioma, pacote, started_at, finished_at, duracao_s, status, erro_msg, invocado_por",
       "idioma_partitioning": true,
       "priority_scoring": "coluna priority_score em livros (0-1000) recalculada a cada ciclo do autopilot; steps com ORDER BY priority_score DESC: covers, publish, synopsis, categorize",
-      "adaptive_batching": "STEP_PACOTES no autopilot: scraper→20, resolver→50, capas→50; demais usam base",
+      "adaptive_batching": "STEP_PACOTES no autopilot: scraper→20, resolver→50, capas→50; demais usam base 100 (fixo, sem prompt)",
       "failure_triggers": "autopilot rastreia steps sem progresso; após 3x consecutivas sem resultado loga [⚠️ TRIGGER]",
       "audit_autopilot": "autopilot_audit.py executa 8 checks sem LLM; chamado automaticamente ao exaurir pipeline"
     },
