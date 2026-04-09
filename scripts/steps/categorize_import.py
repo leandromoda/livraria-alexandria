@@ -3,12 +3,15 @@
 # Livraria Alexandria
 #
 # Importa categorias geradas pelo agente Claude Cowork.
-# Input: scripts/data/categorize_output.json
+# Input: scripts/data/NNN_classify_output.json (todos disponíveis)
 # Grava em: livros_categorias_tematicas + status_categorize
+# Move processados para: scripts/data/processed_classify/
 # ============================================================
 
 import json
 import os
+import re
+import shutil
 
 from core.db import get_conn
 from core.logger import log
@@ -18,10 +21,11 @@ from core.logger import log
 # CONFIG
 # =========================
 
-BASE_DIR       = os.path.dirname(os.path.dirname(__file__))
-INPUT_PATH     = os.path.join(BASE_DIR, "data", "categorize_output.json")
-TAXONOMY_PATH  = os.path.join(BASE_DIR, "data", "taxonomy.json")
-BLACKLIST_PATH = os.path.join(BASE_DIR, "data", "blacklist.json")
+DATA_DIR       = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+PROCESSED_DIR  = os.path.join(DATA_DIR, "processed_classify")
+TAXONOMY_PATH  = os.path.join(DATA_DIR, "taxonomy.json")
+BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
+OUTPUT_PAT     = re.compile(r"^(\d{3})_classify_output\.json$")
 
 MAX_CATEGORIES = 5
 
@@ -84,30 +88,34 @@ def save_categories(conn, livro_id, slugs):
 
 
 # =========================
-# RUN
+# FIND OUTPUT FILES
 # =========================
 
-def run():
+def find_output_files(data_dir):
+    """Retorna lista de (num_int, filepath) ordenada por número crescente."""
+    results = []
+    for fname in os.listdir(data_dir):
+        m = OUTPUT_PAT.match(fname)
+        if m:
+            results.append((int(m.group(1)), os.path.join(data_dir, fname)))
+    return sorted(results, key=lambda x: x[0])
 
-    log("[CATEGORIZE_IMPORT] Iniciando importação")
 
-    if not os.path.exists(INPUT_PATH):
-        log(f"[CATEGORIZE_IMPORT] Arquivo não encontrado: {INPUT_PATH}")
-        log("[CATEGORIZE_IMPORT] Rode a opção 33 (Export) e o agente Claude Cowork primeiro.")
-        return
+# =========================
+# PROCESS ONE FILE
+# =========================
 
-    with open(INPUT_PATH, "r", encoding="utf-8") as f:
+def _process_file(filepath, taxonomy, conn, cur):
+    """Processa um arquivo de output. Retorna (ok, rejeitados, ja_processados, erros)."""
+
+    with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     resultados = data.get("resultados", [])
 
     if not resultados:
-        log("[CATEGORIZE_IMPORT] Nenhum resultado no arquivo.")
-        return
-
-    taxonomy = load_taxonomy()
-    conn     = get_conn()
-    cur      = conn.cursor()
+        log(f"[CATEGORIZE_IMPORT] Nenhum resultado em {os.path.basename(filepath)}")
+        return 0, 0, 0, 0
 
     ok = rejeitados = ja_processados = erros = 0
 
@@ -118,7 +126,6 @@ def run():
         status     = item.get("status", "")
         motivo     = item.get("motivo", "")
 
-        # Buscar titulo para log
         cur.execute("SELECT titulo, status_categorize FROM livros WHERE id = ?", (livro_id,))
         row = cur.fetchone()
 
@@ -129,19 +136,16 @@ def run():
 
         titulo, status_atual = row
 
-        # Idempotência
         if status_atual == 1:
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Já processado → {titulo}")
             ja_processados += 1
             continue
 
-        # Rejeitado pelo Claude
         if status != "CLASSIFIED":
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
             rejeitados += 1
             continue
 
-        # Validação Python (safety net)
         valido, razao = validate_categorias(categorias, taxonomy)
 
         if not valido:
@@ -149,7 +153,6 @@ def run():
             rejeitados += 1
             continue
 
-        # Gravar
         try:
             save_categories(conn, livro_id, categorias)
             log(f"[CATEGORIZE_IMPORT][{i:03d}] OK → {titulo} → {categorias}")
@@ -159,14 +162,60 @@ def run():
             log(f"[CATEGORIZE_IMPORT][{i:03d}] ERRO → {titulo} | {e}")
             erros += 1
 
-    conn.close()
-
-    # --- Blacklist merge ---
+    # Blacklist merge
     blacklist_entries = data.get("blacklist", [])
     if blacklist_entries:
         from core.blacklist_merge import merge_blacklist
         added = merge_blacklist(blacklist_entries, BLACKLIST_PATH)
-        log(f"[CATEGORIZE_IMPORT] Blacklist: {added} nova(s) entrada(s) adicionada(s)")
+        fname = os.path.basename(filepath)
+        log(f"[CATEGORIZE_IMPORT] Blacklist de {fname}: {added} nova(s) entrada(s)")
+
+    return ok, rejeitados, ja_processados, erros
+
+
+# =========================
+# RUN
+# =========================
+
+def run():
+
+    log("[CATEGORIZE_IMPORT] Iniciando importação")
+
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+    output_files = find_output_files(DATA_DIR)
+
+    if not output_files:
+        log("[CATEGORIZE_IMPORT] Nenhum *_classify_output.json encontrado.")
+        log("[CATEGORIZE_IMPORT] Rode a opção 33 (Export) e o agente Claude Cowork primeiro.")
+        return
+
+    log(f"[CATEGORIZE_IMPORT] {len(output_files)} arquivo(s) encontrado(s)")
+
+    taxonomy = load_taxonomy()
+    conn     = get_conn()
+    cur      = conn.cursor()
+
+    total_ok = total_rej = total_ja = total_err = 0
+
+    for _num, filepath in output_files:
+        fname = os.path.basename(filepath)
+        log(f"[CATEGORIZE_IMPORT] Processando {fname}…")
+
+        ok, rej, ja, err = _process_file(filepath, taxonomy, conn, cur)
+        total_ok += ok
+        total_rej += rej
+        total_ja  += ja
+        total_err += err
+
+        dest = os.path.join(PROCESSED_DIR, fname)
+        try:
+            shutil.move(filepath, dest)
+            log(f"[CATEGORIZE_IMPORT] Movido → processed_classify/{fname}")
+        except Exception as e:
+            log(f"[CATEGORIZE_IMPORT] AVISO: falha ao mover {fname}: {e}")
+
+    conn.close()
 
     log("[CATEGORIZE_IMPORT] Finalizado")
-    log(f"OK: {ok} | Rejeitados: {rejeitados} | Já processados: {ja_processados} | Erros: {erros} | Total: {len(resultados)}")
+    log(f"OK: {total_ok} | Rejeitados: {total_rej} | Já processados: {total_ja} | Erros: {total_err}")

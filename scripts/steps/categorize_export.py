@@ -2,8 +2,8 @@
 # STEP 33 — CATEGORIZE EXPORT
 # Livraria Alexandria
 #
-# Exporta livros pendentes de categorização para JSON.
-# Output: scripts/data/categorize_input.json
+# Exporta livros pendentes de categorização para JSON numerado.
+# Output: scripts/data/NNN_classify_input.json (lote de até 25)
 # Consumido por: agente Claude Cowork (agents/classify_cowork/)
 # ============================================================
 
@@ -11,6 +11,7 @@ import json
 import os
 from datetime import datetime, timezone
 
+from core.cowork_numbering import next_batch_number
 from core.db import get_conn
 from core.logger import log
 
@@ -19,7 +20,9 @@ from core.logger import log
 # CONFIG
 # =========================
 
-OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "categorize_input.json")
+BATCH_SIZE    = 25
+DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed_classify")
 
 MAX_TEXT_LEN = 800
 
@@ -62,9 +65,11 @@ def run(pacote):
 
     log("[CATEGORIZE_EXPORT] Iniciando exportação")
 
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+
     conn = get_conn()
 
-    rows = fetch_pending(conn, pacote)
+    rows = fetch_pending(conn, min(pacote, BATCH_SIZE))
 
     if not rows:
         log("[CATEGORIZE_EXPORT] Nada pendente.")
@@ -91,18 +96,22 @@ def run(pacote):
             "sinopse":   sinopse[:MAX_TEXT_LEN],
         })
 
+    num = next_batch_number(DATA_DIR, "classify")
+    output_path = os.path.join(DATA_DIR, f"{num}_classify_input.json")
+
     payload = {
         "meta": {
             "exported_at": datetime.now(timezone.utc).isoformat(),
+            "batch":       num,
             "total":       len(livros),
         },
         "livros": livros,
     }
 
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
     conn.close()
 
     log(f"[CATEGORIZE_EXPORT] Exportados: {len(livros)}")
-    log(f"[CATEGORIZE_EXPORT] Arquivo: {os.path.abspath(OUTPUT_PATH)}")
+    log(f"[CATEGORIZE_EXPORT] Arquivo: {os.path.abspath(output_path)}")

@@ -3,6 +3,7 @@
 # Livraria Alexandria
 #
 # Roda synopsis_export + categorize_export em uma única chamada.
+# Gera NNN_synopsis_input.json + NNN_classify_input.json (lotes de 25).
 # ============================================================
 
 from core.logger import log

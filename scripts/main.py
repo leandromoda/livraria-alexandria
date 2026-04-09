@@ -635,17 +635,46 @@ E  → Exports
             autopilot.run(idioma, 100)
 
         elif op.upper() == "C":
-            import os
-            syn_out = os.path.join("data", "synopsis_output.json")
-            cat_out = os.path.join("data", "categorize_output.json")
-            has_outputs = os.path.exists(syn_out) or os.path.exists(cat_out)
+            import glob as _glob
+            import os as _os
+
+            def _has_cowork_outputs():
+                d = "data"
+                return bool(
+                    _glob.glob(_os.path.join(d, "*_synopsis_output.json")) or
+                    _glob.glob(_os.path.join(d, "*_classify_output.json"))
+                )
+
+            def _has_cowork_inputs():
+                d = "data"
+                return bool(
+                    _glob.glob(_os.path.join(d, "*_synopsis_input.json")) or
+                    _glob.glob(_os.path.join(d, "*_classify_input.json"))
+                )
+
+            def _print_next_step_instructions():
+                print("""
+=== PRÓXIMO PASSO ===
+Abra o Claude Code e diga:
+
+  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
+
+O agente processa UM lote por vez e arquiva o input.
+Repita quantas vezes quiser para esgotar todos os lotes.
+Depois volte aqui e pressione C → 1 para importar.
+""")
+
+            has_outputs = _has_cowork_outputs()
+            has_inputs  = _has_cowork_inputs()
 
             if has_outputs:
-                print("""
-Outputs do Cowork detectados. O que deseja fazer?
+                n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_output.json")))
+                n_cat = len(_glob.glob(_os.path.join("data", "*_classify_output.json")))
+                print(f"""
+Outputs do Cowork detectados ({n_syn} sinopse(s), {n_cat} categoria(s)). O que deseja fazer?
 
-1 → Importar resultados (synopsis_output + categorize_output → SQLite)
-2 → Novo ciclo (exportar novos inputs — sobrescreve outputs antigos)
+1 → Importar TODOS os resultados pendentes → SQLite
+2 → Exportar mais um lote (adicionar ao pipeline)
 """)
                 sub = input_safe("Opção: ")
                 if sub == "1":
@@ -653,33 +682,34 @@ Outputs do Cowork detectados. O que deseja fazer?
                     with StepRun("cowork_import", idioma=idioma):
                         cowork_import.run()
                 elif sub == "2":
-                    pacote = escolher_pacote()
                     log("Exportando inputs para Cowork…")
-                    with StepRun("cowork_export", idioma=idioma, pacote=pacote):
-                        cowork_export.run(idioma, pacote)
-                    print("""
-=== PRÓXIMO PASSO ===
-Abra o Claude Code e diga:
-
-  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
-
-Depois volte aqui e pressione C → 1 para importar.
-""")
+                    with StepRun("cowork_export", idioma=idioma, pacote=25):
+                        cowork_export.run(idioma, 25)
+                    _print_next_step_instructions()
                 else:
                     print("Opção inválida.\n")
-            else:
-                pacote = escolher_pacote()
-                log("Exportando inputs para Cowork…")
-                with StepRun("cowork_export", idioma=idioma, pacote=pacote):
-                    cowork_export.run(idioma, pacote)
-                print("""
-=== PRÓXIMO PASSO ===
-Abra o Claude Code e diga:
 
-  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
+            elif has_inputs:
+                n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_input.json")))
+                n_cat = len(_glob.glob(_os.path.join("data", "*_classify_input.json")))
+                print(f"""
+Inputs aguardando processamento ({n_syn} sinopse(s), {n_cat} classificação(ões)). O que deseja fazer?
 
-Depois volte aqui e pressione C → 1 para importar.
+1 → Exportar mais um lote
+2 → Ver instruções para o agente
 """)
+                sub = input_safe("Opção: ")
+                if sub == "1":
+                    log("Exportando inputs para Cowork…")
+                    with StepRun("cowork_export", idioma=idioma, pacote=25):
+                        cowork_export.run(idioma, 25)
+                _print_next_step_instructions()
+
+            else:
+                log("Exportando inputs para Cowork…")
+                with StepRun("cowork_export", idioma=idioma, pacote=25):
+                    cowork_export.run(idioma, 25)
+                _print_next_step_instructions()
 
         elif op.upper() == "E":
             menu_exports()
