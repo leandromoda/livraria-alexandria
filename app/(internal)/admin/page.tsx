@@ -152,88 +152,73 @@ function toSourceRows(counts: Record<string, number>): SourceRow[] {
 async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   const token = process.env.VERCEL_ACCESS_TOKEN;
   const projectName = "livraria-alexandria";
+  const empty: VercelAnalyticsSummary = { totalViews: 0, totalVisitors: 0, history: [], topPages: [], topReferrers: [], topCountries: [] };
 
   if (!token) {
-    return { totalViews: 0, totalVisitors: 0, history: [], topPages: [], topReferrers: [], topCountries: [], error: "VERCEL_ACCESS_TOKEN não configurado" };
+    return { ...empty, error: "VERCEL_ACCESS_TOKEN não configurado" };
   }
 
   try {
-    // Busca projeto pelo nome para obter projectId e teamId (se aplicável)
+    // Resolve projectId e teamId
     const projectRes = await fetch(
       `https://api.vercel.com/v9/projects/${projectName}`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
     const projectData = await projectRes.json();
     const projectId = projectData?.id;
-    // Para contas pessoais, team é null — não passar teamId nesse caso
-    const teamId: string | null = projectData?.team?.id ?? null;
+    const teamId: string | null = projectData?.accountId ?? null;
 
     if (!projectId) {
-      return {
-        totalViews: 0,
-        totalVisitors: 0,
-        history: [],
-        topPages: [],
-        topReferrers: [],
-        topCountries: [],
-        error: `Projeto "${projectName}" não encontrado na Vercel (status ${projectRes.status})`,
-      };
+      return { ...empty, error: `Projeto "${projectName}" não encontrado (status ${projectRes.status})` };
     }
 
-    const now = Date.now();
-    const from = now - 30 * 24 * 60 * 60 * 1000;
+    // Datas em formato ISO (exigido pela API vercel.com/api/web-analytics)
+    const now = new Date();
+    const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const toISO = now.toISOString();
+    const fromISO = from.toISOString();
+
     const baseParams =
-      `projectId=${projectId}&from=${from}&to=${now}&granularity=1d&environment=production` +
-      (teamId ? `&teamId=${teamId}` : "");
-    const baseParamsNoGranularity =
-      `projectId=${projectId}&from=${from}&to=${now}&environment=production` +
+      `projectId=${projectId}&from=${fromISO}&to=${toISO}&environment=production` +
       (teamId ? `&teamId=${teamId}` : "");
 
     const headers = { Authorization: `Bearer ${token}` };
+    const BASE = "https://vercel.com/api/web-analytics";
 
-    // Busca todos os endpoints em paralelo
-    const [pvRes, visRes, pagesRes, referrersRes, countriesRes] = await Promise.all([
-      fetch(`https://api.vercel.com/v1/web/insights/stats/pageviews?${baseParams}`, { headers, cache: "no-store" }),
-      fetch(`https://api.vercel.com/v1/web/insights/stats/visitors?${baseParams}`, { headers, cache: "no-store" }),
-      fetch(`https://api.vercel.com/v1/web/insights/stats/pages?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
-      fetch(`https://api.vercel.com/v1/web/insights/stats/referrers?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
-      fetch(`https://api.vercel.com/v1/web/insights/stats/countries?${baseParamsNoGranularity}&limit=10`, { headers, cache: "no-store" }),
+    // Busca timeseries + stats em paralelo
+    const [timeseriesRes, pagesRes, referrersRes, countriesRes] = await Promise.all([
+      fetch(`${BASE}/timeseries?${baseParams}`, { headers, cache: "no-store" }),
+      fetch(`${BASE}/stats?${baseParams}&type=path&limit=10`, { headers, cache: "no-store" }),
+      fetch(`${BASE}/stats?${baseParams}&type=referrer_hostname&limit=10`, { headers, cache: "no-store" }),
+      fetch(`${BASE}/stats?${baseParams}&type=country&limit=10`, { headers, cache: "no-store" }),
     ]);
 
-    const pvData = await pvRes.json();
-    const visData = await visRes.json();
+    const timeseriesData = await timeseriesRes.json();
     const pagesData = await pagesRes.json();
     const referrersData = await referrersRes.json();
     const countriesData = await countriesRes.json();
 
-    // Monta mapa de visitantes por data para fazer o join
-    const visitorsByDate: Record<string, number> = {};
-    for (const d of (visData?.data ?? []) as any[]) {
-      if (d.key) visitorsByDate[d.key] = d.total ?? 0;
+    if (timeseriesData.error) {
+      return { ...empty, error: `Timeseries: ${timeseriesData.error.message ?? JSON.stringify(timeseriesData.error)}` };
     }
 
-    // Campos reais da API Vercel: d.key (data) e d.total (pageviews)
-    const history: PageViewDay[] = ((pvData?.data ?? []) as any[]).map((d) => ({
+    // timeseries: data.groups.all[] → {key, total (views), devices (visitors), bounceRate}
+    const groups = (timeseriesData?.data?.groups?.all ?? []) as any[];
+
+    const history: PageViewDay[] = groups.map((d) => ({
       date: d.key ?? "",
       views: d.total ?? 0,
-      visitors: visitorsByDate[d.key] ?? 0,
+      visitors: d.devices ?? 0,
     }));
 
     if (history.length === 0) {
-      return {
-        totalViews: 0,
-        totalVisitors: 0,
-        history: [],
-        topPages: [],
-        topReferrers: [],
-        topCountries: [],
-        error: `API retornou dados vazios (status pv=${pvRes.status} vis=${visRes.status}) — verifique o token e o Web Analytics do projeto`,
-      };
+      return { ...empty, error: "API retornou dados vazios — verifique o token e o Web Analytics do projeto" };
     }
 
     const totalViews = history.reduce((acc, d) => acc + d.views, 0);
     const totalVisitors = history.reduce((acc, d) => acc + d.visitors, 0);
 
+    // stats: data[] → {key, total (pageviews), devices (visitors)}
     const topPages = ((pagesData?.data ?? []) as any[]).map((d) => ({
       page: d.key ?? "",
       views: d.total ?? 0,
@@ -241,17 +226,17 @@ async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
 
     const topReferrers = ((referrersData?.data ?? []) as any[]).map((d) => ({
       referrer: d.key ?? "(direto)",
-      visitors: d.total ?? 0,
+      visitors: d.devices ?? 0,
     }));
 
     const topCountries = ((countriesData?.data ?? []) as any[]).map((d) => ({
       country: d.key ?? "—",
-      visitors: d.total ?? 0,
+      visitors: d.devices ?? 0,
     }));
 
     return { totalViews, totalVisitors, history, topPages, topReferrers, topCountries };
   } catch (err) {
-    return { totalViews: 0, totalVisitors: 0, history: [], topPages: [], topReferrers: [], topCountries: [], error: String(err) };
+    return { ...empty, error: String(err) };
   }
 }
 
