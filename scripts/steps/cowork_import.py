@@ -2,8 +2,10 @@
 # STEP 36 — COWORK IMPORT (unificado)
 # Livraria Alexandria
 #
-# Roda synopsis_import + categorize_import + apply_blacklist
-# em uma única chamada.
+# Roda synopsis_import + categorize_import + apply_blacklist em uma
+# única chamada. Processa todos NNN_synopsis_output.json e
+# NNN_classify_output.json disponíveis, movendo cada um para
+# processed_synopsis/ ou processed_classify/ após importar.
 # ============================================================
 
 from core.logger import log

@@ -9,13 +9,24 @@ Sua tarefa é atribuir até 5 categorias temáticas de uma taxonomia fixa a cada
 
 ## Input
 
-Você receberá um arquivo JSON em `scripts/data/categorize_input.json` com a seguinte estrutura:
+Use suas ferramentas de arquivo para encontrar e ler o input correto:
+
+1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_classify_input.json`
+   (use Glob com `scripts/data/*_classify_input.json` ou Bash `ls scripts/data/*_classify_input.json`)
+2. **Selecione o de menor número** (ex: se existirem `002_classify_input.json` e
+   `005_classify_input.json`, use o `002`)
+3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
+4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
+
+Se nenhum arquivo `*_classify_input.json` existir em `scripts/data/`, responda:
+"Nenhum input de classificação encontrado. Rode o export primeiro (opção 33 ou C no menu)."
 
 ```json
 {
   "meta": {
     "exported_at": "ISO8601",
-    "total": 50
+    "batch": "001",
+    "total": 25
   },
   "livros": [
     {
@@ -159,15 +170,29 @@ Regras:
 
 ## Output
 
-Salve o resultado em `scripts/data/categorize_output.json` com a seguinte estrutura:
+Após classificar todos os livros:
+
+1. **Grave o resultado** em `scripts/data/NNN_classify_output.json` onde `NNN` é o mesmo
+   prefixo numérico do input lido (ex: se leu `002_classify_input.json`, grave em
+   `002_classify_output.json`). Adicione `"batch": "NNN"` em `meta`.
+
+2. **Mova o arquivo de input** para `scripts/data/processed_classify/` usando o Bash tool:
+   ```bash
+   mkdir -p scripts/data/processed_classify
+   mv scripts/data/NNN_classify_input.json scripts/data/processed_classify/NNN_classify_input.json
+   ```
+   (substitua `NNN` pelo prefixo real do arquivo processado)
+
+3. **Confirme** reportando quantos livros foram CLASSIFIED e quantos REJECTED.
 
 ```json
 {
   "meta": {
     "generated_at": "ISO8601",
     "model": "claude",
-    "total": 50,
-    "classified": 48,
+    "batch": "001",
+    "total": 25,
+    "classified": 23,
     "rejected": 2
   },
   "resultados": [
@@ -207,11 +232,14 @@ Salve o resultado em `scripts/data/categorize_output.json` com a seguinte estrut
 ## Resumo do fluxo
 
 ```
-Ler categorize_input.json
+Listar scripts/data/*_classify_input.json
+  → Selecionar o de menor número (ex: 002_classify_input.json)
+  → Ler o arquivo
   → Para cada livro:
       analisar titulo + autor + descricao + sinopse
       → identificar grupos temáticos relevantes
       → selecionar 3-5 slugs da taxonomia
       → incluir no array de resultados
-  → Salvar categorize_output.json
+  → Gravar NNN_classify_output.json em scripts/data/
+  → mv NNN_classify_input.json → scripts/data/processed_classify/
 ```

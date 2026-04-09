@@ -3,13 +3,15 @@
 # Livraria Alexandria
 #
 # Importa sinopses geradas pelo agente Claude Cowork.
-# Input: scripts/data/synopsis_output.json
+# Input: scripts/data/NNN_synopsis_output.json (todos disponíveis)
 # Grava em: sinopse + status_synopsis no SQLite
+# Move processados para: scripts/data/processed_synopsis/
 # ============================================================
 
 import json
 import os
 import re
+import shutil
 
 from core.db import get_conn
 from core.logger import log
@@ -20,8 +22,10 @@ from steps.quality_gate import check_synopsis_generic
 # CONFIG
 # =========================
 
-INPUT_PATH     = os.path.join(os.path.dirname(__file__), "..", "data", "synopsis_output.json")
-BLACKLIST_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "blacklist.json")
+DATA_DIR       = os.path.join(os.path.dirname(__file__), "..", "data")
+PROCESSED_DIR  = os.path.join(DATA_DIR, "processed_synopsis")
+BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
+OUTPUT_PAT     = re.compile(r"^(\d{3})_synopsis_output\.json$")
 
 MIN_SYNOPSIS_LEN = 400
 
@@ -59,29 +63,34 @@ def validate_synopsis(sinopse):
 
 
 # =========================
-# RUN
+# FIND OUTPUT FILES
 # =========================
 
-def run():
+def find_output_files(data_dir):
+    """Retorna lista de (num_int, filepath) ordenada por número crescente."""
+    results = []
+    for fname in os.listdir(data_dir):
+        m = OUTPUT_PAT.match(fname)
+        if m:
+            results.append((int(m.group(1)), os.path.join(data_dir, fname)))
+    return sorted(results, key=lambda x: x[0])
 
-    log("[SYNOPSIS_IMPORT] Iniciando importação")
 
-    if not os.path.exists(INPUT_PATH):
-        log(f"[SYNOPSIS_IMPORT] Arquivo não encontrado: {INPUT_PATH}")
-        log("[SYNOPSIS_IMPORT] Rode a opção 31 (Export) e o agente Claude Cowork primeiro.")
-        return
+# =========================
+# PROCESS ONE FILE
+# =========================
 
-    with open(INPUT_PATH, "r", encoding="utf-8") as f:
+def _process_file(filepath, conn, cur):
+    """Processa um arquivo de output. Retorna (ok, rejeitados, ja_processados, erros)."""
+
+    with open(filepath, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     resultados = data.get("resultados", [])
 
     if not resultados:
-        log("[SYNOPSIS_IMPORT] Nenhum resultado no arquivo.")
-        return
-
-    conn = get_conn()
-    cur  = conn.cursor()
+        log(f"[SYNOPSIS_IMPORT] Nenhum resultado em {os.path.basename(filepath)}")
+        return 0, 0, 0, 0
 
     ok = rejeitados = ja_processados = erros = 0
 
@@ -92,7 +101,6 @@ def run():
         status   = item.get("status", "")
         motivo   = item.get("motivo", "")
 
-        # Buscar titulo para log
         cur.execute("SELECT titulo, status_synopsis FROM livros WHERE id = ?", (livro_id,))
         row = cur.fetchone()
 
@@ -103,19 +111,16 @@ def run():
 
         titulo, status_atual = row
 
-        # Idempotência
         if status_atual == 1:
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Já processado → {titulo}")
             ja_processados += 1
             continue
 
-        # Rejeitado pelo Claude
         if status != "APPROVED":
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
             rejeitados += 1
             continue
 
-        # Validação Python (safety net)
         valido, razao = validate_synopsis(sinopse)
 
         if not valido:
@@ -123,7 +128,6 @@ def run():
             rejeitados += 1
             continue
 
-        # Gravar
         try:
             cur.execute("""
                 UPDATE livros
@@ -133,7 +137,6 @@ def run():
                 WHERE id = ?
             """, (sinopse, livro_id))
             conn.commit()
-
             log(f"[SYNOPSIS_IMPORT][{i:03d}] OK → {titulo}")
             ok += 1
 
@@ -141,14 +144,59 @@ def run():
             log(f"[SYNOPSIS_IMPORT][{i:03d}] ERRO → {titulo} | {e}")
             erros += 1
 
-    conn.close()
-
-    # --- Blacklist merge ---
+    # Blacklist merge
     blacklist_entries = data.get("blacklist", [])
     if blacklist_entries:
         from core.blacklist_merge import merge_blacklist
         added = merge_blacklist(blacklist_entries, BLACKLIST_PATH)
-        log(f"[SYNOPSIS_IMPORT] Blacklist: {added} nova(s) entrada(s) adicionada(s)")
+        fname = os.path.basename(filepath)
+        log(f"[SYNOPSIS_IMPORT] Blacklist de {fname}: {added} nova(s) entrada(s)")
+
+    return ok, rejeitados, ja_processados, erros
+
+
+# =========================
+# RUN
+# =========================
+
+def run():
+
+    log("[SYNOPSIS_IMPORT] Iniciando importação")
+
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+    output_files = find_output_files(DATA_DIR)
+
+    if not output_files:
+        log("[SYNOPSIS_IMPORT] Nenhum *_synopsis_output.json encontrado.")
+        log("[SYNOPSIS_IMPORT] Rode a opção 31 (Export) e o agente Claude Cowork primeiro.")
+        return
+
+    log(f"[SYNOPSIS_IMPORT] {len(output_files)} arquivo(s) encontrado(s)")
+
+    conn = get_conn()
+    cur  = conn.cursor()
+
+    total_ok = total_rej = total_ja = total_err = 0
+
+    for _num, filepath in output_files:
+        fname = os.path.basename(filepath)
+        log(f"[SYNOPSIS_IMPORT] Processando {fname}…")
+
+        ok, rej, ja, err = _process_file(filepath, conn, cur)
+        total_ok += ok
+        total_rej += rej
+        total_ja  += ja
+        total_err += err
+
+        dest = os.path.join(PROCESSED_DIR, fname)
+        try:
+            shutil.move(filepath, dest)
+            log(f"[SYNOPSIS_IMPORT] Movido → processed_synopsis/{fname}")
+        except Exception as e:
+            log(f"[SYNOPSIS_IMPORT] AVISO: falha ao mover {fname}: {e}")
+
+    conn.close()
 
     log("[SYNOPSIS_IMPORT] Finalizado")
-    log(f"OK: {ok} | Rejeitados: {rejeitados} | Já processados: {ja_processados} | Erros: {erros} | Total: {len(resultados)}")
+    log(f"OK: {total_ok} | Rejeitados: {total_rej} | Já processados: {total_ja} | Erros: {total_err}")

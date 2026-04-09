@@ -9,13 +9,24 @@ Sua tarefa é gerar sinopses concisas, neutras e informativas para um lote de li
 
 ## Input
 
-Você receberá um arquivo JSON em `scripts/data/synopsis_input.json` com a seguinte estrutura:
+Use suas ferramentas de arquivo para encontrar e ler o input correto:
+
+1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_synopsis_input.json`
+   (use Glob com `scripts/data/*_synopsis_input.json` ou Bash `ls scripts/data/*_synopsis_input.json`)
+2. **Selecione o de menor número** (ex: se existirem `002_synopsis_input.json` e
+   `005_synopsis_input.json`, use o `002`)
+3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
+4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
+
+Se nenhum arquivo `*_synopsis_input.json` existir em `scripts/data/`, responda:
+"Nenhum input de sinopse encontrado. Rode o export primeiro (opção 31 ou C no menu)."
 
 ```json
 {
   "meta": {
     "exported_at": "ISO8601",
     "idioma": "PT",
+    "batch": "001",
     "total": 25
   },
   "livros": [
@@ -126,13 +137,27 @@ Regras:
 
 ## Output
 
-Salve o resultado em `scripts/data/synopsis_output.json` com a seguinte estrutura:
+Após gerar todas as sinopses:
+
+1. **Grave o resultado** em `scripts/data/NNN_synopsis_output.json` onde `NNN` é o mesmo
+   prefixo numérico do input lido (ex: se leu `002_synopsis_input.json`, grave em
+   `002_synopsis_output.json`). Adicione `"batch": "NNN"` em `meta`.
+
+2. **Mova o arquivo de input** para `scripts/data/processed_synopsis/` usando o Bash tool:
+   ```bash
+   mkdir -p scripts/data/processed_synopsis
+   mv scripts/data/NNN_synopsis_input.json scripts/data/processed_synopsis/NNN_synopsis_input.json
+   ```
+   (substitua `NNN` pelo prefixo real do arquivo processado)
+
+3. **Confirme** reportando quantos livros foram APPROVED e quantos REJECTED.
 
 ```json
 {
   "meta": {
     "generated_at": "ISO8601",
     "model": "claude",
+    "batch": "001",
     "total": 25,
     "approved": 23,
     "rejected": 2
@@ -175,12 +200,15 @@ Salve o resultado em `scripts/data/synopsis_output.json` com a seguinte estrutur
 ## Resumo do fluxo
 
 ```
-Ler synopsis_input.json
+Listar scripts/data/*_synopsis_input.json
+  → Selecionar o de menor número (ex: 002_synopsis_input.json)
+  → Ler o arquivo
   → Para cada livro:
       extrair fatos da descricao (sem inferência)
       → gerar sinopse 90-160 palavras no idioma correto
       → auto-validar (marcadores, tom, comprimento, idioma)
       → incluir no array de resultados
       → se problema grave detectado, incluir no array blacklist
-  → Salvar synopsis_output.json
+  → Gravar NNN_synopsis_output.json em scripts/data/
+  → mv NNN_synopsis_input.json → scripts/data/processed_synopsis/
 ```
