@@ -8,9 +8,29 @@ Você é o agente de conteúdo da Livraria Alexandria. Sua tarefa é processar l
 
 ## Fluxo
 
-1. Leia `scripts/data/synopsis_input.json` — se existir e tiver livros, gere sinopses → salve em `scripts/data/synopsis_output.json`
-2. Leia `scripts/data/categorize_input.json` — se existir e tiver livros, classifique → salve em `scripts/data/categorize_output.json`
-3. Se nenhum input existir, responda: "Nenhum input encontrado. Rode o export primeiro."
+### Sinopses
+1. Liste `scripts/data/*_synopsis_input.json` — selecione o de **menor número**
+   (use Glob com `scripts/data/*_synopsis_input.json` ou Bash `ls scripts/data/*_synopsis_input.json`)
+2. Se encontrado: leia, gere sinopses → grave `NNN_synopsis_output.json` em `scripts/data/`
+   → mova o input para `scripts/data/processed_synopsis/`:
+   ```bash
+   mkdir -p scripts/data/processed_synopsis
+   mv scripts/data/NNN_synopsis_input.json scripts/data/processed_synopsis/NNN_synopsis_input.json
+   ```
+3. Se não encontrado: pule esta etapa
+
+### Categorização
+4. Liste `scripts/data/*_classify_input.json` — selecione o de **menor número**
+5. Se encontrado: leia, classifique → grave `NNN_classify_output.json` em `scripts/data/`
+   → mova o input para `scripts/data/processed_classify/`:
+   ```bash
+   mkdir -p scripts/data/processed_classify
+   mv scripts/data/NNN_classify_input.json scripts/data/processed_classify/NNN_classify_input.json
+   ```
+6. Se não encontrado: pule esta etapa
+
+Se nenhum input existir em nenhuma das etapas, responda:
+"Nenhum input encontrado. Rode o export primeiro (opção C no menu principal)."
 
 ---
 
@@ -37,10 +57,10 @@ Se a sinopse contiver qualquer um destes, REESCREVA:
 - "condição humana, às relações interpessoais"
 - "trama se desenvolve através de uma série"
 
-### Output (`scripts/data/synopsis_output.json`)
+### Output (`scripts/data/NNN_synopsis_output.json`)
 ```json
 {
-  "meta": { "generated_at": "ISO8601", "model": "claude", "total": 25, "approved": 23, "rejected": 2 },
+  "meta": { "generated_at": "ISO8601", "model": "claude", "batch": "NNN", "total": 25, "approved": 23, "rejected": 2 },
   "resultados": [
     { "id": "hex24", "sinopse": "Texto...", "status": "APPROVED" },
     { "id": "hex24", "sinopse": "", "status": "REJECTED", "motivo": "descricao vazia" }
@@ -114,10 +134,10 @@ Use APENAS os slugs listados abaixo. Nunca invente slugs novos.
 - NUNCA inventar slugs novos
 - Considerar TODOS os campos disponíveis, não só o título
 
-### Output (`scripts/data/categorize_output.json`)
+### Output (`scripts/data/NNN_classify_output.json`)
 ```json
 {
-  "meta": { "generated_at": "ISO8601", "model": "claude", "total": 50, "classified": 48, "rejected": 2 },
+  "meta": { "generated_at": "ISO8601", "model": "claude", "batch": "NNN", "total": 25, "classified": 23, "rejected": 2 },
   "resultados": [
     { "id": "hex24", "categorias": ["slug-1", "slug-2", "slug-3"], "status": "CLASSIFIED" },
     { "id": "hex24", "categorias": [], "status": "REJECTED", "motivo": "informacao insuficiente" }
