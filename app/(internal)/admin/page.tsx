@@ -37,6 +37,9 @@ type VercelAnalyticsSummary = {
   error?: string;
 };
 
+type TopLivro = { titulo: string; slug: string; clicks: number };
+type RecentClick = { id: string; titulo: string; slug: string; marketplace: string; created_at: string };
+
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 async function getCatalogStats(): Promise<CatalogStats> {
@@ -149,6 +152,67 @@ function toSourceRows(counts: Record<string, number>): SourceRow[] {
   }));
 }
 
+async function getTopLivros(): Promise<TopLivro[]> {
+  const { data } = await supabaseAdmin
+    .from("oferta_clicks")
+    .select("livro_id, oferta_id, ip_hash, created_at, ofertas(livros(titulo, slug))")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+
+  // Dedup: uma entrada por (ip_hash, oferta_id) em janela de 30 min
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+  for (const r of (data ?? []) as any[]) {
+    const bucket = Math.floor(new Date(r.created_at).getTime() / (30 * 60 * 1000));
+    const key = `${r.ip_hash}:${r.oferta_id}:${bucket}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(r);
+    }
+  }
+
+  const counts: Record<string, TopLivro> = {};
+  for (const r of deduped) {
+    const livro = (r.ofertas as any)?.livros;
+    if (!livro || !r.livro_id) continue;
+    if (!counts[r.livro_id]) {
+      counts[r.livro_id] = { titulo: livro.titulo, slug: livro.slug, clicks: 0 };
+    }
+    counts[r.livro_id].clicks++;
+  }
+
+  return Object.values(counts)
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+}
+
+async function getRecentClicks(): Promise<RecentClick[]> {
+  const { data } = await supabaseAdmin
+    .from("oferta_clicks")
+    .select("id, oferta_id, ip_hash, created_at, ofertas(marketplace, livros(titulo, slug))")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  const seen = new Set<string>();
+  const deduped: any[] = [];
+  for (const r of (data ?? []) as any[]) {
+    const bucket = Math.floor(new Date(r.created_at).getTime() / (30 * 60 * 1000));
+    const key = `${r.ip_hash}:${r.oferta_id}:${bucket}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(r);
+    }
+  }
+
+  return deduped.slice(0, 20).map((r: any) => ({
+    id: r.id,
+    titulo: r.ofertas?.livros?.titulo ?? "—",
+    slug: r.ofertas?.livros?.slug ?? "",
+    marketplace: r.ofertas?.marketplace ?? "—",
+    created_at: r.created_at,
+  }));
+}
+
 async function getVercelAnalytics(): Promise<VercelAnalyticsSummary> {
   const token = process.env.VERCEL_ACCESS_TOKEN;
   const projectName = "livraria-alexandria";
@@ -256,10 +320,12 @@ function pct(a: number, b: number): number {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
-  const [catalog, analytics, traffic] = await Promise.all([
+  const [catalog, analytics, traffic, topLivros, recentClicks] = await Promise.all([
     getCatalogStats(),
     getVercelAnalytics(),
     getTrafficSources(),
+    getTopLivros(),
+    getRecentClicks(),
   ]);
 
   const maxViews =
@@ -315,6 +381,63 @@ export default async function AdminPage() {
         </div>
         <StageBar breakdown={catalog.stageBreakdown} total={catalog.total} />
       </section>
+
+      {/* ── Top Livros por Cliques ── */}
+      {topLivros.length > 0 && (
+        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
+          <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+            Top Livros por Cliques
+          </h2>
+          <ol className="space-y-2">
+            {topLivros.map((l, i) => (
+              <li key={l.slug} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-3">
+                  <span className="w-5 text-right text-[#7B5E3A] font-medium">{i + 1}.</span>
+                  <a
+                    href={`/livros/${l.slug}`}
+                    className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
+                  >
+                    {l.titulo}
+                  </a>
+                </span>
+                <span className="text-[#C9A84C] font-semibold">{l.clicks} cliques</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
+      {/* ── Cliques Recentes ── */}
+      {recentClicks.length > 0 && (
+        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
+          <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+            Cliques Recentes
+          </h2>
+          <div className="space-y-2">
+            {recentClicks.map((c) => (
+              <div key={c.id} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-3">
+                  <a
+                    href={`/livros/${c.slug}`}
+                    className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
+                  >
+                    {c.titulo}
+                  </a>
+                  <span className="text-xs text-[#7B5E3A]">{c.marketplace}</span>
+                </span>
+                <span className="text-xs text-[#4A4A4A]">
+                  {new Date(c.created_at).toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Origens de Tráfego ── */}
       <section className="section">

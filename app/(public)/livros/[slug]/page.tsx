@@ -119,17 +119,29 @@ export default async function LivroPage({ params }: PageProps) {
         value: livro.ano_publicacao,
       },
     ],
-    offers: ofertas?.map((o: any) => ({
-      "@type": "Offer",
-      price: o.preco,
-      priceCurrency: "BRL",
-      availability: "https://schema.org/InStock",
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/click/${o.id}`,
-      seller: {
-        "@type": "Organization",
-        name: o.marketplace,
-      },
-    })),
+    offers: (() => {
+      if (!ofertas?.length) return undefined;
+      const offerList = ofertas.map((o: any) => ({
+        "@type": "Offer" as const,
+        price: o.preco,
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/click/${o.id}`,
+        seller: { "@type": "Organization" as const, name: o.marketplace },
+      }));
+      if (offerList.length === 1) return offerList[0];
+      const prices = ofertas
+        .map((o: any) => Number(o.preco))
+        .filter((p: number) => p > 0);
+      return {
+        "@type": "AggregateOffer" as const,
+        lowPrice: prices.length ? Math.min(...prices) : undefined,
+        highPrice: prices.length ? Math.max(...prices) : undefined,
+        priceCurrency: "BRL",
+        offerCount: offerList.length,
+        offers: offerList,
+      };
+    })(),
   };
 
   return (
