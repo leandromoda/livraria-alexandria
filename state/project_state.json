@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -193,16 +193,23 @@
   },
   "monetization": {
     "model": "affiliate_redirect",
-    "status": "infra_ready_affiliate_ids_pending",
+    "status": "affiliate_tags_active",
     "flows": [
       "Lista → Livro",
       "Livro → Oferta",
       "Oferta → Afiliado"
     ],
-    "programs_pending": [
-      "Amazon Associates",
-      "Mercado Livre Partners"
-    ]
+    "programs_active": [
+      "Amazon Associates (tag=livrariaalexa-20)",
+      "Mercado Livre Partners (matt_tool=45905535, matt_word=leandro_moda)"
+    ],
+    "amazon_associate_tag": "livrariaalexa-20",
+    "amazon_tag_env_var": "AMAZON_ASSOCIATE_TAG (configurável; fallback hardcoded)",
+    "tag_injection": {
+      "amazon": "inject_amazon_tag() em offer_resolver.py — idempotente, aplicada no build_amazon_url() e no upsert do publish_ofertas.py e offer_list_importer.py",
+      "mercado_livre": "inject_ml_affiliate() — existia desde PR #50; mantida"
+    },
+    "tag_repair_executed": "2026-04-10 — run_repair() republicou 535 ofertas com tags corretas; Supabase tem 587 ofertas ativas"
   },
   "tracking": {
     "status": "implemented_production",
@@ -989,20 +996,25 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-03-23",
+    "last_measured": "2026-04-10",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
-      "total": "4041+",
-      "status_publish_1": 140,
-      "nota": "Seeds 118–172 ingeridos. 140 livros publicados no Supabase. 94 ofertas ativas em /ofertas."
+      "total": "4994",
+      "status_publish_1": 523,
+      "com_offer_url": 4568,
+      "publicados_sem_offer_url": 0,
+      "nota": "Sessão 14: backfill resolveu 37 livros publicados sem oferta. 0 publicados sem offer_url."
     },
     "seeds": {
       "ingested": "001–172 — todos os seeds processados",
       "pending": "nenhum"
     },
-    "supabase_publicados": 137,
-    "nota_supabase_publicados": "137 com status=publish (alguns têm is_publishable=false por quality gate retroativo ou price monitor)",
-    "ofertas_ativas": "94 (pré-repair; pós opção 27 deve subir para ~140)",
+    "supabase_publicados": 523,
+    "supabase_ofertas_ativas": 587,
+    "supabase_listas": 94,
+    "supabase_lista_livros": 550,
+    "nota_ofertas": "587 ofertas publicadas — todas com tags afiliado corretas (Amazon tag=livrariaalexa-20, ML matt_tool=45905535). preco=NULL em todos (price monitor ainda não rodou).",
+    "nota_listas": "91 listas geradas pelo list_composer (auto_categoria) publicadas em 2026-04-10. 539 membros de lista. Corrigido: payload precisava de campo tipo='melhores' (NOT NULL no Supabase).",
     "gargalo_principal": "step 11 (sinopse LLM) — 12 RPM Gemini Free, ~700 sinopses/dia",
     "gemini_usage_hoje": "variável",
     "autopilot_features_2026_04_02": {
@@ -1129,10 +1141,11 @@
     },
     {
       "id": "TASK-AFF-001",
-      "description": "Cadastro Amazon Associates",
+      "description": "Cadastro Amazon Associates + injeção tag",
       "priority": "high",
       "status": "resolved",
-      "resolved_on": "2026-04-04"
+      "resolved_on": "2026-04-10",
+      "resolution": "Tag livrariaalexa-20. inject_amazon_tag() criada em offer_resolver.py (idempotente, AMAZON_ASSOCIATE_TAG env var). Aplicada em build_amazon_url(), publish_ofertas.run() e offer_list_importer. run_repair() executado: 535 ofertas republicadas com tag. PR #61."
     },
     {
       "id": "TASK-AFF-002",
@@ -1222,11 +1235,18 @@
     },
     {
       "id": "TASK-PIPE-006",
-      "description": "Continuar step 17 (Marketplace Scraper) para 250 livros ainda pendentes. Fix aplicado: usa titulo+autor na busca Open Library (não lookup_query). Resultado atual: 20 feitos, taxa ~75% de sucesso.",
-      "priority": "high",
+      "description": "Continuar step 4 (Marketplace Scraper) para livros pendentes de capa/descrição. Fix aplicado: usa titulo+autor na busca Open Library (não lookup_query).",
+      "priority": "medium",
       "status": "open",
-      "current_count": "250 pendentes, 20 feitos",
-      "fix_applied": "try_open_library usa titulo+autor, não lookup_query (tinha sufixo 'livro' que quebrava busca)"
+      "note": "Métricas de 2026-03-23 desatualizadas. Pipeline cresceu para 4994 livros, 523 publicados."
+    },
+    {
+      "id": "TASK-OFERTA-001",
+      "description": "Popular preços nas ofertas do Supabase",
+      "priority": "medium",
+      "status": "open",
+      "analysis": "587 ofertas no Supabase têm preco=NULL. Frontend trata corretamente (exibe 'Consulte o site'). Para preencher preços: (a) rodar offer_price_monitor.py (step 17) nas URLs existentes — funciona melhor com URLs diretas de produto do que URLs de busca; (b) usar offer_list.json com preços confirmados via agente offer_finder.",
+      "recommendation": "Rodar agente offer_finder para 523 publicados sem oferta com preço confirmado. URLs de busca (lista.ml, amazon/s?) não expõem preço direto — scraper retorna NULL nessas URLs."
     },
     {
       "id": "TASK-PIPE-007",
@@ -1372,6 +1392,30 @@
       "priority": "high",
       "status": "open",
       "created_on": "2026-04-02"
+    },
+    {
+      "id": "TASK-OFERTAS-002",
+      "description": "Publicar 37 livros publicados sem oferta no Supabase — backfill + offer_resolver executados em sessão 14",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "backfill_missing_offers() criado em offer_resolver.py: gera lookup_query='{titulo} {autor} livro' e marketplace='amazon' para publicados sem oferta. Chamado automaticamente no início de run(). 37 livros corrigidos. run_repair() publicou 535 ofertas no Supabase. PR #61."
+    },
+    {
+      "id": "TASK-LISTAS-001",
+      "description": "Publicar 91 listas SEO no Supabase — apenas 3 estavam publicadas",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "Causa raiz: tabela listas no Supabase tem coluna tipo NOT NULL sem DEFAULT — payload do publish_listas.py não incluía o campo → erro 400 (23502). Fix: adicionado 'tipo': 'melhores' ao payload. publish_listas.run() executado: 91 listas OK, 539 membros OK, 0 falhas. PR #61."
+    },
+    {
+      "id": "TASK-CLICK-001",
+      "description": "fix: /api/click/[id] — context.params sem await (Next.js 15+ requer async params)",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "app/(internal)/api/click/[id]/route.ts: const offerId = context.params.id → const { id: offerId } = await context.params. Corrige warning de runtime do Next.js 15+. PR #61."
     }
   ]
 }

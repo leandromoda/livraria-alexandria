@@ -12,7 +12,7 @@ export async function GET(
   context: any
 ) {
 
-  const offerId = context.params.id;
+  const { id: offerId } = await context.params;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

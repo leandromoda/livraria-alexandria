@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 from core.db import get_conn
 from core.logger import log
-from steps.offer_resolver import inject_ml_affiliate
+from steps.offer_resolver import inject_ml_affiliate, inject_amazon_tag
 
 
 # =========================
@@ -206,6 +206,7 @@ def run(pacote=100):
         local_id, titulo, supabase_id, marketplace, offer_url, preco = row
 
         offer_url = inject_ml_affiliate(offer_url)
+        offer_url = inject_amazon_tag(offer_url)
 
         payload = {
             "livro_id":    supabase_id,

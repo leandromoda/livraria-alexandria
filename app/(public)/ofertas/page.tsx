@@ -9,12 +9,20 @@ export const metadata: Metadata = {
     "As melhores ofertas em literatura nacional e internacional com preços atualizados.",
 };
 
-function formatPrice(value: unknown): string {
-  return Number(value).toLocaleString("pt-BR", {
+function formatPrice(value: unknown): string | null {
+  const num = Number(value);
+  if (!value || num === 0 || isNaN(num)) return null;
+  return num.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
+
+const MARKETPLACE_LABELS: Record<string, string> = {
+  amazon: "Amazon",
+  mercadolivre: "Mercado Livre",
+  mercado_livre: "Mercado Livre",
+};
 
 export default async function OfertasPage() {
   const { data: ofertas } = await supabase
@@ -57,13 +65,12 @@ export default async function OfertasPage() {
         },
         offers: {
           "@type": "Offer",
-          price: o.preco,
-          priceCurrency: "BRL",
+          ...(o.preco ? { price: o.preco, priceCurrency: "BRL" } : {}),
           availability: "https://schema.org/InStock",
           url: `${baseUrl}/api/click/${o.id}`,
           seller: {
             "@type": "Organization",
-            name: o.marketplace,
+            name: MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace,
           },
         },
       },
@@ -140,7 +147,7 @@ export default async function OfertasPage() {
               )}
 
               <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] border border-[#E6DED3] px-2.5 py-0.5 rounded-full mt-2 inline-block">
-                {o.marketplace}
+                {MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace}
               </span>
 
             </div>
@@ -148,9 +155,18 @@ export default async function OfertasPage() {
             {/* Preço + CTA */}
             <div className="flex-shrink-0 text-right">
 
-              <p className="text-xl font-serif font-semibold text-[#4A1628] mb-2">
-                R$ {formatPrice(o.preco)}
-              </p>
+              {(() => {
+                const price = formatPrice(o.preco);
+                return price ? (
+                  <p className="text-xl font-serif font-semibold text-[#4A1628] mb-2">
+                    R$ {price}
+                  </p>
+                ) : (
+                  <p className="text-sm text-[#7B5E3A] mb-2">
+                    Consulte o site
+                  </p>
+                );
+              })()}
 
               <a
                 href={`/api/click/${o.id}`}

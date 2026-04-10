@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 
 from core.db import get_conn
 from core.logger import log
+from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
 
 
 # =========================
@@ -263,6 +264,10 @@ def run(pacote: int = 500) -> None:
                 fail_ofertas += 1
                 livro_ok = False
                 continue
+
+            # Injeta tags de afiliado
+            url = inject_amazon_tag(url)
+            url = inject_ml_affiliate(url)
 
             if review_flag:
                 needs_review += 1
