@@ -68,3 +68,4 @@ state/*
 /scripts/data/seeds
 /scripts/data/backup
 agents/Claude Init.txt
+/scripts/data
