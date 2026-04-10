@@ -6,6 +6,29 @@ O arquivo `state/project_state.json` (na raiz do repositório) é a fonte de ver
 
 ---
 
+## Manutenção do project_state.json
+
+O `state/project_state.json` registra **arquitetura e decisões técnicas** — não execuções de pipeline.
+
+### O que REGISTRAR
+- Novas features, módulos ou steps criados
+- Bugs corrigidos com impacto arquitetural
+- Decisões de design (schema, padrões, providers)
+- Tasks abertas com análise e plano definidos
+- Métricas de estado do banco (livros publicados, ofertas, listas)
+
+### O que NÃO registrar
+- Execuções de steps do pipeline ("rodar step X")
+- Ingestão de seeds (atividade recorrente — não rastrear quais seeds foram ingeridos)
+- Tasks concluídas sem mudança arquitetural (ex: "rodar step 4 para livros pendentes")
+- Progresso numérico de execuções (usar logs do pipeline para isso)
+
+### Ao concluir uma task
+- Se tem valor arquitetural (novo arquivo, bug fix, nova feature): manter em `open_tasks` com `status: "resolved"`
+- Se é execução operacional (run step, ingest seeds): remover após conclusão
+
+---
+
 ## Visão geral
 
 Plataforma de descoberta de livros com monetização via links afiliados.

@@ -1005,10 +1005,6 @@
       "publicados_sem_offer_url": 0,
       "nota": "Sessão 14: backfill resolveu 37 livros publicados sem oferta. 0 publicados sem offer_url."
     },
-    "seeds": {
-      "ingested": "001–172 — todos os seeds processados",
-      "pending": "nenhum"
-    },
     "supabase_publicados": 523,
     "supabase_ofertas_ativas": 587,
     "supabase_listas": 94,
@@ -1117,6 +1113,7 @@
       "description": "Deduplicação de cliques afiliados",
       "priority": "medium",
       "status": "planned",
+      "fase1_resolved": "2026-04-10 — getTopLivros() e getRecentClicks() com dedup (ip_hash, oferta_id, janela 30min) adicionados ao admin/page.tsx",
       "analysis": "O edge function /api/click/[id] insere uma linha em oferta_clicks a cada request sem verificação de duplicata. Um usuário que clica 2x no mesmo link gera 2 linhas, inflando métricas no admin. A tabela já captura ip_hash e session_id — dados suficientes para dedup.",
       "plan": [
         "Fase 1 — query-time (sem latência de redirect): no admin, deduplicate getTopLivros() e getRecentClicks() por (ip_hash, oferta_id) em janela de 30 min. Zero impacto nos redirects.",
@@ -1128,7 +1125,9 @@
       "id": "TASK-SEO-003",
       "description": "AggregateOffer por livro",
       "priority": "medium",
-      "status": "planned",
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "AggregateOffer implementado em livros/[slug]/page.tsx: 1 oferta → Offer simples; 2+ → AggregateOffer com lowPrice, highPrice, offerCount. PR desta sessão.",
       "analysis": "livros/[slug]/page.tsx já gera schema.org Product com array de Offer. Quando há múltiplas ofertas, o Google recomenda AggregateOffer com lowPrice, highPrice, offerCount. Atualmente o array é enviado diretamente sem wrapper — o Google pode não processar como rich result de preço.",
       "plan": "No bloco `schema` de livros/[slug]/page.tsx: se ofertas.length > 1 → envolver em AggregateOffer com lowPrice=min(preco), highPrice=max(preco), priceCurrency=BRL, offerCount=N, offers=[...Offer]. Se length === 1 → manter Offer simples. Se 0 → omitir campo offers.",
       "file": "app/(public)/livros/[slug]/page.tsx",
@@ -1198,20 +1197,6 @@
       "resolution": "Migrado para Gemini API (padrão). Timeout Ollama reduzido 600s → 120s para fail-fast. Ollama NÃO viável nesta máquina (GT 720M, sem CUDA, ~2 tok/s)."
     },
     {
-      "id": "TASK-PIPE-001",
-      "description": "Completar steps 2-5 para os 107 seeds restantes",
-      "priority": "high",
-      "status": "resolved",
-      "resolution": "Steps 1-7 executados para 100 livros em 2026-03-15. Pipeline end-to-end validado."
-    },
-    {
-      "id": "TASK-PIPE-003",
-      "description": "Rodar step 11 (SEO lists) após publicação completa",
-      "priority": "medium",
-      "status": "resolved",
-      "resolution": "List Composer executado. Lista 'Melhores livros de Negócios' criada. Listas de autor adicionadas ao composer."
-    },
-    {
       "id": "TASK-REVIEW-001",
       "description": "Investigar editorial_score sempre retornando 1 — impede filtros de qualidade do list_composer e quality_gate",
       "priority": "medium",
@@ -1224,21 +1209,9 @@
       "id": "TASK-SUPABASE-001",
       "description": "Rodar migrations Supabase: ADD COLUMN preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ na tabela livros",
       "priority": "high",
-      "status": "open"
-    },
-    {
-      "id": "TASK-PIPE-005",
-      "description": "Criar pasta scripts/data/seeds/ e mover arquivo atual offer_seeds.json para 001_offer_seeds.json dentro dela",
-      "priority": "high",
       "status": "resolved",
-      "resolution": "Pasta seeds/ existe com 058 seeds (001–058_offer_seeds.json). Seeds processados movidos para ingested_seeds/."
-    },
-    {
-      "id": "TASK-PIPE-006",
-      "description": "Continuar step 4 (Marketplace Scraper) para livros pendentes de capa/descrição. Fix aplicado: usa titulo+autor na busca Open Library (não lookup_query).",
-      "priority": "medium",
-      "status": "open",
-      "note": "Métricas de 2026-03-23 desatualizadas. Pipeline cresceu para 4994 livros, 523 publicados."
+      "resolved_on": "2026-04-10",
+      "resolution": "Migration executada via Supabase SQL Editor: ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ."
     },
     {
       "id": "TASK-OFERTA-001",
@@ -1247,12 +1220,6 @@
       "status": "open",
       "analysis": "587 ofertas no Supabase têm preco=NULL. Frontend trata corretamente (exibe 'Consulte o site'). Para preencher preços: (a) rodar offer_price_monitor.py (step 17) nas URLs existentes — funciona melhor com URLs diretas de produto do que URLs de busca; (b) usar offer_list.json com preços confirmados via agente offer_finder.",
       "recommendation": "Rodar agente offer_finder para 523 publicados sem oferta com preço confirmado. URLs de busca (lista.ml, amazon/s?) não expõem preço direto — scraper retorna NULL nessas URLs."
-    },
-    {
-      "id": "TASK-PIPE-007",
-      "description": "Rodar step 18 (Categorize) após review para classificar livros na nova taxonomia temática",
-      "priority": "medium",
-      "status": "open"
     },
     {
       "id": "TASK-SITE-002",
@@ -1307,22 +1274,9 @@
       "id": "TASK-GITIGNORE-001",
       "description": "Adicionar runtime/tmp/, __pycache__ e scripts/alexandria.db ao .gitignore para evitar commits acidentais de artifacts",
       "priority": "medium",
-      "status": "open"
-    },
-    {
-      "id": "TASK-PIPE-008",
-      "description": "Ingerir seeds 026–093 e rodar pipeline completo",
-      "priority": "high",
       "status": "resolved",
-      "resolved_on": "2026-03-18",
-      "resolution": "Seeds 030–093 (64 arquivos) + 059 corrigido ingeridos. 880 novos livros. Step 2 rodado para 200 livros (191 OK)."
-    },
-    {
-      "id": "TASK-PIPE-009",
-      "description": "Rodar steps slugify e dedup para livros sem slug",
-      "priority": "medium",
-      "status": "open",
-      "current_count": "~2023 com status_slug=0 (1143 anteriores + 880 novos)"
+      "resolved_on": "2026-04-10",
+      "resolution": "runtime/tmp/, **/__pycache__/ e scripts/alexandria.db já adicionados ao .gitignore — task concluída."
     },
     {
       "id": "TASK-PIPE-010",
@@ -1344,7 +1298,9 @@
       "id": "TASK-GITIGNORE-002",
       "description": "Adicionar scripts/data/pipeline_*.log ao .gitignore",
       "priority": "low",
-      "status": "open"
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "scripts/data/pipeline_*.log já adicionado ao .gitignore — task concluída."
     },
     {
       "id": "TASK-UI-001",
@@ -1390,16 +1346,10 @@
       "id": "TASK-SUPABASE-002",
       "description": "Rodar migration Supabase: ALTER TABLE autores ADD COLUMN descricao TEXT",
       "priority": "high",
-      "status": "open",
-      "created_on": "2026-04-02"
-    },
-    {
-      "id": "TASK-OFERTAS-002",
-      "description": "Publicar 37 livros publicados sem oferta no Supabase — backfill + offer_resolver executados em sessão 14",
-      "priority": "high",
       "status": "resolved",
       "resolved_on": "2026-04-10",
-      "resolution": "backfill_missing_offers() criado em offer_resolver.py: gera lookup_query='{titulo} {autor} livro' e marketplace='amazon' para publicados sem oferta. Chamado automaticamente no início de run(). 37 livros corrigidos. run_repair() publicou 535 ofertas no Supabase. PR #61."
+      "resolution": "Migration executada via Supabase SQL Editor: ALTER TABLE autores ADD COLUMN IF NOT EXISTS descricao TEXT. Habilita author_bio.py (step 29) a publicar bios no Supabase.",
+      "created_on": "2026-04-02"
     },
     {
       "id": "TASK-LISTAS-001",
