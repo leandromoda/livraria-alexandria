@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import BookCover from "@/app/_components/BookCover";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -147,25 +148,7 @@ export default async function LivroPage({ params }: PageProps) {
 
         {/* Capa */}
         <div className="flex-shrink-0">
-          {livro.imagem_url ? (
-            <img
-              src={livro.imagem_url}
-              alt={livro.titulo}
-              className="w-44 rounded-xl shadow-md border border-[#E6DED3]"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.style.display = "none";
-                const fallback = target.nextElementSibling as HTMLElement | null;
-                if (fallback) fallback.style.display = "flex";
-              }}
-            />
-          ) : null}
-          <div
-            className="w-44 h-64 rounded-xl bg-[#4A1628] items-center justify-center"
-            style={{ display: livro.imagem_url ? "none" : "flex" }}
-          >
-            <span className="text-[#C9A84C] text-5xl font-serif">A</span>
-          </div>
+          <BookCover src={livro.imagem_url} alt={livro.titulo} />
         </div>
 
         {/* Dados */}
