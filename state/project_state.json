@@ -1209,7 +1209,9 @@
       "id": "TASK-SUPABASE-001",
       "description": "Rodar migrations Supabase: ADD COLUMN preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ na tabela livros",
       "priority": "high",
-      "status": "open"
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "Migration executada via Supabase SQL Editor: ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ."
     },
     {
       "id": "TASK-OFERTA-001",
@@ -1344,7 +1346,9 @@
       "id": "TASK-SUPABASE-002",
       "description": "Rodar migration Supabase: ALTER TABLE autores ADD COLUMN descricao TEXT",
       "priority": "high",
-      "status": "open",
+      "status": "resolved",
+      "resolved_on": "2026-04-10",
+      "resolution": "Migration executada via Supabase SQL Editor: ALTER TABLE autores ADD COLUMN IF NOT EXISTS descricao TEXT. Habilita author_bio.py (step 29) a publicar bios no Supabase.",
       "created_on": "2026-04-02"
     },
     {
