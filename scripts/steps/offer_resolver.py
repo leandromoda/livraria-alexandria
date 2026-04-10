@@ -69,12 +69,33 @@ def inject_ml_affiliate(url: str) -> str:
 
 
 # =========================
+# AFILIADO AMAZON
+# =========================
+
+AMAZON_TAG = os.environ.get("AMAZON_ASSOCIATE_TAG", "livrariaalexa-20")
+
+
+def inject_amazon_tag(url: str) -> str:
+    """Injeta tag de associado Amazon na URL. Idempotente. Só atua em amazon.com.br."""
+    parsed = urlparse(url)
+    if "amazon.com.br" not in parsed.netloc:
+        return url
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    if "tag" in params:
+        return url  # já tem — não duplicar
+    params["tag"] = [AMAZON_TAG]
+    new_query = urlencode({k: v[0] for k, v in params.items()})
+    return urlunparse(parsed._replace(query=new_query))
+
+
+# =========================
 # URL BUILDERS
 # =========================
 
 def build_amazon_url(query: str) -> str:
     q = quote_plus(query)
-    return f"https://www.amazon.com.br/s?k={q}"
+    url = f"https://www.amazon.com.br/s?k={q}"
+    return inject_amazon_tag(url)
 
 
 def build_mercadolivre_url(query: str) -> str:
@@ -148,6 +169,43 @@ def update_offer(conn, book_id, offer_url, success):
 
 
 # =========================
+# BACKFILL — livros publicados sem oferta
+# =========================
+
+def backfill_missing_offers(conn):
+    """Gera lookup_query e marketplace para livros publicados que não têm nenhum dado de oferta."""
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, titulo, autor
+        FROM livros
+        WHERE status_publish = 1
+          AND offer_url IS NULL
+          AND (marketplace IS NULL OR lookup_query IS NULL)
+    """)
+    rows = cur.fetchall()
+
+    if not rows:
+        return 0
+
+    count = 0
+    for book_id, titulo, autor in rows:
+        query = f"{titulo} {autor} livro" if autor else f"{titulo} livro"
+        cur.execute("""
+            UPDATE livros
+            SET lookup_query = ?,
+                marketplace  = 'amazon',
+                offer_status = 0,
+                updated_at   = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (query, book_id))
+        count += 1
+
+    conn.commit()
+    log(f"[BACKFILL] {count} livros publicados receberam lookup_query + marketplace")
+    return count
+
+
+# =========================
 # RUN
 # =========================
 
@@ -156,6 +214,8 @@ def run(idioma, pacote):
     log("Iniciando Offer Resolver...")
 
     conn = get_conn()
+
+    backfill_missing_offers(conn)
 
     rows = fetch_pending(conn, idioma, pacote)
 
