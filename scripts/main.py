@@ -32,6 +32,7 @@ from steps import autopilot_audit
 from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
+from steps import fix_affiliate_urls
 from steps import synopsis_export
 from steps import synopsis_import
 from steps import categorize_export
@@ -322,6 +323,7 @@ def menu_publicacao(idioma):
 18 → Gerar listas SEO automáticas
 19 → Publicar Listas (requer step 18)
 27 → Reparar Ofertas (força republicação de todas para livros publicados)
+28 → Fix Affiliate URLs (corrige URLs sem parâmetros de comissão)
 30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
 
 V  → Voltar
@@ -376,6 +378,11 @@ V  → Voltar
             log("Reparando ofertas — forçando republicação para todos os livros publicados…")
             with StepRun("publish_ofertas_repair", idioma=idioma, pacote=pacote):
                 publish_ofertas.run_repair(pacote)
+
+        elif op == "28":
+            log("Corrigindo URLs de afiliado sem parâmetros de comissão…")
+            with StepRun("fix_affiliate_urls", idioma=idioma):
+                fix_affiliate_urls.run()
 
         elif op == "30":
             pacote = escolher_pacote()
