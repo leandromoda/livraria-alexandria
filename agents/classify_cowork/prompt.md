@@ -43,78 +43,20 @@ Se nenhum arquivo `*_classify_input.json` existir em `scripts/data/`, responda:
 
 ---
 
-## Taxonomia (171 categorias em 23 grupos)
+## Taxonomia
 
-Use APENAS os slugs listados abaixo. Nunca invente slugs novos.
+Leia o arquivo `scripts/data/taxonomy.json` — ele contém os slugs válidos.
+Use **apenas** os slugs presentes nesse arquivo. Nunca invente slugs novos.
 
-### Literatura Brasileira
-romance-brasileiro, conto-brasileiro, poesia-brasileira, modernismo-brasileiro, regionalismo-brasileiro, literatura-do-nordeste, naturalismo-brasileiro, realismo-brasileiro, romantismo-brasileiro, literatura-gaucha, poesia-slam-e-marginal
+Estrutura do arquivo:
+```json
+[
+  { "id": "romance-brasileiro", "slug": "romance-brasileiro", "label": "Romance Brasileiro", "group": "Literatura Brasileira" },
+  ...
+]
+```
 
-### Literatura Portuguesa
-romance-portugues, poesia-portuguesa, literatura-medieval-portuguesa, modernismo-portugues, neorrealismo-portugues, renascimento-portugues
-
-### Literatura Clássica e Antiga
-epica-grega, tragedia-grega, comedia-grega, filosofia-classica, mitologia-classica, epica-latina, historia-antiga
-
-### Literatura Medieval e Renascentista
-romances-de-cavalaria, literatura-arturiana, literatura-italiana-renascentista, soneto-renascentista, poesia-provencal
-
-### Literatura Anglo-Saxônica
-romance-ingles, romance-americano, conto-americano, poesia-inglesa, literatura-vitoriana, literatura-modernista-inglesa, beat-generation, gotico-americano, realismo-americano
-
-### Literatura Francesa
-romance-frances, poesia-francesa, existencialismo-frances, nouveau-roman, iluminismo-frances, simbolismo-frances, naturalismo-frances
-
-### Literatura Alemã e Austríaca
-romance-alemao, romantismo-alemao, expressionismo-alemao, kafka-e-o-absurdo, goethe-e-o-classicismo-alemao
-
-### Literatura Eslava e Russa
-romance-russo, realismo-russo, dostoievski-e-o-existencialismo, tolstoi-e-o-realismo-epico, literatura-sovietica, literatura-polonesa, literatura-tcheca
-
-### Literatura Latino-Americana
-realismo-magico, boom-latino-americano, literatura-argentina, literatura-colombiana, literatura-mexicana, literatura-chilena, conto-latino-americano
-
-### Literatura Asiática e Oriental
-literatura-japonesa, haiku-e-poesia-japonesa, literatura-chinesa-classica, literatura-indiana, literatura-arabe, literatura-persa, literatura-africana
-
-### Gêneros Ficcionais
-ficcao-cientifica-classica, ficcao-cientifica-contemporanea, space-opera, cyberpunk, distopia, utopia, fantasia-epica, fantasia-urbana, horror-e-terror, suspense-psicologico, thriller, policial-classico, noir, romance-historico, ficcao-literaria, ficcao-experimental
-
-### Não-Ficção Humanística
-filosofia-continental, filosofia-analitica, filosofia-oriental, etica-e-moral, politica-e-teoria-politica, historia-da-filosofia, epistemologia, logica-e-argumentacao, sociologia-e-antropologia, economia-e-pensamento-economico
-
-### Ciências e Divulgação Científica
-fisica-e-cosmologia, biologia-e-evolucao, neurociencia, genetica, matematica-aplicada, inteligencia-artificial, tecnologia-e-sociedade, ecologia-e-meio-ambiente
-
-### História
-historia-medieval, historia-moderna, historia-contemporanea, historia-do-brasil, historia-da-europa, historia-das-americas, historia-da-arte, historia-das-religioes, historia-da-ciencia
-
-### Psicologia e Comportamento
-psicologia-clinica, psicanalise, psicologia-social, comportamento-humano, inteligencia-emocional, autoconhecimento, psicologia-cognitiva, neuropsicologia
-
-### Negócios e Carreira
-estrategia-empresarial, lideranca, empreendedorismo, startups-e-inovacao, marketing, vendas-e-negociacao, gestao-e-administracao, financas-pessoais, investimentos, produtividade, carreira-e-desenvolvimento-profissional
-
-### Autodesenvolvimento
-habitos-e-disciplina, mentalidade-e-mindset, comunicacao-e-influencia, relacionamentos, estoicismo-pratico, espiritualidade, saude-e-bem-estar
-
-### Infantil e Juvenil
-literatura-infantil, literatura-juvenil, young-adult, fantasia-juvenil, aventura-juvenil
-
-### Biografia, Memória e Jornalismo
-biografia-narrativa, autobiografia-e-memorias, memorias-e-diarios, jornalismo-literario, reportagem-literaria, biografia-romanceada, nao-ficcao-narrativa
-
-### Teatro e Dramaturgia
-teatro-classico, teatro-moderno-e-contemporaneo, teatro-epico, teatro-experimental-e-absurdo, teatro-politico-e-documental, teoria-e-critica-teatral
-
-### Quadrinhos, HQ e Mangá
-hq-e-graphic-novel, manga, quadrinho-autobiografico, jornalismo-em-quadrinhos, hq-brasileira
-
-### Folclore e Literatura Popular
-contos-de-fada-e-fabulas, folclore-brasileiro, mitologia-e-lendas, literatura-oral-e-popular
-
-### Crime Real e Investigação
-true-crime, criminologia-e-perfilamento, investigacao-jornalistica, casos-criminais-brasileiros
+Extraia o campo `slug` de cada item para montar o conjunto válido.
 
 ---
 
