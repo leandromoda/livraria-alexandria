@@ -642,34 +642,40 @@ E  → Exports
                 d = "data"
                 return bool(
                     _glob.glob(_os.path.join(d, "*_synopsis_output.json")) or
-                    _glob.glob(_os.path.join(d, "*_classify_output.json"))
+                    _glob.glob(_os.path.join(d, "*_categorize_output.json"))
                 )
 
             def _has_cowork_inputs():
                 d = "data"
                 return bool(
                     _glob.glob(_os.path.join(d, "*_synopsis_input.json")) or
-                    _glob.glob(_os.path.join(d, "*_classify_input.json"))
+                    _glob.glob(_os.path.join(d, "*_categorize_input.json"))
                 )
 
             def _print_next_step_instructions():
-                print("""
-=== PRÓXIMO PASSO ===
-Abra o Claude Code e diga:
-
-  Leia agents/cowork_autopilot/prompt.md e execute todas as instruções.
-
-O agente processa UM lote por vez e arquiva o input.
-Repita quantas vezes quiser para esgotar todos os lotes.
-Depois volte aqui e pressione C → 1 para importar.
-""")
+                has_syn = bool(_glob.glob(_os.path.join("data", "*_synopsis_input.json")))
+                has_cls = bool(_glob.glob(_os.path.join("data", "*_categorize_input.json")))
+                lines = ["", "=== PRÓXIMO PASSO ===",
+                         "Abra o Claude Code e use o comando para o tipo desejado:", ""]
+                if has_syn:
+                    lines += ["  SINOPSES:",
+                               "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
+                               ""]
+                if has_cls:
+                    lines += ["  CATEGORIAS:",
+                               "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
+                               ""]
+                lines += ["Cada execução processa UM lote e arquiva o input.",
+                          "Repita para esgotar todos os lotes pendentes.",
+                          "Depois volte aqui e pressione C → 1 para importar.", ""]
+                print("\n".join(lines))
 
             has_outputs = _has_cowork_outputs()
             has_inputs  = _has_cowork_inputs()
 
             if has_outputs:
                 n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_output.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "*_classify_output.json")))
+                n_cat = len(_glob.glob(_os.path.join("data", "*_categorize_output.json")))
                 print(f"""
 Outputs do Cowork detectados ({n_syn} sinopse(s), {n_cat} categoria(s)). O que deseja fazer?
 
@@ -691,7 +697,7 @@ Outputs do Cowork detectados ({n_syn} sinopse(s), {n_cat} categoria(s)). O que d
 
             elif has_inputs:
                 n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_input.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "*_classify_input.json")))
+                n_cat = len(_glob.glob(_os.path.join("data", "*_categorize_input.json")))
                 print(f"""
 Inputs aguardando processamento ({n_syn} sinopse(s), {n_cat} classificação(ões)). O que deseja fazer?
 

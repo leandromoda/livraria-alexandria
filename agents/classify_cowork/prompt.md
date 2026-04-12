@@ -11,14 +11,14 @@ Sua tarefa é atribuir até 5 categorias temáticas de uma taxonomia fixa a cada
 
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
-1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_classify_input.json`
-   (use Glob com `scripts/data/*_classify_input.json` ou Bash `ls scripts/data/*_classify_input.json`)
-2. **Selecione o de menor número** (ex: se existirem `002_classify_input.json` e
-   `005_classify_input.json`, use o `002`)
+1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_categorize_input.json`
+   (use Glob com `scripts/data/*_categorize_input.json` ou Bash `ls scripts/data/*_categorize_input.json`)
+2. **Selecione o de menor número** (ex: se existirem `002_categorize_input.json` e
+   `005_categorize_input.json`, use o `002`)
 3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
 4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
 
-Se nenhum arquivo `*_classify_input.json` existir em `scripts/data/`, responda:
+Se nenhum arquivo `*_categorize_input.json` existir em `scripts/data/`, responda:
 "Nenhum input de classificação encontrado. Rode o export primeiro (opção 33 ou C no menu)."
 
 ```json
@@ -43,78 +43,20 @@ Se nenhum arquivo `*_classify_input.json` existir em `scripts/data/`, responda:
 
 ---
 
-## Taxonomia (171 categorias em 23 grupos)
+## Taxonomia
 
-Use APENAS os slugs listados abaixo. Nunca invente slugs novos.
+Leia o arquivo `scripts/data/taxonomy.json` — ele contém os slugs válidos.
+Use **apenas** os slugs presentes nesse arquivo. Nunca invente slugs novos.
 
-### Literatura Brasileira
-romance-brasileiro, conto-brasileiro, poesia-brasileira, modernismo-brasileiro, regionalismo-brasileiro, literatura-do-nordeste, naturalismo-brasileiro, realismo-brasileiro, romantismo-brasileiro, literatura-gaucha, poesia-slam-e-marginal
+Estrutura do arquivo:
+```json
+[
+  { "id": "romance-brasileiro", "slug": "romance-brasileiro", "label": "Romance Brasileiro", "group": "Literatura Brasileira" },
+  ...
+]
+```
 
-### Literatura Portuguesa
-romance-portugues, poesia-portuguesa, literatura-medieval-portuguesa, modernismo-portugues, neorrealismo-portugues, renascimento-portugues
-
-### Literatura Clássica e Antiga
-epica-grega, tragedia-grega, comedia-grega, filosofia-classica, mitologia-classica, epica-latina, historia-antiga
-
-### Literatura Medieval e Renascentista
-romances-de-cavalaria, literatura-arturiana, literatura-italiana-renascentista, soneto-renascentista, poesia-provencal
-
-### Literatura Anglo-Saxônica
-romance-ingles, romance-americano, conto-americano, poesia-inglesa, literatura-vitoriana, literatura-modernista-inglesa, beat-generation, gotico-americano, realismo-americano
-
-### Literatura Francesa
-romance-frances, poesia-francesa, existencialismo-frances, nouveau-roman, iluminismo-frances, simbolismo-frances, naturalismo-frances
-
-### Literatura Alemã e Austríaca
-romance-alemao, romantismo-alemao, expressionismo-alemao, kafka-e-o-absurdo, goethe-e-o-classicismo-alemao
-
-### Literatura Eslava e Russa
-romance-russo, realismo-russo, dostoievski-e-o-existencialismo, tolstoi-e-o-realismo-epico, literatura-sovietica, literatura-polonesa, literatura-tcheca
-
-### Literatura Latino-Americana
-realismo-magico, boom-latino-americano, literatura-argentina, literatura-colombiana, literatura-mexicana, literatura-chilena, conto-latino-americano
-
-### Literatura Asiática e Oriental
-literatura-japonesa, haiku-e-poesia-japonesa, literatura-chinesa-classica, literatura-indiana, literatura-arabe, literatura-persa, literatura-africana
-
-### Gêneros Ficcionais
-ficcao-cientifica-classica, ficcao-cientifica-contemporanea, space-opera, cyberpunk, distopia, utopia, fantasia-epica, fantasia-urbana, horror-e-terror, suspense-psicologico, thriller, policial-classico, noir, romance-historico, ficcao-literaria, ficcao-experimental
-
-### Não-Ficção Humanística
-filosofia-continental, filosofia-analitica, filosofia-oriental, etica-e-moral, politica-e-teoria-politica, historia-da-filosofia, epistemologia, logica-e-argumentacao, sociologia-e-antropologia, economia-e-pensamento-economico
-
-### Ciências e Divulgação Científica
-fisica-e-cosmologia, biologia-e-evolucao, neurociencia, genetica, matematica-aplicada, inteligencia-artificial, tecnologia-e-sociedade, ecologia-e-meio-ambiente
-
-### História
-historia-medieval, historia-moderna, historia-contemporanea, historia-do-brasil, historia-da-europa, historia-das-americas, historia-da-arte, historia-das-religioes, historia-da-ciencia
-
-### Psicologia e Comportamento
-psicologia-clinica, psicanalise, psicologia-social, comportamento-humano, inteligencia-emocional, autoconhecimento, psicologia-cognitiva, neuropsicologia
-
-### Negócios e Carreira
-estrategia-empresarial, lideranca, empreendedorismo, startups-e-inovacao, marketing, vendas-e-negociacao, gestao-e-administracao, financas-pessoais, investimentos, produtividade, carreira-e-desenvolvimento-profissional
-
-### Autodesenvolvimento
-habitos-e-disciplina, mentalidade-e-mindset, comunicacao-e-influencia, relacionamentos, estoicismo-pratico, espiritualidade, saude-e-bem-estar
-
-### Infantil e Juvenil
-literatura-infantil, literatura-juvenil, young-adult, fantasia-juvenil, aventura-juvenil
-
-### Biografia, Memória e Jornalismo
-biografia-narrativa, autobiografia-e-memorias, memorias-e-diarios, jornalismo-literario, reportagem-literaria, biografia-romanceada, nao-ficcao-narrativa
-
-### Teatro e Dramaturgia
-teatro-classico, teatro-moderno-e-contemporaneo, teatro-epico, teatro-experimental-e-absurdo, teatro-politico-e-documental, teoria-e-critica-teatral
-
-### Quadrinhos, HQ e Mangá
-hq-e-graphic-novel, manga, quadrinho-autobiografico, jornalismo-em-quadrinhos, hq-brasileira
-
-### Folclore e Literatura Popular
-contos-de-fada-e-fabulas, folclore-brasileiro, mitologia-e-lendas, literatura-oral-e-popular
-
-### Crime Real e Investigação
-true-crime, criminologia-e-perfilamento, investigacao-jornalistica, casos-criminais-brasileiros
+Extraia o campo `slug` de cada item para montar o conjunto válido.
 
 ---
 
@@ -170,20 +112,22 @@ Regras:
 
 ## Output
 
-Após classificar todos os livros:
+Após ler o arquivo de input:
 
-1. **Grave o resultado** em `scripts/data/NNN_classify_output.json` onde `NNN` é o mesmo
-   prefixo numérico do input lido (ex: se leu `002_classify_input.json`, grave em
-   `002_classify_output.json`). Adicione `"batch": "NNN"` em `meta`.
-
-2. **Mova o arquivo de input** para `scripts/data/processed_classify/` usando o Bash tool:
+1. **Mova o arquivo de input imediatamente** para `scripts/data/processed_categorize/` usando o Bash tool:
    ```bash
-   mkdir -p scripts/data/processed_classify
-   mv scripts/data/NNN_classify_input.json scripts/data/processed_classify/NNN_classify_input.json
+   mkdir -p scripts/data/processed_categorize
+   mv scripts/data/NNN_categorize_input.json scripts/data/processed_categorize/NNN_categorize_input.json
    ```
-   (substitua `NNN` pelo prefixo real do arquivo processado)
+   (substitua `NNN` pelo prefixo real do arquivo lido)
 
-3. **Confirme** reportando quantos livros foram CLASSIFIED e quantos REJECTED.
+2. **Classifique todos os livros** do array (veja regras acima).
+
+3. **Grave o resultado** em `scripts/data/NNN_categorize_output.json` onde `NNN` é o mesmo
+   prefixo numérico do input (ex: input era `002_categorize_input.json` → grave em
+   `002_categorize_output.json`). Adicione `"batch": "NNN"` em `meta`.
+
+4. **Confirme** reportando quantos livros foram CLASSIFIED e quantos REJECTED.
 
 ```json
 {
@@ -232,14 +176,15 @@ Após classificar todos os livros:
 ## Resumo do fluxo
 
 ```
-Listar scripts/data/*_classify_input.json
-  → Selecionar o de menor número (ex: 002_classify_input.json)
-  → Ler o arquivo
+Listar scripts/data/*_categorize_input.json
+  → Selecionar o de menor número (ex: 002_categorize_input.json)
+  → Ler o arquivo + anotar prefixo NNN
+  → mv NNN_categorize_input.json → scripts/data/processed_categorize/   ← mover imediatamente
+  → Ler scripts/data/taxonomy.json
   → Para cada livro:
       analisar titulo + autor + descricao + sinopse
       → identificar grupos temáticos relevantes
       → selecionar 3-5 slugs da taxonomia
       → incluir no array de resultados
-  → Gravar NNN_classify_output.json em scripts/data/
-  → mv NNN_classify_input.json → scripts/data/processed_classify/
+  → Gravar NNN_categorize_output.json em scripts/data/
 ```
