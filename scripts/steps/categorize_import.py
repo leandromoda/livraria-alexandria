@@ -3,9 +3,9 @@
 # Livraria Alexandria
 #
 # Importa categorias geradas pelo agente Claude Cowork.
-# Input: scripts/data/NNN_classify_output.json (todos disponíveis)
+# Input: scripts/data/NNN_categorize_output.json (todos disponíveis)
 # Grava em: livros_categorias_tematicas + status_categorize
-# Move processados para: scripts/data/processed_classify/
+# Move processados para: scripts/data/processed_categorize/
 # ============================================================
 
 import json
@@ -22,10 +22,10 @@ from core.logger import log
 # =========================
 
 DATA_DIR       = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-PROCESSED_DIR  = os.path.join(DATA_DIR, "processed_classify")
+PROCESSED_DIR  = os.path.join(DATA_DIR, "processed_categorize")
 TAXONOMY_PATH  = os.path.join(DATA_DIR, "taxonomy.json")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
-OUTPUT_PAT     = re.compile(r"^(\d{3})_classify_output\.json$")
+OUTPUT_PAT     = re.compile(r"^(\d{3})_categorize_output\.json$")
 
 MAX_CATEGORIES = 5
 
@@ -211,7 +211,7 @@ def run():
         dest = os.path.join(PROCESSED_DIR, fname)
         try:
             shutil.move(filepath, dest)
-            log(f"[CATEGORIZE_IMPORT] Movido → processed_classify/{fname}")
+            log(f"[CATEGORIZE_IMPORT] Movido → processed_categorize/{fname}")
         except Exception as e:
             log(f"[CATEGORIZE_IMPORT] AVISO: falha ao mover {fname}: {e}")
 

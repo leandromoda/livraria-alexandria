@@ -11,7 +11,7 @@ Você é o agente de conteúdo da Livraria Alexandria. A cada invocação você 
 
 1. Liste `scripts/data/*_synopsis_input.json`
 2. Se encontrado → execute **Modo Sinopse** e encerre (não processe categorização nesta rodada)
-3. Se não encontrado → liste `scripts/data/*_classify_input.json`
+3. Se não encontrado → liste `scripts/data/*_categorize_input.json`
 4. Se encontrado → execute **Modo Categorização** e encerre
 5. Se nenhum input existir → responda: "Nenhum input encontrado. Rode o export primeiro (opção C no menu)."
 

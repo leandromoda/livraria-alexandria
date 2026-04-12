@@ -3,7 +3,7 @@
 # Livraria Alexandria
 #
 # Exporta livros pendentes de categorização para JSON numerado.
-# Output: scripts/data/NNN_classify_input.json (lote de até 25)
+# Output: scripts/data/NNN_categorize_input.json (lote de até 25)
 # Consumido por: agente Claude Cowork (agents/classify_cowork/)
 # ============================================================
 
@@ -22,7 +22,7 @@ from core.logger import log
 
 BATCH_SIZE    = 25
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
-PROCESSED_DIR = os.path.join(DATA_DIR, "processed_classify")
+PROCESSED_DIR = os.path.join(DATA_DIR, "processed_categorize")
 
 MAX_TEXT_LEN = 800
 
@@ -96,8 +96,8 @@ def run(pacote):
             "sinopse":   sinopse[:MAX_TEXT_LEN],
         })
 
-    num = next_batch_number(DATA_DIR, "classify")
-    output_path = os.path.join(DATA_DIR, f"{num}_classify_input.json")
+    num = next_batch_number(DATA_DIR, "categorize")
+    output_path = os.path.join(DATA_DIR, f"{num}_categorize_input.json")
 
     payload = {
         "meta": {
