@@ -118,6 +118,11 @@ def _process_file(filepath, conn, cur):
 
         if status != "APPROVED":
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
+            cur.execute(
+                "UPDATE livros SET status_synopsis = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (livro_id,),
+            )
+            conn.commit()
             rejeitados += 1
             continue
 
@@ -125,6 +130,11 @@ def _process_file(filepath, conn, cur):
 
         if not valido:
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado na validação ({razao}) → {titulo}")
+            cur.execute(
+                "UPDATE livros SET status_synopsis = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (livro_id,),
+            )
+            conn.commit()
             rejeitados += 1
             continue
 

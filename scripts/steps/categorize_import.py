@@ -143,6 +143,11 @@ def _process_file(filepath, taxonomy, conn, cur):
 
         if status != "CLASSIFIED":
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
+            cur.execute(
+                "UPDATE livros SET status_categorize = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (livro_id,),
+            )
+            conn.commit()
             rejeitados += 1
             continue
 
@@ -150,6 +155,11 @@ def _process_file(filepath, taxonomy, conn, cur):
 
         if not valido:
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado na validação ({razao}) → {titulo}")
+            cur.execute(
+                "UPDATE livros SET status_categorize = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (livro_id,),
+            )
+            conn.commit()
             rejeitados += 1
             continue
 
@@ -186,7 +196,7 @@ def run():
     output_files = find_output_files(DATA_DIR)
 
     if not output_files:
-        log("[CATEGORIZE_IMPORT] Nenhum *_classify_output.json encontrado.")
+        log("[CATEGORIZE_IMPORT] Nenhum *_categorize_output.json encontrado.")
         log("[CATEGORIZE_IMPORT] Rode a opção 33 (Export) e o agente Claude Cowork primeiro.")
         return
 
