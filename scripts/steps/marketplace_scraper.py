@@ -22,6 +22,13 @@ from core.logger import log
 
 
 # =========================
+# STATS (reseta a cada run)
+# =========================
+
+_run_stats = {"http_503": 0}
+
+
+# =========================
 # CONFIG
 # =========================
 
@@ -99,9 +106,10 @@ def fetch_page(url):
             )
             if resp.status_code == 200:
                 return BeautifulSoup(resp.text, "html.parser")
-            log(f"[SCRAPER] HTTP {resp.status_code} → {url[:80]}")
-            # Não faz sentido retry em 403/503 (bot detection)
             if resp.status_code in (403, 503):
+                if resp.status_code == 503:
+                    _run_stats["http_503"] += 1
+                log(f"[SCRAPER] HTTP {resp.status_code} → {url[:80]}")
                 return None
         except KeyboardInterrupt:
             raise
@@ -406,6 +414,7 @@ def run(idioma=None, pacote=50):
         return
 
     ok = falhas = pulados = 0
+    _run_stats["http_503"] = 0
 
     try:
         for i, row in enumerate(rows, start=1):
@@ -476,6 +485,7 @@ def run(idioma=None, pacote=50):
     log(
         f"[SCRAPER] OK: {ok} | "
         f"Falhas: {falhas} | "
-        f"Pulados: {pulados} | "
+        f"Pulados (sem dados): {pulados} | "
+        f"HTTP 503 (bloqueio Amazon): {_run_stats['http_503']} | "
         f"Total: {total}"
     )

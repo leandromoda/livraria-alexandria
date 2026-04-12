@@ -179,43 +179,47 @@ def run(idioma, pacote=10):
     failed = 0
     total  = len(rows)
 
-    for i, (book_id, titulo, autor, isbn) in enumerate(rows, start=1):
+    try:
+        for i, (book_id, titulo, autor, isbn) in enumerate(rows, start=1):
 
-        log(f"[CAPA][{i:03d}/{total:03d}] → {titulo}")
+            log(f"[CAPA][{i:03d}/{total:03d}] → {titulo}")
 
-        cover  = None
-        source = None
+            cover  = None
+            source = None
 
-        # 1. Amazon
-        cover = fetch_amazon_cover(isbn)
-        if cover:
-            source = "amazon"
-            amazon_used += 1
-
-        # 2. Google Books
-        if not cover:
-            cover = fetch_google_cover(titulo, autor, isbn)
+            # 1. Amazon
+            cover = fetch_amazon_cover(isbn)
             if cover:
-                source = "google"
-                google_used += 1
+                source = "amazon"
+                amazon_used += 1
 
-        # 3. OpenLibrary
-        if not cover:
-            cover = fetch_openlibrary_cover(isbn)
+            # 2. Google Books
+            if not cover:
+                cover = fetch_google_cover(titulo, autor, isbn)
+                if cover:
+                    source = "google"
+                    google_used += 1
+
+            # 3. OpenLibrary
+            if not cover:
+                cover = fetch_openlibrary_cover(isbn)
+                if cover:
+                    source = "openlibrary"
+                    openlibrary_used += 1
+
             if cover:
-                source = "openlibrary"
-                openlibrary_used += 1
+                update_cover(conn, book_id, cover, status=1)
+                ok += 1
+                log(f"[CAPA] OK [{source}] → {titulo}")
+            else:
+                update_cover(conn, book_id, None, status=2)
+                failed += 1
+                log(f"[CAPA] SEM CAPA → {titulo}")
 
-        if cover:
-            update_cover(conn, book_id, cover, status=1)
-            ok += 1
-            log(f"[CAPA] OK [{source}] → {titulo}")
-        else:
-            update_cover(conn, book_id, None, status=2)
-            failed += 1
-            log(f"[CAPA] SEM CAPA → {titulo}")
+            time.sleep(0.3)
 
-        time.sleep(0.3)
+    except KeyboardInterrupt:
+        log("[CAPA] Interrompido pelo usuário — progresso salvo até aqui.")
 
     conn.close()
 
