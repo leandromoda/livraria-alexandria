@@ -106,6 +106,15 @@ def run(idioma, pacote):
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
+    # Marca como "em fila para o agente" (3) para que o próximo export
+    # não selecione os mesmos livros. O import reverte para 0 se rejeitado.
+    ids = [l["id"] for l in livros]
+    cur = conn.cursor()
+    cur.executemany(
+        "UPDATE livros SET status_synopsis = 3, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [(lid,) for lid in ids],
+    )
+    conn.commit()
     conn.close()
 
     log(f"[SYNOPSIS_EXPORT] Exportados: {len(livros)} | Skipped: {skipped}")
