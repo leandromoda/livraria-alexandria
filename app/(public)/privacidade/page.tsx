@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Política de Privacidade | Livraria Alexandria",
   description:
@@ -63,8 +65,11 @@ export default function PrivacidadePage() {
       </h2>
 
       <p>
-        Em caso de dúvidas sobre esta política, entre em contato pelo e-mail:
-        contato@livrariaalexandria.com.br
+        Em caso de dúvidas sobre esta política,{" "}
+        <Link href="/contato" className="text-[#C9A84C] hover:underline">
+          entre em contato pelo nosso formulário
+        </Link>
+        .
       </p>
 
     </div>
