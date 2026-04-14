@@ -100,6 +100,7 @@ def fetch_categorias_validas():
         FROM livros
         WHERE editorial_score >= 1
         AND status_publish = 1
+        AND categoria IS NOT NULL
         GROUP BY categoria
         HAVING COUNT(*) >= ?
 
@@ -522,6 +523,9 @@ def run():
     for i, row in enumerate(categorias, start=1):
 
         categoria = row[0]
+
+        if categoria is None:
+            continue
 
         if listas_criadas >= MAX_LISTAS_EXEC:
             break

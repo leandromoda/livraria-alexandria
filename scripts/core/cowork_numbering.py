@@ -3,7 +3,7 @@
 # Livraria Alexandria
 #
 # Utilitário para calcular o próximo número de lote disponível
-# para os arquivos de cowork (synopsis e classify).
+# para os arquivos de cowork (synopsis e categorize).
 # ============================================================
 
 import glob
@@ -17,7 +17,7 @@ def next_batch_number(data_dir: str, prefix: str) -> str:
     """
     Retorna o próximo número zero-padded (ex: '003') para o prefixo dado.
 
-    prefix: 'synopsis' ou 'classify'
+    prefix: 'synopsis' ou 'categorize'
 
     Varre data_dir/ e data_dir/processed_{prefix}/ para encontrar o
     maior número já usado e retorna max + 1.

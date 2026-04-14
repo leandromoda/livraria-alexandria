@@ -11,14 +11,14 @@ Sua tarefa é atribuir até 5 categorias temáticas de uma taxonomia fixa a cada
 
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
-1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_categorize_input.json`
-   (use Glob com `scripts/data/*_categorize_input.json` ou Bash `ls scripts/data/*_categorize_input.json`)
+1. **Liste os arquivos** em `scripts/data/cowork/` que correspondam ao padrão `*_categorize_input.json`
+   (use Glob com `scripts/data/cowork/*_categorize_input.json` ou Bash `ls scripts/data/cowork/*_categorize_input.json`)
 2. **Selecione o de menor número** (ex: se existirem `002_categorize_input.json` e
    `005_categorize_input.json`, use o `002`)
 3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
 4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
 
-Se nenhum arquivo `*_categorize_input.json` existir em `scripts/data/`, responda:
+Se nenhum arquivo `*_categorize_input.json` existir em `scripts/data/cowork/`, responda:
 "Nenhum input de classificação encontrado. Rode o export primeiro (opção 33 ou C no menu)."
 
 ```json
@@ -114,16 +114,16 @@ Regras:
 
 Após ler o arquivo de input:
 
-1. **Mova o arquivo de input imediatamente** para `scripts/data/processed_categorize/` usando o Bash tool:
+1. **Mova o arquivo de input imediatamente** para `scripts/data/cowork/processed_categorize/` usando o Bash tool:
    ```bash
-   mkdir -p scripts/data/processed_categorize
-   mv scripts/data/NNN_categorize_input.json scripts/data/processed_categorize/NNN_categorize_input.json
+   mkdir -p scripts/data/cowork/processed_categorize
+   mv scripts/data/cowork/NNN_categorize_input.json scripts/data/cowork/processed_categorize/NNN_categorize_input.json
    ```
    (substitua `NNN` pelo prefixo real do arquivo lido)
 
 2. **Classifique todos os livros** do array (veja regras acima).
 
-3. **Grave o resultado** em `scripts/data/NNN_categorize_output.json` onde `NNN` é o mesmo
+3. **Grave o resultado** em `scripts/data/cowork/NNN_categorize_output.json` onde `NNN` é o mesmo
    prefixo numérico do input (ex: input era `002_categorize_input.json` → grave em
    `002_categorize_output.json`). Adicione `"batch": "NNN"` em `meta`.
 
@@ -176,15 +176,15 @@ Após ler o arquivo de input:
 ## Resumo do fluxo
 
 ```
-Listar scripts/data/*_categorize_input.json
+Listar scripts/data/cowork/*_categorize_input.json
   → Selecionar o de menor número (ex: 002_categorize_input.json)
   → Ler o arquivo + anotar prefixo NNN
-  → mv NNN_categorize_input.json → scripts/data/processed_categorize/   ← mover imediatamente
+  → mv NNN_categorize_input.json → scripts/data/cowork/processed_categorize/   ← mover imediatamente
   → Ler scripts/data/taxonomy.json
   → Para cada livro:
       analisar titulo + autor + descricao + sinopse
       → identificar grupos temáticos relevantes
       → selecionar 3-5 slugs da taxonomia
       → incluir no array de resultados
-  → Gravar NNN_categorize_output.json em scripts/data/
+  → Gravar NNN_categorize_output.json em scripts/data/cowork/
 ```

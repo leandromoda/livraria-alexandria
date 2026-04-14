@@ -22,7 +22,8 @@ from core.logger import log
 
 BATCH_SIZE    = 25
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
-PROCESSED_DIR = os.path.join(DATA_DIR, "processed_synopsis")
+COWORK_DIR    = os.path.join(DATA_DIR, "cowork")
+PROCESSED_DIR = os.path.join(COWORK_DIR, "processed_synopsis")
 
 
 # =========================
@@ -55,6 +56,7 @@ def run(idioma, pacote):
 
     log("[SYNOPSIS_EXPORT] Iniciando exportação")
 
+    os.makedirs(COWORK_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     conn = get_conn()
@@ -90,8 +92,8 @@ def run(idioma, pacote):
         conn.close()
         return
 
-    num = next_batch_number(DATA_DIR, "synopsis")
-    output_path = os.path.join(DATA_DIR, f"{num}_synopsis_input.json")
+    num = next_batch_number(COWORK_DIR, "synopsis")
+    output_path = os.path.join(COWORK_DIR, f"{num}_synopsis_input.json")
 
     payload = {
         "meta": {

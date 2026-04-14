@@ -22,7 +22,8 @@ from core.logger import log
 
 BATCH_SIZE    = 25
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
-PROCESSED_DIR = os.path.join(DATA_DIR, "processed_categorize")
+COWORK_DIR    = os.path.join(DATA_DIR, "cowork")
+PROCESSED_DIR = os.path.join(COWORK_DIR, "processed_categorize")
 
 MAX_TEXT_LEN = 800
 
@@ -65,6 +66,7 @@ def run(pacote):
 
     log("[CATEGORIZE_EXPORT] Iniciando exportação")
 
+    os.makedirs(COWORK_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     conn = get_conn()
@@ -96,8 +98,8 @@ def run(pacote):
             "sinopse":   sinopse[:MAX_TEXT_LEN],
         })
 
-    num = next_batch_number(DATA_DIR, "categorize")
-    output_path = os.path.join(DATA_DIR, f"{num}_categorize_input.json")
+    num = next_batch_number(COWORK_DIR, "categorize")
+    output_path = os.path.join(COWORK_DIR, f"{num}_categorize_input.json")
 
     payload = {
         "meta": {

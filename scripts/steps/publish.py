@@ -131,8 +131,8 @@ def build_payload(row):
         "slug":               slug,
         "autor":              autor,
         "descricao":          sinopse,      # campo no Supabase recebe a sinopse gerada
-        "isbn":               isbn,
-        "ano_publicacao":     ano_publicacao,
+        "isbn":               isbn if isbn else None,
+        "ano_publicacao":     int(ano_publicacao) if ano_publicacao else None,
         "imagem_url":         imagem_url,
         "is_publishable":     bool(is_publishable) if is_publishable is not None else False,
         "quality_score":      editorial_score,
