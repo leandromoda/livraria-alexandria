@@ -11,14 +11,14 @@ Sua tarefa é gerar sinopses concisas, neutras e informativas para um lote de li
 
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
-1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `*_synopsis_input.json`
-   (use Glob com `scripts/data/*_synopsis_input.json` ou Bash `ls scripts/data/*_synopsis_input.json`)
+1. **Liste os arquivos** em `scripts/data/cowork/` que correspondam ao padrão `*_synopsis_input.json`
+   (use Glob com `scripts/data/cowork/*_synopsis_input.json` ou Bash `ls scripts/data/cowork/*_synopsis_input.json`)
 2. **Selecione o de menor número** (ex: se existirem `002_synopsis_input.json` e
    `005_synopsis_input.json`, use o `002`)
 3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
 4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
 
-Se nenhum arquivo `*_synopsis_input.json` existir em `scripts/data/`, responda:
+Se nenhum arquivo `*_synopsis_input.json` existir em `scripts/data/cowork/`, responda:
 "Nenhum input de sinopse encontrado. Rode o export primeiro (opção 31 ou C no menu)."
 
 ```json
@@ -139,16 +139,16 @@ Regras:
 
 Após ler o arquivo de input:
 
-1. **Mova o arquivo de input imediatamente** para `scripts/data/processed_synopsis/` usando o Bash tool:
+1. **Mova o arquivo de input imediatamente** para `scripts/data/cowork/processed_synopsis/` usando o Bash tool:
    ```bash
-   mkdir -p scripts/data/processed_synopsis
-   mv scripts/data/NNN_synopsis_input.json scripts/data/processed_synopsis/NNN_synopsis_input.json
+   mkdir -p scripts/data/cowork/processed_synopsis
+   mv scripts/data/cowork/NNN_synopsis_input.json scripts/data/cowork/processed_synopsis/NNN_synopsis_input.json
    ```
    (substitua `NNN` pelo prefixo real do arquivo lido)
 
 2. **Gere as sinopses** para todos os livros do array (veja regras acima).
 
-3. **Grave o resultado** em `scripts/data/NNN_synopsis_output.json` onde `NNN` é o mesmo
+3. **Grave o resultado** em `scripts/data/cowork/NNN_synopsis_output.json` onde `NNN` é o mesmo
    prefixo numérico do input (ex: input era `002_synopsis_input.json` → grave em
    `002_synopsis_output.json`). Adicione `"batch": "NNN"` em `meta`.
 
@@ -202,15 +202,15 @@ Após ler o arquivo de input:
 ## Resumo do fluxo
 
 ```
-Listar scripts/data/*_synopsis_input.json
+Listar scripts/data/cowork/*_synopsis_input.json
   → Selecionar o de menor número (ex: 002_synopsis_input.json)
   → Ler o arquivo + anotar prefixo NNN
-  → mv NNN_synopsis_input.json → scripts/data/processed_synopsis/   ← mover imediatamente
+  → mv NNN_synopsis_input.json → scripts/data/cowork/processed_synopsis/   ← mover imediatamente
   → Para cada livro:
       extrair fatos da descricao (sem inferência)
       → gerar sinopse 90-160 palavras no idioma correto
       → auto-validar (marcadores, tom, comprimento, idioma)
       → incluir no array de resultados
       → se problema grave detectado, incluir no array blacklist
-  → Gravar NNN_synopsis_output.json em scripts/data/
+  → Gravar NNN_synopsis_output.json em scripts/data/cowork/
 ```

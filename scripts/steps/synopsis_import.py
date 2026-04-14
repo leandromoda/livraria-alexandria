@@ -23,7 +23,8 @@ from steps.quality_gate import check_synopsis_generic
 # =========================
 
 DATA_DIR       = os.path.join(os.path.dirname(__file__), "..", "data")
-PROCESSED_DIR  = os.path.join(DATA_DIR, "processed_synopsis")
+COWORK_DIR     = os.path.join(DATA_DIR, "cowork")
+PROCESSED_DIR  = os.path.join(COWORK_DIR, "processed_synopsis")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
 OUTPUT_PAT     = re.compile(r"^(\d{3})_synopsis_output\.json$")
 
@@ -175,7 +176,7 @@ def run():
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-    output_files = find_output_files(DATA_DIR)
+    output_files = find_output_files(COWORK_DIR)
 
     if not output_files:
         log("[SYNOPSIS_IMPORT] Nenhum *_synopsis_output.json encontrado.")
