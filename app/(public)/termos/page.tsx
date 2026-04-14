@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Termos de Uso | Livraria Alexandria",
   description:
@@ -62,8 +64,11 @@ export default function TermosPage() {
       </h2>
 
       <p>
-        Para questões relacionadas a estes termos, entre em contato pelo e-mail:
-        contato@livrariaalexandria.com.br
+        Para questões relacionadas a estes termos,{" "}
+        <Link href="/contato" className="text-[#C9A84C] hover:underline">
+          entre em contato pelo nosso formulário
+        </Link>
+        .
       </p>
 
     </div>
