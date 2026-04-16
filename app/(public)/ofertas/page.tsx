@@ -31,6 +31,7 @@ export default async function OfertasPage() {
       id,
       preco,
       marketplace,
+      url_afiliada,
       livros (
         titulo,
         slug,
@@ -59,15 +60,12 @@ export default async function OfertasPage() {
         name: o.livros.titulo,
         image: o.livros.imagem_url || undefined,
         sku: o.livros.isbn,
-        brand: {
-          "@type": "Brand",
-          name: o.livros.autor,
-        },
+        ...(o.livros.autor ? { brand: { "@type": "Brand", name: o.livros.autor } } : {}),
         offers: {
           "@type": "Offer",
-          ...(o.preco ? { price: o.preco, priceCurrency: "BRL" } : {}),
+          ...(Number(o.preco) > 0 ? { price: Number(o.preco), priceCurrency: "BRL" } : {}),
           availability: "https://schema.org/InStock",
-          url: `${baseUrl}/api/click/${o.id}`,
+          url: o.url_afiliada || `${baseUrl}/livros/${o.livros.slug}`,
           seller: {
             "@type": "Organization",
             name: MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace,
