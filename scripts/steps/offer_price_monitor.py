@@ -169,6 +169,19 @@ def supabase_patch(supabase_id, payload):
         return False
 
 
+def supabase_patch_oferta(supabase_id, payload):
+    """PATCH na tabela ofertas filtrando por livro_id."""
+    if not supabase_id:
+        return False
+    try:
+        url  = f"{SUPABASE_URL}/rest/v1/ofertas?livro_id=eq.{supabase_id}"
+        resp = requests.patch(url, headers=HEADERS_SUPABASE, json=payload, timeout=30)
+        return resp.status_code in [200, 204]
+    except Exception as e:
+        log(f"[MONITOR] Supabase PATCH oferta erro: {e}")
+        return False
+
+
 # =========================
 # LOG PRICE CHANGE
 # =========================
@@ -228,6 +241,7 @@ def process_book(conn, row, dry_run=False):
             """, (livro_id,))
             conn.commit()
             supabase_patch(supabase_id, {"is_publishable": False, "offer_status": "unavailable"})
+            supabase_patch_oferta(supabase_id, {"ativa": False})
             log_price_change(conn, livro_id, preco_ant, None, "unavailable", marketplace)
         return "unavailable"
 
@@ -263,9 +277,14 @@ def process_book(conn, row, dry_run=False):
                 "preco_atual":  preco_novo,
                 "offer_status": new_status,
             })
+            supabase_patch_oferta(supabase_id, {"preco": preco_novo})
             log_price_change(conn, livro_id, preco_ant, preco_novo, new_status, marketplace)
         elif new_status == "active" and preco_novo:
             supabase_patch(supabase_id, {"preco_atual": preco_novo, "offer_status": "active"})
+            supabase_patch_oferta(supabase_id, {"preco": preco_novo, "ativa": True})
+        elif new_status == "active" and reactivation:
+            # Reativação sem preço novo conhecido — garante ativa=True
+            supabase_patch_oferta(supabase_id, {"ativa": True})
 
     return new_status
 
