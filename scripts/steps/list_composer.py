@@ -416,6 +416,7 @@ def fetch_categorias_tematicas_validas():
         JOIN livros l ON l.id = lct.livro_id
         WHERE l.status_publish = 1
           AND l.editorial_score >= 1
+          AND lct.categoria_slug IS NOT NULL
         GROUP BY lct.categoria_slug
         HAVING COUNT(DISTINCT l.id) >= ?
     """, (MIN_LIVROS_TEMATICA,))

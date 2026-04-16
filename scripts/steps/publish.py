@@ -135,7 +135,7 @@ def build_payload(row):
         "ano_publicacao":     int(ano_publicacao) if ano_publicacao else None,
         "imagem_url":         imagem_url,
         "is_publishable":     bool(is_publishable) if is_publishable is not None else False,
-        "quality_score":      editorial_score,
+        "quality_score":      int(editorial_score) if editorial_score not in (None, "") else None,
         "is_book":            bool(is_book) if is_book is not None else True,
         "last_quality_check": now,
         "publish_blockers":   None,
