@@ -29,6 +29,7 @@ from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
 from steps import autopilot_audit
+from steps import autopilot_manutencao
 from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
@@ -403,13 +404,15 @@ def menu_auditoria(idioma):
 --- AUDITORIA E MONITORAMENTO ---
 
 20 → Monitorar preços e disponibilidade de ofertas
-21 → Auditar conectividade do site (sem LLM)
-22 → Auditar conteúdo publicado (LLM)
+21 → Auditar conectividade do site (sem LLM) → data/logs/NNNN_audit_connectivity.json
+22 → Auditar conteúdo publicado (LLM) → data/logs/NNNN_audit_content.json
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
 26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
 28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
+29 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
+30 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
 
 V  → Voltar
 """)
@@ -513,6 +516,18 @@ ambos   → ambos acima
             with StepRun("autopilot_audit", idioma=idioma):
                 autopilot_audit.run()
 
+        elif op == "29":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Auditando listas SEO (dry_run={dry_run})…")
+            args = argparse.Namespace(mode="list", dry_run=dry_run)
+            auditor.run(args)
+
+        elif op == "30":
+            log("Verificando autores publicados sem bio…")
+            args = argparse.Namespace(mode="author-bios", dry_run=False)
+            auditor.run(args)
+
         else:
             print("Opção inválida.\n")
             continue
@@ -614,6 +629,7 @@ def main():
 
 S  → Status do pipeline (gargalos)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
+M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Cowork Autopilot (sinopse + categorias via Claude)
 E  → Exports
 
@@ -640,6 +656,17 @@ E  → Exports
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
             autopilot.run(idioma, 100)
+
+        elif op.upper() == "M":
+            try:
+                price_str = input_safe("Limite price monitor (Enter = 50): ").strip()
+                price_limit = int(price_str) if price_str else 50
+            except ValueError:
+                price_limit = 50
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Iniciando autopilot de manutenção (price_limit={price_limit}, dry_run={dry_run})…")
+            autopilot_manutencao.run(price_limit=price_limit, dry_run=dry_run)
 
         elif op.upper() == "C":
             import glob as _glob
