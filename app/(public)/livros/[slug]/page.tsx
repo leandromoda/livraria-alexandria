@@ -79,7 +79,7 @@ export default async function LivroPage({ params }: PageProps) {
    */
   const { data: ofertas } = await supabase
     .from("ofertas")
-    .select("id, preco, marketplace")
+    .select("id, preco, marketplace, url_afiliada")
     .eq("livro_id", livro.id)
     .eq("ativa", true);
 
@@ -103,10 +103,7 @@ export default async function LivroPage({ params }: PageProps) {
     description: livro.descricao,
     image: livro.imagem_url || undefined,
     sku: livro.isbn,
-    brand: {
-      "@type": "Brand",
-      name: livro.autor,
-    },
+    ...(livro.autor ? { brand: { "@type": "Brand", name: livro.autor } } : {}),
     additionalProperty: [
       {
         "@type": "PropertyValue",
@@ -121,22 +118,27 @@ export default async function LivroPage({ params }: PageProps) {
     ],
     offers: (() => {
       if (!ofertas?.length) return undefined;
-      const offerList = ofertas.map((o: any) => ({
-        "@type": "Offer" as const,
-        price: o.preco,
-        priceCurrency: "BRL",
-        availability: "https://schema.org/InStock",
-        url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/click/${o.id}`,
-        seller: { "@type": "Organization" as const, name: o.marketplace },
-      }));
+      const pageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`;
+      const offerList = ofertas.map((o: any) => {
+        const p = Number(o.preco);
+        return {
+          "@type": "Offer" as const,
+          ...(p > 0 ? { price: p, priceCurrency: "BRL" } : {}),
+          availability: "https://schema.org/InStock",
+          url: o.url_afiliada || pageUrl,
+          seller: { "@type": "Organization" as const, name: o.marketplace },
+        };
+      });
       if (offerList.length === 1) return offerList[0];
       const prices = ofertas
         .map((o: any) => Number(o.preco))
         .filter((p: number) => p > 0);
+      // AggregateOffer requires lowPrice — only use it when valid prices exist
+      if (!prices.length) return offerList;
       return {
         "@type": "AggregateOffer" as const,
-        lowPrice: prices.length ? Math.min(...prices) : undefined,
-        highPrice: prices.length ? Math.max(...prices) : undefined,
+        lowPrice: Math.min(...prices),
+        highPrice: Math.max(...prices),
         priceCurrency: "BRL",
         offerCount: offerList.length,
         offers: offerList,
