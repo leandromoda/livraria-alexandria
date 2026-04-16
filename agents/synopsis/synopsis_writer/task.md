@@ -13,10 +13,13 @@ This task performs narrative synthesis based strictly on structured input.
 The task receives:
 
 {
+"titulo": "",
+"autor": "",
 "contexto": "",
 "situacao_central": "",
 "temas": [],
-"escopo_narrativo": ""
+"escopo_narrativo": "",
+"personagens": []
 }
 
 ---

@@ -10,29 +10,34 @@ This is NOT a narrative generation step.
 
 ## Input
 
-The task receives:
+The task receives fact_extractor output:
 
 {
+  "tema_central": "",
+  "abordagem": "",
+  "conceitos_chave": [],
+  "publico_alvo": "",
+  "proposta_valor": "",
+  "personagens": [],
   "ambientacao": "",
-  "contexto_social": "",
-  "conflito_central": "",
-  "personagens_mencionados": [],
-  "temas_explicitos": []
+  "conflito_central": ""
 }
 
 ---
 
 ## Transformation
 
-Perform deterministic mapping.
+Perform deterministic mapping (fiction fields take priority over non-fiction fields).
 
-ambientacao → contexto
+ambientacao OR tema_central → contexto
 
-conflito_central → situacao_central
+conflito_central OR abordagem → situacao_central
 
-temas_explicitos → temas
+conceitos_chave → temas
 
-contexto_social → escopo_narrativo
+proposta_valor OR publico_alvo → escopo_narrativo (when available)
+
+personagens → personagens (pass through)
 
 ---
 
@@ -46,7 +51,8 @@ Required format:
   "contexto": "",
   "situacao_central": "",
   "temas": [],
-  "escopo_narrativo": ""
+  "escopo_narrativo": "",
+  "personagens": []
 }
 
 Rules:
@@ -68,7 +74,8 @@ Return:
   "contexto": "",
   "situacao_central": "",
   "temas": [],
-  "escopo_narrativo": ""
+  "escopo_narrativo": "",
+  "personagens": []
 }
 
 ---
