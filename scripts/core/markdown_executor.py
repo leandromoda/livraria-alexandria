@@ -266,9 +266,12 @@ def _validate_fact_schema(data: dict):
         "conceitos_chave",
         "publico_alvo",
         "proposta_valor",
+        "personagens",
+        "ambientacao",
+        "conflito_central",
     }
 
-    if set(data.keys()) != required_keys:
+    if not required_keys.issubset(set(data.keys())):
         raise RuntimeError("INVALID_FACT_SCHEMA_KEYS")
 
     if not isinstance(data["tema_central"], str):
@@ -286,6 +289,15 @@ def _validate_fact_schema(data: dict):
     if not isinstance(data["proposta_valor"], str):
         raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
 
+    if not isinstance(data["personagens"], list):
+        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
+
+    if not isinstance(data["ambientacao"], str):
+        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
+
+    if not isinstance(data["conflito_central"], str):
+        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
+
 # ======================================================
 # ABSTRACT STRUCTURER — PYTHON PURO (SEM LLM)
 # ======================================================
@@ -294,6 +306,13 @@ def _run_abstract_structurer(state: dict) -> dict:
     """
     Remap determinístico: fact_extractor → abstract_structurer.
     Substitui chamada LLM por transformação Python pura.
+
+    Prioriza campos narrativos (ficção) sobre campos analíticos (não-ficção):
+    - contexto:         ambientacao > tema_central
+    - situacao_central: conflito_central > abordagem
+    - temas:            conceitos_chave
+    - escopo_narrativo: proposta_valor > publico_alvo
+    - personagens:      personagens (novo campo)
     """
 
     _heartbeat("abstract_structurer_started")
@@ -301,11 +320,11 @@ def _run_abstract_structurer(state: dict) -> dict:
     conceitos = state.get("conceitos_chave", [])
 
     result = {
-        "contexto":         state.get("tema_central", ""),
-        "situacao_central": state.get("abordagem", ""),
+        "contexto":         state.get("ambientacao", "") or state.get("tema_central", ""),
+        "situacao_central": state.get("conflito_central", "") or state.get("abordagem", ""),
         "temas":            conceitos,
-        "escopo_narrativo": state.get("publico_alvo", ""),
-        "proposta_valor":   state.get("proposta_valor", ""),
+        "escopo_narrativo": state.get("proposta_valor", "") or state.get("publico_alvo", ""),
+        "personagens":      state.get("personagens", []),
     }
 
     _heartbeat("abstract_structurer_finished")
@@ -401,7 +420,35 @@ def _run_synopsis_validator(state: dict) -> dict:
         _heartbeat("synopsis_validator_finished")
         return {"status": "REWRITE_REQUIRED"}
 
-    # R7 — Tom promocional
+    # R7 — Especificidade mínima: rejeitar sinopses intercambiáveis
+    # Uma sinopse aprovável deve conter ao menos um elemento concreto.
+    # Detectamos intercambiabilidade pela presença de 3+ marcadores genéricos.
+    _GENERIC_SPECIFICITY_MARKERS = [
+        "condição humana",
+        "questões universais",
+        "temas universais",
+        "reflexões profundas",
+        "aspectos fundamentais",
+        "complexidades da vida",
+        "tensões inerentes",
+        "confronta as complexidades",
+        "desafios complexos",
+        "transformações rápidas",
+        "convida o leitor a refletir",
+        "mergulha em questões",
+        "aspectos da experiência humana",
+        "leva o leitor a refletir",
+        "obra que explora",
+        "narrativa envolvente",
+    ]
+    synopsis_lower = synopsis.lower()
+    generic_hits = sum(1 for m in _GENERIC_SPECIFICITY_MARKERS if m in synopsis_lower)
+    if generic_hits >= 3:
+        print(f"[VALIDATOR] Sinopse genérica detectada ({generic_hits} marcadores)")
+        _heartbeat("synopsis_validator_finished")
+        return {"status": "REWRITE_REQUIRED"}
+
+    # R8 — Tom promocional
     promotional_patterns = [
         r"\bimperdível\b",
         r"\bmust.read\b",

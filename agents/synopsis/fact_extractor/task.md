@@ -36,6 +36,9 @@ Required keys (exact spelling):
 - "conceitos_chave"
 - "publico_alvo"
 - "proposta_valor"
+- "personagens"
+- "ambientacao"
+- "conflito_central"
 
 No additional keys are allowed.
 No missing keys are allowed.
@@ -84,6 +87,18 @@ publico_alvo:
 proposta_valor:
   - what the reader gains, only if explicitly stated
   - empty string if none
+
+personagens:
+  - named characters or specific roles explicitly mentioned in descricao_base
+  - empty array [] if none stated
+
+ambientacao:
+  - setting, location, time period explicitly mentioned
+  - empty string if none stated
+
+conflito_central:
+  - the central conflict, tension, or dramatic situation explicitly described
+  - empty string if none stated
 
 ---
 
@@ -171,7 +186,10 @@ Return EXACTLY:
   "abordagem": "",
   "conceitos_chave": [],
   "publico_alvo": "",
-  "proposta_valor": ""
+  "proposta_valor": "",
+  "personagens": [],
+  "ambientacao": "",
+  "conflito_central": ""
 }
 
 Rules:

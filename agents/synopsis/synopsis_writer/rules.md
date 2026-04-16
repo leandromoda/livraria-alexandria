@@ -2,14 +2,21 @@
 
 ## R1 — Source Restriction
 
-The synopsis MUST be derived exclusively from the input fields:
+The synopsis MUST be derived primarily from the input fields:
 
 contexto  
 situacao_central  
 temas  
-escopo_narrativo
+escopo_narrativo  
+personagens
 
-No external knowledge allowed.
+When these fields are largely empty (3 or more are empty strings or empty arrays),
+the agent MAY use general literary knowledge about the work identified by titulo and autor
+to produce a specific, concrete synopsis.
+
+External knowledge is ONLY permitted when structured input is insufficient.
+When using external knowledge, maintain the same neutral editorial tone.
+Never invent facts about less-known works — if uncertain, use only what is in the input.
 
 ---
 
@@ -69,11 +76,10 @@ Forbidden patterns:
 
 ## R6 — Characters
 
-The synopsis MUST NOT introduce specific individuals
-unless they appear in the input structure.
+If the input field personagens contains named characters, USE them in the synopsis.
 
-If personagens_mencionados is absent,
-the narrative MUST refer only to:
+If personagens is empty and external knowledge is not applicable (R1),
+the narrative MUST refer only to general terms:
 
 "a family"
 "the characters"

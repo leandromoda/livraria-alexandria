@@ -18,6 +18,7 @@ from core.logger import log
 MIN_SYNOPSIS_LEN = 400
 
 GENERIC_SYNOPSIS_MARKERS = [
+    # Marcadores originais
     "contexto não especificado",
     "escopo narrativo",
     "jornada que convida o leitor",
@@ -27,6 +28,26 @@ GENERIC_SYNOPSIS_MARKERS = [
     "narrativa que se desenrola em um contexto",
     "condição humana, às relações interpessoais",
     "trama se desenvolve através de uma série",
+    # Padrões abstratos identificados em auditoria (2026-04)
+    "explora a complexidade da condição humana",
+    "complexidade da condição humana",
+    "desafios complexos e transformações",
+    "tensões inerentes",
+    "reflexões profundas sobre a condição",
+    "questões fundamentais da existência",
+    "contexto de transformações rápidas",
+    "confronta as complexidades",
+    "leva o leitor a refletir",
+    "convida o leitor a uma reflexão",
+    "mergulha em questões universais",
+    "aborda temas universais",
+    "através de uma narrativa envolvente",
+    "obra que explora e reflete",
+    "obra que destaca",
+    "linguagem precisa e envolvente",
+    "narrativa que explora temas como",
+    "tensão entre o individual e o coletivo",
+    "aspectos da experiência humana",
 ]
 
 
