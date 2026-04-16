@@ -10,11 +10,11 @@ last_activity = time.time()
 # Criado uma vez por sessão ao importar este módulo.
 # ============================================================
 
-_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-_DATA_DIR.mkdir(parents=True, exist_ok=True)
+_LOG_DIR = Path(__file__).resolve().parents[1] / "data" / "logs"
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 _SESSION_TS  = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-_LOG_PATH    = _DATA_DIR / f"pipeline_{_SESSION_TS}.log"
+_LOG_PATH    = _LOG_DIR / f"pipeline_{_SESSION_TS}.log"
 _log_file    = _LOG_PATH.open("a", encoding="utf-8", buffering=1)  # line-buffered
 
 

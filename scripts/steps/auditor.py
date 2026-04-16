@@ -24,6 +24,7 @@ import argparse
 import sqlite3
 import requests
 from datetime import datetime, timezone
+from pathlib import Path
 from bs4 import BeautifulSoup
 
 # ---------------------------------------------------------------------------
@@ -63,7 +64,8 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 SEVERITY_UNPUBLISH = {"medium", "high"}   # threshold para despublicação
 REQUEST_TIMEOUT = 10                       # segundos
-REPORT_DIR = os.path.join(SCRIPTS_ROOT, "data")
+REPORT_DIR = Path(SCRIPTS_ROOT) / "data" / "logs"
+LIST_MIN_MEMBERS = 5                       # mínimo de livros publicados por lista
 
 # ---------------------------------------------------------------------------
 # Tabela audit_log — criada automaticamente se não existir
@@ -465,6 +467,17 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
         if titulo and titulo.lower() not in rendered_text.lower():
             diff_issues.append("Título do DB não encontrado na página")
 
+        # 2b. Validação de imagem
+        imagem_url_row = conn.execute(
+            "SELECT imagem_url FROM livros WHERE id=?", (livro_id,)
+        ).fetchone()
+        imagem_url = imagem_url_row[0] if imagem_url_row else None
+        if imagem_url:
+            img_status, _, _ = _http_head(imagem_url)
+            if img_status is None or img_status not in (200, 301, 302):
+                diff_issues.append(f"Imagem inválida ou inacessível (HTTP {img_status}): {imagem_url}")
+                log.warning(f"   Imagem FALHOU: {img_status}")
+
         # 3. Auditoria LLM
         prompt = AUDIT_PROMPT_TEMPLATE.format(
             titulo=titulo or "(sem título)",
@@ -527,19 +540,182 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
 
 
 # ---------------------------------------------------------------------------
-# Relatório JSON
+# MODO 3: --list  (sem LLM)
 # ---------------------------------------------------------------------------
 
+DDL_LIST_STATUS = """
+CREATE TABLE IF NOT EXISTS listas (
+    id           TEXT PRIMARY KEY,
+    slug         TEXT,
+    titulo       TEXT,
+    status_publish INTEGER DEFAULT 0
+);
+"""
+
+
+def run_list_audit(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
+    """
+    Verifica coerência das listas SEO publicadas. Sem LLM.
+
+    Critérios:
+    - Lista com 0 membros publicados → despublica (status_publish=0)
+    - Lista com < LIST_MIN_MEMBERS membros publicados → sinaliza como needs_refresh
+    """
+    log.info(f"=== LIST AUDIT (dry_run={dry_run}) ===")
+
+    rows = conn.execute(
+        "SELECT id, slug, titulo FROM listas WHERE status_publish=1"
+    ).fetchall()
+
+    if not rows:
+        log.warning("Nenhuma lista publicada encontrada no banco local.")
+        return {"mode": "list", "total": 0, "results": []}
+
+    results = []
+    despublished = []
+    needs_refresh = []
+
+    for lista_id, slug, titulo in rows:
+        # Conta membros que ainda estão publicados
+        count_row = conn.execute(
+            """SELECT COUNT(*) FROM lista_livros ll
+               JOIN livros l ON l.id = ll.livro_id
+               WHERE ll.lista_id = ? AND l.status_publish = 1""",
+            (lista_id,)
+        ).fetchone()
+        published_count = count_row[0] if count_row else 0
+
+        if published_count == 0:
+            status = "empty"
+            log.info(f"  [✗] {titulo} ({slug}) → 0 membros publicados → despublica")
+            if not dry_run:
+                conn.execute(
+                    "UPDATE listas SET status_publish=0, updated_at=? WHERE id=?",
+                    (_now_iso(), lista_id)
+                )
+                conn.commit()
+                # PATCH Supabase
+                if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+                    try:
+                        url = f"{SUPABASE_URL}/rest/v1/listas?slug=eq.{slug}"
+                        requests.patch(
+                            url,
+                            headers={**_supabase_headers(use_service_key=True),
+                                     "Prefer": "return=minimal"},
+                            json={"status_publish": False},
+                            timeout=REQUEST_TIMEOUT,
+                        )
+                    except Exception as e:
+                        log.error(f"  Supabase PATCH lista {slug}: {e}")
+            despublished.append(slug)
+        elif published_count < LIST_MIN_MEMBERS:
+            status = "needs_refresh"
+            log.info(f"  [!] {titulo} ({slug}) → {published_count} membros (< {LIST_MIN_MEMBERS})")
+            needs_refresh.append(slug)
+        else:
+            status = "ok"
+            log.info(f"  [✓] {titulo} ({slug}) → {published_count} membros")
+
+        results.append({
+            "slug": slug,
+            "titulo": titulo,
+            "published_members": published_count,
+            "status": status,
+        })
+
+    log.info(
+        f"\nListas: OK={sum(1 for r in results if r['status']=='ok')} | "
+        f"Needs refresh={len(needs_refresh)} | "
+        f"Despublicadas={len(despublished)} | "
+        f"Total={len(rows)}"
+    )
+
+    return {
+        "mode": "list",
+        "total": len(rows),
+        "despublished": len(despublished),
+        "despublished_slugs": despublished,
+        "needs_refresh_slugs": needs_refresh,
+        "results": results,
+    }
+
+
+# ---------------------------------------------------------------------------
+# MODO 4: --author-bios  (sem LLM)
+# ---------------------------------------------------------------------------
+
+def check_author_bios(conn: sqlite3.Connection) -> dict:
+    """
+    Verifica autores publicados sem bio. Sem LLM — apenas relatório.
+    Não despublica. Registra em audit_log para rastreabilidade.
+    """
+    log.info("=== AUTHOR BIO CHECK ===")
+
+    rows = conn.execute(
+        """SELECT id, slug, nome FROM autores
+           WHERE status_publish=1
+             AND (bio IS NULL OR TRIM(bio) = '')"""
+    ).fetchall()
+
+    total_published = conn.execute(
+        "SELECT COUNT(*) FROM autores WHERE status_publish=1"
+    ).fetchone()[0]
+
+    slugs_sem_bio = [r[1] for r in rows]
+
+    if rows:
+        log.info(f"  {len(rows)}/{total_published} autores publicados sem bio:")
+        for _, slug, nome in rows:
+            log.info(f"    - {nome} ({slug})")
+    else:
+        log.info(f"  Todos os {total_published} autores publicados têm bio. OK.")
+
+    # Salva no audit_log como severity=low (sem despublicação)
+    for autor_id, slug, nome in rows:
+        conn.execute(
+            """INSERT OR REPLACE INTO audit_log
+               (id, livro_id, slug, mode, severity, issues, action_taken, audited_at)
+               VALUES (?, ?, ?, 'author_bio', 'low', ?, 'none', ?)""",
+            (
+                str(uuid.uuid4()),
+                autor_id,
+                slug,
+                json.dumps([f"Autor publicado sem bio: {nome}"], ensure_ascii=False),
+                _now_iso(),
+            )
+        )
+    if rows:
+        conn.commit()
+
+    return {
+        "mode": "author_bio",
+        "total_published": total_published,
+        "without_bio": len(rows),
+        "slugs_sem_bio": slugs_sem_bio,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Relatório JSON — numeração sequencial em data/logs/
+# ---------------------------------------------------------------------------
+
+def _next_sequence(log_dir: Path) -> int:
+    existing = sorted(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
+    if not existing:
+        return 1
+    return int(existing[-1].name[:4]) + 1
+
+
 def save_report(data: dict) -> str:
-    os.makedirs(REPORT_DIR, exist_ok=True)
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    seq = _next_sequence(REPORT_DIR)
     mode = data.get("mode", "audit")
-    filename = f"audit_{mode}_{ts}.json"
-    path = os.path.join(REPORT_DIR, filename)
+    filename = f"{seq:04d}_audit_{mode}.json"
+    path = REPORT_DIR / filename
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     log.info(f"\nRelatório salvo: {path}")
-    return path
+    return str(path)
 
 
 # ---------------------------------------------------------------------------
@@ -562,16 +738,22 @@ def run(args: argparse.Namespace) -> None:
     conn = get_connection()
     ensure_audit_tables(conn)
 
+    dry_run = getattr(args, "dry_run", False)
+
     if args.mode == "connectivity":
-        data = run_connectivity(conn, dry_run=args.dry_run)
+        data = run_connectivity(conn, dry_run=dry_run)
     elif args.mode == "content":
-        data = run_content_audit(conn, limit=args.limit, dry_run=args.dry_run)
+        data = run_content_audit(conn, limit=args.limit, dry_run=dry_run)
+    elif args.mode == "list":
+        data = run_list_audit(conn, dry_run=dry_run)
+    elif args.mode == "author-bios":
+        data = check_author_bios(conn)
     else:
-        log.error("Modo inválido. Use --connectivity ou --content")
+        log.error("Modo inválido. Use connectivity, content, list ou author-bios")
         return
 
     data["generated_at"] = _now_iso()
-    data["dry_run"] = args.dry_run
+    data["dry_run"] = dry_run
     report_path = save_report(data)
     log.info(f"Relatório: {report_path}")
 
@@ -582,13 +764,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="mode", required=True)
 
-    # Modo connectivity
+    # Modo connectivity (sem LLM)
     sub.add_parser("connectivity", help="Testa conectividade de infra (sem LLM)")
 
-    # Modo content
+    # Modo content (LLM)
     content_p = sub.add_parser("content", help="Audita coerência editorial via LLM")
     content_p.add_argument("--limit", type=int, default=20,
                             help="Número de livros a auditar (default=20)")
+
+    # Modo list (sem LLM)
+    sub.add_parser("list", help="Verifica coerência das listas SEO (sem LLM)")
+
+    # Modo author-bios (sem LLM)
+    sub.add_parser("author-bios", help="Verifica autores publicados sem bio (sem LLM)")
 
     # Flag global
     parser.add_argument("--dry-run", action="store_true",
