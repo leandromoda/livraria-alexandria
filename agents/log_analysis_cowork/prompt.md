@@ -13,15 +13,14 @@ resolução automatizada de problemas no código.
 
 Use suas ferramentas de arquivo para encontrar e ler os logs:
 
-1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `pipeline_*.log`
-   (use Glob com `scripts/data/pipeline_*.log`)
-2. Se nenhum `.log` encontrado, tente `scripts/log*.txt` como fallback
-3. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
-4. **Leia o arquivo inteiro**
-5. **Anote o identificador** do log (timestamp do filename ou número) — será usado no nome do output
+1. **Liste os arquivos** em `scripts/data/logs/` que correspondam ao padrão `pipeline_*.log`
+   (use Glob com `scripts/data/logs/pipeline_*.log`)
+2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
+3. **Leia o arquivo inteiro**
+4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
 
 Se nenhum log existir, responda:
-"Nenhum log de pipeline encontrado em scripts/data/. Execute o pipeline primeiro."
+"Nenhum log de pipeline encontrado em scripts/data/logs/. Execute o pipeline primeiro."
 
 ---
 
@@ -146,10 +145,8 @@ Mover o log fonte para `scripts/data/log_analysis/processed_logs/`:
 
 ```bash
 mkdir -p scripts/data/log_analysis/processed_logs
-mv scripts/data/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
+mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
 ```
-
-(ou para logs legados: `mv scripts/logN.txt scripts/data/log_analysis/processed_logs/`)
 
 ### Schema do JSON
 
@@ -243,7 +240,7 @@ mv scripts/data/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/pipeline_*.log (+ scripts/log*.txt)
+Glob scripts/data/logs/pipeline_*.log
   → Selecionar o mais antigo
   → Ler o arquivo inteiro
   → Passada 1: parsing linha-a-linha

@@ -6,7 +6,7 @@ from pathlib import Path
 last_activity = time.time()
 
 # ============================================================
-# LOG FILE — scripts/data/pipeline_YYYY-MM-DD_HH-MM-SS.log
+# LOG FILE — scripts/data/logs/pipeline_YYYY-MM-DD_HH-MM-SS.log
 # Criado uma vez por sessão ao importar este módulo.
 # ============================================================
 
