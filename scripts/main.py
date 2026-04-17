@@ -325,6 +325,7 @@ def menu_publicacao(idioma):
 27 → Reparar Ofertas (força republicação de todas para livros publicados)
 28 → Fix Affiliate URLs (corrige URLs sem parâmetros de comissão)
 30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
+31 → Reparar Relações Autores-Livros (re-sincroniza livros_autores no Supabase)
 
 V  → Voltar
 """)
@@ -389,6 +390,11 @@ V  → Voltar
             log("Importando offer_list.json (agente offer_finder)…")
             with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
                 offer_list_importer.run(pacote)
+
+        elif op == "31":
+            log("Re-sincronizando relações livros_autores no Supabase…")
+            with StepRun("repair_relacoes_autores", idioma=idioma):
+                publish_autores.run_repair_relacoes()
 
         else:
             print("Opção inválida.\n")
