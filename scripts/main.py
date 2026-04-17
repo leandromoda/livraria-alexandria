@@ -419,6 +419,7 @@ def menu_auditoria(idioma):
 28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
 29 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
 30 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
+31 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
 
 V  → Voltar
 """)
@@ -532,6 +533,35 @@ ambos   → ambos acima
         elif op == "30":
             log("Verificando autores publicados sem bio…")
             args = argparse.Namespace(mode="author-bios", dry_run=False)
+            auditor.run(args)
+
+        elif op == "31":
+            print("""
+Escopo da verificação de títulos:
+
+all       → todos os livros (publicados + pipeline)
+published → apenas publicados no Supabase
+pipeline  → apenas ainda não publicados
+""")
+            scope = input_safe("Escopo [all/published/pipeline] (padrão: all): ").strip().lower()
+            if scope not in ("all", "published", "pipeline"):
+                scope = "all"
+
+            try:
+                limite = int(input_safe("Limite de livros (padrão: 50): ").strip() or "50")
+            except ValueError:
+                limite = 50
+
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+
+            log(f"Verificando veracidade de títulos (scope={scope}, limit={limite}, dry_run={dry_run})…")
+            args = argparse.Namespace(
+                mode="title-verify", limit=limite, scope=scope, dry_run=dry_run
+            )
             auditor.run(args)
 
         else:

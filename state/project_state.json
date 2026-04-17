@@ -835,11 +835,14 @@
         "order": 29,
         "name": "Author Bio",
         "status": "operational",
-        "description": "Gera bio de 2-3 frases para autores sem descricao usando LLM com fallback determinístico.",
+        "description": "Gera bio editorial (80-160 palavras) para autores sem descricao usando agente Cowork em agents/author_bio/ (identity+rules+task). Cobertura: quem é o autor, escola/movimento literário, principais obras. Fallback determinístico para falhas de LLM.",
         "script": "scripts/steps/author_bio.py",
+        "agent": "agents/author_bio/",
         "llm_required": true,
         "menu_option": 29,
-        "created_on": "2026-04-02"
+        "created_on": "2026-04-02",
+        "upgraded_on": "2026-04-17",
+        "upgrade_notes": "Migrado de _call_llm inline (300 chars) para execute_agent com agente estruturado (900 chars max). Bio agora cobre escola/movimento e principais obras."
       },
       {
         "order": 27,
@@ -862,6 +865,18 @@
         "output": "Supabase ofertas table + SQLite offer_url/marketplace/offer_status",
         "idempotent": true,
         "created_on": "2026-04-04"
+      },
+      {
+        "order": "31-audit",
+        "name": "Auditor — Title Verify",
+        "status": "operational",
+        "description": "Verifica veracidade dos títulos via Google Books API + LLM. Para cada livro (scope: all|published|pipeline): lookup na API, verificação LLM, combinação de sinais em severity. Ações: medium=reactivation_pending=1; high+publicado=despublica; high+pipeline=is_publishable=0. Resultado em audit_log (mode=title_verify) + relatório JSON.",
+        "script": "scripts/steps/auditor.py",
+        "mode": "title-verify",
+        "menu_option": 31,
+        "llm_required": true,
+        "api_required": "GOOGLE_BOOKS_API_KEY (opcional — sem ela severity máx=medium)",
+        "created_on": "2026-04-17"
       },
       {
         "order": 31,
