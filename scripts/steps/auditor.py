@@ -67,6 +67,10 @@ REQUEST_TIMEOUT = 10                       # segundos
 REPORT_DIR = Path(SCRIPTS_ROOT) / "data" / "logs"
 LIST_MIN_MEMBERS = 5                       # mínimo de livros publicados por lista
 
+GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+TITLE_VERIFY_API_DELAY = 0.35             # segundos entre chamadas Google Books API
+
 # ---------------------------------------------------------------------------
 # Tabela audit_log — criada automaticamente se não existir
 # ---------------------------------------------------------------------------
@@ -696,6 +700,301 @@ def check_author_bios(conn: sqlite3.Connection) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# MODO 5: --title-verify  (Google Books API + LLM)
+# ---------------------------------------------------------------------------
+
+TITLE_VERIFY_PROMPT = """Você é um auditor bibliográfico especializado.
+Avalie se o livro abaixo corresponde a uma obra real e publicada.
+
+Título: {titulo}
+Autor: {autor}
+Descrição disponível: {descricao}
+
+Responda SOMENTE com JSON válido, sem markdown:
+
+{{"real": true|false, "confidence": "high"|"medium"|"low", "reason": "motivo em 1 frase"}}
+
+Critérios:
+- real=true: título e autor formam uma combinação que corresponde a livro real publicado
+- real=false: combinação improvável, incoerente ou claramente inventada
+- confidence: quão seguro você está da avaliação
+"""
+
+
+def _google_books_lookup(titulo: str, autor: str) -> str:
+    """
+    Consulta Google Books API e retorna nível de correspondência:
+    'exact' | 'partial' | 'none' | 'api_unavailable'
+    """
+    if not GOOGLE_BOOKS_API_KEY:
+        return "api_unavailable"
+
+    query = f"intitle:{titulo}"
+    if autor:
+        query += f"+inauthor:{autor}"
+
+    params = {
+        "q":          query,
+        "maxResults": 3,
+        "fields":     "items(volumeInfo(title,authors))",
+        "key":        GOOGLE_BOOKS_API_KEY,
+    }
+
+    try:
+        resp = requests.get(GOOGLE_BOOKS_URL, params=params,
+                            timeout=REQUEST_TIMEOUT,
+                            headers={"User-Agent": "AlexandriaAuditor/1.0"})
+        if resp.status_code != 200:
+            log.warning(f"  Google Books API HTTP {resp.status_code} para: {titulo}")
+            return "api_unavailable"
+
+        items = resp.json().get("items", [])
+        if not items:
+            return "none"
+
+        titulo_norm = titulo.lower().strip()
+        autor_norm  = (autor or "").lower().strip()
+
+        for item in items:
+            vi            = item.get("volumeInfo", {})
+            api_titulo    = vi.get("title", "").lower().strip()
+            api_autores   = " ".join(vi.get("authors", [])).lower()
+
+            titulo_match = titulo_norm in api_titulo or api_titulo in titulo_norm
+            autor_match  = autor_norm and (
+                any(part in api_autores for part in autor_norm.split() if len(part) > 3)
+            )
+
+            if titulo_match and (not autor_norm or autor_match):
+                return "exact"
+            if titulo_match or autor_match:
+                return "partial"
+
+        return "none"
+
+    except Exception as e:
+        log.warning(f"  Google Books lookup falhou: {e}")
+        return "api_unavailable"
+
+
+def _llm_verify_title(titulo: str, autor: str, descricao: str) -> dict:
+    """Usa LLM para verificar veracidade do par título+autor. Retorna dict com real/confidence/reason."""
+    descricao_curta = (descricao or "")[:400]
+    prompt = TITLE_VERIFY_PROMPT.format(
+        titulo=titulo or "(sem título)",
+        autor=autor or "(sem autor)",
+        descricao=descricao_curta or "(sem descrição)",
+    )
+    try:
+        raw = _call_llm(prompt)
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            cleaned = "\n".join(lines[1:-1])
+        data = json.loads(cleaned)
+        return {
+            "real":       bool(data.get("real", True)),
+            "confidence": str(data.get("confidence", "low")),
+            "reason":     str(data.get("reason", "")),
+        }
+    except Exception as e:
+        log.warning(f"  LLM title verify falhou: {e}")
+        return {"real": True, "confidence": "low", "reason": "llm_error"}
+
+
+def _combine_title_severity(api_match: str, llm_real: bool, llm_confidence: str) -> str:
+    """
+    Combina sinais da API e LLM em severity final.
+
+    Matrix:
+    exact   + real=true            → none   (verificado)
+    exact   + real=false           → low    (discrepância menor)
+    partial + real=true            → low    (provável real)
+    partial + real=false           → medium (suspeito)
+    none    + real=true, conf=high → low    (obra obscura mas plausível)
+    none    + real=true, conf!=high→ low    (benefício da dúvida)
+    none    + real=false           → high   (provável alucinação)
+    unavail + real=true            → low    (só LLM, benefício da dúvida)
+    unavail + real=false           → medium (max sem API)
+    """
+    if api_match == "exact":
+        return "none" if llm_real else "low"
+
+    if api_match == "partial":
+        return "low" if llm_real else "medium"
+
+    if api_match == "none":
+        return "low" if llm_real else "high"
+
+    # api_unavailable
+    return "low" if llm_real else "medium"
+
+
+def _fetch_books_for_title_verify(conn: sqlite3.Connection,
+                                   scope: str, limit: int) -> list:
+    """Busca livros do SQLite conforme scope: all | published | pipeline."""
+    if scope == "published":
+        where = "WHERE l.status_publish = 1"
+    elif scope == "pipeline":
+        where = "WHERE l.status_publish = 0"
+    else:  # all
+        where = ""
+
+    # Exclui livros já verificados recentemente (audit_log mode=title_verify, last 30 dias)
+    query = f"""
+        SELECT l.id, l.slug, l.titulo, l.autor, l.descricao,
+               l.status_publish, l.is_publishable
+        FROM livros l
+        {where}
+        {"AND" if where else "WHERE"} l.titulo IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM audit_log al
+              WHERE al.livro_id = l.id
+                AND al.mode = 'title_verify'
+                AND al.audited_at >= datetime('now', '-30 days')
+          )
+        ORDER BY RANDOM()
+        LIMIT ?
+    """
+    return conn.execute(query, (limit,)).fetchall()
+
+
+def _apply_title_action(conn: sqlite3.Connection, livro_id: str, slug: str,
+                         severity: str, status_publish: int,
+                         dry_run: bool) -> str:
+    """Aplica ação conforme severity. Retorna string de action tomada."""
+    if severity not in ("medium", "high"):
+        return "none"
+
+    if severity == "medium":
+        if dry_run:
+            return "would_flag_review"
+        conn.execute(
+            "UPDATE livros SET reactivation_pending=1, updated_at=? WHERE id=?",
+            (_now_iso(), livro_id)
+        )
+        conn.commit()
+        return "flagged_review"
+
+    # severity == high
+    if dry_run:
+        return "would_block" if status_publish == 0 else "would_despublish"
+
+    if status_publish == 1:
+        _despublish_sqlite(conn, livro_id, slug)
+        _despublish_supabase(slug)
+        return "despublished"
+    else:
+        conn.execute(
+            "UPDATE livros SET is_publishable=0, updated_at=? WHERE id=?",
+            (_now_iso(), livro_id)
+        )
+        conn.commit()
+        return "blocked_pipeline"
+
+
+def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
+                     scope: str = "all", dry_run: bool = False) -> dict:
+    """
+    Verifica veracidade dos títulos via Google Books API + LLM.
+    Escopo configurável: all | published | pipeline.
+    """
+    log.info(f"=== TITLE VERIFY (limit={limit}, scope={scope}, dry_run={dry_run}) ===")
+
+    if not GOOGLE_BOOKS_API_KEY:
+        log.warning("  GOOGLE_BOOKS_API_KEY não configurada — verificação apenas via LLM (max severity=medium)")
+
+    rows = _fetch_books_for_title_verify(conn, scope, limit)
+
+    if not rows:
+        log.info("Nenhum livro elegível para verificação de título.")
+        return {"mode": "title_verify", "verified": 0, "results": []}
+
+    results      = []
+    blocked      = []
+    despublished = []
+
+    for livro_id, slug, titulo, autor, descricao, status_publish, is_publishable in rows:
+        log.info(f"\n→ {titulo} / {autor or '(sem autor)'} [{slug}]")
+
+        # 1. Google Books API
+        api_match = _google_books_lookup(titulo or "", autor or "")
+        log.info(f"   API match: {api_match}")
+        time.sleep(TITLE_VERIFY_API_DELAY)
+
+        # 2. LLM
+        llm = _llm_verify_title(titulo or "", autor or "", descricao or "")
+        log.info(f"   LLM: real={llm['real']} confidence={llm['confidence']} → {llm['reason']}")
+
+        # 3. Severity
+        severity = _combine_title_severity(api_match, llm["real"], llm["confidence"])
+        log.info(f"   Severity: {severity}")
+
+        # 4. Ação
+        action = _apply_title_action(conn, livro_id, slug, severity,
+                                     status_publish, dry_run)
+        if "despublish" in action:
+            despublished.append(slug)
+        if "block" in action:
+            blocked.append(slug)
+
+        # 5. audit_log
+        issues = []
+        if api_match == "none":
+            issues.append(f"Título não encontrado no Google Books: '{titulo}'")
+        if api_match == "partial":
+            issues.append(f"Correspondência parcial no Google Books para: '{titulo}'")
+        if not llm["real"]:
+            issues.append(f"LLM indica livro não real (confidence={llm['confidence']}): {llm['reason']}")
+
+        if not dry_run:
+            conn.execute(
+                """INSERT OR REPLACE INTO audit_log
+                   (id, livro_id, slug, mode, severity, issues, action_taken, audited_at)
+                   VALUES (?, ?, ?, 'title_verify', ?, ?, ?, ?)""",
+                (str(uuid.uuid4()), livro_id, slug, severity,
+                 json.dumps(issues, ensure_ascii=False), action, _now_iso())
+            )
+            conn.commit()
+
+        results.append({
+            "slug":       slug,
+            "titulo":     titulo,
+            "autor":      autor,
+            "api_match":  api_match,
+            "llm_real":   llm["real"],
+            "llm_conf":   llm["confidence"],
+            "llm_reason": llm["reason"],
+            "severity":   severity,
+            "action":     action,
+        })
+
+    ok_count  = sum(1 for r in results if r["severity"] in ("none", "low"))
+    sus_count = sum(1 for r in results if r["severity"] == "medium")
+    hal_count = sum(1 for r in results if r["severity"] == "high")
+
+    log.info(
+        f"\nTitle verify concluído: {len(results)} livros | "
+        f"OK/baixo={ok_count} | Suspeito={sus_count} | Alucinação={hal_count} | "
+        f"Despublicados={len(despublished)} | Bloqueados pipeline={len(blocked)}"
+    )
+
+    return {
+        "mode":               "title_verify",
+        "scope":              scope,
+        "verified":           len(results),
+        "ok_low":             ok_count,
+        "suspicious":         sus_count,
+        "hallucinated":       hal_count,
+        "despublished":       len(despublished),
+        "blocked_pipeline":   len(blocked),
+        "despublished_slugs": despublished,
+        "blocked_slugs":      blocked,
+        "results":            results,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Relatório JSON — numeração sequencial em data/logs/
 # ---------------------------------------------------------------------------
 
@@ -748,8 +1047,15 @@ def run(args: argparse.Namespace) -> None:
         data = run_list_audit(conn, dry_run=dry_run)
     elif args.mode == "author-bios":
         data = check_author_bios(conn)
+    elif args.mode == "title-verify":
+        data = run_title_verify(
+            conn,
+            limit=getattr(args, "limit", 50),
+            scope=getattr(args, "scope", "all"),
+            dry_run=dry_run,
+        )
     else:
-        log.error("Modo inválido. Use connectivity, content, list ou author-bios")
+        log.error("Modo inválido. Use connectivity, content, list, author-bios ou title-verify")
         return
 
     data["generated_at"] = _now_iso()
@@ -777,6 +1083,20 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Modo author-bios (sem LLM)
     sub.add_parser("author-bios", help="Verifica autores publicados sem bio (sem LLM)")
+
+    # Modo title-verify (Google Books API + LLM)
+    title_p = sub.add_parser(
+        "title-verify",
+        help="Verifica veracidade dos títulos via Google Books API + LLM"
+    )
+    title_p.add_argument(
+        "--limit", type=int, default=50,
+        help="Número de livros a verificar (default=50)"
+    )
+    title_p.add_argument(
+        "--scope", choices=["all", "published", "pipeline"], default="all",
+        help="Escopo: all (padrão) | published | pipeline"
+    )
 
     # Flag global
     parser.add_argument("--dry-run", action="store_true",
