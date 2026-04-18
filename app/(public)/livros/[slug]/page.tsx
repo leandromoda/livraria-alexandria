@@ -102,7 +102,7 @@ export default async function LivroPage({ params }: PageProps) {
     name: livro.titulo,
     description: livro.descricao,
     image: livro.imagem_url || undefined,
-    sku: livro.isbn,
+    ...(livro.isbn ? { isbn: livro.isbn } : {}),
     ...(livro.autor ? { brand: { "@type": "Brand", name: livro.autor } } : {}),
     additionalProperty: [
       {
@@ -117,24 +117,23 @@ export default async function LivroPage({ params }: PageProps) {
       },
     ],
     offers: (() => {
-      if (!ofertas?.length) return undefined;
+      // Google requires price on every Offer — exclude offers without valid price from schema
+      const ofertasComPreco = (ofertas ?? []).filter((o: any) => Number(o.preco) > 0);
+      if (!ofertasComPreco.length) return undefined;
+
       const pageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`;
-      const offerList = ofertas.map((o: any) => {
-        const p = Number(o.preco);
-        return {
-          "@type": "Offer" as const,
-          ...(p > 0 ? { price: p, priceCurrency: "BRL" } : {}),
-          availability: "https://schema.org/InStock",
-          url: o.url_afiliada || pageUrl,
-          seller: { "@type": "Organization" as const, name: o.marketplace },
-        };
-      });
+      const offerList = ofertasComPreco.map((o: any) => ({
+        "@type": "Offer" as const,
+        price: Number(o.preco),
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        url: o.url_afiliada || pageUrl,
+        seller: { "@type": "Organization" as const, name: o.marketplace },
+      }));
+
       if (offerList.length === 1) return offerList[0];
-      const prices = ofertas
-        .map((o: any) => Number(o.preco))
-        .filter((p: number) => p > 0);
-      // AggregateOffer requires lowPrice — only use it when valid prices exist
-      if (!prices.length) return offerList;
+
+      const prices = ofertasComPreco.map((o: any) => Number(o.preco));
       return {
         "@type": "AggregateOffer" as const,
         lowPrice: Math.min(...prices),
