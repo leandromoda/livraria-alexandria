@@ -11,7 +11,9 @@
 import os
 import sqlite3
 import time
+import unicodedata
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import requests
@@ -41,6 +43,39 @@ GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 
 REQUEST_DELAY = 0.3
 MIN_DESC_LENGTH = 50
+TITLE_SIMILARITY_THRESHOLD = 0.5  # mínimo de similaridade entre título buscado e retornado
+
+
+# =========================
+# TITLE VALIDATION
+# =========================
+
+def _normalize_title(s: str) -> str:
+    """Normaliza título para comparação: NFKD → ASCII → minúsculas."""
+    return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode("ascii").lower().strip()
+
+
+def _title_matches(expected: str, returned: str) -> bool:
+    """
+    Retorna True se o título retornado pelo Google Books é compatível com o
+    título que estava sendo buscado. Evita aceitar descrições de livros errados.
+
+    Critérios (qualquer um satisfatório):
+    1. O título buscado é substring do título retornado (ex: "Sapiens" em "Sapiens: A Brief History")
+    2. O título retornado é substring do título buscado (ex: edição abreviada)
+    3. Similaridade SequenceMatcher >= TITLE_SIMILARITY_THRESHOLD
+    """
+    n_expected = _normalize_title(expected)
+    n_returned = _normalize_title(returned)
+
+    if not n_returned:
+        return False
+
+    if n_expected in n_returned or n_returned in n_expected:
+        return True
+
+    ratio = SequenceMatcher(None, n_expected, n_returned).ratio()
+    return ratio >= TITLE_SIMILARITY_THRESHOLD
 
 
 # =========================
@@ -95,7 +130,7 @@ def fetch_descricao(titulo, autor):
 
     time.sleep(REQUEST_DELAY)
 
-    params = {"q": query, "maxResults": 3}
+    params = {"q": query, "maxResults": 5}
 
     if GOOGLE_BOOKS_API_KEY:
         params["key"] = GOOGLE_BOOKS_API_KEY
@@ -116,11 +151,17 @@ def fetch_descricao(titulo, autor):
 
             for item in items:
                 info = item.get("volumeInfo", {})
+                returned_title = info.get("title", "")
+
+                # Rejeita resultado cujo título não corresponde ao livro buscado
+                if not _title_matches(titulo, returned_title):
+                    continue
+
                 descricao = info.get("description")
                 if descricao and len(descricao.strip()) >= MIN_DESC_LENGTH:
                     return descricao.strip()
 
-            return None  # sem resultado de conteúdo — não adianta retry
+            return None  # sem resultado compatível — não adianta retry
 
         except requests.RequestException as e:
             log(f"[ENRICH] Falha de rede (tentativa {tentativa + 1}/2) → {e}")
