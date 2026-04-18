@@ -197,6 +197,19 @@ def upsert_book(payload):
 # FLAG LOCAL
 # =========================
 
+def mark_blacklisted(conn, local_id: str) -> None:
+    """Marca livro bloqueado pela blacklist como não publicável.
+    Impede que seja re-buscado em ciclos futuros do autopilot."""
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE livros
+        SET is_publishable = 0,
+            updated_at     = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (local_id,))
+    conn.commit()
+
+
 def mark_published(conn, local_id, supabase_id):
 
     cur = conn.cursor()
@@ -227,11 +240,15 @@ def run(idioma, pacote=10):
     skipped = 0
     if blacklisted:
         log(f"[PUBLISH] Blacklist carregada: {len(blacklisted)} entradas")
-        original = len(rows)
-        rows = [r for r in rows if r[2] not in blacklisted]  # r[2] = slug
-        skipped = original - len(rows)
+        original_rows = rows
+        rows = [r for r in original_rows if r[2] not in blacklisted]  # r[2] = slug
+        skipped = len(original_rows) - len(rows)
         if skipped:
             log(f"[PUBLISH] Bloqueados pela blacklist: {skipped}")
+            # Marca is_publishable=0 para evitar re-busca em ciclos futuros
+            for r in original_rows:
+                if r[2] in blacklisted:
+                    mark_blacklisted(conn, r[0])  # r[0] = local_id
 
     if not rows:
         log(f"Nada pendente para publicação [{idioma}].")
