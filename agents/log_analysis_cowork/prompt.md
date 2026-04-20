@@ -19,8 +19,11 @@ Use suas ferramentas de arquivo para encontrar e ler os logs:
 3. **Leia o arquivo inteiro**
 4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
 
-Se nenhum log existir, responda:
-"Nenhum log de pipeline encontrado em scripts/data/logs/. Execute o pipeline primeiro."
+Se nenhum log existir via Glob, responda exatamente:
+
+> **LOGS_NOT_ACCESSIBLE**: O diretório `scripts/data/logs/` está excluído do projeto Claude (listado no `.gitignore`). O Claude Code tem acesso direto aos logs — peça a ele para analisar, ou cole o conteúdo do log diretamente nesta conversa para continuar.
+
+Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
 ---
 
