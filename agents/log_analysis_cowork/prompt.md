@@ -115,6 +115,25 @@ Use esta tabela para preencher o campo `source_file` nas falhas e `suggested_inv
 
 ---
 
+## Limites de atuação — CRÍTICO
+
+**Você é um agente de análise e diagnóstico. Você NÃO aplica correções.**
+
+| Permitido | Proibido |
+|-----------|----------|
+| Ler arquivos de log | Editar arquivos `.py` |
+| Ler arquivos JSON de output do pipeline | Editar arquivos JSON de dados (`*_output.json`, `blacklist.json`, etc.) |
+| Gravar o relatório `log_analysis_*.json` | Editar qualquer outro arquivo |
+| Mover o log processado para `processed_logs/` | Rodar o pipeline ou qualquer step |
+| Listar e descrever bugs encontrados | Corrigir bugs diretamente |
+
+Quando encontrar um bug (ex.: JSON malformado, exceção não tratada, arquivo corrompido):
+- **Descreva** o problema em detalhes no JSON de output (`failures`, `actionable_insights`)
+- **Documente** a causa raiz, os arquivos afetados e a correção sugerida
+- **NÃO edite** nenhum arquivo de código ou dado — o Claude Code lerá seu relatório e aplicará as correções
+
+---
+
 ## Regras
 
 ### Parsing
@@ -224,14 +243,20 @@ mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_
       "step": "SYNOPSIS",
       "pattern": "INVALID_AGENT_OUTPUT",
       "affected_books": ["A Vaca Roxa"],
+      "root_cause": "Descrição da causa raiz identificada na análise",
       "suggested_investigation": "scripts/core/markdown_executor.py",
+      "suggested_fix": "Descrição textual da correção recomendada — o Claude Code aplicará",
+      "affected_data_files": [],
       "priority": "high"
     },
     {
       "type": "pipeline_bottleneck",
       "step": "COVERS",
       "pattern": "100% failure rate — 0 capas geradas de 200 tentativas",
+      "root_cause": "Descrição da causa raiz identificada na análise",
       "suggested_investigation": "scripts/steps/covers.py",
+      "suggested_fix": "Descrição textual da correção recomendada — o Claude Code aplicará",
+      "affected_data_files": [],
       "priority": "critical"
     }
   ]
@@ -241,10 +266,14 @@ mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_
 ### Regras do output
 - `meta.total_failures` conta apenas `failures` (erros inesperados), não `rejections`
 - Cada entrada em `failures` DEVE ter `source_file` mapeado via tabela step→módulo
-- `actionable_insights` deve ser útil para o Claude Code: indicar **onde** investigar e **o que** procurar
+- `actionable_insights` deve ser útil para o Claude Code: indicar **onde** investigar, **o que** procurar e **o que** corrigir
+- `actionable_insights[].root_cause`: causa raiz identificada na análise — obrigatório para severity high/critical
+- `actionable_insights[].suggested_fix`: descrição textual da correção a ser aplicada pelo Claude Code
+- `actionable_insights[].affected_data_files`: lista de arquivos de dados (JSON, etc.) corrompidos ou que precisam de correção manual — o Claude Code inspecionará e corrigirá
 - `rejections` com mesma razão podem ser agrupadas se >10 ocorrências (ex: "100 livros com Capa pendente")
 - Os contadores em `meta` devem refletir os totais reais
 - `exceptions` captura tracebacks Python completos — campo `traceback` com texto integral
+- **NUNCA** editar arquivos de código ou dados no output — apenas documentar
 
 ---
 
