@@ -28,6 +28,12 @@ from core.logger import log
 
 _run_stats = {"http_503": 0}
 
+# Circuit breaker para Open Library: após OL_CIRCUIT_THRESHOLD falhas
+# consecutivas, skip Open Library pelo resto do batch para não bloquear
+# o scraper inteiro em ConnectTimeout/ReadTimeout repetidos.
+_ol_consecutive_failures = 0
+OL_CIRCUIT_THRESHOLD = 3   # falhas consecutivas para abrir o circuit
+
 
 # =========================
 # CONFIG
@@ -253,10 +259,18 @@ def try_open_library(titulo, isbn=None, autor=None):
     Usa ISBN quando disponível (mais preciso), senão "título autor".
     NÃO usar lookup_query — contém sufixo 'livro' que confunde a busca.
 
+    Circuit breaker: se _ol_consecutive_failures >= OL_CIRCUIT_THRESHOLD,
+    retorna None imediatamente sem fazer requests (Open Library instável).
+
     Retorna dict com cover_url, descricao ou None se falha.
     """
+    global _ol_consecutive_failures
+
     if not titulo and not isbn:
         return None
+
+    if _ol_consecutive_failures >= OL_CIRCUIT_THRESHOLD:
+        return None   # circuit aberto — skip silencioso
 
     try:
         # Prefere ISBN se disponível (mais preciso), senão título + autor
@@ -271,10 +285,12 @@ def try_open_library(titulo, isbn=None, autor=None):
             timeout=(TIMEOUT_CONNECT, TIMEOUT_API),
         )
         if resp.status_code != 200:
+            _ol_consecutive_failures += 1
             return None
 
         docs = resp.json().get("docs", [])
         if not docs:
+            _ol_consecutive_failures = 0   # resposta válida — reset
             return None
 
         doc      = docs[0]
@@ -303,6 +319,7 @@ def try_open_library(titulo, isbn=None, autor=None):
         if not cover_url and not descricao:
             return None
 
+        _ol_consecutive_failures = 0   # sucesso — reset circuit
         return {
             "cover_url":  cover_url,
             "descricao":  descricao,

@@ -99,14 +99,34 @@ def resolve_language(current_lang, isbn, title):
 # =========================
 
 NON_BOOK_PATTERNS = [
+    # Periódicos e publicações seriadas
     r"\bjournal\b", r"\brevista\b", r"\bmagazine\b",
     r"\bbulletin\b", r"\bannals\b", r"\btransactions\b",
     r"\breport\b", r"\bcensus\b", r"\bdirectory\b",
     r"\byearbook\b", r"\bproceedings\b",
-    r"\blaw\b", r"\bact\b", r"\bordinance\b",
-    r"\blegislation\b", r"\bdecree\b",
-    r"\bthesis\b", r"\bdissertation\b",
-    r"\bannual report\b", r"\bcommittee\b",
+    r"\bannual editions\b",      # "Annual Editions: Macroeconomics 05/06"
+    r"\bannual report\b",
+    # Documentos jurídicos / institucionais
+    r"\bordinance\b", r"\blegislation\b", r"\bdecree\b",
+    r"\bcommittee\b",
+    # Material acadêmico de pós-graduação
+    r"\bthesis\b", r"\bdissertation\b", r"\bmonograph\b",
+    # Bibliografias e catálogos de biblioteca
+    r"\bbibliograph",            # "bibliographical", "bibliography"
+    r"\bcatalogue\b",            # catálogos em inglês britânico
+    r"\bmicrofilm\b",            # coleções de microfilme
+    # Material didático fora do escopo literário
+    r"\bworktext\b",             # "A Worktext in Home Economics"
+    r"\bhome economics\b",       # disciplina escolar
+    r"\bhandbook of\b",          # "Handbook of Macroeconomics" (sempre acadêmico)
+    # Economia acadêmica — textbooks que nunca entram no catálogo literário
+    r"\bmacroeconom",            # "Macroeconomics", "Macroeconomic Theory"
+    r"\bmicroeconom",            # "Microeconomics", "Microeconomic Theory"
+    r"\beconometric",            # "Econometrics", "Econometric Methods"
+    r"\bpolitical economy\b",    # "Essay on India Political Economy"
+    r"\beconomic policy\b",      # "Economic Policy Review"
+    r"\beconomic outlook\b",     # "Regional Economic Outlook"
+    r"\beconomic theory\b",      # "Macroeconomic Theory"
 ]
 
 BOOK_POSITIVE_PATTERNS = [
