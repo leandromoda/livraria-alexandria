@@ -167,6 +167,7 @@ def ensure_schema(conn):
     for col, definition in [
         ("deduped",   "INTEGER DEFAULT 0"),
         ("descricao", "TEXT"),
+        ("bio",       "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE autores ADD COLUMN {col} {definition}")

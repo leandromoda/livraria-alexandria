@@ -102,7 +102,7 @@ def _process_file(filepath, conn, cur):
         status   = item.get("status", "")
         motivo   = item.get("motivo", "")
 
-        cur.execute("SELECT titulo, status_synopsis FROM livros WHERE id = ?", (livro_id,))
+        cur.execute("SELECT titulo, status_synopsis, is_publishable FROM livros WHERE id = ?", (livro_id,))
         row = cur.fetchone()
 
         if not row:
@@ -110,18 +110,21 @@ def _process_file(filepath, conn, cur):
             erros += 1
             continue
 
-        titulo, status_atual = row
+        titulo, status_atual, is_publishable = row
 
         if status_atual == 1:
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Já processado → {titulo}")
             ja_processados += 1
             continue
 
+        # status_synopsis=4 → livro blacklistado; não reverter para 0
+        _rejected_status = 4 if not is_publishable else 0
+
         if status != "APPROVED":
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
             cur.execute(
-                "UPDATE livros SET status_synopsis = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (livro_id,),
+                "UPDATE livros SET status_synopsis = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (_rejected_status, livro_id),
             )
             conn.commit()
             rejeitados += 1
@@ -132,8 +135,8 @@ def _process_file(filepath, conn, cur):
         if not valido:
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado na validação ({razao}) → {titulo}")
             cur.execute(
-                "UPDATE livros SET status_synopsis = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (livro_id,),
+                "UPDATE livros SET status_synopsis = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (_rejected_status, livro_id),
             )
             conn.commit()
             rejeitados += 1

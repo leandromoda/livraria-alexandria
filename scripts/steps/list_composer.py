@@ -54,11 +54,24 @@ def ensure_schema():
 
         idioma TEXT,
 
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        status_publish INTEGER DEFAULT 0,
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
     )
 
     """)
+
+    # Migrações para bancos existentes
+    for col, definition in [
+        ("status_publish", "INTEGER DEFAULT 0"),
+        ("updated_at",     "DATETIME DEFAULT CURRENT_TIMESTAMP"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
 
     cur.execute("""
 
