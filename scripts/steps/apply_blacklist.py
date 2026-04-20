@@ -132,9 +132,11 @@ def _despublish_sqlite(conn: sqlite3.Connection, slug: str, dry_run: bool) -> st
 
     conn.execute(
         """UPDATE livros
-           SET is_publishable = 0,
-               status_publish = 0,
-               updated_at     = ?
+           SET is_publishable   = 0,
+               status_publish   = 0,
+               status_synopsis  = 4,
+               status_categorize = 4,
+               updated_at       = ?
            WHERE id = ?""",
         (datetime.now(timezone.utc).isoformat(), local_id)
     )
