@@ -101,6 +101,17 @@ Use esta tabela para preencher o campo `source_file` nas falhas e `suggested_inv
 | LLM / VALIDATOR | markdown_executor.py | `scripts/core/markdown_executor.py` |
 | FACT_EXTRACTOR | fact_extractor | `agents/synopsis/fact_extractor/` |
 | SYNOPSIS_WRITER | synopsis_writer | `agents/synopsis/synopsis_writer/` |
+| SYNOPSIS_EXPORT / COWORK_EXPORT (sinopse) | synopsis_export.py | `scripts/steps/synopsis_export.py` |
+| SYNOPSIS_IMPORT / COWORK_IMPORT (sinopse) | synopsis_import.py | `scripts/steps/synopsis_import.py` |
+| CATEGORIZE_EXPORT / COWORK_EXPORT (categoria) | categorize_export.py | `scripts/steps/categorize_export.py` |
+| CATEGORIZE_IMPORT / COWORK_IMPORT (categoria) | categorize_import.py | `scripts/steps/categorize_import.py` |
+| APPLY_BLACKLIST / BLACKLIST | apply_blacklist.py | `scripts/steps/apply_blacklist.py` |
+| DEDUP_AUTORES | dedup_autores.py | `scripts/steps/dedup_autores.py` |
+| PUBLISH_AUTORES | publish_autores.py | `scripts/steps/publish_autores.py` |
+| PUBLISH_CAT / PUBLISH_CATEGORIAS | publish_categorias.py | `scripts/steps/publish_categorias.py` |
+| PUBLISH_LISTAS | publish_listas.py | `scripts/steps/publish_listas.py` |
+| AUTOPILOT | autopilot.py | `scripts/steps/autopilot.py` |
+| MANUTENCAO / AUTOPILOT_MANUTENCAO | autopilot_manutencao.py | `scripts/steps/autopilot_manutencao.py` |
 
 ---
 

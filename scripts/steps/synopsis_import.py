@@ -84,8 +84,12 @@ def find_output_files(data_dir):
 def _process_file(filepath, conn, cur):
     """Processa um arquivo de output. Retorna (ok, rejeitados, ja_processados, erros)."""
 
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        log(f"[SYNOPSIS_IMPORT] JSON inválido em {os.path.basename(filepath)}: {e}")
+        return 0, 0, 0, 1
 
     resultados = data.get("resultados", [])
 
@@ -197,7 +201,12 @@ def run():
         fname = os.path.basename(filepath)
         log(f"[SYNOPSIS_IMPORT] Processando {fname}…")
 
-        ok, rej, ja, err = _process_file(filepath, conn, cur)
+        try:
+            ok, rej, ja, err = _process_file(filepath, conn, cur)
+        except Exception as e:
+            log(f"[SYNOPSIS_IMPORT] ERRO inesperado em {fname}: {e}")
+            ok = rej = ja = 0
+            err = 1
         total_ok += ok
         total_rej += rej
         total_ja  += ja
