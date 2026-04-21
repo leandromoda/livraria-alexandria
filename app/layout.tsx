@@ -3,6 +3,7 @@ import Header from "./_components/Header";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: {
@@ -69,6 +70,7 @@ export default function RootLayout({
         </footer>
 
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
