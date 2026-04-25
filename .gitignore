@@ -50,10 +50,9 @@ scripts/data/*.db-wal
 scripts/data/*.db-shm
 scripts/data/books.db
 scripts/data/backup/*.db
-scripts/data/audit_*.json
+scripts/data/logs/
 scripts/data/blacklist.json
 scripts/data/gemini_usage.json
-scripts/data/pipeline_*.log
 scripts/data/synopsis_input.json
 scripts/data/synopsis_output.json
 scripts/data/categorize_input.json
