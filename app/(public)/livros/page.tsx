@@ -9,11 +9,24 @@ export const metadata: Metadata = {
     "Explore todos os livros com sinopses, autores e as melhores ofertas disponíveis.",
 };
 
-export default async function LivrosIndex() {
-  const { data: livros } = await supabase
+type PageProps = {
+  searchParams: Promise<{ q?: string }>;
+};
+
+export default async function LivrosIndex({ searchParams }: PageProps) {
+  const { q: rawQ } = await searchParams;
+  const q = rawQ?.trim() ?? "";
+
+  let query = supabase
     .from("livros")
     .select("titulo, slug, imagem_url, autor")
     .order("titulo");
+
+  if (q) {
+    query = query.or(`titulo.ilike.%${q}%,autor.ilike.%${q}%`);
+  }
+
+  const { data: livros } = await query;
 
   return (
     <div className="space-y-8">
@@ -28,12 +41,21 @@ export default async function LivrosIndex() {
         </p>
 
         <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A]">
-          Todos os livros
+          {q ? "Resultados da busca" : "Todos os livros"}
         </h1>
 
-        <p className="text-[#4A4A4A] text-sm mt-2">
-          {livros?.length ?? 0} {(livros?.length ?? 0) === 1 ? "livro" : "livros"} no catálogo
-        </p>
+        {q ? (
+          <p className="text-[#4A4A4A] text-sm mt-2">
+            {livros?.length ?? 0}{" "}
+            {(livros?.length ?? 0) === 1 ? "resultado" : "resultados"} para{" "}
+            <span className="font-medium text-[#0D1B2A]">"{q}"</span>
+          </p>
+        ) : (
+          <p className="text-[#4A4A4A] text-sm mt-2">
+            {livros?.length ?? 0}{" "}
+            {(livros?.length ?? 0) === 1 ? "livro" : "livros"} no catálogo
+          </p>
+        )}
 
       </header>
 
@@ -41,6 +63,12 @@ export default async function LivrosIndex() {
           LISTA
       ========================== */}
       <div className="divide-y divide-[#E6DED3]">
+
+        {livros?.length === 0 && q && (
+          <p className="text-sm text-[#4A4A4A] py-4">
+            Nenhum livro encontrado para "{q}". Tente outros termos.
+          </p>
+        )}
 
         {livros?.map((l) => (
           <a

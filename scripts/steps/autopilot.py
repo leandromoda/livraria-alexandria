@@ -8,7 +8,14 @@
 # Steps LLM (10-Categorizar, 11-Sinopses, 22-Auditoria) são
 # sempre pulados. O pipeline para automaticamente quando a fila
 # trava aguardando esses steps manuais.
+#
+# Opção manter_cowork: ao final de cada ciclo exporta lotes de
+# input para o agente Cowork até atingir o target (padrão: 10).
 # ============================================================
+
+import glob as _glob
+import os as _os
+import re as _re
 
 from core.db import get_conn
 from core.logger import log
@@ -34,7 +41,49 @@ from steps import (
     publish_ofertas,
     list_composer,
     publish_listas,
+    cowork_export,
 )
+
+
+# =========================
+# COWORK TOP-UP
+# =========================
+
+_COWORK_DIR = _os.path.join("data", "cowork")
+_NUM_PAT    = _re.compile(r"^(\d{3})_")
+
+
+def _count_input_batches() -> int:
+    """Conta lotes distintos de input pendentes em data/cowork/ (pelo NNN)."""
+    nums: set = set()
+    for fpath in (
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+    ):
+        m = _NUM_PAT.match(_os.path.basename(fpath))
+        if m:
+            nums.add(m.group(1))
+    return len(nums)
+
+
+def _topup_cowork(idioma: str, target: int = 10):
+    """Exporta lotes de Cowork até atingir `target` inputs pendentes."""
+    atual  = _count_input_batches()
+    needed = max(0, target - atual)
+    if needed == 0:
+        log(f"[AUTOPILOT][COWORK] {atual} lote(s) pendente(s) — meta de {target} já atingida.")
+        return
+    log(f"[AUTOPILOT][COWORK] {atual} lote(s) pendente(s) — exportando {needed} para completar {target}.")
+    exportados = 0
+    for i in range(needed):
+        try:
+            with StepRun("cowork_export", idioma=idioma, pacote=25, invocado_por="autopilot"):
+                cowork_export.run(idioma, 25)
+            exportados += 1
+        except Exception as e:
+            log(f"[AUTOPILOT][COWORK] Erro ao exportar lote {i + 1}: {e}")
+            break  # não tentar mais se falhou
+    log(f"[AUTOPILOT][COWORK] {exportados} lote(s) exportado(s). Total pendente: {_count_input_batches()}.")
 
 
 # =========================
@@ -74,17 +123,26 @@ def count_pending(conn) -> int:
 # RUN
 # =========================
 
-def run(idioma: str, pacote: int):
+def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: int = 10):
     """Loop automático: roda sequência não-LLM até não haver mais progresso.
 
     Para quando:
     - pending == 0: pipeline completamente exaurido
     - pending não diminuiu: bloqueado aguardando LLM (steps 10, 11)
     - Ctrl+C: interrompido pelo usuário
+
+    Args:
+        manter_cowork: Se True, exporta lotes Cowork ao final de cada ciclo
+                       para manter `cowork_target` inputs disponíveis ao agente.
+        cowork_target: Número de lotes a manter disponíveis (padrão: 10).
     """
 
     # Normaliza offer_status='active' → 1 uma única vez
     publish_ofertas.fix_offer_status()
+
+    # Top-up inicial de lotes Cowork (antes do primeiro ciclo)
+    if manter_cowork:
+        _topup_cowork(idioma, cowork_target)
 
     conn = get_conn()
     pending_anterior = count_pending(conn)
@@ -161,6 +219,10 @@ def run(idioma: str, pacote: int):
             conn.close()
 
             log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}")
+
+            # Top-up de lotes Cowork (se habilitado)
+            if manter_cowork:
+                _topup_cowork(idioma, cowork_target)
 
             if pending_atual == 0:
                 log("[AUTOPILOT] Pipeline exaurido. Nada mais a processar.")
