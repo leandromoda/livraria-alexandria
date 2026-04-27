@@ -691,7 +691,9 @@ E  → Exports
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
-            autopilot.run(idioma, 100)
+            manter_str    = input_safe("Manter lotes Cowork? (mantém 10 inputs prontos p/ agente) [s/N]: ").strip().lower()
+            manter_cowork = manter_str == "s"
+            autopilot.run(idioma, 100, manter_cowork=manter_cowork)
 
         elif op.upper() == "M":
             try:
@@ -707,85 +709,112 @@ E  → Exports
         elif op.upper() == "C":
             import glob as _glob
             import os as _os
+            import re as _re
 
-            def _has_cowork_outputs():
-                d = _os.path.join("data", "cowork")
-                return bool(
-                    _glob.glob(_os.path.join(d, "*_synopsis_output.json")) or
-                    _glob.glob(_os.path.join(d, "*_categorize_output.json"))
+            _COWORK_DIR = _os.path.join("data", "cowork")
+            _NUM_PAT    = _re.compile(r"^(\d{3})_")
+
+            def _count_outputs():
+                return (
+                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json"))) +
+                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
                 )
 
-            def _has_cowork_inputs():
-                d = _os.path.join("data", "cowork")
-                return bool(
-                    _glob.glob(_os.path.join(d, "*_synopsis_input.json")) or
-                    _glob.glob(_os.path.join(d, "*_categorize_input.json"))
-                )
+            def _count_input_batches():
+                """Conta lotes distintos de input pendentes (pelo número NNN)."""
+                nums = set()
+                for fpath in (
+                    _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
+                    _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+                ):
+                    m = _NUM_PAT.match(_os.path.basename(fpath))
+                    if m:
+                        nums.add(m.group(1))
+                return len(nums)
+
+            def _export_n_batches(n):
+                """Exporta até N lotes. Interrompe se não houver mais pendentes."""
+                exportados = 0
+                for _ in range(n):
+                    with StepRun("cowork_export", idioma=idioma, pacote=25):
+                        cowork_export.run(idioma, 25)
+                    exportados += 1
+                log(f"[COWORK] {exportados} lote(s) exportado(s).")
 
             def _print_next_step_instructions():
-                has_syn = bool(_glob.glob(_os.path.join("data", "cowork", "*_synopsis_input.json")))
-                has_cls = bool(_glob.glob(_os.path.join("data", "cowork", "*_categorize_input.json")))
-                lines = ["", "=== PRÓXIMO PASSO ===",
-                         "Abra o Claude Code e use o comando para o tipo desejado:", ""]
+                has_syn = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")))
+                has_cls = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json")))
+                n_lotes = _count_input_batches()
+                lines = [
+                    "",
+                    "=== PRÓXIMO PASSO ===",
+                    f"Lotes aguardando o agente: {n_lotes}",
+                    "Abra o Claude Code e use o comando para o tipo desejado:",
+                    "",
+                ]
                 if has_syn:
-                    lines += ["  SINOPSES:",
-                               "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
-                               ""]
+                    lines += [
+                        "  SINOPSES:",
+                        "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
+                        "",
+                    ]
                 if has_cls:
-                    lines += ["  CATEGORIAS:",
-                               "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
-                               ""]
-                lines += ["Cada execução processa UM lote e arquiva o input.",
-                          "Repita para esgotar todos os lotes pendentes.",
-                          "Depois volte aqui e pressione C → 1 para importar.", ""]
+                    lines += [
+                        "  CATEGORIAS:",
+                        "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
+                        "",
+                    ]
+                lines += [
+                    "Cada execução processa UM lote e arquiva o input.",
+                    "Repita para esgotar todos os lotes pendentes.",
+                    "Depois volte aqui e pressione C → 1 para importar.",
+                    "",
+                ]
                 print("\n".join(lines))
 
-            has_outputs = _has_cowork_outputs()
-            has_inputs  = _has_cowork_inputs()
+            # ── Status atual ──────────────────────────────────────────────
+            n_outputs     = _count_outputs()
+            n_input_lotes = _count_input_batches()
+            n_syn_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")))
+            n_cat_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
 
-            if has_outputs:
-                n_syn = len(_glob.glob(_os.path.join("data", "cowork", "*_synopsis_output.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "cowork", "*_categorize_output.json")))
-                print(f"""
-Outputs do Cowork detectados ({n_syn} sinopse(s), {n_cat} categoria(s)). O que deseja fazer?
+            print(f"""
+=== COWORK ===
+
+  Lotes de input pendentes : {n_input_lotes}
+  Outputs prontos p/ import: {n_syn_out} sinopse(s), {n_cat_out} categoria(s)
 
 1 → Importar TODOS os resultados pendentes → SQLite
-2 → Exportar mais um lote (adicionar ao pipeline)
+    {"(nenhum output disponível)" if n_outputs == 0 else f"({n_syn_out} sinopses + {n_cat_out} categorias)"}
+2 → Exportar 1 lote
+3 → Exportar 10 lotes simultâneos
+4 → Ver instruções para o agente Cowork
 """)
-                sub = input_safe("Opção: ")
-                if sub == "1":
+            sub = input_safe("Opção: ")
+
+            if sub == "1":
+                if n_outputs == 0:
+                    print("Nenhum output disponível para importar.\n")
+                else:
                     log("Importando resultados do Cowork…")
                     with StepRun("cowork_import", idioma=idioma):
                         cowork_import.run()
-                elif sub == "2":
-                    log("Exportando inputs para Cowork…")
-                    with StepRun("cowork_export", idioma=idioma, pacote=25):
-                        cowork_export.run(idioma, 25)
-                    _print_next_step_instructions()
-                else:
-                    print("Opção inválida.\n")
 
-            elif has_inputs:
-                n_syn = len(_glob.glob(_os.path.join("data", "cowork", "*_synopsis_input.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "cowork", "*_categorize_input.json")))
-                print(f"""
-Inputs aguardando processamento ({n_syn} sinopse(s), {n_cat} classificação(ões)). O que deseja fazer?
+            elif sub == "2":
+                log("Exportando 1 lote para Cowork…")
+                _export_n_batches(1)
+                _print_next_step_instructions()
 
-1 → Exportar mais um lote
-2 → Ver instruções para o agente
-""")
-                sub = input_safe("Opção: ")
-                if sub == "1":
-                    log("Exportando inputs para Cowork…")
-                    with StepRun("cowork_export", idioma=idioma, pacote=25):
-                        cowork_export.run(idioma, 25)
+            elif sub == "3":
+                log("Exportando 10 lotes para Cowork…")
+                _export_n_batches(10)
+                _print_next_step_instructions()
+
+            elif sub == "4":
                 _print_next_step_instructions()
 
             else:
-                log("Exportando inputs para Cowork…")
-                with StepRun("cowork_export", idioma=idioma, pacote=25):
-                    cowork_export.run(idioma, 25)
-                _print_next_step_instructions()
+                print("Opção inválida.\n")
 
         elif op.upper() == "E":
             menu_exports()
