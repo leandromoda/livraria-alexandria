@@ -114,7 +114,9 @@ def count_pending(conn) -> int:
             (SELECT COUNT(*) FROM livros WHERE status_cover   = 0 AND status_review = 1 AND is_book = 1) +
             (SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish       = 0) +
             (SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_oferta = 0
-                                           AND offer_url IS NOT NULL)
+                                           AND offer_url IS NOT NULL) +
+            (SELECT COUNT(*) FROM listas WHERE status_publish = 0) +
+            (SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_cat = 0)
     """)
     return cur.fetchone()[0]
 

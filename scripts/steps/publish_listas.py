@@ -39,6 +39,7 @@ def fetch_listas(conn) -> list[dict]:
     cur.execute("""
         SELECT id, slug, titulo, descricao, categoria_slug
         FROM listas
+        WHERE status_publish = 0
         ORDER BY titulo
     """)
     rows = cur.fetchall()
@@ -171,6 +172,12 @@ def run():
             continue
 
         lista_ok += 1
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE listas SET status_publish = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (lista["id"],)
+        )
+        conn.commit()
 
         # Publica membros (lista_livros)
         livros = fetch_livros_da_lista(conn, lista["id"])
