@@ -31,6 +31,28 @@ MAX_RETRIES = 3
 
 
 # =========================
+# SCHEMA MIGRATION
+# =========================
+
+def _ensure_columns(conn) -> None:
+    """Garante que a tabela listas possui as colunas necessárias.
+
+    Executado no início de run() para tornar o step autossuficiente,
+    independente de list_composer.py ter sido rodado no mesmo banco.
+    """
+    cur = conn.cursor()
+    for col, definition in [
+        ("status_publish", "INTEGER DEFAULT 0"),
+        ("updated_at",     "DATETIME DEFAULT CURRENT_TIMESTAMP"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
+    conn.commit()
+
+
+# =========================
 # FETCH SQLite
 # =========================
 
@@ -129,7 +151,8 @@ def run():
     listas_url = f"{supabase_url}/rest/v1/listas?on_conflict=slug"
     membros_url = f"{supabase_url}/rest/v1/lista_livros?on_conflict=lista_id,livro_id"
 
-    conn   = get_conn()
+    conn = get_conn()
+    _ensure_columns(conn)
     listas = fetch_listas(conn)
 
     if not listas:
