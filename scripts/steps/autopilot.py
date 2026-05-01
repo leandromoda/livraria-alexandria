@@ -104,19 +104,62 @@ STEP_PACOTES = {
 # =========================
 
 def count_pending(conn) -> int:
-    """Conta livros com trabalho pendente nas etapas não-LLM."""
+    """Conta trabalho pendente em todos os steps não-LLM do pipeline.
+
+    Cada sub-query espelha a condição de seleção do step correspondente,
+    garantindo que o autopilot só para quando não há NADA a fazer —
+    não apenas quando os steps visíveis estão estagnados.
+    """
     cur = conn.cursor()
     cur.execute("""
         SELECT
-            (SELECT COUNT(*) FROM livros WHERE status_slug    = 0) +
-            (SELECT COUNT(*) FROM livros WHERE status_dedup   = 0 AND status_slug   = 1) +
-            (SELECT COUNT(*) FROM livros WHERE status_review  = 0 AND status_dedup  = 1) +
-            (SELECT COUNT(*) FROM livros WHERE status_cover   = 0 AND status_review = 1 AND is_book = 1) +
-            (SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish       = 0) +
-            (SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_oferta = 0
-                                           AND offer_url IS NOT NULL) +
-            (SELECT COUNT(*) FROM listas WHERE status_publish = 0) +
-            (SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_cat = 0)
+            -- Step 1: Seeds (importação — sem pendência rastreável por contagem)
+
+            -- Step 3: Resolver Ofertas
+            (SELECT COUNT(*) FROM livros
+             WHERE lookup_query IS NOT NULL
+               AND offer_url IS NULL
+               AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')) +
+
+            -- Step 4: Scraper Marketplace
+            (SELECT COUNT(*) FROM livros
+             WHERE status_enrich = 0
+               AND offer_url IS NOT NULL
+               AND offer_url != '') +
+
+            -- Step 5: Slugs
+            (SELECT COUNT(*) FROM livros WHERE status_slug = 0) +
+
+            -- Step 8: Dedup (depende de slug)
+            (SELECT COUNT(*) FROM livros WHERE status_dedup  = 0 AND status_slug  = 1) +
+
+            -- Step 9: Review (depende de dedup)
+            (SELECT COUNT(*) FROM livros WHERE status_review = 0 AND status_dedup = 1) +
+
+            -- Step 12: Capas (depende de review)
+            (SELECT COUNT(*) FROM livros
+             WHERE status_cover = 0 AND status_review = 1 AND is_book = 1) +
+
+            -- Step 14: Publicar Livros
+            (SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0) +
+
+            -- Step 15: Publicar Autores
+            (SELECT COUNT(*) FROM autores WHERE status_publish = 0
+               AND id IN (SELECT autor_id FROM livros_autores
+                          JOIN livros ON livros.id = livros_autores.livro_id
+                          WHERE livros.status_publish = 1)) +
+
+            -- Step 16: Publicar Categorias
+            (SELECT COUNT(*) FROM livros
+             WHERE status_publish = 1 AND status_publish_cat = 0) +
+
+            -- Step 17: Publicar Ofertas
+            (SELECT COUNT(*) FROM livros
+             WHERE status_publish = 1 AND status_publish_oferta = 0
+               AND offer_url IS NOT NULL) +
+
+            -- Step 19: Publicar Listas
+            (SELECT COUNT(*) FROM listas WHERE status_publish = 0)
     """)
     return cur.fetchone()[0]
 
