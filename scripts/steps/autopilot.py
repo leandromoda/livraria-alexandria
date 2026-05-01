@@ -130,14 +130,23 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
 
     Para quando:
     - pending == 0: pipeline completamente exaurido
-    - pending não diminuiu: bloqueado aguardando LLM (steps 10, 11)
+    - pending não diminuiu em ciclo SEM erros: bloqueado aguardando LLM (10, 11)
     - Ctrl+C: interrompido pelo usuário
+
+    Guardrail anti-interrupção precoce:
+    - Se um step lança exceção, o ciclo é marcado como "com erro"
+    - Ciclos com erro não disparam o stop de "Sem progresso" — o erro pode
+      ter impedido o progresso, não o LLM
+    - O stop definitivo só ocorre em ciclo limpo (sem erros) sem progresso
+    - Válvula de segurança: MAX_CICLOS_COM_ERRO ciclos consecutivos com erro
+      e sem progresso também encerram (evita loop infinito em falha permanente)
 
     Args:
         manter_cowork: Se True, exporta lotes Cowork ao final de cada ciclo
                        para manter `cowork_target` inputs disponíveis ao agente.
         cowork_target: Número de lotes a manter disponíveis (padrão: 10).
     """
+    MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
 
     # Normaliza offer_status='active' → 1 uma única vez
     publish_ofertas.fix_offer_status()
@@ -173,10 +182,15 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
     FAILURE_THRESHOLD = 3
     step_sem_progresso: dict = {}
 
+    # Guardrail: ciclos consecutivos com erro e sem progresso (válvula de segurança)
+    ciclos_com_erro_sem_progresso = 0
+
     ciclo = 0
     try:
         while True:
             ciclo += 1
+            erros_no_ciclo = 0  # reset a cada ciclo
+
             log("=" * 52)
             log(f"[AUTOPILOT] Ciclo {ciclo} | idioma={idioma} | pacote={pacote}")
             log(f"[AUTOPILOT] Pendente no inicio: {pending_anterior}")
@@ -200,6 +214,7 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
                         step_fn(pacote_efetivo)
                 except Exception as e:
                     log(f"[AUTOPILOT] ERRO em {nome}: {e}")
+                    erros_no_ciclo += 1
 
                 conn = get_conn()
                 pending_pos = count_pending(conn)
@@ -220,7 +235,8 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
             pending_atual = count_pending(conn)
             conn.close()
 
-            log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}")
+            log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}"
+                + (f" | Erros no ciclo: {erros_no_ciclo}" if erros_no_ciclo else ""))
 
             # Top-up de lotes Cowork (se habilitado)
             if manter_cowork:
@@ -233,13 +249,35 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
                 break
 
             if pending_atual >= pending_anterior:
-                log("[AUTOPILOT] Sem progresso. Pipeline aguardando steps LLM (10, 11).")
-                log("[AUTOPILOT] Rode step 10 (Categorizar) e step 11 (Sinopses) e repita.")
-                log("[AUTOPILOT] Iniciando auditoria de integridade...")
-                autopilot_audit.run()
-                break
-
-            pending_anterior = pending_atual
+                if erros_no_ciclo > 0:
+                    # Sem progresso por erro de step — não é bloqueio de LLM
+                    ciclos_com_erro_sem_progresso += 1
+                    log(
+                        f"[AUTOPILOT][⚠️ GUARDRAIL] Sem progresso, mas {erros_no_ciclo} step(s) falharam "
+                        f"neste ciclo — o erro pode ter impedido o avanço (não o LLM). "
+                        f"Ciclos consecutivos com erro sem progresso: "
+                        f"{ciclos_com_erro_sem_progresso}/{MAX_CICLOS_COM_ERRO}."
+                    )
+                    if ciclos_com_erro_sem_progresso >= MAX_CICLOS_COM_ERRO:
+                        log(
+                            f"[AUTOPILOT] Limite de {MAX_CICLOS_COM_ERRO} ciclos consecutivos com erro "
+                            f"atingido. Corrija os erros acima e re-execute o autopilot."
+                        )
+                        log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                        autopilot_audit.run()
+                        break
+                    # Continua para o próximo ciclo
+                else:
+                    # Ciclo limpo sem progresso → pipeline aguardando LLM
+                    ciclos_com_erro_sem_progresso = 0
+                    log("[AUTOPILOT] Sem progresso. Pipeline aguardando steps LLM (10, 11).")
+                    log("[AUTOPILOT] Rode step 10 (Categorizar) e step 11 (Sinopses) e repita.")
+                    log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                    autopilot_audit.run()
+                    break
+            else:
+                ciclos_com_erro_sem_progresso = 0  # reset quando há progresso real
+                pending_anterior = pending_atual
 
     except KeyboardInterrupt:
         log(f"[AUTOPILOT] Interrompido apos ciclo {ciclo}.")
