@@ -20,6 +20,7 @@ export default async function CategoriasPage() {
         livro_id
       )
     `)
+    .eq("status_publish", true)
     .order("nome");
 
   return (
