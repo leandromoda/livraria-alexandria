@@ -9,6 +9,7 @@
 # ============================================================
 
 import os
+import sqlite3
 import time
 import requests
 
@@ -39,16 +40,24 @@ def _ensure_columns(conn) -> None:
 
     Executado no início de run() para tornar o step autossuficiente,
     independente de list_composer.py ter sido rodado no mesmo banco.
+
+    Nota: SQLite proíbe expressões (CURRENT_TIMESTAMP) como DEFAULT em
+    ALTER TABLE ADD COLUMN — apenas constantes literais são permitidas.
+    Por isso updated_at é adicionada sem DEFAULT (ficará NULL para linhas
+    antigas; o UPDATE de publicação define o valor explicitamente).
     """
     cur = conn.cursor()
     for col, definition in [
         ("status_publish", "INTEGER DEFAULT 0"),
-        ("updated_at",     "DATETIME DEFAULT CURRENT_TIMESTAMP"),
+        ("updated_at",     "DATETIME"),          # sem DEFAULT — SQLite não aceita CURRENT_TIMESTAMP aqui
     ]:
         try:
             cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
-        except Exception:
-            pass  # coluna já existe
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                pass  # coluna já existe — esperado
+            else:
+                log(f"[PUBLISH_LISTAS][SCHEMA] ERRO ao adicionar coluna '{col}': {e}")
     conn.commit()
 
 
