@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p scripts/data/cowork/*)",
+      "Bash(mkdir -p scripts/data/log_analysis/*)",
+      "Bash(mv scripts/data/cowork/*)",
+      "Bash(mv scripts/data/logs/*)",
+      "Bash(ls scripts/data/cowork/*)",
+      "Bash(ls scripts/data/logs/*)",
+      "Bash(ls scripts/data/log_analysis/*)"
+    ]
+  }
+}
