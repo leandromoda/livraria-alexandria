@@ -60,8 +60,10 @@ scripts/data/categorize_input.json
 scripts/data/categorize_output.json
 scripts/data/offer_list.json
 scripts/data/.fuse_hidden*
-# logs/log_analysis: sem exclusão — acessíveis ao Cowork agent via Glob
-# Arquivos não são commitados (untracked), mas visíveis para análise local
+# cowork/logs: agentes usam Bash ls como fallback quando Glob é bloqueado
+scripts/data/cowork/
+scripts/data/logs/
+scripts/data/log_analysis/
 test.txt
 
 # state exports (auto-gerados) — exceto o estado do projeto
