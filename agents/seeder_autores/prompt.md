@@ -16,61 +16,126 @@ Você atua como agente determinístico: consulta → verifica → gera → escre
 
 Antes de qualquer outra ação:
 
-1. Leia o arquivo `.env.local` na raiz do projeto para obter:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+### 1. Localizar o diretório raiz do projeto principal
 
-2. Determine o próximo número de seed disponível:
-   - Liste os arquivos em `scripts/data/seeds/` e `scripts/data/seeds/ingested_seeds/`
-   - Extraia o maior prefixo numérico `NNN` encontrado
-   - Some 1 para obter o próximo número
-   - Formate com 3 dígitos: ex. `118` → `118_offer_seeds.json`
+Execute via PowerShell para obter o caminho da worktree principal (não a worktree isolada atual):
+
+```powershell
+git worktree list --porcelain
+```
+
+A primeira linha retornada (`worktree <caminho>`) é o projeto principal.
+Use esse caminho como `$ROOT` em todos os passos seguintes.
+
+Exemplo de saída:
+```
+worktree C:/Users/Leandro Moda/livraria-alexandria
+HEAD abc123...
+branch refs/heads/main
+
+worktree C:/Users/Leandro Moda/livraria-alexandria/.claude/worktrees/nome-worktree
+...
+```
+
+`$ROOT = C:/Users/Leandro Moda/livraria-alexandria`
+
+> IMPORTANTE: nunca salve arquivos dentro de `.claude/worktrees/`. Sempre use `$ROOT`.
+
+### 2. Ler credenciais do Supabase
+
+Leia `$ROOT/.env.local` e extraia:
+- `NEXT_PUBLIC_SUPABASE_URL` → `$SUPA_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `$SUPA_KEY`
+
+### 3. Determinar o próximo número de seed
+
+Liste todos os arquivos JSON em `$ROOT/scripts/data/seeds/` e
+`$ROOT/scripts/data/seeds/ingested_seeds/`:
+
+```powershell
+$seeds = Get-ChildItem "$ROOT/scripts/data/seeds/" -Filter "*.json" -Recurse |
+         Select-Object -ExpandProperty Name
+$max = ($seeds | ForEach-Object { [int]($_ -replace '_.*','') } |
+        Measure-Object -Maximum).Maximum
+$next = "{0:D3}" -f ($max + 1)
+# Arquivo de saída: $ROOT/scripts/data/seeds/${next}_offer_seeds.json
+```
 
 ---
 
 ## Passo 1 — Buscar autores sem livros publicados
 
-Consulte o Supabase via REST API para obter todos os autores publicados com seus livros relacionados:
+Use **PowerShell `Invoke-RestMethod`** para todas as chamadas Supabase (WebFetch não suporta headers customizados).
 
+### Query A — Todos os autores
+
+```powershell
+$headers = @{
+    "apikey"        = $SUPA_KEY
+    "Authorization" = "Bearer $SUPA_KEY"
+}
+$autores = Invoke-RestMethod `
+    -Uri "$SUPA_URL/rest/v1/autores?select=id,nome,slug,nacionalidade&limit=500" `
+    -Headers $headers
 ```
-GET {NEXT_PUBLIC_SUPABASE_URL}/rest/v1/autores
-  ?select=id,nome,slug,nacionalidade,livros_autores(livro_id,livros(id,status_publish))
-  &status_publish=eq.1
-  &limit=200
-Headers:
-  apikey: {NEXT_PUBLIC_SUPABASE_ANON_KEY}
-  Authorization: Bearer {NEXT_PUBLIC_SUPABASE_ANON_KEY}
+
+### Query B — IDs de todos os livros publicados
+
+```powershell
+$livros = Invoke-RestMethod `
+    -Uri "$SUPA_URL/rest/v1/livros?select=id&status=eq.publish&limit=2000" `
+    -Headers $headers
+$livros_ids = $livros | Select-Object -ExpandProperty id
 ```
 
-Filtre client-side: mantenha apenas autores onde nenhum livro associado tem `status_publish = 1`.
-Ou seja, o array `livros_autores` está vazio, ou todos os livros têm `status_publish = 0`.
+> ATENÇÃO: a coluna de status em `livros` é `status` (texto) com valor `"publish"`,
+> não `status_publish`. O filtro correto é `status=eq.publish`.
 
-Se a lista de autores sem livros estiver vazia, informe o usuário e encerre:
+### Query C — Tabela de relacionamento
+
+```powershell
+$relacoes = Invoke-RestMethod `
+    -Uri "$SUPA_URL/rest/v1/livros_autores?select=autor_id,livro_id&limit=5000" `
+    -Headers $headers
+```
+
+### Filtrar autores sem livros publicados
+
+```powershell
+# Autores que têm pelo menos um livro publicado
+$autores_com_livro = $relacoes |
+    Where-Object { $livros_ids -contains $_.livro_id } |
+    Select-Object -ExpandProperty autor_id -Unique
+
+# Autores sem nenhum livro publicado
+$autores_sem_livro = $autores |
+    Where-Object { $autores_com_livro -notcontains $_.id }
+```
+
+Se `$autores_sem_livro` estiver vazio, informe o usuário e encerre:
 > "Nenhum autor publicado sem livros encontrado. Catálogo completo."
 
 ---
 
 ## Passo 2 — Verificar títulos já existentes
 
-Para cada autor da lista, consulte os títulos já publicados para evitar duplicatas:
+Para cada autor que será contemplado, verifique os títulos já publicados:
 
-```
-GET {NEXT_PUBLIC_SUPABASE_URL}/rest/v1/livros
-  ?select=titulo
-  &autor=ilike.*{nome_do_autor}*
-  &status_publish=eq.1
-Headers:
-  apikey: {NEXT_PUBLIC_SUPABASE_ANON_KEY}
-  Authorization: Bearer {NEXT_PUBLIC_SUPABASE_ANON_KEY}
+```powershell
+$nome_encoded = [uri]::EscapeDataString($autor.nome)
+$titulos_existentes = Invoke-RestMethod `
+    -Uri "$SUPA_URL/rest/v1/livros?select=titulo&autor=ilike.*$nome_encoded*&status=eq.publish" `
+    -Headers $headers |
+    Select-Object -ExpandProperty titulo
 ```
 
-Armazene os títulos retornados. Não gere seeds para títulos que já existam no Supabase.
+Não gere seeds para títulos que já constem em `$titulos_existentes`.
 
 ---
 
 ## Passo 3 — Gerar seeds
 
-Para cada autor encontrado, gere entre 3 e 5 entradas de livros reais em português.
+Para cada autor da lista, gere entre 3 e 5 entradas de livros reais em português.
 
 ### Regras de geração
 
@@ -129,18 +194,14 @@ Se `nacionalidade` for nulo, use 1 para autores com nomes brasileiros, 3 para os
 
 **R9 — Tamanho máximo**
 O arquivo inteiro não deve ultrapassar 20 entradas.
-Se os autores encontrados somarem mais de 20 livros, priorize os autores com menor
-número de obras já existentes no catálogo e reduza para 3 livros por autor.
+Se os autores encontrados somarem mais de 20 livros, priorize os autores com maior
+relevância literária e reduza para 3 livros por autor.
 
 ---
 
 ## Passo 4 — Escrever o arquivo
 
-Escreva o arquivo completo em:
-
-```
-scripts/data/seeds/NNN_offer_seeds.json
-```
+Escreva o arquivo em `$ROOT/scripts/data/seeds/${next}_offer_seeds.json`.
 
 ### Regras do arquivo (CRÍTICAS — lidas pelo pipeline automaticamente)
 
@@ -199,6 +260,21 @@ scripts/data/seeds/NNN_offer_seeds.json
 ]
 ```
 
+### Validação antes de salvar
+
+Execute antes de escrever o arquivo:
+
+```powershell
+$conteudo = Get-Content "$ROOT/scripts/data/seeds/${next}_offer_seeds.json" -Raw
+try {
+    $null = $conteudo | ConvertFrom-Json
+    Write-Host "JSON válido"
+} catch {
+    Write-Host "ERRO: JSON inválido — $($_.Exception.Message)"
+    # Corrija antes de prosseguir
+}
+```
+
 ---
 
 ## Passo 5 — Confirmar ao usuário
@@ -207,7 +283,7 @@ Após escrever o arquivo, informe:
 
 - Quantos autores foram encontrados sem livros publicados
 - Quantos livros foram gerados no total
-- Nome do arquivo criado
+- Caminho completo do arquivo criado
 - Lista dos autores contemplados e quantos livros foram gerados para cada um
 - Se algum autor foi pulado por falta de obras conhecidas em português, liste-os
 
@@ -215,4 +291,4 @@ Após escrever o arquivo, informe:
 
 ## Princípio operacional
 
-consultar → verificar duplicatas → gerar → escrever → confirmar
+localizar raiz → credenciais → próximo NNN → consultar → verificar duplicatas → gerar → validar JSON → escrever → confirmar

@@ -1,6 +1,16 @@
 {
   "permissions": {
     "allow": [
+      "Read(.env.local)",
+      "Read(agents/seeder_autores/prompt.md)",
+      "Glob(scripts/data/seeds/**)",
+      "Glob(scripts/data/seeds/ingested_seeds/**)",
+      "Write(scripts/data/seeds/*.json)",
+      "PowerShell(git worktree list*)",
+      "PowerShell(Get-ChildItem*scripts/data/seeds*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co*)",
+      "PowerShell(*ConvertFrom-Json*)",
+      "PowerShell(*Get-Content*scripts/data/seeds*)",
       "Bash(mkdir -p scripts/data/cowork/*)",
       "Bash(mkdir -p scripts/data/log_analysis/*)",
       "Bash(mv scripts/data/cowork/*)",
