@@ -49,23 +49,22 @@ scripts/alexandria.db
 scripts/data/*.db-wal
 scripts/data/*.db-shm
 scripts/data/books.db
-scripts/data/backup/*.db
+scripts/data/backup/
+scripts/data/seeds/
 scripts/data/audit_*.json
 scripts/data/blacklist.json
 scripts/data/gemini_usage.json
-scripts/data/pipeline_*.log
 scripts/data/synopsis_input.json
 scripts/data/synopsis_output.json
 scripts/data/categorize_input.json
 scripts/data/categorize_output.json
 scripts/data/offer_list.json
 scripts/data/.fuse_hidden*
+# logs/log_analysis: sem exclusão — acessíveis ao Cowork agent via Glob
+# Arquivos não são commitados (untracked), mas visíveis para análise local
 test.txt
 
 # state exports (auto-gerados) — exceto o estado do projeto
 state/*
 !state/project_state.json
-/scripts/data/seeds
-/scripts/data/backup
 agents/Claude Init.txt
-/scripts/data
