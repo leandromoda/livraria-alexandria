@@ -210,18 +210,16 @@ def _run_fallbacks(idioma: str) -> int:
 
     if desc_pendentes > 0:
         log(f"[AUTOPILOT][FALLBACK] [1/3] Enriquecer Descrições — {desc_pendentes} pendentes | lote {FALLBACK_PACOTE}")
-        conn = get_conn()
-        pre = count_pending(conn)
-        conn.close()
         try:
             with StepRun("2  Enriquecer Desc (fallback)", idioma=idioma, pacote=FALLBACK_PACOTE, invocado_por="autopilot_fallback"):
                 enrich_descricao.run(FALLBACK_PACOTE)
         except Exception as e:
             log(f"[AUTOPILOT][FALLBACK] [1/3] Erro: {e}")
+        # Mede progresso via status_descricao (count_pending não rastreia esta coluna)
         conn = get_conn()
-        pos = count_pending(conn)
+        desc_pos = _count_per_step(conn).get("2  Enriquecer Desc", 0)
         conn.close()
-        ganho = max(0, pre - pos)
+        ganho = max(0, desc_pendentes - desc_pos)
         progresso_total += ganho
         log(f"[AUTOPILOT][FALLBACK] [1/3] Progresso: {ganho}")
     else:
