@@ -11,14 +11,19 @@ Sua tarefa é gerar sinopses concisas, neutras e informativas para um lote de li
 
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
-1. **Liste os arquivos** em `scripts/data/cowork/` que correspondam ao padrão `*_synopsis_input.json`
-   (use Glob com `scripts/data/cowork/*_synopsis_input.json` ou Bash `ls scripts/data/cowork/*_synopsis_input.json`)
-2. **Selecione o de menor número** (ex: se existirem `002_synopsis_input.json` e
-   `005_synopsis_input.json`, use o `002`)
-3. **Leia esse arquivo** — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
-4. **Anote o prefixo numérico** (ex: `002`) — você vai usá-lo no nome do output
+1. **Liste os arquivos** com Bash (obrigatório — Glob não funciona aqui pois a pasta está no .gitignore):
+   ```bash
+   ls scripts/data/cowork/*_synopsis_input.json 2>/dev/null
+   ```
+2. **Selecione o de menor número** (ex: se existirem `037_synopsis_input.json` e
+   `040_synopsis_input.json`, use o `037`)
+3. **Leia esse arquivo** com a ferramenta Read — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
+4. **Anote o prefixo numérico** (ex: `037`) — você vai usá-lo no nome do output
 
-Se nenhum arquivo `*_synopsis_input.json` existir em `scripts/data/cowork/`, responda:
+> ⚠️ NÃO use Glob para listar arquivos em `scripts/data/cowork/` — a pasta está no `.gitignore`
+> e o Glob retornará vazio mesmo que existam arquivos. Use **sempre** o Bash `ls`.
+
+Se o `ls` não retornar nenhum arquivo `*_synopsis_input.json`, responda:
 "Nenhum input de sinopse encontrado. Rode o export primeiro (opção 31 ou C no menu)."
 
 ```json
