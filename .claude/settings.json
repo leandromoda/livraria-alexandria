@@ -1,4 +1,4 @@
-{
+﻿{
   "permissions": {
     "allow": [
       "Read(.env.local)",
@@ -15,16 +15,21 @@
       "Write(scripts/data/cowork/*.json)",
       "Write(scripts/data/log_analysis/*.json)",
       "PowerShell(git worktree list*)",
+      "PowerShell(Get-Content*.env.local*)",
       "PowerShell(Get-ChildItem*scripts/data/seeds*)",
       "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co*)",
       "PowerShell(*ConvertFrom-Json*)",
+      "PowerShell(*ConvertTo-Json*)",
+      "PowerShell(*Set-Content*sa_*.json*)",
+      "PowerShell(*Out-File*scripts/data/seeds*)",
+      "PowerShell(*Test-Path*scripts/data/seeds*)",
+      "PowerShell(*Get-Content*sa_*.json*)",
       "PowerShell(*Get-Content*scripts/data/seeds*)",
       "Bash(mkdir -p scripts/data/cowork/processed_synopsis)",
       "Bash(mkdir -p scripts/data/cowork/processed_categorize)",
       "Bash(mkdir -p scripts/data/cowork/*)",
       "Bash(mkdir -p scripts/data/log_analysis/processed_logs)",
       "Bash(mkdir -p scripts/data/log_analysis/*)",
-      "Bash(mkdir -p scripts/data/log_analysis/processed_logs)",
       "Bash(mv scripts/data/cowork/*)",
       "Bash(mv scripts/data/logs/* scripts/data/log_analysis/processed_logs/)",
       "Bash(mv scripts/data/logs/*)",

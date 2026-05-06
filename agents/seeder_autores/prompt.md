@@ -8,162 +8,182 @@ Sua responsabilidade é identificar autores publicados no site que não possuem 
 associado ao seu perfil, e gerar um arquivo de seed JSON com obras reais desses autores
 para preencher a lacuna no catálogo.
 
-Você atua como agente determinístico: consulta → verifica → gera → escreve.
+Você atua como agente determinístico: executa diretamente, sem fase de planejamento e sem
+lançar subagentes. Todos os dados são coletados via PowerShell.
+
+---
+
+## Regras de execução (leia antes de qualquer ação)
+
+- **NÃO use Plan Mode** — o prompt já especifica todos os comandos. Execute diretamente.
+- **NÃO lance subagentes** (Explore, Agent, etc.) — use PowerShell para tudo.
+- **NÃO use a ferramenta Write** para gravar o seed — ela opera na worktree isolada.
+  Use sempre `Out-File` via PowerShell com caminho absoluto baseado em `$ROOT`.
+- **NÃO execute comandos PowerShell como background tasks** — saída de background é truncada.
+  Execute todos os comandos em foreground e salve resultados em arquivos temporários.
 
 ---
 
 ## Inicialização
 
-Antes de qualquer outra ação:
+Execute os passos abaixo **em sequência, via PowerShell em foreground**:
 
 ### 1. Localizar o diretório raiz do projeto principal
 
-Execute via PowerShell para obter o caminho da worktree principal (não a worktree isolada atual):
-
 ```powershell
-git worktree list --porcelain
+$wt = git worktree list --porcelain
+$ROOT = ($wt -split "`n" | Where-Object { $_ -match "^worktree " } |
+         Select-Object -First 1) -replace "^worktree ", ""
+Write-Host "ROOT: $ROOT"
 ```
 
-A primeira linha retornada (`worktree <caminho>`) é o projeto principal.
-Use esse caminho como `$ROOT` em todos os passos seguintes.
-
-Exemplo de saída:
-```
-worktree C:/Users/Leandro Moda/livraria-alexandria
-HEAD abc123...
-branch refs/heads/main
-
-worktree C:/Users/Leandro Moda/livraria-alexandria/.claude/worktrees/nome-worktree
-...
-```
-
-`$ROOT = C:/Users/Leandro Moda/livraria-alexandria`
-
-> IMPORTANTE: nunca salve arquivos dentro de `.claude/worktrees/`. Sempre use `$ROOT`.
+Confirme que `$ROOT` aponta para o projeto principal (ex: `C:\Users\Leandro Moda\livraria-alexandria`),
+não para um worktree isolado em `.claude/worktrees/`.
 
 ### 2. Ler credenciais do Supabase
 
-Leia `$ROOT/.env.local` e extraia:
-- `NEXT_PUBLIC_SUPABASE_URL` → `$SUPA_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` → `$SUPA_KEY`
+```powershell
+$env_content = Get-Content "$ROOT\.env.local" -Raw
+$SUPA_URL = ($env_content | Select-String 'NEXT_PUBLIC_SUPABASE_URL=(.+)').Matches[0].Groups[1].Value.Trim()
+$SUPA_KEY = ($env_content | Select-String 'NEXT_PUBLIC_SUPABASE_ANON_KEY=(.+)').Matches[0].Groups[1].Value.Trim()
+Write-Host "URL: $SUPA_URL"
+Write-Host "KEY: $($SUPA_KEY.Substring(0,20))..."
+```
 
 ### 3. Determinar o próximo número de seed
 
-Liste todos os arquivos JSON em `$ROOT/scripts/data/seeds/` e
-`$ROOT/scripts/data/seeds/ingested_seeds/`:
-
 ```powershell
-$seeds = Get-ChildItem "$ROOT/scripts/data/seeds/" -Filter "*.json" -Recurse |
-         Select-Object -ExpandProperty Name
-$max = ($seeds | ForEach-Object { [int]($_ -replace '_.*','') } |
-        Measure-Object -Maximum).Maximum
-$next = "{0:D3}" -f ($max + 1)
-# Arquivo de saída: $ROOT/scripts/data/seeds/${next}_offer_seeds.json
+$seeds = Get-ChildItem "$ROOT\scripts\data\seeds" -Filter "*.json" -Recurse |
+         Select-Object -ExpandProperty BaseName
+$max = ($seeds | ForEach-Object {
+    if ($_ -match '^(\d+)_') { [int]$Matches[1] } else { 0 }
+} | Measure-Object -Maximum).Maximum
+$next = ($max + 1).ToString("000")
+Write-Host "Proximo seed: ${next}_offer_seeds.json"
 ```
+
+> ATENÇÃO: use `.ToString("000")` — a sintaxe `'{0:D3}' -f` não funciona no PowerShell 5.1.
 
 ---
 
-## Passo 1 — Buscar autores sem livros publicados
+## Passo 1 — Consultar Supabase e identificar autores sem livros
 
-Use **PowerShell `Invoke-RestMethod`** para todas as chamadas Supabase (WebFetch não suporta headers customizados).
+Execute **todas as queries em foreground** e salve os resultados em arquivos temporários
+para evitar truncamento de output.
 
 ### Query A — Todos os autores
 
 ```powershell
-$headers = @{
-    "apikey"        = $SUPA_KEY
-    "Authorization" = "Bearer $SUPA_KEY"
-}
+$headers = @{ "apikey" = $SUPA_KEY; "Authorization" = "Bearer $SUPA_KEY" }
+
 $autores = Invoke-RestMethod `
     -Uri "$SUPA_URL/rest/v1/autores?select=id,nome,slug,nacionalidade&limit=500" `
     -Headers $headers
+
+$autores | ConvertTo-Json -Depth 5 | Set-Content "$env:TEMP\sa_autores.json" -Encoding utf8
+Write-Host "Autores encontrados: $($autores.Count)"
 ```
 
-### Query B — IDs de todos os livros publicados
+### Query B — IDs de livros publicados
 
 ```powershell
 $livros = Invoke-RestMethod `
-    -Uri "$SUPA_URL/rest/v1/livros?select=id&status=eq.publish&limit=2000" `
+    -Uri "$SUPA_URL/rest/v1/livros?select=id&status=eq.publish&limit=5000" `
     -Headers $headers
+
 $livros_ids = $livros | Select-Object -ExpandProperty id
+$livros_ids | ConvertTo-Json | Set-Content "$env:TEMP\sa_livros_ids.json" -Encoding utf8
+Write-Host "Livros publicados: $($livros_ids.Count)"
 ```
 
-> ATENÇÃO: a coluna de status em `livros` é `status` (texto) com valor `"publish"`,
-> não `status_publish`. O filtro correto é `status=eq.publish`.
+> ATENÇÃO: o filtro correto é `status=eq.publish` (coluna `status`, texto `"publish"`).
+> Não use `status_publish=eq.1` — essa coluna não existe na tabela `autores` no Supabase.
 
 ### Query C — Tabela de relacionamento
 
 ```powershell
 $relacoes = Invoke-RestMethod `
-    -Uri "$SUPA_URL/rest/v1/livros_autores?select=autor_id,livro_id&limit=5000" `
+    -Uri "$SUPA_URL/rest/v1/livros_autores?select=autor_id,livro_id&limit=10000" `
     -Headers $headers
+
+$relacoes | ConvertTo-Json -Depth 3 | Set-Content "$env:TEMP\sa_relacoes.json" -Encoding utf8
+Write-Host "Relacoes encontradas: $($relacoes.Count)"
 ```
 
-### Filtrar autores sem livros publicados
+### Cruzamento — autores sem livros publicados
 
 ```powershell
-# Autores que têm pelo menos um livro publicado
-$autores_com_livro = $relacoes |
-    Where-Object { $livros_ids -contains $_.livro_id } |
-    Select-Object -ExpandProperty autor_id -Unique
+$autores      = Get-Content "$env:TEMP\sa_autores.json"    | ConvertFrom-Json
+$livros_ids   = Get-Content "$env:TEMP\sa_livros_ids.json" | ConvertFrom-Json
+$relacoes     = Get-Content "$env:TEMP\sa_relacoes.json"   | ConvertFrom-Json
 
-# Autores sem nenhum livro publicado
+$autores_com_livro = ($relacoes |
+    Where-Object { $livros_ids -contains $_.livro_id } |
+    Select-Object -ExpandProperty autor_id -Unique)
+
 $autores_sem_livro = $autores |
     Where-Object { $autores_com_livro -notcontains $_.id }
+
+$autores_sem_livro | ConvertTo-Json -Depth 3 |
+    Set-Content "$env:TEMP\sa_autores_sem_livro.json" -Encoding utf8
+
+Write-Host "Autores SEM livros publicados: $($autores_sem_livro.Count)"
 ```
 
-Se `$autores_sem_livro` estiver vazio, informe o usuário e encerre:
+Se `$autores_sem_livro.Count -eq 0`, informe o usuário e encerre:
 > "Nenhum autor publicado sem livros encontrado. Catálogo completo."
+
+Leia o arquivo para ter a lista completa em memória:
+
+```powershell
+$autores_sem_livro = Get-Content "$env:TEMP\sa_autores_sem_livro.json" | ConvertFrom-Json
+```
 
 ---
 
 ## Passo 2 — Verificar títulos já existentes
 
-Para cada autor que será contemplado, verifique os títulos já publicados:
+Para cada autor que será contemplado, verifique títulos já publicados:
 
 ```powershell
-$nome_encoded = [uri]::EscapeDataString($autor.nome)
-$titulos_existentes = Invoke-RestMethod `
-    -Uri "$SUPA_URL/rest/v1/livros?select=titulo&autor=ilike.*$nome_encoded*&status=eq.publish" `
-    -Headers $headers |
-    Select-Object -ExpandProperty titulo
+$nome_enc = [uri]::EscapeDataString($autor.nome)
+$existentes = (Invoke-RestMethod `
+    -Uri "$SUPA_URL/rest/v1/livros?select=titulo&autor=ilike.*$nome_enc*&status=eq.publish" `
+    -Headers $headers) | Select-Object -ExpandProperty titulo
 ```
 
-Não gere seeds para títulos que já constem em `$titulos_existentes`.
+Não gere seeds para títulos que constem em `$existentes`.
 
 ---
 
 ## Passo 3 — Gerar seeds
 
-Para cada autor da lista, gere entre 3 e 5 entradas de livros reais em português.
+Para cada autor selecionado, gere entre 3 e 5 entradas de livros reais em português.
 
 ### Regras de geração
 
 **R1 — Idioma exclusivo**
 Todos os livros devem ter `"idioma": "PT"`.
-Não gere livros em EN, ES, IT ou qualquer outro idioma.
 Inclua apenas obras publicadas originalmente em português ou com tradução amplamente
 disponível no Brasil.
 
 **R2 — Apenas livros reais**
-Gere somente obras que você tem certeza que existem e foram publicadas.
-Não invente títulos. Se não conhecer obras do autor em português, registre isso e pule.
+Somente obras cuja existência você confirma com certeza.
+Se não conhecer obras do autor em português, pule e registre no relatório.
 
 **R3 — Nome do autor idêntico ao Supabase**
-O campo `"autor"` deve conter exatamente o mesmo nome retornado pelo Supabase,
-sem abreviações ou variações.
+O campo `"autor"` deve conter exatamente o nome retornado pelo Supabase.
 
 **R4 — lookup_query**
-Sempre no formato: `"[titulo] [autor] livro"`
+Formato: `"[titulo] [autor] livro"`
 Exemplo: `"Dom Casmurro Machado de Assis livro"`
 
 **R5 — Marketplace alternado**
-Alterne entre `"amazon"` e `"mercado_livre"` a cada entrada para distribuir cobertura.
-Primeira entrada do arquivo: `"amazon"`.
+Alterne `"amazon"` / `"mercado_livre"` a cada entrada. Primeira entrada: `"amazon"`.
 
 **R6 — cluster_id**
 
-| cluster_id | Gênero principal |
+| cluster_id | Gênero |
 |---|---|
 | 1 | Literatura / Romance / Conto |
 | 2 | Ficção Científica / Fantasia / Terror |
@@ -179,9 +199,6 @@ Primeira entrada do arquivo: `"amazon"`.
 | 2 | Português(a) de Portugal |
 | 3 | Outra nacionalidade |
 
-Use o campo `nacionalidade` retornado pelo Supabase para determinar o valor correto.
-Se `nacionalidade` for nulo, use 1 para autores com nomes brasileiros, 3 para os demais.
-
 **R8 — popularidade_id**
 
 | popularidade_id | Critério |
@@ -194,25 +211,43 @@ Se `nacionalidade` for nulo, use 1 para autores com nomes brasileiros, 3 para os
 
 **R9 — Tamanho máximo**
 O arquivo inteiro não deve ultrapassar 20 entradas.
-Se os autores encontrados somarem mais de 20 livros, priorize os autores com maior
-relevância literária e reduza para 3 livros por autor.
+Priorize autores com maior relevância literária. Reduza para 3 livros por autor se necessário.
 
 ---
 
-## Passo 4 — Escrever o arquivo
+## Passo 4 — Escrever o arquivo de seed
 
-Escreva o arquivo em `$ROOT/scripts/data/seeds/${next}_offer_seeds.json`.
+**OBRIGATÓRIO: use `Out-File` via PowerShell — nunca a ferramenta Write.**
+A ferramenta Write opera relativa à worktree isolada e grava no local errado.
 
-### Regras do arquivo (CRÍTICAS — lidas pelo pipeline automaticamente)
+```powershell
+$seed_path = "$ROOT\scripts\data\seeds\${next}_offer_seeds.json"
 
-- O arquivo deve começar **exatamente** com `[`
-- O arquivo deve terminar **exatamente** com `]`
-- Nenhum texto, comentário, `...`, `"continua"` ou marcador fora do array JSON
-- Nenhuma vírgula após o último objeto (JSON inválido)
-- Todos os campos de string devem usar aspas duplas (`"`)
-- O arquivo deve ser parsável por `json.loads()` sem erros
+$seed_content = @'
+[CONTEÚDO JSON AQUI]
+'@
 
-### Schema obrigatório por entrada
+$seed_content | Out-File -FilePath $seed_path -Encoding utf8 -NoNewline
+
+# Validar
+if (Test-Path $seed_path) {
+    $parsed = Get-Content $seed_path -Raw | ConvertFrom-Json
+    Write-Host "Seed gravado com sucesso: $seed_path"
+    Write-Host "Entradas: $($parsed.Count)"
+} else {
+    Write-Host "ERRO: arquivo nao foi gravado em $seed_path"
+}
+```
+
+### Regras do arquivo JSON (CRÍTICAS)
+
+- Começa **exatamente** com `[`
+- Termina **exatamente** com `]`
+- Sem `...`, `"continua"`, comentários ou texto fora do array
+- Sem vírgula após o último objeto
+- Parsável por `ConvertFrom-Json` sem erros
+
+### Schema por entrada
 
 ```json
 {
@@ -229,66 +264,40 @@ Escreva o arquivo em `$ROOT/scripts/data/seeds/${next}_offer_seeds.json`.
 }
 ```
 
-### Exemplo de arquivo completo válido
+---
 
-```json
-[
-  {
-    "titulo": "Senhora",
-    "autor": "José de Alencar",
-    "marketplace": "amazon",
-    "lookup_query": "Senhora José de Alencar livro",
-    "categoria": "Romance Histórico",
-    "idioma": "PT",
-    "cluster_id": 1,
-    "nacionalidade_id": 1,
-    "ano_sorteado": 1875,
-    "popularidade_id": 3
-  },
-  {
-    "titulo": "O Guarani",
-    "autor": "José de Alencar",
-    "marketplace": "mercado_livre",
-    "lookup_query": "O Guarani José de Alencar livro",
-    "categoria": "Romance Histórico",
-    "idioma": "PT",
-    "cluster_id": 1,
-    "nacionalidade_id": 1,
-    "ano_sorteado": 1857,
-    "popularidade_id": 4
-  }
-]
-```
-
-### Validação antes de salvar
-
-Execute antes de escrever o arquivo:
+## Passo 5 — Gravar relatório de execução
 
 ```powershell
-$conteudo = Get-Content "$ROOT/scripts/data/seeds/${next}_offer_seeds.json" -Raw
-try {
-    $null = $conteudo | ConvertFrom-Json
-    Write-Host "JSON válido"
-} catch {
-    Write-Host "ERRO: JSON inválido — $($_.Exception.Message)"
-    # Corrija antes de prosseguir
-}
+$report_path = "$ROOT\scripts\data\seeds\seeder_autores_report_$(Get-Date -Format 'yyyy-MM-dd').json"
+$report = @{ ... } | ConvertTo-Json -Depth 5
+$report | Out-File -FilePath $report_path -Encoding utf8 -NoNewline
+Write-Host "Relatorio gravado: $report_path"
 ```
+
+O relatório deve incluir: data, arquivo gerado, autores encontrados, autores contemplados
+(com títulos gerados e evitados), autores pulados (e motivo), erros cometidos.
 
 ---
 
-## Passo 5 — Confirmar ao usuário
+## Passo 6 — Confirmar ao usuário
 
-Após escrever o arquivo, informe:
-
+Informe:
 - Quantos autores foram encontrados sem livros publicados
 - Quantos livros foram gerados no total
-- Caminho completo do arquivo criado
-- Lista dos autores contemplados e quantos livros foram gerados para cada um
-- Se algum autor foi pulado por falta de obras conhecidas em português, liste-os
+- Caminho absoluto do arquivo criado (confirme com `Test-Path`)
+- Lista dos autores contemplados e livros gerados por cada um
+- Autores pulados e motivo
 
 ---
 
 ## Princípio operacional
 
-localizar raiz → credenciais → próximo NNN → consultar → verificar duplicatas → gerar → validar JSON → escrever → confirmar
+```
+git worktree list → $ROOT
+Get-Content .env.local → credenciais
+Get-ChildItem seeds/ → $next (usando .ToString("000"))
+Invoke-RestMethod → temp JSON files → cruzamento
+Out-File $ROOT/seeds/${next}_offer_seeds.json → Test-Path confirma
+Out-File $ROOT/seeds/seeder_autores_report_*.json
+```
