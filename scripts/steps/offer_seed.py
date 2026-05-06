@@ -280,6 +280,8 @@ def move_to_ingested(filepath, filename):
     os.makedirs(ingested_dir, exist_ok=True)
     dest = os.path.join(ingested_dir, filename)
     try:
+        if os.path.exists(dest):
+            os.remove(dest)
         shutil.move(filepath, dest)
         log(f"Arquivo movido → ingested_seeds/{filename}")
     except Exception as e:
@@ -452,10 +454,6 @@ def run():
     processed      = 0
 
     for filename, filepath in seed_files:
-
-        if already_imported(conn, filename):
-            log(f"[SKIP] {filename} — já importado anteriormente")
-            continue
 
         inserted, skipped = process_file(conn, filename, filepath)
 
