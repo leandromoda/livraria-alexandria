@@ -11,7 +11,10 @@ Sua tarefa é atribuir até 5 categorias temáticas de uma taxonomia fixa a cada
 
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
-1. **Liste os arquivos** com Bash (obrigatório — Glob não funciona aqui pois a pasta está no .gitignore):
+1. **Liste os arquivos** com Glob:
+   Padrão: `scripts/data/cowork/*_categorize_input.json`
+
+   Se o Glob retornar vazio, use Bash como fallback:
    ```bash
    ls scripts/data/cowork/*_categorize_input.json 2>/dev/null
    ```
@@ -20,10 +23,7 @@ Use suas ferramentas de arquivo para encontrar e ler o input correto:
 3. **Leia esse arquivo** com a ferramenta Read — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
 4. **Anote o prefixo numérico** (ex: `037`) — você vai usá-lo no nome do output
 
-> ⚠️ NÃO use Glob para listar arquivos em `scripts/data/cowork/` — a pasta está no `.gitignore`
-> e o Glob retornará vazio mesmo que existam arquivos. Use **sempre** o Bash `ls`.
-
-Se o `ls` não retornar nenhum arquivo `*_categorize_input.json`, responda:
+Se nenhum arquivo `*_categorize_input.json` for encontrado, responda:
 "Nenhum input de classificação encontrado. Rode o export primeiro (opção 33 ou C no menu)."
 
 ```json
@@ -181,7 +181,7 @@ Após ler o arquivo de input:
 ## Resumo do fluxo
 
 ```
-Listar scripts/data/cowork/*_categorize_input.json
+Glob scripts/data/cowork/*_categorize_input.json (Bash ls como fallback)
   → Selecionar o de menor número (ex: 002_categorize_input.json)
   → Ler o arquivo + anotar prefixo NNN
   → mv NNN_categorize_input.json → scripts/data/cowork/processed_categorize/   ← mover imediatamente
