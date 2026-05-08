@@ -20,11 +20,14 @@ Use suas ferramentas de arquivo para encontrar e ler o input correto:
    ```
 2. **Selecione o de menor número** (ex: se existirem `037_categorize_input.json` e
    `040_categorize_input.json`, use o `037`)
-3. **Leia esse arquivo** com a ferramenta Read — ele tem a estrutura abaixo, com campo adicional `"batch": "NNN"` em `meta`
-4. **Anote o prefixo numérico** (ex: `037`) — você vai usá-lo no nome do output
+3. **Verifique se já existe output** para esse número: tente ler `scripts/data/cowork/NNN_categorize_output.json`.
+   - Se o arquivo **existir** → esse batch já foi processado (mv falhou anteriormente); pule para o próximo input de menor número
+   - Se **não existir** → prossiga normalmente
+4. **Leia o arquivo input** com a ferramenta Read
+5. **Anote o prefixo numérico** (ex: `037`) — você vai usá-lo no nome do output
 
-Se nenhum arquivo `*_categorize_input.json` for encontrado, responda:
-"Nenhum input de classificação encontrado. Rode o export primeiro (opção 33 ou C no menu)."
+Se nenhum arquivo `*_categorize_input.json` for encontrado (ou todos já tiverem output correspondente), responda:
+"Nenhum input de classificação pendente. Rode o export primeiro (opção 33 ou C no menu)."
 
 ```json
 {
