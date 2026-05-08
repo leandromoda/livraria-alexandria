@@ -20,12 +20,17 @@ Use suas ferramentas de arquivo para encontrar e ler os logs:
    ```bash
    ls scripts/data/logs/pipeline_*.log 2>/dev/null
    ```
-2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
-3. **Leia o arquivo inteiro**
-4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
+2. **Ordene por nome (do mais antigo ao mais recente)** e percorra a lista
+3. **Para cada log, verifique se já existe output**: derive o timestamp do filename
+   (ex: `pipeline_2026-03-12_22-25-05.log` → timestamp `2026-03-12_22-25-05`) e tente ler
+   `scripts/data/log_analysis/log_analysis_2026-03-12_22-25-05.json`.
+   - Se o arquivo **existir** → log já analisado (mv falhou anteriormente); pule para o próximo
+   - Se **não existir** → selecione este log e prossiga
+4. **Leia o arquivo inteiro**
+5. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
 
-Se nenhum log for encontrado via Glob nem via Bash, responda:
-"Nenhum log encontrado em scripts/data/logs/. Rode o pipeline para gerar logs."
+Se nenhum log for encontrado (ou todos já tiverem output correspondente), responda:
+"Nenhum log pendente em scripts/data/logs/. Rode o pipeline para gerar novos logs."
 
 Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
