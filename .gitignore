@@ -60,10 +60,10 @@ scripts/data/categorize_input.json
 scripts/data/categorize_output.json
 scripts/data/offer_list.json
 scripts/data/.fuse_hidden*
-# cowork/logs: agentes usam Bash ls como fallback quando Glob é bloqueado
-scripts/data/cowork/
-scripts/data/logs/
-scripts/data/log_analysis/
+# cowork/logs: apenas subpastas de processados excluídas do git; Glob enxerga inputs/outputs ativos
+scripts/data/cowork/processed_synopsis/
+scripts/data/cowork/processed_categorize/
+scripts/data/log_analysis/processed_logs/
 test.txt
 
 # state exports (auto-gerados) — exceto o estado do projeto

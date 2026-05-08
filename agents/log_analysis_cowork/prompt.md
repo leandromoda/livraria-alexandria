@@ -13,15 +13,19 @@ resolução automatizada de problemas no código.
 
 Use suas ferramentas de arquivo para encontrar e ler os logs:
 
-1. **Liste os arquivos** em `scripts/data/logs/` que correspondam ao padrão `pipeline_*.log`
-   (use Glob com `scripts/data/logs/pipeline_*.log` ou Bash `ls scripts/data/logs/pipeline_*.log 2>/dev/null`)
+1. **Liste os arquivos** com Glob:
+   Padrão: `scripts/data/logs/pipeline_*.log`
+
+   Se o Glob retornar vazio, use Bash como fallback:
+   ```bash
+   ls scripts/data/logs/pipeline_*.log 2>/dev/null
+   ```
 2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
 3. **Leia o arquivo inteiro**
 4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
 
-Se nenhum log existir via Glob nem via Bash ls, responda exatamente:
-
-> **LOGS_NOT_ACCESSIBLE**: O diretório `scripts/data/logs/` está excluído do projeto Claude (listado no `.gitignore`). O Claude Code tem acesso direto aos logs — peça a ele para analisar, ou cole o conteúdo do log diretamente nesta conversa para continuar.
+Se nenhum log for encontrado via Glob nem via Bash, responda:
+"Nenhum log encontrado em scripts/data/logs/. Rode o pipeline para gerar logs."
 
 Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
