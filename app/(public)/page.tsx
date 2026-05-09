@@ -38,22 +38,6 @@ export default async function Home() {
     .limit(6);
 
   /**
-   * Categorias (navegação)
-   */
-  const { data: categorias } = await supabase
-    .from("categorias")
-    .select(`
-      id,
-      nome,
-      slug,
-      livros_categorias (
-        id
-      )
-    `)
-    .order("nome")
-    .limit(8);
-
-  /**
    * Autores (discovery)
    */
   const { data: autores } = await supabase
@@ -105,6 +89,13 @@ export default async function Home() {
               className="px-5 py-2.5 border border-[#C8C0B4] text-[#F5F0E8] text-sm font-semibold rounded-lg hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors"
             >
               Explorar livros
+            </a>
+
+            <a
+              href="/api/lucky"
+              className="px-5 py-2.5 border border-[#C8C0B4]/50 text-[#C8C0B4] text-sm font-semibold rounded-lg hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors"
+            >
+              Estou com sorte ✦
             </a>
 
           </div>
@@ -209,45 +200,6 @@ export default async function Home() {
 
             </a>
           ))}
-
-        </div>
-
-      </section>
-
-      {/* =========================
-          CATEGORIAS
-      ========================== */}
-      <section>
-
-        <div className="flex items-center justify-between mb-6">
-
-          <h2 className="text-2xl font-serif font-semibold text-[#0D1B2A]">
-            Categorias
-          </h2>
-
-          <a href="/categorias" className="text-sm text-[#C9A84C] font-medium hover:underline">
-            Ver todas →
-          </a>
-
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-
-          {categorias?.map((cat: any) => {
-            const count = cat.livros_categorias?.length ?? 0;
-            return (
-              <a
-                key={cat.slug}
-                href={`/categorias/${cat.slug}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E6DED3] rounded-full text-sm text-[#0D1B2A] font-medium hover:border-[#C9A84C] hover:text-[#4A1628] transition-all"
-              >
-                {cat.nome}
-                <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] px-1.5 py-0.5 rounded-full">
-                  {count}
-                </span>
-              </a>
-            );
-          })}
 
         </div>
 

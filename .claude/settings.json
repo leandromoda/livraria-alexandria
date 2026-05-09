@@ -35,7 +35,13 @@
       "Bash(mv scripts/data/logs/*)",
       "Bash(ls scripts/data/cowork/*)",
       "Bash(ls scripts/data/logs/*)",
-      "Bash(ls scripts/data/log_analysis/*)"
+      "Bash(ls scripts/data/log_analysis/*)",
+      "Read(agents/consistency_review/prompt.md)",
+      "Glob(scripts/data/cowork/*_consistency.json)",
+      "Glob(scripts/data/cowork/*_consistency_actions.json)",
+      "Write(scripts/data/cowork/*_consistency_actions.json)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/ofertas*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/livros*)"
     ]
   }
 }
