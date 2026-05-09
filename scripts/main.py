@@ -40,6 +40,7 @@ from steps import categorize_export
 from steps import categorize_import
 from steps import cowork_export
 from steps import cowork_import
+from steps import consistency_check
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -420,6 +421,7 @@ def menu_auditoria(idioma):
 29 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
 30 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
 31 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
+32 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
 
 V  → Voltar
 """)
@@ -563,6 +565,21 @@ pipeline  → apenas ainda não publicados
                 mode="title-verify", limit=limite, scope=scope, dry_run=dry_run
             )
             auditor.run(args)
+
+        elif op == "32":
+            log("Gerando relatório de consistência (consulta Supabase)…")
+            out = consistency_check.run()
+            if out:
+                print(f"""
+=== PRÓXIMO PASSO ===
+Relatório gerado: {out.name}
+
+Abra o Claude Code e execute:
+  Leia agents/consistency_review/prompt.md e execute todas as instruções.
+
+O agente irá ler o relatório e tomar ações corretivas automaticamente.
+""")
+            input_safe("\nPressione Enter para voltar ao menu…")
 
         else:
             print("Opção inválida.\n")
