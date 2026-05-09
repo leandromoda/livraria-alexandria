@@ -10,12 +10,23 @@ export default async function ListasPage({ searchParams }: PageProps) {
   const { categoria: rawCategoria } = await searchParams;
   const categoriaAtiva = rawCategoria?.trim() ?? "";
 
-  const { data: todas } = await supabase
+  // Tenta buscar com macrocategoria; se a coluna ainda não existir (migration pendente),
+  // cai no fallback sem o campo para não quebrar a página.
+  let todasListas: any[] = [];
+  const { data: comCat, error: errCat } = await supabase
     .from("listas")
     .select("id, titulo, slug, introducao, macrocategoria")
     .order("titulo");
 
-  const todasListas = todas ?? [];
+  if (!errCat) {
+    todasListas = comCat ?? [];
+  } else {
+    const { data: semCat } = await supabase
+      .from("listas")
+      .select("id, titulo, slug, introducao")
+      .order("titulo");
+    todasListas = semCat ?? [];
+  }
 
   /* Macrocategorias disponíveis (campo opcional — degrade se ausente) */
   const macrocategorias = [
