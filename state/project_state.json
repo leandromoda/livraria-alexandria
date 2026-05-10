@@ -1083,6 +1083,21 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-PIPE-016",
+      "description": "feat: orquestrador LLM (opção O) — autopilot cíclico para 7 agentes via claude CLI local",
+      "priority": "high",
+      "status": "implemented",
+      "implemented_on": "2026-05-10",
+      "resolution": "Novo módulo llm_orchestrator.py (opção O no menu): invoca claude CLI como subprocess via core/claude_runner.py. Agentes: synopsis_cowork, classify_cowork, author_bio (novo prompt.md batch), log_analysis_cowork, consistency_review, offer_finder (novo prompt.md), title_auditor. Ciclo exaustivo: para quando nenhum agente tem trabalho. Log_analysis e consistency_review rodam 1x por ciclo. Usa plano Pro do Claude sem custo de API extra.",
+      "files": [
+        "scripts/core/claude_runner.py",
+        "scripts/steps/llm_orchestrator.py",
+        "agents/author_bio/prompt.md",
+        "agents/offer_finder/prompt.md",
+        "scripts/main.py"
+      ]
+    },
+    {
       "id": "TASK-PIPE-015",
       "description": "feat: guardrail autopilot — ciclos com erros de step não disparam stop prematuro 'Sem progresso'",
       "priority": "high",

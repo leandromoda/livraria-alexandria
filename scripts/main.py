@@ -28,6 +28,7 @@ from steps import repair
 from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
+from steps import llm_orchestrator
 from steps import autopilot_audit
 from steps import autopilot_manutencao
 from steps import priority_scorer
@@ -682,6 +683,7 @@ def main():
 
 S  → Status do pipeline (gargalos)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
+O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
 M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Cowork Autopilot (sinopse + categorias via Claude)
 E  → Exports
@@ -711,6 +713,17 @@ E  → Exports
             manter_str    = input_safe("Manter lotes Cowork? (mantém 10 inputs prontos p/ agente) [s/N]: ").strip().lower()
             manter_cowork = manter_str == "s"
             autopilot.run(idioma, 100, manter_cowork=manter_cowork)
+
+        elif op.upper() == "O":
+            from core.claude_runner import claude_available
+            if not claude_available():
+                log("[LLM_ORCH] ERRO: claude CLI não encontrado no PATH.")
+                log("[LLM_ORCH] Instale o Claude Code CLI e tente novamente.")
+                log("[LLM_ORCH] Alternativa: use C (Cowork manual).")
+            else:
+                pacote_o = escolher_pacote()
+                log(f"Iniciando LLM Autopilot (7 agentes, idioma={idioma}, pacote={pacote_o})…")
+                llm_orchestrator.run(idioma, pacote_o)
 
         elif op.upper() == "M":
             try:
