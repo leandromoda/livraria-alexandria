@@ -49,6 +49,7 @@ from steps import (
     list_composer,
     publish_listas,
     cowork_export,
+    cowork_import,
 )
 
 
@@ -71,6 +72,14 @@ def _count_input_batches() -> int:
         if m:
             nums.add(m.group(1))
     return len(nums)
+
+
+def _has_cowork_outputs() -> bool:
+    """Retorna True se houver outputs de Cowork prontos para importar."""
+    return bool(
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")) +
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json"))
+    )
 
 
 def _topup_cowork(idioma: str, target: int = 10):
@@ -295,6 +304,13 @@ def _run_fallbacks(idioma: str) -> int:
 # PENDENTE
 # =========================
 
+def _count_publishable_pending(conn) -> int:
+    """Conta livros aprovados pelo QG mas ainda não publicados."""
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0")
+    return cur.fetchone()[0]
+
+
 def count_pending(conn) -> int:
     """Conta trabalho pendente em todos os steps não-LLM do pipeline.
 
@@ -382,6 +398,7 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
         cowork_target: Número de lotes a manter disponíveis (padrão: 10).
     """
     MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
+    QG_BOTTLENECK_THRESHOLD = 8  # ciclos sem aprovação no QG indicam bottleneck de sinopse
 
     # Normaliza offer_status='active' → 1 uma única vez
     publish_ofertas.fix_offer_status()
@@ -420,6 +437,9 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
     # Guardrail: ciclos consecutivos com erro e sem progresso (válvula de segurança)
     ciclos_com_erro_sem_progresso = 0
 
+    # Bottleneck LLM: ciclos consecutivos com QG rodando mas aprovando 0 livros
+    ciclos_sem_qg_avanco = 0
+
     ciclo = 0
     try:
         while True:
@@ -431,9 +451,22 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
             log(f"[AUTOPILOT] Pendente no inicio: {pending_anterior}")
             log("=" * 52)
 
+            # Importa outputs de Cowork pendentes (synopsis/categorize) antes dos steps
+            if _has_cowork_outputs():
+                log("[AUTOPILOT] Outputs de Cowork pendentes — importando antes do ciclo...")
+                try:
+                    cowork_import.run()
+                except Exception as e:
+                    log(f"[AUTOPILOT] AVISO: erro ao importar Cowork outputs: {e}")
+
             # Recalcula prioridades antes de processar os steps
             conn = get_conn()
             priority_scorer.recalculate_all(conn)
+            conn.close()
+
+            # Snapshot de livros aprovados pendentes de publicação (para detecção de bottleneck LLM)
+            conn = get_conn()
+            qg_pendente_pre = _count_publishable_pending(conn)
             conn.close()
 
             for nome, step_fn in STEPS:
@@ -531,6 +564,25 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
             else:
                 ciclos_com_erro_sem_progresso = 0  # reset quando há progresso real
                 pending_anterior = pending_atual
+
+            # Detecção de bottleneck LLM: QG roda mas não aprova livros por N ciclos
+            conn = get_conn()
+            qg_pendente_pos = _count_publishable_pending(conn)
+            conn.close()
+            qg_delta = qg_pendente_pos - qg_pendente_pre  # positivo = novos aprovados pelo QG
+            if qg_delta <= 0:
+                ciclos_sem_qg_avanco += 1
+                if ciclos_sem_qg_avanco >= QG_BOTTLENECK_THRESHOLD:
+                    log(
+                        f"[AUTOPILOT][⚠️ LLM BOTTLENECK] {ciclos_sem_qg_avanco} ciclos consecutivos "
+                        f"sem aprovação no Quality Gate. Pipeline aguardando sinopses (steps 10/11)."
+                    )
+                    log("[AUTOPILOT] Rode 'C → Cowork' ou 'O → LLM Autopilot' para gerar sinopses pendentes.")
+                    log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                    autopilot_audit.run()
+                    break
+            else:
+                ciclos_sem_qg_avanco = 0  # reset quando QG aprova livros
 
     except KeyboardInterrupt:
         log(f"[AUTOPILOT] Interrompido apos ciclo {ciclo}.")

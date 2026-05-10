@@ -97,7 +97,7 @@ def _process_file(filepath, conn, cur):
         log(f"[SYNOPSIS_IMPORT] Nenhum resultado em {os.path.basename(filepath)}")
         return 0, 0, 0, 0
 
-    ok = rejeitados = ja_processados = erros = 0
+    ok = rejeitados = ja_processados = erros = sem_motivo = 0
 
     for i, item in enumerate(resultados, start=1):
 
@@ -125,7 +125,14 @@ def _process_file(filepath, conn, cur):
         _rejected_status = 4 if not is_publishable else 0
 
         if status != "APPROVED":
-            log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
+            motivo_str = str(motivo).strip() if motivo else ""
+            if not motivo_str or motivo_str.lower() == "none":
+                # Rejeição sem motivo = falha transitória do agente, não rejeição legítima.
+                # Não atualiza o banco — livro permanece pendente (status_synopsis=0) para retry.
+                log(f"[SYNOPSIS_IMPORT][{i:03d}] AVISO: agente rejeitou sem motivo — status mantido → {titulo}")
+                sem_motivo += 1
+                continue
+            log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo_str}) → {titulo}")
             cur.execute(
                 "UPDATE livros SET status_synopsis = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (_rejected_status, livro_id),
@@ -162,6 +169,14 @@ def _process_file(filepath, conn, cur):
             log(f"[SYNOPSIS_IMPORT][{i:03d}] ERRO → {titulo} | {e}")
             erros += 1
 
+    # Alerta de rejeição em massa sem motivo (indica falha transitória do agente)
+    total_processados = len(resultados) - ja_processados - erros
+    if total_processados > 0 and sem_motivo / total_processados > 0.8:
+        log(
+            f"[SYNOPSIS_IMPORT] ALERTA: {sem_motivo}/{total_processados} rejeições sem motivo "
+            f"— possível falha transitória do agente. Reexporte o batch para retry."
+        )
+
     # Blacklist merge
     blacklist_entries = data.get("blacklist", [])
     if blacklist_entries:
@@ -170,7 +185,7 @@ def _process_file(filepath, conn, cur):
         fname = os.path.basename(filepath)
         log(f"[SYNOPSIS_IMPORT] Blacklist de {fname}: {added} nova(s) entrada(s)")
 
-    return ok, rejeitados, ja_processados, erros
+    return ok, rejeitados + sem_motivo, ja_processados, erros
 
 
 # =========================

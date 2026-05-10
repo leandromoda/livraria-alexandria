@@ -24,10 +24,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.claude_runner import agent_prompt_path, claude_available, run_agent
+from core.claude_usage_tracker import status as claude_usage_status
 from core.cowork_numbering import next_batch_number
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
 from core.logger import log
+from steps import autopilot
 
 
 # =========================
@@ -471,7 +473,13 @@ def run(idioma: str, pacote: int):
 
     while True:
         cycle += 1
-        log(f"[LLM_ORCH] ── Ciclo {cycle} ─────────────────────")
+        usage = claude_usage_status()
+        log(
+            f"[LLM_ORCH] ── Ciclo {cycle} ─────────────────────  "
+            f"[Claude: {usage['calls_today']} chamadas hoje | "
+            f"{usage['calls_total']} total | "
+            f"limites atingidos: {usage['limit_hit_count']}]"
+        )
         cycle_done = 0
 
         conn = get_conn()
@@ -560,6 +568,16 @@ def run(idioma: str, pacote: int):
                     cycle_done += imported
         else:
             log("[LLM_ORCH] title_auditor: nenhum pendente — skip")
+
+        # ── AUTOPILOT NÃO-LLM ────────────────────────────────
+        # Após imports de synopsis/classify, roda autopilot para processar
+        # os livros desbloqueados até publicação (QG → Publish → Listas).
+        if cycle_done > 0:
+            log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
+            try:
+                autopilot.run(idioma, pacote, manter_cowork=False)
+            except Exception as e:
+                log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
         # ── FIM DO CICLO ─────────────────────────────────────
         log(f"[LLM_ORCH] Ciclo {cycle} concluído — trabalho realizado: {cycle_done}")
