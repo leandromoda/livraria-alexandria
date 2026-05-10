@@ -331,6 +331,7 @@ def try_open_library(titulo, isbn=None, autor=None):
     except KeyboardInterrupt:
         raise
     except Exception as e:
+        _ol_consecutive_failures += 1  # ConnectTimeout/ReadTimeout abre o circuit breaker
         log(f"[SCRAPER] Open Library falhou: {type(e).__name__}")
         return None
 

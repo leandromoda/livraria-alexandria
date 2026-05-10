@@ -75,6 +75,7 @@ def fetch_candidates(conn, idioma, limit):
         FROM livros
         WHERE status_publish = 0
           AND idioma = ?
+          AND NOT (is_book = 0 AND editorial_score < 0)
         LIMIT ?
     """, (idioma, limit))
 

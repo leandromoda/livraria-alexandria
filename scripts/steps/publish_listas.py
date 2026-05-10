@@ -38,8 +38,8 @@ MAX_RETRIES = 3
 def _ensure_columns(conn) -> None:
     """Garante que a tabela listas possui as colunas necessárias.
 
-    Executado no início de run() para tornar o step autossuficiente,
-    independente de list_composer.py ter sido rodado no mesmo banco.
+    Usa PRAGMA table_info para verificar colunas existentes antes de tentar
+    ALTER TABLE — evita falhas silenciosas e erros "no such column" downstream.
 
     Nota: SQLite proíbe expressões (CURRENT_TIMESTAMP) como DEFAULT em
     ALTER TABLE ADD COLUMN — apenas constantes literais são permitidas.
@@ -47,18 +47,36 @@ def _ensure_columns(conn) -> None:
     antigas; o UPDATE de publicação define o valor explicitamente).
     """
     cur = conn.cursor()
+
+    # Verifica se a tabela existe antes de qualquer ALTER
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='listas'")
+    if not cur.fetchone():
+        log("[PUBLISH_LISTAS][SCHEMA] Tabela 'listas' não existe. Rode o step 18 primeiro.")
+        return
+
+    # Verifica colunas existentes com PRAGMA (evita ALTER desnecessário)
+    cur.execute("PRAGMA table_info(listas)")
+    existing = {row[1] for row in cur.fetchall()}
+
     for col, definition in [
         ("status_publish", "INTEGER DEFAULT 0"),
         ("updated_at",     "DATETIME"),          # sem DEFAULT — SQLite não aceita CURRENT_TIMESTAMP aqui
     ]:
-        try:
-            cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e):
-                pass  # coluna já existe — esperado
-            else:
+        if col not in existing:
+            try:
+                cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
+                log(f"[PUBLISH_LISTAS][SCHEMA] Coluna '{col}' adicionada.")
+            except sqlite3.OperationalError as e:
                 log(f"[PUBLISH_LISTAS][SCHEMA] ERRO ao adicionar coluna '{col}': {e}")
+
     conn.commit()
+
+    # Verifica que as colunas existem após as ALTERações
+    cur.execute("PRAGMA table_info(listas)")
+    final_cols = {row[1] for row in cur.fetchall()}
+    missing = [c for c in ("status_publish", "updated_at") if c not in final_cols]
+    if missing:
+        raise RuntimeError(f"[PUBLISH_LISTAS] Colunas ausentes após migração: {missing}")
 
 
 # =========================
