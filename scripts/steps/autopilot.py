@@ -400,8 +400,25 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
     MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
     QG_BOTTLENECK_THRESHOLD = 8  # ciclos sem aprovação no QG indicam bottleneck de sinopse
 
+    # Verificação de integridade do banco antes de iniciar
+    try:
+        conn = get_conn()
+        ic = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        conn.close()
+        if ic != "ok":
+            log(f"[AUTOPILOT] ERRO CRÍTICO: banco de dados corrompido (integrity_check={ic}).")
+            log("[AUTOPILOT] Restaure o backup em scripts/data/backup/ e tente novamente.")
+            return
+    except Exception as e:
+        log(f"[AUTOPILOT] ERRO CRÍTICO: não foi possível acessar o banco: {e}")
+        log("[AUTOPILOT] Restaure o backup em scripts/data/backup/ e tente novamente.")
+        return
+
     # Normaliza offer_status='active' → 1 uma única vez
-    publish_ofertas.fix_offer_status()
+    try:
+        publish_ofertas.fix_offer_status()
+    except Exception as e:
+        log(f"[AUTOPILOT] AVISO: fix_offer_status falhou: {e}. Continuando.")
 
     # Top-up inicial de lotes Cowork (antes do primeiro ciclo)
     if manter_cowork:
