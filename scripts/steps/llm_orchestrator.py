@@ -459,9 +459,15 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> bool:
 
 def run(idioma: str, pacote: int):
 
-    if not claude_available():
-        log("[LLM_ORCH] ERRO: claude CLI não encontrado no PATH.")
-        log("[LLM_ORCH] Instale o Claude Code e tente novamente, ou use a opção C (cowork manual).")
+    from core.claude_runner import _find_claude
+    claude_bin = _find_claude()
+    if not claude_bin:
+        log("[LLM_ORCH] ERRO: claude CLI não encontrado.")
+        log("[LLM_ORCH] Solução recomendada (instala globalmente via npm):")
+        log("[LLM_ORCH]   npm install -g @anthropic-ai/claude-code")
+        log("[LLM_ORCH] Após instalar, reabra o terminal e rode a opção O novamente.")
+        log("[LLM_ORCH] Alternativa (caminho explícito em scripts/.env):")
+        log("[LLM_ORCH]   CLAUDE_BIN=C:/Users/.../AppData/Roaming/Claude/claude-code/VERSION/claude.exe")
         return
 
     log("[LLM_ORCH] ══════════════════════════════════════")
