@@ -13,15 +13,17 @@ resolução automatizada de problemas no código.
 
 Use suas ferramentas de arquivo para encontrar e ler os logs:
 
-1. **Liste os arquivos** com Glob:
-   Padrão: `scripts/data/logs/pipeline_*.log`
+1. **Liste os arquivos** com Glob (tente em ordem até encontrar resultados):
+   - Padrão 1 (relativo ao CWD): `scripts/data/logs/pipeline_*.log`
+   - Padrão 2 (um nível acima): `../scripts/data/logs/pipeline_*.log`
+   - Padrão 3 (dois níveis acima): `../../scripts/data/logs/pipeline_*.log`
 
-   Se o Glob retornar vazio, use Bash como fallback:
+   Se todos os Glob retornarem vazio, use Bash como fallback (funciona no Windows/PowerShell e Linux):
    ```bash
-   ls scripts/data/logs/pipeline_*.log 2>/dev/null
+   python -c "from pathlib import Path; cands=[Path('scripts/data/logs'), Path('../scripts/data/logs'), Path('../../scripts/data/logs')]; d=next((p for p in cands if p.exists()), None); files=sorted(d.glob('pipeline_*.log')) if d else []; [print(f) for f in files]"
    ```
 2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
-3. **Leia o arquivo inteiro**
+3. **Leia o arquivo inteiro** com Read (caminho absoluto ou relativo ao CWD encontrado)
 4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
 
 Se nenhum log for encontrado via Glob nem via Bash, responda:
@@ -181,9 +183,10 @@ Quando encontrar um bug (ex.: JSON malformado, exceção não tratada, arquivo c
 Mover o log fonte para `scripts/data/log_analysis/processed_logs/`:
 
 ```bash
-mkdir -p scripts/data/log_analysis/processed_logs
-mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
+python -c "import shutil, pathlib; pathlib.Path('scripts/data/log_analysis/processed_logs').mkdir(parents=True, exist_ok=True); shutil.move('scripts/data/logs/pipeline_TIMESTAMP.log', 'scripts/data/log_analysis/processed_logs/')"
 ```
+
+(substitua `pipeline_TIMESTAMP.log` pelo nome real do arquivo processado)
 
 ### Schema do JSON
 
@@ -287,7 +290,7 @@ mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/logs/pipeline_*.log (ou Bash ls como fallback)
+Glob scripts/data/logs/pipeline_*.log (padrões 1/2/3) ou Bash python como fallback
   → Selecionar o mais antigo
   → Ler o arquivo inteiro
   → Passada 1: parsing linha-a-linha
