@@ -1,11 +1,14 @@
 # ============================================================
-# STEP — AUTHOR BIO
+# STEP 29 — AUTHOR BIO
 # Livraria Alexandria
 #
-# Gera bio curta (2-3 frases, máx 300 chars) para autores
-# sem descricao, usando LLM (Gemini via markdown_executor).
+# Gera bio editorial (80–160 palavras) para autores sem descricao,
+# usando o agente Cowork em agents/author_bio/ (Gemini via
+# markdown_executor.execute_agent).
 #
-# Fallback determinístico se LLM falhar:
+# Cobertura da bio: quem é o autor → escola/movimento → principais obras.
+#
+# Fallback determinístico se o agente falhar ou retornar bio inválida:
 #   "Autor(a) de {N} livros disponíveis na Livraria Alexandria."
 #
 # Depende de: autores com descricao IS NULL
@@ -16,15 +19,40 @@ import time
 
 from core.db import get_conn
 from core.logger import log
-from core.markdown_executor import _call_llm
+from core.markdown_executor import execute_agent
 
 
 # =========================
 # CONFIG
 # =========================
 
-MAX_BIO_CHARS = 300
-DELAY_ENTRE_REQUESTS = 0.5   # segundos (respeita tier Gemini)
+AGENT_PATH    = "agents/author_bio"
+MAX_BIO_CHARS = 900        # ~160 palavras — alinhado com R2 das rules
+MAX_TITULOS   = 6          # máximo de títulos enviados ao agente
+DELAY_ENTRE   = 0.5        # segundos entre requests (respeita tier Gemini)
+
+# Marcadores que indicam bio genérica/falha do agente — rejeitada
+_GENERIC_MARKERS = [
+    "contexto não especificado",
+    "informações insuficientes",
+    "dados não fornecidos",
+    "não foi possível",
+    "não tenho informações",
+    "autor desconhecido",
+    "[input]",
+    "[dados fornecidos]",
+    "livraria alexandria",    # fallback interno do agente — usamos o nosso
+]
+
+
+# =========================
+# QUALIDADE
+# =========================
+
+def _bio_valida(bio: str) -> bool:
+    """Retorna False se a bio contiver marcadores de conteúdo genérico/falha."""
+    bio_lower = bio.lower()
+    return not any(marker in bio_lower for marker in _GENERIC_MARKERS)
 
 
 # =========================
@@ -51,49 +79,61 @@ def fetch_pendentes(conn, pacote: int) -> list:
 
 
 # =========================
-# BIO GERADA
+# BIO VIA AGENTE
 # =========================
 
-def gerar_bio_llm(nome: str, nacionalidade: str | None, titulos: str | None) -> str | None:
-    """Chama LLM para gerar bio de 2-3 frases sobre o autor."""
-    lista_titulos = ""
+def gerar_bio_agente(nome: str, nacionalidade: str | None, titulos: str | None) -> str | None:
+    """Chama o agente author_bio para gerar bio editorial estruturada."""
+
+    lista_titulos: list[str] = []
     if titulos:
-        lista = [t.strip() for t in titulos.split("|") if t.strip()][:5]
-        lista_titulos = ", ".join(f'"{t}"' for t in lista)
+        lista_titulos = [t.strip() for t in titulos.split("|") if t.strip()][:MAX_TITULOS]
 
-    contexto_nac = f", {nacionalidade}" if nacionalidade else ""
-
-    prompt = (
-        f"Escreva uma bio concisa de 2 a 3 frases sobre o(a) autor(a) {nome}{contexto_nac}. "
-        f"{'Obras conhecidas: ' + lista_titulos + '. ' if lista_titulos else ''}"
-        "A bio deve ser factual, em português do Brasil, sem adjetivos excessivos. "
-        "Responda APENAS com a bio, sem introdução, sem aspas, sem markdown."
-    )
+    payload = {
+        "nome":         nome,
+        "nacionalidade": nacionalidade or "",
+        "titulos":      lista_titulos,
+        "idioma":       "PT",
+    }
 
     try:
-        resultado = _call_llm(prompt).strip()
-        # Trunca se necessário
-        if len(resultado) > MAX_BIO_CHARS:
-            resultado = resultado[:MAX_BIO_CHARS].rsplit(" ", 1)[0] + "."
-        return resultado if resultado else None
+        result = execute_agent(AGENT_PATH, payload)
+        bio = result.get("bio", "").strip() if result else ""
+
+        if not bio:
+            log(f"[AUTHOR_BIO] Agente retornou bio vazia → {nome}")
+            return None
+
+        # Trunca se exceder limite (não deve acontecer se o agente respeitar R2)
+        if len(bio) > MAX_BIO_CHARS:
+            bio = bio[:MAX_BIO_CHARS].rsplit(" ", 1)[0].rstrip(",;:") + "."
+
+        if not _bio_valida(bio):
+            log(f"[AUTHOR_BIO] Bio rejeitada (marcador genérico) → {nome}")
+            return None
+
+        return bio
+
     except Exception as e:
-        log(f"[AUTHOR_BIO] LLM falhou: {type(e).__name__}: {e}")
+        log(f"[AUTHOR_BIO] Agente falhou: {type(e).__name__}: {e}")
         return None
 
 
+# =========================
+# FALLBACK DETERMINÍSTICO
+# =========================
+
 def gerar_bio_fallback(nome: str, n_livros: int) -> str:
-    """Bio determinística para quando o LLM falha."""
-    return (
-        f"Autor(a) de {n_livros} {'livro' if n_livros == 1 else 'livros'} "
-        f"disponíveis na Livraria Alexandria."
-    )
+    """Bio determinística para quando o agente falha — nunca retorna vazio."""
+    qtd = f"{n_livros} {'livro' if n_livros == 1 else 'livros'}"
+    return f"Autor(a) com {qtd} disponíveis no catálogo da Livraria Alexandria."
 
 
 # =========================
 # UPDATE
 # =========================
 
-def update_descricao(conn, autor_id: str, descricao: str):
+def update_descricao(conn, autor_id: str, descricao: str) -> None:
     cur = conn.cursor()
     cur.execute("""
         UPDATE autores
@@ -108,31 +148,32 @@ def update_descricao(conn, autor_id: str, descricao: str):
 # RUN
 # =========================
 
-def run(idioma: str = None, pacote: int = 20):
+def run(idioma: str = None, pacote: int = 20) -> None:
     log("[AUTHOR_BIO] Iniciando geração de bios de autores...")
 
-    conn = get_conn()
-    rows = fetch_pendentes(conn, pacote)
+    conn  = get_conn()
+    rows  = fetch_pendentes(conn, pacote)
 
     if not rows:
         log("[AUTHOR_BIO] Nenhum autor pendente.")
         conn.close()
         return
 
-    total = len(rows)
-    ok = 0
+    total     = len(rows)
+    ok        = 0
     fallbacks = 0
-    falhas = 0
+
+    log(f"[AUTHOR_BIO] {total} autores encontrados")
 
     for i, (autor_id, nome, nacionalidade, titulos) in enumerate(rows, 1):
-        log(f"[AUTHOR_BIO][{i}/{total}] → {nome}")
+        log(f"[AUTHOR_BIO][{i:03d}/{total:03d}] → {nome}")
 
         n_livros = len(titulos.split("|")) if titulos else 0
-        bio = gerar_bio_llm(nome, nacionalidade, titulos)
+        bio      = gerar_bio_agente(nome, nacionalidade, titulos)
 
         if bio:
             update_descricao(conn, autor_id, bio)
-            log(f"[AUTHOR_BIO] OK → {nome}")
+            log(f"[AUTHOR_BIO] OK → {nome} ({len(bio)} chars)")
             ok += 1
         else:
             bio_fb = gerar_bio_fallback(nome, n_livros)
@@ -141,8 +182,9 @@ def run(idioma: str = None, pacote: int = 20):
             fallbacks += 1
 
         if i < total:
-            time.sleep(DELAY_ENTRE_REQUESTS)
+            time.sleep(DELAY_ENTRE)
 
     conn.close()
-    log(f"[AUTHOR_BIO] Finalizado")
-    log(f"OK (LLM): {ok} | Fallback: {fallbacks} | Falhas: {falhas} | Total: {total}")
+
+    log("[AUTHOR_BIO] Finalizado")
+    log(f"OK (agente): {ok} | Fallback: {fallbacks} | Total: {total}")

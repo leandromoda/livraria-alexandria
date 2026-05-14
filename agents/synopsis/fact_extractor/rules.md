@@ -48,6 +48,18 @@ publico_alvo:
 proposta_valor:
   - what the reader gains, only if explicitly stated
 
+personagens:
+  - named characters or specific roles explicitly mentioned
+  - empty array if none stated
+
+ambientacao:
+  - setting, location, time period explicitly mentioned
+  - empty string if none stated
+
+conflito_central:
+  - the central conflict, tension, or dramatic situation explicitly described
+  - empty string if none stated
+
 ---
 
 ## R5 — Determinism

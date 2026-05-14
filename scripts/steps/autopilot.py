@@ -5,10 +5,24 @@
 # Roda todos os steps não-LLM em sequência, em loop,
 # até não haver mais progresso ("exaurir as possibilidades").
 #
+# Quando o ciclo regular estagna, executa uma fase de fallback
+# antes de interromper:
+#   1. Enriquecer Descrições via Google Books (lote 1000)
+#   2. Resolver Ofertas com lote grande (lote 1000)
+#   3. Steps gargalo detectados automaticamente (lote 1000 cada)
+# Só para quando os fallbacks também não geram progresso.
+#
 # Steps LLM (10-Categorizar, 11-Sinopses, 22-Auditoria) são
 # sempre pulados. O pipeline para automaticamente quando a fila
 # trava aguardando esses steps manuais.
+#
+# Opção manter_cowork: ao final de cada ciclo exporta lotes de
+# input para o agente Cowork até atingir o target (padrão: 10).
 # ============================================================
+
+import glob as _glob
+import os as _os
+import re as _re
 
 from core.db import get_conn
 from core.logger import log
@@ -16,7 +30,7 @@ from core.run_logger import StepRun
 
 from steps import (
     offer_seed,
-    # enrich_descricao removido — coberto pelo Step 4 (Scraper)
+    enrich_descricao,
     offer_resolver,
     priority_scorer,
     autopilot_audit,
@@ -34,7 +48,58 @@ from steps import (
     publish_ofertas,
     list_composer,
     publish_listas,
+    cowork_export,
+    cowork_import,
 )
+
+
+# =========================
+# COWORK TOP-UP
+# =========================
+
+_COWORK_DIR = _os.path.join("data", "cowork")
+_NUM_PAT    = _re.compile(r"^(\d{3})_")
+
+
+def _count_input_batches() -> int:
+    """Conta lotes distintos de input pendentes em data/cowork/ (pelo NNN)."""
+    nums: set = set()
+    for fpath in (
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+    ):
+        m = _NUM_PAT.match(_os.path.basename(fpath))
+        if m:
+            nums.add(m.group(1))
+    return len(nums)
+
+
+def _has_cowork_outputs() -> bool:
+    """Retorna True se houver outputs de Cowork prontos para importar."""
+    return bool(
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")) +
+        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json"))
+    )
+
+
+def _topup_cowork(idioma: str, target: int = 10):
+    """Exporta lotes de Cowork até atingir `target` inputs pendentes."""
+    atual  = _count_input_batches()
+    needed = max(0, target - atual)
+    if needed == 0:
+        log(f"[AUTOPILOT][COWORK] {atual} lote(s) pendente(s) — meta de {target} já atingida.")
+        return
+    log(f"[AUTOPILOT][COWORK] {atual} lote(s) pendente(s) — exportando {needed} para completar {target}.")
+    exportados = 0
+    for i in range(needed):
+        try:
+            with StepRun("cowork_export", idioma=idioma, pacote=25, invocado_por="autopilot"):
+                cowork_export.run(idioma, 25)
+            exportados += 1
+        except Exception as e:
+            log(f"[AUTOPILOT][COWORK] Erro ao exportar lote {i + 1}: {e}")
+            break  # não tentar mais se falhou
+    log(f"[AUTOPILOT][COWORK] {exportados} lote(s) exportado(s). Total pendente: {_count_input_batches()}.")
 
 
 # =========================
@@ -51,21 +116,258 @@ STEP_PACOTES = {
 
 
 # =========================
+# GARGALOS
+# =========================
+
+FALLBACK_PACOTE = 1000
+
+
+def _count_per_step(conn) -> dict:
+    """Conta pendentes por step individualmente — base para identificação de gargalos."""
+    cur = conn.cursor()
+
+    def _q(sql):
+        cur.execute(sql)
+        return cur.fetchone()[0]
+
+    return {
+        "2  Enriquecer Desc": _q(
+            "SELECT COUNT(*) FROM livros WHERE status_descricao = 0"
+        ),
+        "3  Resolver Ofertas": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE lookup_query IS NOT NULL
+              AND offer_url IS NULL
+              AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')
+        """),
+        "4  Scraper": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_enrich = 0
+              AND offer_url IS NOT NULL AND offer_url != ''
+        """),
+        "5  Slugs": _q("SELECT COUNT(*) FROM livros WHERE status_slug = 0"),
+        "8  Dedup": _q(
+            "SELECT COUNT(*) FROM livros WHERE status_dedup = 0 AND status_slug = 1"
+        ),
+        "9  Review": _q(
+            "SELECT COUNT(*) FROM livros WHERE status_review = 0 AND status_dedup = 1"
+        ),
+        "12 Capas": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_cover = 0 AND status_review = 1 AND is_book = 1
+        """),
+        "13 Quality Gate": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE is_publishable = 0 AND status_review = 1 AND status_synopsis = 1
+        """),
+        "14 Publicar Livros": _q(
+            "SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0"
+        ),
+        "15 Publicar Autores": _q("""
+            SELECT COUNT(*) FROM autores WHERE status_publish = 0
+              AND id IN (
+                SELECT autor_id FROM livros_autores
+                JOIN livros ON livros.id = livros_autores.livro_id
+                WHERE livros.status_publish = 1
+              )
+        """),
+        "16 Publicar Cats": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_publish = 1 AND status_publish_cat = 0
+        """),
+        "17 Publicar Ofertas": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_publish = 1 AND status_publish_oferta = 0
+              AND offer_url IS NOT NULL
+        """),
+        "19 Publicar Listas": _q("SELECT COUNT(*) FROM listas WHERE status_publish = 0"),
+    }
+
+
+def _identify_gargalos(conn) -> list:
+    """Retorna [(nome_step, count)] com steps que têm pendentes, ordenados por count desc."""
+    counts = _count_per_step(conn)
+    gargalos = [(nome, cnt) for nome, cnt in counts.items() if cnt > 0]
+    gargalos.sort(key=lambda x: -x[1])
+
+    if gargalos:
+        log("[AUTOPILOT][GARGALO] Steps com pendentes:")
+        for nome, cnt in gargalos:
+            log(f"[AUTOPILOT][GARGALO]   {nome}: {cnt}")
+    else:
+        log("[AUTOPILOT][GARGALO] Nenhum gargalo detectado.")
+
+    return gargalos
+
+
+def _run_fallbacks(idioma: str) -> int:
+    """Fase de fallback — roda steps com lote {FALLBACK_PACOTE} antes de interromper.
+
+    1. Enriquecer Descrições (Google Books API)
+    2. Resolver Ofertas (lote grande)
+    3. Gargalos detectados (cada step com backlog)
+
+    Retorna total de progresso gerado (redução em count_pending).
+    """
+    log(f"[AUTOPILOT][FALLBACK] Iniciando fase de fallback (lote={FALLBACK_PACOTE})...")
+    progresso_total = 0
+
+    # --- Fallback 1: Enriquecer Descrições ---
+    conn = get_conn()
+    desc_pendentes = _count_per_step(conn).get("2  Enriquecer Desc", 0)
+    conn.close()
+
+    if desc_pendentes > 0:
+        log(f"[AUTOPILOT][FALLBACK] [1/3] Enriquecer Descrições — {desc_pendentes} pendentes | lote {FALLBACK_PACOTE}")
+        try:
+            with StepRun("2  Enriquecer Desc (fallback)", idioma=idioma, pacote=FALLBACK_PACOTE, invocado_por="autopilot_fallback"):
+                enrich_descricao.run(FALLBACK_PACOTE)
+        except Exception as e:
+            log(f"[AUTOPILOT][FALLBACK] [1/3] Erro: {e}")
+        # Mede progresso via status_descricao (count_pending não rastreia esta coluna)
+        conn = get_conn()
+        desc_pos = _count_per_step(conn).get("2  Enriquecer Desc", 0)
+        conn.close()
+        ganho = max(0, desc_pendentes - desc_pos)
+        progresso_total += ganho
+        log(f"[AUTOPILOT][FALLBACK] [1/3] Progresso: {ganho}")
+    else:
+        log(f"[AUTOPILOT][FALLBACK] [1/3] Enriquecer Descrições — sem pendentes. Pulando.")
+
+    # --- Fallback 2: Resolver Ofertas (lote grande) ---
+    log(f"[AUTOPILOT][FALLBACK] [2/3] Resolver Ofertas — lote {FALLBACK_PACOTE}")
+    conn = get_conn()
+    pre = count_pending(conn)
+    conn.close()
+    try:
+        with StepRun("3  Resolver Ofertas (fallback)", idioma=idioma, pacote=FALLBACK_PACOTE, invocado_por="autopilot_fallback"):
+            offer_resolver.run(idioma, FALLBACK_PACOTE)
+    except Exception as e:
+        log(f"[AUTOPILOT][FALLBACK] [2/3] Erro: {e}")
+    conn = get_conn()
+    pos = count_pending(conn)
+    conn.close()
+    ganho = max(0, pre - pos)
+    progresso_total += ganho
+    log(f"[AUTOPILOT][FALLBACK] [2/3] Progresso: {ganho}")
+
+    # --- Fallback 3: Gargalos ---
+    conn = get_conn()
+    gargalos = _identify_gargalos(conn)
+    conn.close()
+
+    # Steps 2 e 3 já cobertos acima — excluídos do mapeamento
+    GARGALO_FNS = {
+        "4  Scraper":          lambda p: marketplace_scraper.run(idioma, p),
+        "5  Slugs":            lambda p: slugify.run(idioma, p),
+        "6  Slugs Autores":    lambda p: slugify_autores.run(),
+        "7  Dedup Autores":    lambda p: dedup_autores.run(),
+        "8  Dedup":            lambda p: dedup.run(idioma, p),
+        "9  Review":           lambda p: review.run(idioma, p),
+        "12 Capas":            lambda p: covers.run(idioma, p),
+        "13 Quality Gate":     lambda p: quality_gate.evaluate_quality(idioma, p),
+        "14 Publicar Livros":  lambda p: publish.run(idioma, p),
+        "15 Publicar Autores": lambda p: publish_autores.run(p),
+        "16 Publicar Cats":    lambda p: publish_categorias.run(),
+        "17 Publicar Ofertas": lambda p: publish_ofertas.run(p),
+        "18 Listas SEO":       lambda p: list_composer.run(),
+        "19 Publicar Listas":  lambda p: publish_listas.run(),
+    }
+
+    gargalos_acionados = [(n, c) for n, c in gargalos if n in GARGALO_FNS]
+    if gargalos_acionados:
+        log(f"[AUTOPILOT][FALLBACK] [3/3] Gargalos detectados: {len(gargalos_acionados)} step(s) com pendentes")
+        for nome, cnt in gargalos_acionados:
+            log(f"[AUTOPILOT][FALLBACK] [3/3] Gargalo: '{nome}' — {cnt} pendentes | lote {FALLBACK_PACOTE}")
+            conn = get_conn()
+            pre = count_pending(conn)
+            conn.close()
+            try:
+                with StepRun(f"{nome} (fallback)", idioma=idioma, pacote=FALLBACK_PACOTE, invocado_por="autopilot_fallback"):
+                    GARGALO_FNS[nome](FALLBACK_PACOTE)
+            except Exception as e:
+                log(f"[AUTOPILOT][FALLBACK] [3/3] Erro em '{nome}': {e}")
+            conn = get_conn()
+            pos = count_pending(conn)
+            conn.close()
+            ganho = max(0, pre - pos)
+            progresso_total += ganho
+            log(f"[AUTOPILOT][FALLBACK] [3/3] '{nome}' — Progresso: {ganho}")
+    else:
+        log("[AUTOPILOT][FALLBACK] [3/3] Nenhum gargalo acionável detectado.")
+
+    log(f"[AUTOPILOT][FALLBACK] Fase concluída. Progresso total: {progresso_total}")
+    return progresso_total
+
+
+# =========================
 # PENDENTE
 # =========================
 
+def _count_publishable_pending(conn) -> int:
+    """Conta livros aprovados pelo QG mas ainda não publicados."""
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0")
+    return cur.fetchone()[0]
+
+
 def count_pending(conn) -> int:
-    """Conta livros com trabalho pendente nas etapas não-LLM."""
+    """Conta trabalho pendente em todos os steps não-LLM do pipeline.
+
+    Cada sub-query espelha a condição de seleção do step correspondente,
+    garantindo que o autopilot só para quando não há NADA a fazer —
+    não apenas quando os steps visíveis estão estagnados.
+    """
     cur = conn.cursor()
     cur.execute("""
         SELECT
-            (SELECT COUNT(*) FROM livros WHERE status_slug    = 0) +
-            (SELECT COUNT(*) FROM livros WHERE status_dedup   = 0 AND status_slug   = 1) +
-            (SELECT COUNT(*) FROM livros WHERE status_review  = 0 AND status_dedup  = 1) +
-            (SELECT COUNT(*) FROM livros WHERE status_cover   = 0 AND status_review = 1 AND is_book = 1) +
-            (SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish       = 0) +
-            (SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_oferta = 0
-                                           AND offer_url IS NOT NULL)
+            -- Step 1: Seeds (importação — sem pendência rastreável por contagem)
+
+            -- Step 3: Resolver Ofertas
+            (SELECT COUNT(*) FROM livros
+             WHERE lookup_query IS NOT NULL
+               AND offer_url IS NULL
+               AND (offer_status IS NULL OR offer_status = 0 OR offer_status = 'active')) +
+
+            -- Step 4: Scraper Marketplace
+            (SELECT COUNT(*) FROM livros
+             WHERE status_enrich = 0
+               AND offer_url IS NOT NULL
+               AND offer_url != '') +
+
+            -- Step 5: Slugs
+            (SELECT COUNT(*) FROM livros WHERE status_slug = 0) +
+
+            -- Step 8: Dedup (depende de slug)
+            (SELECT COUNT(*) FROM livros WHERE status_dedup  = 0 AND status_slug  = 1) +
+
+            -- Step 9: Review (depende de dedup)
+            (SELECT COUNT(*) FROM livros WHERE status_review = 0 AND status_dedup = 1) +
+
+            -- Step 12: Capas (depende de review)
+            (SELECT COUNT(*) FROM livros
+             WHERE status_cover = 0 AND status_review = 1 AND is_book = 1) +
+
+            -- Step 14: Publicar Livros
+            (SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0) +
+
+            -- Step 15: Publicar Autores
+            (SELECT COUNT(*) FROM autores WHERE status_publish = 0
+               AND id IN (SELECT autor_id FROM livros_autores
+                          JOIN livros ON livros.id = livros_autores.livro_id
+                          WHERE livros.status_publish = 1)) +
+
+            -- Step 16: Publicar Categorias
+            (SELECT COUNT(*) FROM livros
+             WHERE status_publish = 1 AND status_publish_cat = 0) +
+
+            -- Step 17: Publicar Ofertas
+            (SELECT COUNT(*) FROM livros
+             WHERE status_publish = 1 AND status_publish_oferta = 0
+               AND offer_url IS NOT NULL) +
+
+            -- Step 19: Publicar Listas
+            (SELECT COUNT(*) FROM listas WHERE status_publish = 0)
     """)
     return cur.fetchone()[0]
 
@@ -74,17 +376,53 @@ def count_pending(conn) -> int:
 # RUN
 # =========================
 
-def run(idioma: str, pacote: int):
+def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: int = 10):
     """Loop automático: roda sequência não-LLM até não haver mais progresso.
 
     Para quando:
     - pending == 0: pipeline completamente exaurido
-    - pending não diminuiu: bloqueado aguardando LLM (steps 10, 11)
+    - pending não diminuiu em ciclo SEM erros: bloqueado aguardando LLM (10, 11)
     - Ctrl+C: interrompido pelo usuário
+
+    Guardrail anti-interrupção precoce:
+    - Se um step lança exceção, o ciclo é marcado como "com erro"
+    - Ciclos com erro não disparam o stop de "Sem progresso" — o erro pode
+      ter impedido o progresso, não o LLM
+    - O stop definitivo só ocorre em ciclo limpo (sem erros) sem progresso
+    - Válvula de segurança: MAX_CICLOS_COM_ERRO ciclos consecutivos com erro
+      e sem progresso também encerram (evita loop infinito em falha permanente)
+
+    Args:
+        manter_cowork: Se True, exporta lotes Cowork ao final de cada ciclo
+                       para manter `cowork_target` inputs disponíveis ao agente.
+        cowork_target: Número de lotes a manter disponíveis (padrão: 10).
     """
+    MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
+    QG_BOTTLENECK_THRESHOLD = 8  # ciclos sem aprovação no QG indicam bottleneck de sinopse
+
+    # Verificação de integridade do banco antes de iniciar
+    try:
+        conn = get_conn()
+        ic = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        conn.close()
+        if ic != "ok":
+            log(f"[AUTOPILOT] ERRO CRÍTICO: banco de dados corrompido (integrity_check={ic}).")
+            log("[AUTOPILOT] Restaure o backup em scripts/data/backup/ e tente novamente.")
+            return
+    except Exception as e:
+        log(f"[AUTOPILOT] ERRO CRÍTICO: não foi possível acessar o banco: {e}")
+        log("[AUTOPILOT] Restaure o backup em scripts/data/backup/ e tente novamente.")
+        return
 
     # Normaliza offer_status='active' → 1 uma única vez
-    publish_ofertas.fix_offer_status()
+    try:
+        publish_ofertas.fix_offer_status()
+    except Exception as e:
+        log(f"[AUTOPILOT] AVISO: fix_offer_status falhou: {e}. Continuando.")
+
+    # Top-up inicial de lotes Cowork (antes do primeiro ciclo)
+    if manter_cowork:
+        _topup_cowork(idioma, cowork_target)
 
     conn = get_conn()
     pending_anterior = count_pending(conn)
@@ -113,18 +451,39 @@ def run(idioma: str, pacote: int):
     FAILURE_THRESHOLD = 3
     step_sem_progresso: dict = {}
 
+    # Guardrail: ciclos consecutivos com erro e sem progresso (válvula de segurança)
+    ciclos_com_erro_sem_progresso = 0
+
+    # Bottleneck LLM: ciclos consecutivos com QG rodando mas aprovando 0 livros
+    ciclos_sem_qg_avanco = 0
+
     ciclo = 0
     try:
         while True:
             ciclo += 1
+            erros_no_ciclo = 0  # reset a cada ciclo
+
             log("=" * 52)
             log(f"[AUTOPILOT] Ciclo {ciclo} | idioma={idioma} | pacote={pacote}")
             log(f"[AUTOPILOT] Pendente no inicio: {pending_anterior}")
             log("=" * 52)
 
+            # Importa outputs de Cowork pendentes (synopsis/categorize) antes dos steps
+            if _has_cowork_outputs():
+                log("[AUTOPILOT] Outputs de Cowork pendentes — importando antes do ciclo...")
+                try:
+                    cowork_import.run()
+                except Exception as e:
+                    log(f"[AUTOPILOT] AVISO: erro ao importar Cowork outputs: {e}")
+
             # Recalcula prioridades antes de processar os steps
             conn = get_conn()
             priority_scorer.recalculate_all(conn)
+            conn.close()
+
+            # Snapshot de livros aprovados pendentes de publicação (para detecção de bottleneck LLM)
+            conn = get_conn()
+            qg_pendente_pre = _count_publishable_pending(conn)
             conn.close()
 
             for nome, step_fn in STEPS:
@@ -140,6 +499,7 @@ def run(idioma: str, pacote: int):
                         step_fn(pacote_efetivo)
                 except Exception as e:
                     log(f"[AUTOPILOT] ERRO em {nome}: {e}")
+                    erros_no_ciclo += 1
 
                 conn = get_conn()
                 pending_pos = count_pending(conn)
@@ -160,7 +520,12 @@ def run(idioma: str, pacote: int):
             pending_atual = count_pending(conn)
             conn.close()
 
-            log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}")
+            log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}"
+                + (f" | Erros no ciclo: {erros_no_ciclo}" if erros_no_ciclo else ""))
+
+            # Top-up de lotes Cowork (se habilitado)
+            if manter_cowork:
+                _topup_cowork(idioma, cowork_target)
 
             if pending_atual == 0:
                 log("[AUTOPILOT] Pipeline exaurido. Nada mais a processar.")
@@ -169,13 +534,72 @@ def run(idioma: str, pacote: int):
                 break
 
             if pending_atual >= pending_anterior:
-                log("[AUTOPILOT] Sem progresso. Pipeline aguardando steps LLM (10, 11).")
-                log("[AUTOPILOT] Rode step 10 (Categorizar) e step 11 (Sinopses) e repita.")
-                log("[AUTOPILOT] Iniciando auditoria de integridade...")
-                autopilot_audit.run()
-                break
+                if erros_no_ciclo > 0:
+                    # Sem progresso por erro de step — não é bloqueio de LLM
+                    ciclos_com_erro_sem_progresso += 1
+                    log(
+                        f"[AUTOPILOT][⚠️ GUARDRAIL] Sem progresso, mas {erros_no_ciclo} step(s) falharam "
+                        f"neste ciclo — o erro pode ter impedido o avanço (não o LLM). "
+                        f"Ciclos consecutivos com erro sem progresso: "
+                        f"{ciclos_com_erro_sem_progresso}/{MAX_CICLOS_COM_ERRO}."
+                    )
+                    if ciclos_com_erro_sem_progresso >= MAX_CICLOS_COM_ERRO:
+                        log(
+                            f"[AUTOPILOT] Limite de {MAX_CICLOS_COM_ERRO} ciclos consecutivos com erro "
+                            f"atingido. Corrija os erros acima e re-execute o autopilot."
+                        )
+                        log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                        autopilot_audit.run()
+                        break
+                    # Continua para o próximo ciclo
+                else:
+                    # Ciclo limpo sem progresso — tenta fallbacks antes de interromper
+                    ciclos_com_erro_sem_progresso = 0
+                    log("[AUTOPILOT] Sem progresso no ciclo. Iniciando fase de fallback antes de interromper...")
 
-            pending_anterior = pending_atual
+                    fallback_progress = _run_fallbacks(idioma)
+
+                    if fallback_progress > 0:
+                        conn = get_conn()
+                        pending_anterior = count_pending(conn)
+                        conn.close()
+                        log(f"[AUTOPILOT] Fallbacks geraram {fallback_progress} unidade(s) de progresso. Retomando loop principal.")
+                    else:
+                        conn = get_conn()
+                        pending_final = count_pending(conn)
+                        conn.close()
+
+                        if pending_final == 0:
+                            log("[AUTOPILOT] Pipeline completamente exaurido após fallbacks.")
+                        else:
+                            log("[AUTOPILOT] Sem progresso mesmo após fallbacks. Pipeline aguardando steps LLM (10, 11).")
+                            log("[AUTOPILOT] Rode step 10 (Categorizar) e step 11 (Sinopses) e repita.")
+
+                        log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                        autopilot_audit.run()
+                        break
+            else:
+                ciclos_com_erro_sem_progresso = 0  # reset quando há progresso real
+                pending_anterior = pending_atual
+
+            # Detecção de bottleneck LLM: QG roda mas não aprova livros por N ciclos
+            conn = get_conn()
+            qg_pendente_pos = _count_publishable_pending(conn)
+            conn.close()
+            qg_delta = qg_pendente_pos - qg_pendente_pre  # positivo = novos aprovados pelo QG
+            if qg_delta <= 0:
+                ciclos_sem_qg_avanco += 1
+                if ciclos_sem_qg_avanco >= QG_BOTTLENECK_THRESHOLD:
+                    log(
+                        f"[AUTOPILOT][⚠️ LLM BOTTLENECK] {ciclos_sem_qg_avanco} ciclos consecutivos "
+                        f"sem aprovação no Quality Gate. Pipeline aguardando sinopses (steps 10/11)."
+                    )
+                    log("[AUTOPILOT] Rode 'C → Cowork' ou 'O → LLM Autopilot' para gerar sinopses pendentes.")
+                    log("[AUTOPILOT] Iniciando auditoria de integridade...")
+                    autopilot_audit.run()
+                    break
+            else:
+                ciclos_sem_qg_avanco = 0  # reset quando QG aprova livros
 
     except KeyboardInterrupt:
         log(f"[AUTOPILOT] Interrompido apos ciclo {ciclo}.")

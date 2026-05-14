@@ -28,7 +28,9 @@ from steps import repair
 from steps import targeted_repair
 from steps import apply_blacklist
 from steps import autopilot
+from steps import llm_orchestrator
 from steps import autopilot_audit
+from steps import autopilot_manutencao
 from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
@@ -39,6 +41,7 @@ from steps import categorize_export
 from steps import categorize_import
 from steps import cowork_export
 from steps import cowork_import
+from steps import consistency_check
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -325,6 +328,7 @@ def menu_publicacao(idioma):
 27 → Reparar Ofertas (força republicação de todas para livros publicados)
 28 → Fix Affiliate URLs (corrige URLs sem parâmetros de comissão)
 30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
+31 → Reparar Relações Autores-Livros (re-sincroniza livros_autores no Supabase)
 
 V  → Voltar
 """)
@@ -390,6 +394,11 @@ V  → Voltar
             with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
                 offer_list_importer.run(pacote)
 
+        elif op == "31":
+            log("Re-sincronizando relações livros_autores no Supabase…")
+            with StepRun("repair_relacoes_autores", idioma=idioma):
+                publish_autores.run_repair_relacoes()
+
         else:
             print("Opção inválida.\n")
             continue
@@ -403,13 +412,17 @@ def menu_auditoria(idioma):
 --- AUDITORIA E MONITORAMENTO ---
 
 20 → Monitorar preços e disponibilidade de ofertas
-21 → Auditar conectividade do site (sem LLM)
-22 → Auditar conteúdo publicado (LLM)
+21 → Auditar conectividade do site (sem LLM) → data/logs/NNNN_audit_connectivity.json
+22 → Auditar conteúdo publicado (LLM) → data/logs/NNNN_audit_content.json
 23 → Reparar publicações com dados ruins (sinopse, capa, preço)
 24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
 25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
 26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
 28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
+29 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
+30 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
+31 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
+32 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
 
 V  → Voltar
 """)
@@ -513,6 +526,62 @@ ambos   → ambos acima
             with StepRun("autopilot_audit", idioma=idioma):
                 autopilot_audit.run()
 
+        elif op == "29":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Auditando listas SEO (dry_run={dry_run})…")
+            args = argparse.Namespace(mode="list", dry_run=dry_run)
+            auditor.run(args)
+
+        elif op == "30":
+            log("Verificando autores publicados sem bio…")
+            args = argparse.Namespace(mode="author-bios", dry_run=False)
+            auditor.run(args)
+
+        elif op == "31":
+            print("""
+Escopo da verificação de títulos:
+
+all       → todos os livros (publicados + pipeline)
+published → apenas publicados no Supabase
+pipeline  → apenas ainda não publicados
+""")
+            scope = input_safe("Escopo [all/published/pipeline] (padrão: all): ").strip().lower()
+            if scope not in ("all", "published", "pipeline"):
+                scope = "all"
+
+            try:
+                limite = int(input_safe("Limite de livros (padrão: 50): ").strip() or "50")
+            except ValueError:
+                limite = 50
+
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+
+            from core.markdown_executor import set_provider
+            set_provider(escolher_provider())
+
+            log(f"Verificando veracidade de títulos (scope={scope}, limit={limite}, dry_run={dry_run})…")
+            args = argparse.Namespace(
+                mode="title-verify", limit=limite, scope=scope, dry_run=dry_run
+            )
+            auditor.run(args)
+
+        elif op == "32":
+            log("Gerando relatório de consistência (consulta Supabase)…")
+            out = consistency_check.run()
+            if out:
+                print(f"""
+=== PRÓXIMO PASSO ===
+Relatório gerado: {out.name}
+
+Abra o Claude Code e execute:
+  Leia agents/consistency_review/prompt.md e execute todas as instruções.
+
+O agente irá ler o relatório e tomar ações corretivas automaticamente.
+""")
+            input_safe("\nPressione Enter para voltar ao menu…")
+
         else:
             print("Opção inválida.\n")
             continue
@@ -614,6 +683,8 @@ def main():
 
 S  → Status do pipeline (gargalos)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
+O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
+M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Cowork Autopilot (sinopse + categorias via Claude)
 E  → Exports
 
@@ -639,90 +710,141 @@ E  → Exports
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
-            autopilot.run(idioma, 100)
+            manter_str    = input_safe("Manter lotes Cowork? (mantém 10 inputs prontos p/ agente) [s/N]: ").strip().lower()
+            manter_cowork = manter_str == "s"
+            autopilot.run(idioma, 100, manter_cowork=manter_cowork)
+
+        elif op.upper() == "O":
+            from core.claude_runner import claude_available
+            if not claude_available():
+                log("[LLM_ORCH] ERRO: claude CLI não encontrado no PATH.")
+                log("[LLM_ORCH] Instale o Claude Code CLI e tente novamente.")
+                log("[LLM_ORCH] Alternativa: use C (Cowork manual).")
+            else:
+                pacote_o = escolher_pacote()
+                log(f"Iniciando LLM Autopilot (7 agentes, idioma={idioma}, pacote={pacote_o})…")
+                llm_orchestrator.run(idioma, pacote_o)
+
+        elif op.upper() == "M":
+            try:
+                price_str = input_safe("Limite price monitor (Enter = 50): ").strip()
+                price_limit = int(price_str) if price_str else 50
+            except ValueError:
+                price_limit = 50
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Iniciando autopilot de manutenção (price_limit={price_limit}, dry_run={dry_run})…")
+            autopilot_manutencao.run(price_limit=price_limit, dry_run=dry_run)
 
         elif op.upper() == "C":
             import glob as _glob
             import os as _os
+            import re as _re
 
-            def _has_cowork_outputs():
-                d = "data"
-                return bool(
-                    _glob.glob(_os.path.join(d, "*_synopsis_output.json")) or
-                    _glob.glob(_os.path.join(d, "*_categorize_output.json"))
+            _COWORK_DIR = _os.path.join("data", "cowork")
+            _NUM_PAT    = _re.compile(r"^(\d{3})_")
+
+            def _count_outputs():
+                return (
+                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json"))) +
+                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
                 )
 
-            def _has_cowork_inputs():
-                d = "data"
-                return bool(
-                    _glob.glob(_os.path.join(d, "*_synopsis_input.json")) or
-                    _glob.glob(_os.path.join(d, "*_categorize_input.json"))
-                )
+            def _count_input_batches():
+                """Conta lotes distintos de input pendentes (pelo número NNN)."""
+                nums = set()
+                for fpath in (
+                    _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
+                    _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+                ):
+                    m = _NUM_PAT.match(_os.path.basename(fpath))
+                    if m:
+                        nums.add(m.group(1))
+                return len(nums)
+
+            def _export_n_batches(n):
+                """Exporta até N lotes. Interrompe se não houver mais pendentes."""
+                exportados = 0
+                for _ in range(n):
+                    with StepRun("cowork_export", idioma=idioma, pacote=25):
+                        cowork_export.run(idioma, 25)
+                    exportados += 1
+                log(f"[COWORK] {exportados} lote(s) exportado(s).")
 
             def _print_next_step_instructions():
-                has_syn = bool(_glob.glob(_os.path.join("data", "*_synopsis_input.json")))
-                has_cls = bool(_glob.glob(_os.path.join("data", "*_categorize_input.json")))
-                lines = ["", "=== PRÓXIMO PASSO ===",
-                         "Abra o Claude Code e use o comando para o tipo desejado:", ""]
+                has_syn = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")))
+                has_cls = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json")))
+                n_lotes = _count_input_batches()
+                lines = [
+                    "",
+                    "=== PRÓXIMO PASSO ===",
+                    f"Lotes aguardando o agente: {n_lotes}",
+                    "Abra o Claude Code e use o comando para o tipo desejado:",
+                    "",
+                ]
                 if has_syn:
-                    lines += ["  SINOPSES:",
-                               "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
-                               ""]
+                    lines += [
+                        "  SINOPSES:",
+                        "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
+                        "",
+                    ]
                 if has_cls:
-                    lines += ["  CATEGORIAS:",
-                               "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
-                               ""]
-                lines += ["Cada execução processa UM lote e arquiva o input.",
-                          "Repita para esgotar todos os lotes pendentes.",
-                          "Depois volte aqui e pressione C → 1 para importar.", ""]
+                    lines += [
+                        "  CATEGORIAS:",
+                        "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
+                        "",
+                    ]
+                lines += [
+                    "Cada execução processa UM lote e arquiva o input.",
+                    "Repita para esgotar todos os lotes pendentes.",
+                    "Depois volte aqui e pressione C → 1 para importar.",
+                    "",
+                ]
                 print("\n".join(lines))
 
-            has_outputs = _has_cowork_outputs()
-            has_inputs  = _has_cowork_inputs()
+            # ── Status atual ──────────────────────────────────────────────
+            n_outputs     = _count_outputs()
+            n_input_lotes = _count_input_batches()
+            n_syn_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")))
+            n_cat_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
 
-            if has_outputs:
-                n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_output.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "*_categorize_output.json")))
-                print(f"""
-Outputs do Cowork detectados ({n_syn} sinopse(s), {n_cat} categoria(s)). O que deseja fazer?
+            print(f"""
+=== COWORK ===
+
+  Lotes de input pendentes : {n_input_lotes}
+  Outputs prontos p/ import: {n_syn_out} sinopse(s), {n_cat_out} categoria(s)
 
 1 → Importar TODOS os resultados pendentes → SQLite
-2 → Exportar mais um lote (adicionar ao pipeline)
+    {"(nenhum output disponível)" if n_outputs == 0 else f"({n_syn_out} sinopses + {n_cat_out} categorias)"}
+2 → Exportar 1 lote
+3 → Exportar 10 lotes simultâneos
+4 → Ver instruções para o agente Cowork
 """)
-                sub = input_safe("Opção: ")
-                if sub == "1":
+            sub = input_safe("Opção: ")
+
+            if sub == "1":
+                if n_outputs == 0:
+                    print("Nenhum output disponível para importar.\n")
+                else:
                     log("Importando resultados do Cowork…")
                     with StepRun("cowork_import", idioma=idioma):
                         cowork_import.run()
-                elif sub == "2":
-                    log("Exportando inputs para Cowork…")
-                    with StepRun("cowork_export", idioma=idioma, pacote=25):
-                        cowork_export.run(idioma, 25)
-                    _print_next_step_instructions()
-                else:
-                    print("Opção inválida.\n")
 
-            elif has_inputs:
-                n_syn = len(_glob.glob(_os.path.join("data", "*_synopsis_input.json")))
-                n_cat = len(_glob.glob(_os.path.join("data", "*_categorize_input.json")))
-                print(f"""
-Inputs aguardando processamento ({n_syn} sinopse(s), {n_cat} classificação(ões)). O que deseja fazer?
+            elif sub == "2":
+                log("Exportando 1 lote para Cowork…")
+                _export_n_batches(1)
+                _print_next_step_instructions()
 
-1 → Exportar mais um lote
-2 → Ver instruções para o agente
-""")
-                sub = input_safe("Opção: ")
-                if sub == "1":
-                    log("Exportando inputs para Cowork…")
-                    with StepRun("cowork_export", idioma=idioma, pacote=25):
-                        cowork_export.run(idioma, 25)
+            elif sub == "3":
+                log("Exportando 10 lotes para Cowork…")
+                _export_n_batches(10)
+                _print_next_step_instructions()
+
+            elif sub == "4":
                 _print_next_step_instructions()
 
             else:
-                log("Exportando inputs para Cowork…")
-                with StepRun("cowork_export", idioma=idioma, pacote=25):
-                    cowork_export.run(idioma, 25)
-                _print_next_step_instructions()
+                print("Opção inválida.\n")
 
         elif op.upper() == "E":
             menu_exports()

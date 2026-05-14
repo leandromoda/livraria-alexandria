@@ -9,6 +9,7 @@
 # ============================================================
 
 import os
+import sqlite3
 import time
 import requests
 
@@ -31,6 +32,54 @@ MAX_RETRIES = 3
 
 
 # =========================
+# SCHEMA MIGRATION
+# =========================
+
+def _ensure_columns(conn) -> None:
+    """Garante que a tabela listas possui as colunas necessárias.
+
+    Usa PRAGMA table_info para verificar colunas existentes antes de tentar
+    ALTER TABLE — evita falhas silenciosas e erros "no such column" downstream.
+
+    Nota: SQLite proíbe expressões (CURRENT_TIMESTAMP) como DEFAULT em
+    ALTER TABLE ADD COLUMN — apenas constantes literais são permitidas.
+    Por isso updated_at é adicionada sem DEFAULT (ficará NULL para linhas
+    antigas; o UPDATE de publicação define o valor explicitamente).
+    """
+    cur = conn.cursor()
+
+    # Verifica se a tabela existe antes de qualquer ALTER
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='listas'")
+    if not cur.fetchone():
+        log("[PUBLISH_LISTAS][SCHEMA] Tabela 'listas' não existe. Rode o step 18 primeiro.")
+        return
+
+    # Verifica colunas existentes com PRAGMA (evita ALTER desnecessário)
+    cur.execute("PRAGMA table_info(listas)")
+    existing = {row[1] for row in cur.fetchall()}
+
+    for col, definition in [
+        ("status_publish", "INTEGER DEFAULT 0"),
+        ("updated_at",     "DATETIME"),          # sem DEFAULT — SQLite não aceita CURRENT_TIMESTAMP aqui
+    ]:
+        if col not in existing:
+            try:
+                cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
+                log(f"[PUBLISH_LISTAS][SCHEMA] Coluna '{col}' adicionada.")
+            except sqlite3.OperationalError as e:
+                log(f"[PUBLISH_LISTAS][SCHEMA] ERRO ao adicionar coluna '{col}': {e}")
+
+    conn.commit()
+
+    # Verifica que as colunas existem após as ALTERações
+    cur.execute("PRAGMA table_info(listas)")
+    final_cols = {row[1] for row in cur.fetchall()}
+    missing = [c for c in ("status_publish", "updated_at") if c not in final_cols]
+    if missing:
+        raise RuntimeError(f"[PUBLISH_LISTAS] Colunas ausentes após migração: {missing}")
+
+
+# =========================
 # FETCH SQLite
 # =========================
 
@@ -39,6 +88,7 @@ def fetch_listas(conn) -> list[dict]:
     cur.execute("""
         SELECT id, slug, titulo, descricao, categoria_slug
         FROM listas
+        WHERE status_publish = 0
         ORDER BY titulo
     """)
     rows = cur.fetchall()
@@ -128,7 +178,8 @@ def run():
     listas_url = f"{supabase_url}/rest/v1/listas?on_conflict=slug"
     membros_url = f"{supabase_url}/rest/v1/lista_livros?on_conflict=lista_id,livro_id"
 
-    conn   = get_conn()
+    conn = get_conn()
+    _ensure_columns(conn)
     listas = fetch_listas(conn)
 
     if not listas:
@@ -171,6 +222,12 @@ def run():
             continue
 
         lista_ok += 1
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE listas SET status_publish = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (lista["id"],)
+        )
+        conn.commit()
 
         # Publica membros (lista_livros)
         livros = fetch_livros_da_lista(conn, lista["id"])

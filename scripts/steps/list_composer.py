@@ -54,11 +54,24 @@ def ensure_schema():
 
         idioma TEXT,
 
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        status_publish INTEGER DEFAULT 0,
+
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 
     )
 
     """)
+
+    # Migrações para bancos existentes
+    for col, definition in [
+        ("status_publish", "INTEGER DEFAULT 0"),
+        ("updated_at",     "DATETIME DEFAULT CURRENT_TIMESTAMP"),
+    ]:
+        try:
+            cur.execute(f"ALTER TABLE listas ADD COLUMN {col} {definition}")
+        except Exception:
+            pass  # coluna já existe
 
     cur.execute("""
 
@@ -416,6 +429,7 @@ def fetch_categorias_tematicas_validas():
         JOIN livros l ON l.id = lct.livro_id
         WHERE l.status_publish = 1
           AND l.editorial_score >= 1
+          AND lct.categoria_slug IS NOT NULL
         GROUP BY lct.categoria_slug
         HAVING COUNT(DISTINCT l.id) >= ?
     """, (MIN_LIVROS_TEMATICA,))

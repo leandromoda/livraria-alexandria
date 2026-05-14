@@ -43,6 +43,7 @@ def fetch_autores_com_contagem(conn):
             a.nome,
             a.slug,
             a.status_publish,
+            a.deduped,
             COUNT(la.livro_id) AS num_livros
         FROM autores a
         LEFT JOIN livros_autores la ON la.autor_id = a.id
@@ -147,6 +148,11 @@ def run():
     removidos  = 0
     merged_ids = set()  # IDs já removidos — não processar como master
 
+    # Conjunto de autores novos — só compara pares que envolvam pelo menos um novo.
+    # Pares (deduped=1, deduped=1) já foram analisados em execuções anteriores.
+    # Reduz complexidade de O(n²) para O(n_new × n).
+    new_ids = {r["id"] for r in rows if r["deduped"] == 0}
+
     log(f"[DEDUP_AUTORES] Analisando {total} autores ({pendentes} novos, limiar={SIMILARITY_THRESHOLD})…")
 
     for i, master in enumerate(rows):
@@ -154,10 +160,13 @@ def run():
         if master["id"] in merged_ids:
             continue
 
-        # Compara com todos os autores subsequentes ainda não removidos
         for dup in rows[i + 1:]:
 
             if dup["id"] in merged_ids:
+                continue
+
+            # Pula pares onde ambos já foram deduplicados anteriormente
+            if master["id"] not in new_ids and dup["id"] not in new_ids:
                 continue
 
             if similar(master["nome"], dup["nome"]) >= SIMILARITY_THRESHOLD:
@@ -178,4 +187,5 @@ def run():
 
     conn.close()
 
-    log(f"[DEDUP_AUTORES] Finalizado | Analisados: {total} | Removidos: {removidos}")
+    comparacoes = pendentes * total
+    log(f"[DEDUP_AUTORES] Finalizado | Analisados: {total} | Novos: {pendentes} | Comparações: ~{comparacoes} | Removidos: {removidos}")

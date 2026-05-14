@@ -135,7 +135,7 @@ def build_payload(row):
         "ano_publicacao":     int(ano_publicacao) if ano_publicacao else None,
         "imagem_url":         imagem_url,
         "is_publishable":     bool(is_publishable) if is_publishable is not None else False,
-        "quality_score":      editorial_score,
+        "quality_score":      int(editorial_score) if editorial_score not in (None, "") else None,
         "is_book":            bool(is_book) if is_book is not None else True,
         "last_quality_check": now,
         "publish_blockers":   None,
@@ -197,6 +197,22 @@ def upsert_book(payload):
 # FLAG LOCAL
 # =========================
 
+def mark_blacklisted(conn, local_id: str) -> None:
+    """Marca livro bloqueado pela blacklist como não publicável.
+    Impede que seja re-buscado em ciclos futuros do autopilot.
+    status_synopsis=4 e status_categorize=4 evitam re-exportação para o agente Cowork."""
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE livros
+        SET is_publishable    = 0,
+            status_synopsis   = 4,
+            status_categorize = 4,
+            updated_at        = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (local_id,))
+    conn.commit()
+
+
 def mark_published(conn, local_id, supabase_id):
 
     cur = conn.cursor()
@@ -227,11 +243,15 @@ def run(idioma, pacote=10):
     skipped = 0
     if blacklisted:
         log(f"[PUBLISH] Blacklist carregada: {len(blacklisted)} entradas")
-        original = len(rows)
-        rows = [r for r in rows if r[2] not in blacklisted]  # r[2] = slug
-        skipped = original - len(rows)
+        original_rows = rows
+        rows = [r for r in original_rows if r[2] not in blacklisted]  # r[2] = slug
+        skipped = len(original_rows) - len(rows)
         if skipped:
             log(f"[PUBLISH] Bloqueados pela blacklist: {skipped}")
+            # Marca is_publishable=0 para evitar re-busca em ciclos futuros
+            for r in original_rows:
+                if r[2] in blacklisted:
+                    mark_blacklisted(conn, r[0])  # r[0] = local_id
 
     if not rows:
         log(f"Nada pendente para publicação [{idioma}].")

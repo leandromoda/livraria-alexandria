@@ -24,6 +24,7 @@ import argparse
 import sqlite3
 import requests
 from datetime import datetime, timezone
+from pathlib import Path
 from bs4 import BeautifulSoup
 
 # ---------------------------------------------------------------------------
@@ -63,7 +64,12 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 SEVERITY_UNPUBLISH = {"medium", "high"}   # threshold para despublicação
 REQUEST_TIMEOUT = 10                       # segundos
-REPORT_DIR = os.path.join(SCRIPTS_ROOT, "data")
+REPORT_DIR = Path(SCRIPTS_ROOT) / "data" / "logs"
+LIST_MIN_MEMBERS = 5                       # mínimo de livros publicados por lista
+
+GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+TITLE_VERIFY_API_DELAY = 0.35             # segundos entre chamadas Google Books API
 
 # ---------------------------------------------------------------------------
 # Tabela audit_log — criada automaticamente se não existir
@@ -465,6 +471,17 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
         if titulo and titulo.lower() not in rendered_text.lower():
             diff_issues.append("Título do DB não encontrado na página")
 
+        # 2b. Validação de imagem
+        imagem_url_row = conn.execute(
+            "SELECT imagem_url FROM livros WHERE id=?", (livro_id,)
+        ).fetchone()
+        imagem_url = imagem_url_row[0] if imagem_url_row else None
+        if imagem_url:
+            img_status, _, _ = _http_head(imagem_url)
+            if img_status is None or img_status not in (200, 301, 302):
+                diff_issues.append(f"Imagem inválida ou inacessível (HTTP {img_status}): {imagem_url}")
+                log.warning(f"   Imagem FALHOU: {img_status}")
+
         # 3. Auditoria LLM
         prompt = AUDIT_PROMPT_TEMPLATE.format(
             titulo=titulo or "(sem título)",
@@ -527,19 +544,477 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
 
 
 # ---------------------------------------------------------------------------
-# Relatório JSON
+# MODO 3: --list  (sem LLM)
 # ---------------------------------------------------------------------------
 
+DDL_LIST_STATUS = """
+CREATE TABLE IF NOT EXISTS listas (
+    id           TEXT PRIMARY KEY,
+    slug         TEXT,
+    titulo       TEXT,
+    status_publish INTEGER DEFAULT 0
+);
+"""
+
+
+def run_list_audit(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
+    """
+    Verifica coerência das listas SEO publicadas. Sem LLM.
+
+    Critérios:
+    - Lista com 0 membros publicados → despublica (status_publish=0)
+    - Lista com < LIST_MIN_MEMBERS membros publicados → sinaliza como needs_refresh
+    """
+    log.info(f"=== LIST AUDIT (dry_run={dry_run}) ===")
+
+    rows = conn.execute(
+        "SELECT id, slug, titulo FROM listas WHERE status_publish=1"
+    ).fetchall()
+
+    if not rows:
+        log.warning("Nenhuma lista publicada encontrada no banco local.")
+        return {"mode": "list", "total": 0, "results": []}
+
+    results = []
+    despublished = []
+    needs_refresh = []
+
+    for lista_id, slug, titulo in rows:
+        # Conta membros que ainda estão publicados
+        count_row = conn.execute(
+            """SELECT COUNT(*) FROM lista_livros ll
+               JOIN livros l ON l.id = ll.livro_id
+               WHERE ll.lista_id = ? AND l.status_publish = 1""",
+            (lista_id,)
+        ).fetchone()
+        published_count = count_row[0] if count_row else 0
+
+        if published_count == 0:
+            status = "empty"
+            log.info(f"  [✗] {titulo} ({slug}) → 0 membros publicados → despublica")
+            if not dry_run:
+                conn.execute(
+                    "UPDATE listas SET status_publish=0, updated_at=? WHERE id=?",
+                    (_now_iso(), lista_id)
+                )
+                conn.commit()
+                # PATCH Supabase
+                if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+                    try:
+                        url = f"{SUPABASE_URL}/rest/v1/listas?slug=eq.{slug}"
+                        requests.patch(
+                            url,
+                            headers={**_supabase_headers(use_service_key=True),
+                                     "Prefer": "return=minimal"},
+                            json={"status_publish": False},
+                            timeout=REQUEST_TIMEOUT,
+                        )
+                    except Exception as e:
+                        log.error(f"  Supabase PATCH lista {slug}: {e}")
+            despublished.append(slug)
+        elif published_count < LIST_MIN_MEMBERS:
+            status = "needs_refresh"
+            log.info(f"  [!] {titulo} ({slug}) → {published_count} membros (< {LIST_MIN_MEMBERS})")
+            needs_refresh.append(slug)
+        else:
+            status = "ok"
+            log.info(f"  [✓] {titulo} ({slug}) → {published_count} membros")
+
+        results.append({
+            "slug": slug,
+            "titulo": titulo,
+            "published_members": published_count,
+            "status": status,
+        })
+
+    log.info(
+        f"\nListas: OK={sum(1 for r in results if r['status']=='ok')} | "
+        f"Needs refresh={len(needs_refresh)} | "
+        f"Despublicadas={len(despublished)} | "
+        f"Total={len(rows)}"
+    )
+
+    return {
+        "mode": "list",
+        "total": len(rows),
+        "despublished": len(despublished),
+        "despublished_slugs": despublished,
+        "needs_refresh_slugs": needs_refresh,
+        "results": results,
+    }
+
+
+# ---------------------------------------------------------------------------
+# MODO 4: --author-bios  (sem LLM)
+# ---------------------------------------------------------------------------
+
+def check_author_bios(conn: sqlite3.Connection) -> dict:
+    """
+    Verifica autores publicados sem bio. Sem LLM — apenas relatório.
+    Não despublica. Registra em audit_log para rastreabilidade.
+    """
+    log.info("=== AUTHOR BIO CHECK ===")
+
+    rows = conn.execute(
+        """SELECT id, slug, nome FROM autores
+           WHERE status_publish=1
+             AND (bio IS NULL OR TRIM(bio) = '')"""
+    ).fetchall()
+
+    total_published = conn.execute(
+        "SELECT COUNT(*) FROM autores WHERE status_publish=1"
+    ).fetchone()[0]
+
+    slugs_sem_bio = [r[1] for r in rows]
+
+    if rows:
+        log.info(f"  {len(rows)}/{total_published} autores publicados sem bio:")
+        for _, slug, nome in rows:
+            log.info(f"    - {nome} ({slug})")
+    else:
+        log.info(f"  Todos os {total_published} autores publicados têm bio. OK.")
+
+    # Salva no audit_log como severity=low (sem despublicação)
+    for autor_id, slug, nome in rows:
+        conn.execute(
+            """INSERT OR REPLACE INTO audit_log
+               (id, livro_id, slug, mode, severity, issues, action_taken, audited_at)
+               VALUES (?, ?, ?, 'author_bio', 'low', ?, 'none', ?)""",
+            (
+                str(uuid.uuid4()),
+                autor_id,
+                slug,
+                json.dumps([f"Autor publicado sem bio: {nome}"], ensure_ascii=False),
+                _now_iso(),
+            )
+        )
+    if rows:
+        conn.commit()
+
+    return {
+        "mode": "author_bio",
+        "total_published": total_published,
+        "without_bio": len(rows),
+        "slugs_sem_bio": slugs_sem_bio,
+    }
+
+
+# ---------------------------------------------------------------------------
+# MODO 5: --title-verify  (Google Books API + LLM)
+# ---------------------------------------------------------------------------
+
+TITLE_VERIFY_PROMPT = """Você é um auditor bibliográfico especializado.
+Avalie se o livro abaixo corresponde a uma obra real e publicada.
+
+Título: {titulo}
+Autor: {autor}
+Descrição disponível: {descricao}
+
+Responda SOMENTE com JSON válido, sem markdown:
+
+{{"real": true|false, "confidence": "high"|"medium"|"low", "reason": "motivo em 1 frase"}}
+
+Critérios:
+- real=true: título e autor formam uma combinação que corresponde a livro real publicado
+- real=false: combinação improvável, incoerente ou claramente inventada
+- confidence: quão seguro você está da avaliação
+"""
+
+
+def _google_books_lookup(titulo: str, autor: str) -> str:
+    """
+    Consulta Google Books API e retorna nível de correspondência:
+    'exact' | 'partial' | 'none' | 'api_unavailable'
+    """
+    if not GOOGLE_BOOKS_API_KEY:
+        return "api_unavailable"
+
+    query = f"intitle:{titulo}"
+    if autor:
+        query += f"+inauthor:{autor}"
+
+    params = {
+        "q":          query,
+        "maxResults": 3,
+        "fields":     "items(volumeInfo(title,authors))",
+        "key":        GOOGLE_BOOKS_API_KEY,
+    }
+
+    try:
+        resp = requests.get(GOOGLE_BOOKS_URL, params=params,
+                            timeout=REQUEST_TIMEOUT,
+                            headers={"User-Agent": "AlexandriaAuditor/1.0"})
+        if resp.status_code != 200:
+            log.warning(f"  Google Books API HTTP {resp.status_code} para: {titulo}")
+            return "api_unavailable"
+
+        items = resp.json().get("items", [])
+        if not items:
+            return "none"
+
+        titulo_norm = titulo.lower().strip()
+        autor_norm  = (autor or "").lower().strip()
+
+        for item in items:
+            vi            = item.get("volumeInfo", {})
+            api_titulo    = vi.get("title", "").lower().strip()
+            api_autores   = " ".join(vi.get("authors", [])).lower()
+
+            titulo_match = titulo_norm in api_titulo or api_titulo in titulo_norm
+            autor_match  = autor_norm and (
+                any(part in api_autores for part in autor_norm.split() if len(part) > 3)
+            )
+
+            if titulo_match and (not autor_norm or autor_match):
+                return "exact"
+            if titulo_match or autor_match:
+                return "partial"
+
+        return "none"
+
+    except Exception as e:
+        log.warning(f"  Google Books lookup falhou: {e}")
+        return "api_unavailable"
+
+
+def _llm_verify_title(titulo: str, autor: str, descricao: str) -> dict:
+    """Usa LLM para verificar veracidade do par título+autor. Retorna dict com real/confidence/reason."""
+    descricao_curta = (descricao or "")[:400]
+    prompt = TITLE_VERIFY_PROMPT.format(
+        titulo=titulo or "(sem título)",
+        autor=autor or "(sem autor)",
+        descricao=descricao_curta or "(sem descrição)",
+    )
+    try:
+        raw = _call_llm(prompt)
+        cleaned = raw.strip()
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
+            cleaned = "\n".join(lines[1:-1])
+        data = json.loads(cleaned)
+        return {
+            "real":       bool(data.get("real", True)),
+            "confidence": str(data.get("confidence", "low")),
+            "reason":     str(data.get("reason", "")),
+        }
+    except Exception as e:
+        log.warning(f"  LLM title verify falhou: {e}")
+        return {"real": True, "confidence": "low", "reason": "llm_error"}
+
+
+def _combine_title_severity(api_match: str, llm_real: bool, llm_confidence: str) -> str:
+    """
+    Combina sinais da API e LLM em severity final.
+
+    Matrix:
+    exact   + real=true            → none   (verificado)
+    exact   + real=false           → low    (discrepância menor)
+    partial + real=true            → low    (provável real)
+    partial + real=false           → medium (suspeito)
+    none    + real=true, conf=high → low    (obra obscura mas plausível)
+    none    + real=true, conf!=high→ low    (benefício da dúvida)
+    none    + real=false           → high   (provável alucinação)
+    unavail + real=true            → low    (só LLM, benefício da dúvida)
+    unavail + real=false           → medium (max sem API)
+    """
+    if api_match == "exact":
+        return "none" if llm_real else "low"
+
+    if api_match == "partial":
+        return "low" if llm_real else "medium"
+
+    if api_match == "none":
+        return "low" if llm_real else "high"
+
+    # api_unavailable
+    return "low" if llm_real else "medium"
+
+
+def _fetch_books_for_title_verify(conn: sqlite3.Connection,
+                                   scope: str, limit: int) -> list:
+    """Busca livros do SQLite conforme scope: all | published | pipeline."""
+    if scope == "published":
+        where = "WHERE l.status_publish = 1"
+    elif scope == "pipeline":
+        where = "WHERE l.status_publish = 0"
+    else:  # all
+        where = ""
+
+    # Exclui livros já verificados recentemente (audit_log mode=title_verify, last 30 dias)
+    query = f"""
+        SELECT l.id, l.slug, l.titulo, l.autor, l.descricao,
+               l.status_publish, l.is_publishable
+        FROM livros l
+        {where}
+        {"AND" if where else "WHERE"} l.titulo IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1 FROM audit_log al
+              WHERE al.livro_id = l.id
+                AND al.mode = 'title_verify'
+                AND al.audited_at >= datetime('now', '-30 days')
+          )
+        ORDER BY RANDOM()
+        LIMIT ?
+    """
+    return conn.execute(query, (limit,)).fetchall()
+
+
+def _apply_title_action(conn: sqlite3.Connection, livro_id: str, slug: str,
+                         severity: str, status_publish: int,
+                         dry_run: bool) -> str:
+    """Aplica ação conforme severity. Retorna string de action tomada."""
+    if severity not in ("medium", "high"):
+        return "none"
+
+    if severity == "medium":
+        if dry_run:
+            return "would_flag_review"
+        conn.execute(
+            "UPDATE livros SET reactivation_pending=1, updated_at=? WHERE id=?",
+            (_now_iso(), livro_id)
+        )
+        conn.commit()
+        return "flagged_review"
+
+    # severity == high
+    if dry_run:
+        return "would_block" if status_publish == 0 else "would_despublish"
+
+    if status_publish == 1:
+        _despublish_sqlite(conn, livro_id, slug)
+        _despublish_supabase(slug)
+        return "despublished"
+    else:
+        conn.execute(
+            "UPDATE livros SET is_publishable=0, updated_at=? WHERE id=?",
+            (_now_iso(), livro_id)
+        )
+        conn.commit()
+        return "blocked_pipeline"
+
+
+def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
+                     scope: str = "all", dry_run: bool = False) -> dict:
+    """
+    Verifica veracidade dos títulos via Google Books API + LLM.
+    Escopo configurável: all | published | pipeline.
+    """
+    log.info(f"=== TITLE VERIFY (limit={limit}, scope={scope}, dry_run={dry_run}) ===")
+
+    if not GOOGLE_BOOKS_API_KEY:
+        log.warning("  GOOGLE_BOOKS_API_KEY não configurada — verificação apenas via LLM (max severity=medium)")
+
+    rows = _fetch_books_for_title_verify(conn, scope, limit)
+
+    if not rows:
+        log.info("Nenhum livro elegível para verificação de título.")
+        return {"mode": "title_verify", "verified": 0, "results": []}
+
+    results      = []
+    blocked      = []
+    despublished = []
+
+    for livro_id, slug, titulo, autor, descricao, status_publish, is_publishable in rows:
+        log.info(f"\n→ {titulo} / {autor or '(sem autor)'} [{slug}]")
+
+        # 1. Google Books API
+        api_match = _google_books_lookup(titulo or "", autor or "")
+        log.info(f"   API match: {api_match}")
+        time.sleep(TITLE_VERIFY_API_DELAY)
+
+        # 2. LLM
+        llm = _llm_verify_title(titulo or "", autor or "", descricao or "")
+        log.info(f"   LLM: real={llm['real']} confidence={llm['confidence']} → {llm['reason']}")
+
+        # 3. Severity
+        severity = _combine_title_severity(api_match, llm["real"], llm["confidence"])
+        log.info(f"   Severity: {severity}")
+
+        # 4. Ação
+        action = _apply_title_action(conn, livro_id, slug, severity,
+                                     status_publish, dry_run)
+        if "despublish" in action:
+            despublished.append(slug)
+        if "block" in action:
+            blocked.append(slug)
+
+        # 5. audit_log
+        issues = []
+        if api_match == "none":
+            issues.append(f"Título não encontrado no Google Books: '{titulo}'")
+        if api_match == "partial":
+            issues.append(f"Correspondência parcial no Google Books para: '{titulo}'")
+        if not llm["real"]:
+            issues.append(f"LLM indica livro não real (confidence={llm['confidence']}): {llm['reason']}")
+
+        if not dry_run:
+            conn.execute(
+                """INSERT OR REPLACE INTO audit_log
+                   (id, livro_id, slug, mode, severity, issues, action_taken, audited_at)
+                   VALUES (?, ?, ?, 'title_verify', ?, ?, ?, ?)""",
+                (str(uuid.uuid4()), livro_id, slug, severity,
+                 json.dumps(issues, ensure_ascii=False), action, _now_iso())
+            )
+            conn.commit()
+
+        results.append({
+            "slug":       slug,
+            "titulo":     titulo,
+            "autor":      autor,
+            "api_match":  api_match,
+            "llm_real":   llm["real"],
+            "llm_conf":   llm["confidence"],
+            "llm_reason": llm["reason"],
+            "severity":   severity,
+            "action":     action,
+        })
+
+    ok_count  = sum(1 for r in results if r["severity"] in ("none", "low"))
+    sus_count = sum(1 for r in results if r["severity"] == "medium")
+    hal_count = sum(1 for r in results if r["severity"] == "high")
+
+    log.info(
+        f"\nTitle verify concluído: {len(results)} livros | "
+        f"OK/baixo={ok_count} | Suspeito={sus_count} | Alucinação={hal_count} | "
+        f"Despublicados={len(despublished)} | Bloqueados pipeline={len(blocked)}"
+    )
+
+    return {
+        "mode":               "title_verify",
+        "scope":              scope,
+        "verified":           len(results),
+        "ok_low":             ok_count,
+        "suspicious":         sus_count,
+        "hallucinated":       hal_count,
+        "despublished":       len(despublished),
+        "blocked_pipeline":   len(blocked),
+        "despublished_slugs": despublished,
+        "blocked_slugs":      blocked,
+        "results":            results,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Relatório JSON — numeração sequencial em data/logs/
+# ---------------------------------------------------------------------------
+
+def _next_sequence(log_dir: Path) -> int:
+    existing = sorted(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
+    if not existing:
+        return 1
+    return int(existing[-1].name[:4]) + 1
+
+
 def save_report(data: dict) -> str:
-    os.makedirs(REPORT_DIR, exist_ok=True)
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    seq = _next_sequence(REPORT_DIR)
     mode = data.get("mode", "audit")
-    filename = f"audit_{mode}_{ts}.json"
-    path = os.path.join(REPORT_DIR, filename)
+    filename = f"{seq:04d}_audit_{mode}.json"
+    path = REPORT_DIR / filename
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     log.info(f"\nRelatório salvo: {path}")
-    return path
+    return str(path)
 
 
 # ---------------------------------------------------------------------------
@@ -562,16 +1037,29 @@ def run(args: argparse.Namespace) -> None:
     conn = get_connection()
     ensure_audit_tables(conn)
 
+    dry_run = getattr(args, "dry_run", False)
+
     if args.mode == "connectivity":
-        data = run_connectivity(conn, dry_run=args.dry_run)
+        data = run_connectivity(conn, dry_run=dry_run)
     elif args.mode == "content":
-        data = run_content_audit(conn, limit=args.limit, dry_run=args.dry_run)
+        data = run_content_audit(conn, limit=args.limit, dry_run=dry_run)
+    elif args.mode == "list":
+        data = run_list_audit(conn, dry_run=dry_run)
+    elif args.mode == "author-bios":
+        data = check_author_bios(conn)
+    elif args.mode == "title-verify":
+        data = run_title_verify(
+            conn,
+            limit=getattr(args, "limit", 50),
+            scope=getattr(args, "scope", "all"),
+            dry_run=dry_run,
+        )
     else:
-        log.error("Modo inválido. Use --connectivity ou --content")
+        log.error("Modo inválido. Use connectivity, content, list, author-bios ou title-verify")
         return
 
     data["generated_at"] = _now_iso()
-    data["dry_run"] = args.dry_run
+    data["dry_run"] = dry_run
     report_path = save_report(data)
     log.info(f"Relatório: {report_path}")
 
@@ -582,13 +1070,33 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="mode", required=True)
 
-    # Modo connectivity
+    # Modo connectivity (sem LLM)
     sub.add_parser("connectivity", help="Testa conectividade de infra (sem LLM)")
 
-    # Modo content
+    # Modo content (LLM)
     content_p = sub.add_parser("content", help="Audita coerência editorial via LLM")
     content_p.add_argument("--limit", type=int, default=20,
                             help="Número de livros a auditar (default=20)")
+
+    # Modo list (sem LLM)
+    sub.add_parser("list", help="Verifica coerência das listas SEO (sem LLM)")
+
+    # Modo author-bios (sem LLM)
+    sub.add_parser("author-bios", help="Verifica autores publicados sem bio (sem LLM)")
+
+    # Modo title-verify (Google Books API + LLM)
+    title_p = sub.add_parser(
+        "title-verify",
+        help="Verifica veracidade dos títulos via Google Books API + LLM"
+    )
+    title_p.add_argument(
+        "--limit", type=int, default=50,
+        help="Número de livros a verificar (default=50)"
+    )
+    title_p.add_argument(
+        "--scope", choices=["all", "published", "pipeline"], default="all",
+        help="Escopo: all (padrão) | published | pipeline"
+    )
 
     # Flag global
     parser.add_argument("--dry-run", action="store_true",

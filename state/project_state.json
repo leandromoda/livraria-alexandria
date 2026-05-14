@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-04-18 (sessão 20 — fix dados estruturados GSC round 2: (1) TASK-GSC-001: price/priceCurrency condicionais geravam Offer sem price — filtro ofertasComPreco garante que só ofertas com preco>0 entram no schema; isbn substitui sku como identificador global; url_afiliada substitui /api/click/[id] nas Offers; brand condicional quando autor null; PR #71) (2) TASK-GSC-002: round 2 — filtro pré-schema definitivo: apenas ofertas com preco>0 incluídas no JSON-LD em livros/[slug] e /ofertas; price+priceCurrency sempre incondicionais dentro do objeto Offer; PR #71 atualizado) | 2026-04-14 (sessão 18 — correções de pipeline identificadas via log_analysis + reorganização cowork: (1) fix publish.py — isbn/ano_publicacao enviados como string vazia para Supabase → convertidos para None/int; (2) fix list_composer.py — NoneType.strip() em categorias NULL → AND categoria IS NOT NULL na query + guard no loop; (3) todos os arquivos de lote cowork movidos para scripts/data/cowork/ — exports, imports, agentes e cowork_numbering.py atualizados; processed_synopsis/ e processed_categorize/ ficam dentro de cowork/; agentes já usavam menor prefixo numérico — confirmado correto) | 2026-04-11 (sessão 17 — novo agente Cowork log_analysis_cowork: lê logs do pipeline, identifica falhas, gera JSON estruturado em scripts/data/log_analysis/ com failures, rejections, steps_summary e actionable_insights para consumo pelo Claude Code) | 2026-04-10 (sessão 16 — fix crítico: página /livros/[slug] retornava erro 500 em produção; causa: onError handler em <img> dentro de Server Component não é serializável no RSC do Next.js; solução: BookCover.tsx Client Component em app/_components/ encapsula a lógica de fallback da capa) | 2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-05-14 (sessão 20 fix GSC round 2 — TASK-GSC-001+TASK-GSC-002: pré-filtro ofertasComPreco remove Offers sem price do JSON-LD; isbn substitui sku como ID global; PR #105) | 2026-05-10 (sessão 24 — 7 fixes via análise de 7 relatórios log_analysis (2026-05-03 a 2026-05-10): (1) autopilot.py FIX-1: cowork outputs importados automaticamente no início de cada ciclo via _has_cowork_outputs() + cowork_import.run() — synopsis/categorize outputs nunca eram importados no ciclo A; (2) publish_listas.py FIX-2: _ensure_columns() reescrita com PRAGMA table_info — detecta colunas existentes antes de ALTER TABLE, valida colunas pós-commit, levanta RuntimeError se ainda faltarem; corrige falha silenciosa do except Exception que mascarava 'no such column: updated_at'; (3) marketplace_scraper.py FIX-3: except Exception em try_open_library agora incrementa _ol_consecutive_failures — ConnectTimeout/ReadTimeout de 112+ sessões nunca abriam o circuit breaker; (4) synopsis_import.py FIX-4: rejeições com motivo=None/vazio não atualizam status_synopsis (livro permanece pendente para retry); contador sem_motivo + alerta de massa quando >80% das rejeições sem motivo; (5) quality_gate.py FIX-5: fetch_candidates exclui NOT (is_book=0 AND editorial_score<0) — non-books com score negativo não reaparecem em cada ciclo; (6) autopilot.py FIX-6: QG_BOTTLENECK_THRESHOLD=8 — para automaticamente após 8 ciclos sem aprovação no Quality Gate, loga mensagem informativa e chama autopilot_audit.run(); (7) llm_orchestrator.py FIX-7: após cada ciclo produtivo (cycle_done>0) chama autopilot.run(manter_cowork=False) para processar resultados importados via pipeline não-LLM; (8) NOVO: core/claude_usage_tracker.py — rastreia chamadas ao claude CLI (calls_today, calls_total, limit_hit_count), detecta limite de sessão via LIMIT_PATTERNS no output, aguarda CLAUDE_SESSION_RESET_MINUTES (padrão 300 min/5h) com retry automático; (9) core/claude_runner.py: integrado com tracker — record_call() após cada invoke, wait_for_reset() + 1 retry quando limite detectado; relatórios log_analysis movidos para processed_logs/) | 2026-05-03 (sessão 23 — fix crítico publish_listas.py: _ensure_columns() usava 'DATETIME DEFAULT CURRENT_TIMESTAMP' que o SQLite proíbe em ALTER TABLE ADD COLUMN — o ALTER falhava silenciosamente (except Exception: pass engolia o erro), a coluna updated_at nunca era criada, e o UPDATE subsequente estourava com 'no such column: updated_at'; fix: trocar DEFAULT para sem valor (NULL implícito), usar except sqlite3.OperationalError filtrando 'duplicate column name' e logando outros erros; adicionado import sqlite3; bug ativo desde 29/04 causou 9+ sessões com GUARDRAIL 3/3; logs 30/04, 01/05 (×2) e 02/05 movidos para processed_logs) | 2026-04-30 (sessão 22 — (1) fix crítico publish_listas.py: adicionada _ensure_columns(conn) que cria status_publish/updated_at via ALTER TABLE antes de qualquer query — corrige 'no such column: updated_at' que abortava PUBLISH_LISTAS em [001/166] e era mascarado como 'Sem progresso'; (2) guardrail autopilot.py: ciclos com erros de step não disparam mais o stop 'Sem progresso' — apenas ciclos limpos (sem exceção) sem progresso indicam bloqueio de LLM; válvula de segurança MAX_CICLOS_COM_ERRO=3 para erros permanentes; (3) count_pending() completo: adicionadas sub-queries para step 3 (offer_resolver: lookup_query NOT NULL AND offer_url IS NULL), step 4 (scraper: status_enrich=0 AND offer_url IS NOT NULL) e step 15 (autores não publicados de livros publicados) — antes o autopilot parava quando scraper/resolver tinham pendências mas count_pending não as enxergava; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — fix crítico publish_listas.py: adicionada função _ensure_columns(conn) que roda ALTER TABLE listas ADD COLUMN status_publish / updated_at antes de qualquer query em run() — o UPDATE introduzido na sessão 21 causava 'no such column: updated_at' em bancos criados antes da migration do list_composer, abortando o PUBLISH_LISTAS em [001/166] e mascarando o erro como 'Sem progresso' no autopilot; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — (1) fix publish_listas.py: fetch_listas() agora filtra WHERE status_publish=0 — antes republicava todas as 166 listas a cada ciclo do autopilot; após publicar com sucesso, marca status_publish=1 no SQLite; (2) fix autopilot.py: count_pending() agora inclui listas não publicadas (listas WHERE status_publish=0) e livros publicados com categorias pendentes (livros WHERE status_publish=1 AND status_publish_cat=0) — antes o autopilot parava prematuramente quando o pipeline básico estagnava aguardando LLM mas ainda havia listas/categorias a publicar; (3) logs de log_analysis (2026-04-26 a 2026-04-28) movidos para processed_logs/) | 2026-04-27 (sessão 20 — (1) busca de livros implementada: livros/page.tsx aceita searchParams.q, filtra via .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase, exibe contagem e mensagem de vazio; (2) publish_categorias.py: status_publish=True re-adicionado ao payload do upsert de categorias — estava ausente desde PR #40, impedindo visibilidade das categorias via cliente anon; ATENÇÃO: se PGRST204 reaparecer no step 16, rodar migration ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true; (3) menu C reformulado: menu unificado com status em tempo real (lotes pendentes + outputs disponíveis), opções fixas: 1=importar, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções; (4) autopilot.py: novo parâmetro manter_cowork=True/False — quando ativo, exporta lotes no início e ao final de cada ciclo para manter cowork_target inputs disponíveis (padrão 10); (5) log_analysis/: 22 arquivos de log processados movidos para processed_logs/) | 2026-04-16 (sessão 19b — melhoria qualidade sinopses: (1) fact_extractor schema expandido com personagens/ambientacao/conflito_central para suporte a ficção; (2) _run_abstract_structurer: remap corrigido — conflito_central→situacao_central, ambientacao→contexto (antes: abordagem/publico_alvo, campos corretos só para não-ficção); (3) synopsis_writer R1 relaxado: writer pode usar conhecimento geral do LLM quando 3+ campos do structured input chegam vazios (livros famosos com descricao_base escassa); (4) GENERIC_SYNOPSIS_MARKERS expandido de 9→29 marcadores com padrões identificados em auditoria; (5) _run_synopsis_validator: nova regra R7 rejeita sinopses com 3+ marcadores de abstração genérica de lista de 16 padrões) | 2026-04-16 (sessão 19a — estratégia de manutenção contínua do site sem LLM: (1) novo autopilot_manutencao.py — opção M no menu, orquestra price monitor + conectividade + listas SEO + bios de autores; (2) auditor.py: relatórios sequenciais em data/logs/ (0001_audit_connectivity.json…), novos modos list (verifica membros de listas, despublica listas vazias) e author-bios (report), validação de imagem via HEAD request; (3) offer_price_monitor.py: novo supabase_patch_oferta() — sincroniza ofertas.ativa=false quando indisponível, ativa=true + preco na reativação; (4) logger.py: logs de execução movidos para data/logs/; (5) main.py: opção M + opções 29/30 no menu de auditoria; (6) scripts/data/offer_seeds.json deletado — obsoleto, seeds residem em data/seeds/ingested_seeds/) | 2026-04-14 (sessão 18 — correções de pipeline identificadas via log_analysis + reorganização cowork: (1) fix publish.py — isbn/ano_publicacao enviados como string vazia para Supabase → convertidos para None/int; (2) fix list_composer.py — NoneType.strip() em categorias NULL → AND categoria IS NOT NULL na query + guard no loop; (3) todos os arquivos de lote cowork movidos para scripts/data/cowork/ — exports, imports, agentes e cowork_numbering.py atualizados; processed_synopsis/ e processed_categorize/ ficam dentro de cowork/; agentes já usavam menor prefixo numérico — confirmado correto) | 2026-04-11 (sessão 17 — novo agente Cowork log_analysis_cowork: lê logs do pipeline, identifica falhas, gera JSON estruturado em scripts/data/log_analysis/ com failures, rejections, steps_summary e actionable_insights para consumo pelo Claude Code) | 2026-04-10 (sessão 16 — fix crítico: página /livros/[slug] retornava erro 500 em produção; causa: onError handler em <img> dentro de Server Component não é serializável no RSC do Next.js; solução: BookCover.tsx Client Component em app/_components/ encapsula a lógica de fallback da capa) | 2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -43,8 +43,7 @@
         "__pycache__/",
         "scripts/data/seeds/ingested_seeds/",
         "state/* (exceto !state/project_state.json — versionado)",
-        "scripts/data/audit_*.json (exports de auditoria locais)",
-        "scripts/data/pipeline_*.log (logs de sessão — gerados automaticamente)"
+        "scripts/data/logs/ (logs de sessão + relatórios de auditoria — gerados automaticamente, prefixo NNNN_audit_*.json)"
       ],
       "artifacts_not_to_commit": [
         "scripts/data/books.db (pipeline state)",
@@ -358,28 +357,44 @@
       "json_schema_validation"
     ],
     "fact_extractor_schema": {
-      "version": "2 — universal (ficção + não-ficção)",
+      "version": "3 — universal (ficção + não-ficção, com campos narrativos)",
       "fields": [
         "tema_central",
         "abordagem",
         "conceitos_chave",
         "publico_alvo",
-        "proposta_valor"
+        "proposta_valor",
+        "personagens",
+        "ambientacao",
+        "conflito_central"
       ],
-      "previous_schema": "v1 — ficcional (ambientacao, contexto_social, conflito_central, personagens_mencionados, temas_explicitos)"
+      "previous_schema": "v2 — universal sem campos narrativos (tema_central, abordagem, conceitos_chave, publico_alvo, proposta_valor)",
+      "fiction_priority_remap": {
+        "contexto": "ambientacao OR tema_central",
+        "situacao_central": "conflito_central OR abordagem",
+        "escopo_narrativo": "proposta_valor OR publico_alvo",
+        "personagens": "pass-through"
+      }
     },
     "llm_constraints": {
       "model": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
       "allowed_operations": [
         "extraction",
         "compression",
-        "structured synthesis"
+        "structured synthesis",
+        "general knowledge use when structured input has 3+ empty fields (well-known works only)"
       ],
       "forbidden_operations": [
         "open narrative reconstruction",
-        "external knowledge insertion",
-        "creative expansion without source"
+        "inventing facts for unknown works",
+        "creative expansion without source or prior knowledge"
       ]
+    },
+    "generic_detection": {
+      "quality_gate_markers": 29,
+      "validator_specificity_markers": 16,
+      "rejection_threshold_validator": "3+ marker hits → REWRITE_REQUIRED",
+      "updated_on": "2026-04-16"
     }
   },
   "agent_memory": {
@@ -464,7 +479,8 @@
       "priority_scoring": "coluna priority_score em livros (0-1000) recalculada a cada ciclo do autopilot; steps com ORDER BY priority_score DESC: covers, publish, synopsis, categorize",
       "adaptive_batching": "STEP_PACOTES no autopilot: scraper→20, resolver→50, capas→50; demais usam base 100 (fixo, sem prompt)",
       "failure_triggers": "autopilot rastreia steps sem progresso; após 3x consecutivas sem resultado loga [⚠️ TRIGGER]",
-      "audit_autopilot": "autopilot_audit.py executa 8 checks sem LLM; chamado automaticamente ao exaurir pipeline"
+      "audit_autopilot": "autopilot_audit.py executa 8 checks sem LLM; chamado automaticamente ao exaurir pipeline",
+      "cowork_autopilot": "autopilot.run() aceita manter_cowork=True + cowork_target=N (padrão 10). Quando ativo: top-up de lotes Cowork no início da execução e ao final de cada ciclo — exporta apenas a diferença (target - lotes_atuais). Menu A pergunta 'Manter lotes Cowork?' antes de iniciar."
     },
     "state_management": {
       "progress_storage": "SQLite",
@@ -543,14 +559,18 @@
           "synopsis_writer",
           "synopsis_validator"
         ],
-        "generation_mode": "transformational_not_generative",
+        "generation_mode": "transformational_with_knowledge_fallback",
         "source_required": "descricao_base",
         "hallucination_control": [
           "fact_extraction",
           "structured_abstraction",
           "constrained_synthesis",
-          "json_validation"
+          "json_validation",
+          "specificity_check (validator R7 — rejeita 3+ marcadores genéricos)",
+          "generic_markers_gate (quality_gate — 29 marcadores)"
         ],
+        "fiction_support": "personagens/ambientacao/conflito_central extraídos e priorizados no remap",
+        "knowledge_fallback": "synopsis_writer usa conhecimento LLM quando 3+ campos do abstract chegam vazios",
         "on_fail": "continue (livro pulado, status_synopsis permanece 0)",
         "validator_min_words": 80,
         "validator_max_words": 160
@@ -816,11 +836,14 @@
         "order": 29,
         "name": "Author Bio",
         "status": "operational",
-        "description": "Gera bio de 2-3 frases para autores sem descricao usando LLM com fallback determinístico.",
+        "description": "Gera bio editorial (80-160 palavras) para autores sem descricao usando agente Cowork em agents/author_bio/ (identity+rules+task). Cobertura: quem é o autor, escola/movimento literário, principais obras. Fallback determinístico para falhas de LLM.",
         "script": "scripts/steps/author_bio.py",
+        "agent": "agents/author_bio/",
         "llm_required": true,
         "menu_option": 29,
-        "created_on": "2026-04-02"
+        "created_on": "2026-04-02",
+        "upgraded_on": "2026-04-17",
+        "upgrade_notes": "Migrado de _call_llm inline (300 chars) para execute_agent com agente estruturado (900 chars max). Bio agora cobre escola/movimento e principais obras."
       },
       {
         "order": 27,
@@ -843,6 +866,18 @@
         "output": "Supabase ofertas table + SQLite offer_url/marketplace/offer_status",
         "idempotent": true,
         "created_on": "2026-04-04"
+      },
+      {
+        "order": "31-audit",
+        "name": "Auditor — Title Verify",
+        "status": "operational",
+        "description": "Verifica veracidade dos títulos via Google Books API + LLM. Para cada livro (scope: all|published|pipeline): lookup na API, verificação LLM, combinação de sinais em severity. Ações: medium=reactivation_pending=1; high+publicado=despublica; high+pipeline=is_publishable=0. Resultado em audit_log (mode=title_verify) + relatório JSON.",
+        "script": "scripts/steps/auditor.py",
+        "mode": "title-verify",
+        "menu_option": 31,
+        "llm_required": true,
+        "api_required": "GOOGLE_BOOKS_API_KEY (opcional — sem ela severity máx=medium)",
+        "created_on": "2026-04-17"
       },
       {
         "order": 31,
@@ -1048,6 +1083,75 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-PIPE-017",
+      "description": "fix(pipeline): 7 bugs críticos via log analysis + claude_usage_tracker para claude CLI",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-05-10",
+      "resolution": "(1) autopilot.py: cowork outputs importados automaticamente no início de cada ciclo (_has_cowork_outputs + cowork_import.run); (2) publish_listas.py: _ensure_columns reescrita com PRAGMA table_info — ALTER só executa para colunas ausentes, RuntimeError se falhar; (3) marketplace_scraper.py: except Exception em try_open_library incrementa _ol_consecutive_failures — circuit breaker agora abre para ConnectTimeout/ReadTimeout; (4) synopsis_import.py: motivo=None não atualiza banco (retry), alerta massa >80%; (5) quality_gate.py: fetch_candidates exclui NOT (is_book=0 AND editorial_score<0) — non-books permanentes removidos da fila; (6) autopilot.py: QG_BOTTLENECK_THRESHOLD=8 para loop automático após ciclos sem QG aprovação; (7) llm_orchestrator.py: chama autopilot.run(manter_cowork=False) após cycle_done>0; NOVO core/claude_usage_tracker.py: rastreia chamadas CLI, detecta limite de sessão, aguarda CLAUDE_SESSION_RESET_MINUTES (padrão 300 min) + 1 retry automático",
+      "files": [
+        "scripts/steps/autopilot.py",
+        "scripts/steps/publish_listas.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/synopsis_import.py",
+        "scripts/steps/quality_gate.py",
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/core/claude_runner.py",
+        "scripts/core/claude_usage_tracker.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-016",
+      "description": "feat: orquestrador LLM (opção O) — autopilot cíclico para 7 agentes via claude CLI local",
+      "priority": "high",
+      "status": "implemented",
+      "implemented_on": "2026-05-10",
+      "resolution": "Novo módulo llm_orchestrator.py (opção O no menu): invoca claude CLI como subprocess via core/claude_runner.py. Agentes: synopsis_cowork, classify_cowork, author_bio (novo prompt.md batch), log_analysis_cowork, consistency_review, offer_finder (novo prompt.md), title_auditor. Ciclo exaustivo: para quando nenhum agente tem trabalho. Log_analysis e consistency_review rodam 1x por ciclo. Usa plano Pro do Claude sem custo de API extra.",
+      "files": [
+        "scripts/core/claude_runner.py",
+        "scripts/steps/llm_orchestrator.py",
+        "agents/author_bio/prompt.md",
+        "agents/offer_finder/prompt.md",
+        "scripts/main.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-015",
+      "description": "feat: guardrail autopilot — ciclos com erros de step não disparam stop prematuro 'Sem progresso'",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-30",
+      "resolution": "autopilot.py: adicionado contador erros_no_ciclo (reset a cada ciclo) e ciclos_com_erro_sem_progresso. Quando pending não diminui: se houve erros no ciclo → loga [GUARDRAIL] e continua (o erro pode ter impedido o progresso, não o LLM); só para definitivamente em ciclo limpo sem progresso. Válvula de segurança MAX_CICLOS_COM_ERRO=3 evita loop infinito em falha permanente. Log de fim de ciclo agora inclui 'Erros no ciclo: N' quando N>0.",
+      "files": ["scripts/steps/autopilot.py"]
+    },
+    {
+      "id": "TASK-PIPE-014",
+      "description": "fix: publish_listas.py — 'no such column: updated_at' abortava PUBLISH_LISTAS em [001/166] e era mascarado como 'Sem progresso' pelo autopilot",
+      "priority": "critical",
+      "status": "resolved",
+      "resolved_on": "2026-04-30",
+      "resolution": "Adicionada função _ensure_columns(conn) que executa ALTER TABLE listas ADD COLUMN status_publish / updated_at (idempotente — ignora coluna já existente) no início de run(), antes de qualquer query. Causa raiz: o UPDATE introduzido na sessão 21 referenciava updated_at, mas bancos SQLite criados antes da migration do list_composer.py não tinham a coluna. O autopilot capturava a exceção silenciosamente e emitia 'Sem progresso', mascarando o erro real.",
+      "files": ["scripts/steps/publish_listas.py"]
+    },
+    {
+      "id": "TASK-PIPE-012",
+      "description": "fix: publish_listas.py republicava todas as 166 listas a cada ciclo do autopilot (fetch_listas sem filtro status_publish=0)",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-29",
+      "resolution": "fetch_listas() agora filtra WHERE status_publish=0. run() marca status_publish=1 no SQLite após publicar cada lista com sucesso. A tabela listas já tinha a coluna (DEFAULT 0 em list_composer.py:57) mas publish_listas nunca a usava.",
+      "files": ["scripts/steps/publish_listas.py"]
+    },
+    {
+      "id": "TASK-PIPE-013",
+      "description": "fix: autopilot parava prematuramente quando pipeline básico estagnava (LLM) mas ainda havia listas/categorias a publicar — count_pending() incompleto",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-29",
+      "resolution": "count_pending() expandido: adicionadas sub-queries (SELECT COUNT(*) FROM listas WHERE status_publish=0) e (SELECT COUNT(*) FROM livros WHERE status_publish=1 AND status_publish_cat=0). Antes, pending_atual==pending_anterior quando somente listas/cats pendentes → autopilot parava. Agora esgota todas as publicações downstream antes de ceder ao bloqueio LLM.",
+      "files": ["scripts/steps/autopilot.py"]
+    },
+    {
       "id": "TASK-SEO-010",
       "description": "fix: URLs canônicas (sitemap, metadataBase, robots) usavam non-www; publish_autores e publish_categorias não enviavam status_publish=True ao Supabase",
       "priority": "critical",
@@ -1226,6 +1330,21 @@
       "resolution": "Migration executada via Supabase SQL Editor: ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_atual NUMERIC, offer_status TEXT, preco_updated_at TIMESTAMPTZ."
     },
     {
+      "id": "TASK-MANUT-001",
+      "description": "Estratégia de manutenção contínua do site: verificação de ofertas, preços, conteúdo, listas SEO e bios de autores",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-16",
+      "resolution": "PR #70. (1) autopilot_manutencao.py (opção M): orquestra price monitor + conectividade + listas SEO + bios sem LLM; (2) auditor.py: novos modos list (despublica listas sem membros) e author-bios (report), validação de imagem (HEAD request), relatórios em data/logs/ com prefixo sequencial; (3) offer_price_monitor.py: supabase_patch_oferta() sincroniza ofertas.ativa no Supabase; (4) logger.py: logs para data/logs/; (5) offer_seeds.json obsoleto removido de data/",
+      "files": [
+        "scripts/steps/autopilot_manutencao.py (novo)",
+        "scripts/steps/auditor.py",
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/core/logger.py",
+        "scripts/main.py"
+      ]
+    },
+    {
       "id": "TASK-OFERTA-001",
       "description": "Popular preços nas ofertas do Supabase",
       "priority": "medium",
@@ -1396,6 +1515,49 @@
       "resolution": "scripts/steps/list_composer.py: (1) fetch_categorias_validas() — adicionado AND categoria IS NOT NULL na query SQL; (2) loop run() — adicionado guard 'if categoria is None: continue'. Causa raiz: GROUP BY categoria retornava linhas com categoria=NULL que chegavam em slug_categoria() e causavam AttributeError. Identificado via log_analysis_2026-04-12."
     },
     {
+      "id": "TASK-SYN-QUALITY-001",
+      "description": "Sinopses genéricas e intercambiáveis geradas pelo pipeline LLM — diagnóstico via auditoria de 5 livros revelou padrão consistente de abstração sem especificidade narrativa",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-16",
+      "resolution": "5 causas-raiz identificadas e corrigidas: (1) fact_extractor schema v2→v3: campos personagens/ambientacao/conflito_central adicionados para suporte a ficção; (2) _run_abstract_structurer remap corrigido — antes mapeava abordagem→situacao_central e publico_alvo→escopo_narrativo (campos de não-ficção que ficavam vazios em ficção); agora prioriza conflito_central e ambientacao; (3) synopsis_writer R1 relaxado: permite uso de conhecimento geral do LLM para obras conhecidas quando structured input tem 3+ campos vazios; (4) GENERIC_SYNOPSIS_MARKERS expandido 9→29 (phrases identificadas na auditoria); (5) _run_synopsis_validator: nova regra R7 rejeita sinopses com 3+ marcadores de abstração genérica de lista de 16 patterns. Arquivos: scripts/steps/quality_gate.py, scripts/core/markdown_executor.py, agents/synopsis/fact_extractor/{rules,task}.md, agents/synopsis/synopsis_writer/{rules,task}.md, agents/synopsis/abstract_structurer/task.md.",
+      "root_causes": [
+        "Schema fact_extractor era de não-ficção — personagens/conflito/cenário não extraídos",
+        "Remap abstract_structurer usava campos errados para ficção (abordagem≠conflito, publico_alvo≠escopo narrativo)",
+        "synopsis_writer proibido de usar conhecimento próprio — mesmo para livros famosos com descricao_base escassa",
+        "GENERIC_SYNOPSIS_MARKERS incompleto — não cobria frases identificadas na auditoria",
+        "synopsis_validator não verificava especificidade — texto 100% intercambiável passava"
+      ]
+    },
+    {
+      "id": "TASK-SEARCH-001",
+      "description": "fix + feat: busca de livros no site não filtrava por termo — página /livros ignorava ?q=",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-27",
+      "resolution": "livros/page.tsx: adicionado PageProps com searchParams: Promise<{q?:string}>, lê q via await searchParams, filtra com .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase quando q presente. Header muda para 'Resultados da busca' com contagem correta; mensagem amigável quando 0 resultados. Commit 35eab46.",
+      "files": ["app/(public)/livros/page.tsx"]
+    },
+    {
+      "id": "TASK-SITE-005",
+      "description": "fix: categorias não aparecem no site — publish_categorias.py não enviava status_publish=True ao Supabase",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-04-27",
+      "resolution": "publish_categorias.py: adicionado 'status_publish': True ao payload do upsert de categorias. Campo estava ausente desde PR #40 (que o removeu por erro PGRST204 — cujo contexto era provavelmente diferente). Se PGRST204 reaparecer ao rodar step 16, executar migration: ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true no Supabase SQL Editor. Após o fix, re-rodar step 16 (Publicar Categorias) para propagar status_publish=True em todas as categorias existentes. Commit 35eab46.",
+      "files": ["scripts/steps/publish_categorias.py"],
+      "note": "A coluna status_publish é referenciada no sitemap.ts (`.eq('status_publish', true)`) — evidência de que existe na tabela remota. Caso não exista, criar via migration antes de rodar step 16."
+    },
+    {
+      "id": "TASK-COWORK-002",
+      "description": "feat: exportar 10 lotes simultâneos no menu Cowork (C) + manutenção automática de lotes no autopilot (A)",
+      "priority": "medium",
+      "status": "resolved",
+      "resolved_on": "2026-04-27",
+      "resolution": "main.py — menu C reformulado: status em tempo real (lotes pendentes + outputs), 4 opções fixas: 1=importar todos, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções. autopilot.py — novo parâmetro manter_cowork:bool + cowork_target:int=10: ao selecionar A o menu pergunta 'Manter lotes Cowork? [s/N]'; se ativo, _topup_cowork() exporta lotes no início da execução e ao final de cada ciclo, mantendo sempre `cowork_target` inputs disponíveis. Exemplo: se agente consumiu 3 lotes (10→7), próximo autopilot com manter_cowork=True exporta 3 novos. Commit 35eab46.",
+      "files": ["scripts/main.py", "scripts/steps/autopilot.py"]
+    },
+    {
       "id": "TASK-COWORK-001",
       "description": "Reorganizar arquivos de lote cowork em pasta dedicada scripts/data/cowork/",
       "priority": "medium",
@@ -1408,7 +1570,7 @@
       "description": "fix: dados estruturados Schema.org — lowPrice ausente em AggregateOffer, brand.name null, URL de oferta bloqueada pelo robots.txt, sku sem valor global",
       "priority": "critical",
       "status": "resolved",
-      "resolved_on": "2026-04-18",
+      "resolved_on": "2026-05-13",
       "resolution": "PR #71. (1) AggregateOffer: quando todas as ofertas tinham preco=0/null, lowPrice:undefined era omitido do JSON → AggregateOffer inválido para o GSC; corrigido com filtro + fallback para array de Offers individuais. (2) brand: emitido condicionalmente (só quando livro.autor é truthy). (3) URL da oferta: /api/click/[id] estava no disallow do robots.txt → substituído por url_afiliada direto do banco (fallback para URL da página). (4) price: convertido para Number() em vez de passar raw string do banco.",
       "files": [
         "app/(public)/livros/[slug]/page.tsx",
@@ -1420,8 +1582,8 @@
       "description": "fix crítico: Offer sem price/priceCurrency no JSON-LD (Merchant Listings) — ofertas com preco=0/null entravam no schema sem o campo obrigatório price",
       "priority": "critical",
       "status": "resolved",
-      "resolved_on": "2026-04-18",
-      "resolution": "PR #71 (commit adicional). Causa raiz: fix anterior tornara price condicional (p>0?{price,priceCurrency}:{}), mas a oferta ainda entrava no offerList sem price — violando requisito do Google Merchant Listings. Fix definitivo: pré-filtro ofertasComPreco = ofertas.filter(preco>0) antes de construir qualquer Offer. Ofertas sem preço válido são excluídas do JSON-LD inteiramente (UI continua exibindo todas). Dentro do Offer, price e priceCurrency agora são sempre incondicionais (garantidos pelo filtro). Adicionalmente: sku substituído por isbn (identificador global reconhecido pelo Google) nos schemas de livros/[slug] e /ofertas.",
+      "resolved_on": "2026-05-14",
+      "resolution": "PR #105. Causa raiz: fix anterior tornara price condicional (p>0?{price,priceCurrency}:{}), mas a oferta ainda entrava no offerList sem price — violando requisito do Google Merchant Listings. Fix definitivo: pré-filtro ofertasComPreco = ofertas.filter(preco>0) antes de construir qualquer Offer. Ofertas sem preço válido são excluídas do JSON-LD inteiramente (UI continua exibindo todas). Dentro do Offer, price e priceCurrency agora são sempre incondicionais (garantidos pelo filtro). Adicionalmente: sku substituído por isbn (identificador global reconhecido pelo Google) nos schemas de livros/[slug] e /ofertas.",
       "files": [
         "app/(public)/livros/[slug]/page.tsx",
         "app/(public)/ofertas/page.tsx"

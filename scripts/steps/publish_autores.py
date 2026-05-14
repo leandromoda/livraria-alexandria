@@ -241,3 +241,69 @@ def run(pacote=100):
     conn.close()
 
     log(f"Autores publicados: {inserted} | Relações: {relacoes} | Falhas: {failed}")
+
+
+# =========================
+# REPAIR — RELAÇÕES ÓRFÃS
+# =========================
+
+def run_repair_relacoes():
+    """Re-sincroniza livros_autores no Supabase para todos os autores já publicados.
+
+    Útil quando autores foram publicados antes dos seus livros terem supabase_id,
+    deixando a junction table vazia (autores órfãos).
+    """
+
+    conn = get_conn()
+
+    supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL", "")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    if not supabase_url or not supabase_key:
+        log("[REPAIR_RELACOES] ERRO: NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados.")
+        conn.close()
+        return
+
+    headers = {
+        "apikey": supabase_key,
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation",
+    }
+
+    livros_autores_url = f"{supabase_url}/rest/v1/livros_autores?on_conflict=livro_id,autor_id"
+
+    cur = conn.cursor()
+    cur.execute("SELECT id, slug FROM autores WHERE status_publish = 1")
+    autores = cur.fetchall()
+
+    total      = len(autores)
+    relacoes   = 0
+    falhas     = 0
+    sem_livros = 0
+
+    log(f"[REPAIR_RELACOES] {total} autores publicados para re-sincronização")
+
+    for i, autor in enumerate(autores, 1):
+        local_id   = autor["id"]
+        slug       = autor["slug"]
+
+        livros_rows = fetch_relacoes(conn, local_id)
+
+        if not livros_rows:
+            sem_livros += 1
+            continue
+
+        log(f"[REPAIR_RELACOES][{i:03d}/{total:03d}] {slug} → {len(livros_rows)} livro(s)")
+
+        for livro_row in livros_rows:
+            livro_supabase_id = livro_row["supabase_id"]
+            ok = upsert_relacao(livro_supabase_id, slug, livros_autores_url, headers, supabase_url)
+            if ok:
+                relacoes += 1
+            else:
+                falhas += 1
+
+    conn.close()
+
+    log(f"[REPAIR_RELACOES] Finalizado | Relações: OK={relacoes} | Falhas={falhas} | Sem livros publicados={sem_livros}")

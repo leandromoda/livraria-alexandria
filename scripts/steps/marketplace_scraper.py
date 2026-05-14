@@ -11,6 +11,7 @@
 # Progresso: [SCRAPER][NNN/TTT] → titulo
 # ============================================================
 
+import random
 import re
 import time
 import requests
@@ -27,6 +28,12 @@ from core.logger import log
 
 _run_stats = {"http_503": 0}
 
+# Circuit breaker para Open Library: após OL_CIRCUIT_THRESHOLD falhas
+# consecutivas, skip Open Library pelo resto do batch para não bloquear
+# o scraper inteiro em ConnectTimeout/ReadTimeout repetidos.
+_ol_consecutive_failures = 0
+OL_CIRCUIT_THRESHOLD = 3   # falhas consecutivas para abrir o circuit
+
 
 # =========================
 # CONFIG
@@ -37,16 +44,21 @@ TIMEOUT_SCRAPING  = 10   # scraping direto HTML (Amazon/ML) — mais propenso a 
 TIMEOUT_API       = 20   # chamadas de API (Open Library, Google Books) — mais estáveis
 TIMEOUT_READ      = TIMEOUT_SCRAPING  # compatibilidade: fetch_page usa este valor
 RETRY_DELAY       = 3
-RETRY_MAX         = 2
+RETRY_MAX         = 3
+RETRY_DELAY_503   = [5, 20]   # backoff em segundos após o 1º e 2º 503 consecutivo
 MIN_IMG_BYTES = 5000
 MAX_DESC_CHARS = 2000
 
+# Pool de User-Agents — rotacionado a cada tentativa para reduzir bloqueios 503
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+]
+
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/130.0.0.0 Safari/537.36"
-    ),
     "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
@@ -88,7 +100,13 @@ def detect_marketplace(url):
 # =========================
 
 def fetch_page(url):
-    """Faz GET com retry. Retorna BeautifulSoup ou None."""
+    """Faz GET com retry. Retorna BeautifulSoup ou None.
+
+    - Rotaciona User-Agent a cada tentativa (reduz detecção de bot)
+    - 503: backoff exponencial + nova tentativa (max RETRY_MAX)
+    - 403: falha imediata (Forbidden — sem sentido retentar)
+    - Timeout / exceção: retry com RETRY_DELAY + jitter
+    """
 
     try:
         from bs4 import BeautifulSoup
@@ -97,20 +115,27 @@ def fetch_page(url):
         return None
 
     for attempt in range(RETRY_MAX):
+        headers = {**HEADERS, "User-Agent": random.choice(USER_AGENTS)}
         try:
             resp = requests.get(
                 url,
-                headers=HEADERS,
+                headers=headers,
                 timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
                 allow_redirects=True,
             )
             if resp.status_code == 200:
                 return BeautifulSoup(resp.text, "html.parser")
-            if resp.status_code in (403, 503):
-                if resp.status_code == 503:
-                    _run_stats["http_503"] += 1
-                log(f"[SCRAPER] HTTP {resp.status_code} → {url[:80]}")
+            if resp.status_code == 403:
+                log(f"[SCRAPER] HTTP 403 → {url[:80]}")
                 return None
+            if resp.status_code == 503:
+                _run_stats["http_503"] += 1
+                log(f"[SCRAPER] HTTP 503 (tentativa {attempt + 1}/{RETRY_MAX}) → {url[:80]}")
+                if attempt < RETRY_MAX - 1:
+                    delay = RETRY_DELAY_503[min(attempt, len(RETRY_DELAY_503) - 1)]
+                    log(f"[SCRAPER] Backoff {delay}s antes de nova tentativa")
+                    time.sleep(delay)
+                continue
         except KeyboardInterrupt:
             raise
         except requests.exceptions.ReadTimeout:
@@ -118,7 +143,7 @@ def fetch_page(url):
         except Exception as e:
             log(f"[SCRAPER] Erro HTTP (tentativa {attempt + 1}): {type(e).__name__}")
         if attempt < RETRY_MAX - 1:
-            time.sleep(RETRY_DELAY)
+            time.sleep(RETRY_DELAY + random.uniform(0, 2))
 
     return None
 
@@ -234,10 +259,18 @@ def try_open_library(titulo, isbn=None, autor=None):
     Usa ISBN quando disponível (mais preciso), senão "título autor".
     NÃO usar lookup_query — contém sufixo 'livro' que confunde a busca.
 
+    Circuit breaker: se _ol_consecutive_failures >= OL_CIRCUIT_THRESHOLD,
+    retorna None imediatamente sem fazer requests (Open Library instável).
+
     Retorna dict com cover_url, descricao ou None se falha.
     """
+    global _ol_consecutive_failures
+
     if not titulo and not isbn:
         return None
+
+    if _ol_consecutive_failures >= OL_CIRCUIT_THRESHOLD:
+        return None   # circuit aberto — skip silencioso
 
     try:
         # Prefere ISBN se disponível (mais preciso), senão título + autor
@@ -252,10 +285,12 @@ def try_open_library(titulo, isbn=None, autor=None):
             timeout=(TIMEOUT_CONNECT, TIMEOUT_API),
         )
         if resp.status_code != 200:
+            _ol_consecutive_failures += 1
             return None
 
         docs = resp.json().get("docs", [])
         if not docs:
+            _ol_consecutive_failures = 0   # resposta válida — reset
             return None
 
         doc      = docs[0]
@@ -284,6 +319,7 @@ def try_open_library(titulo, isbn=None, autor=None):
         if not cover_url and not descricao:
             return None
 
+        _ol_consecutive_failures = 0   # sucesso — reset circuit
         return {
             "cover_url":  cover_url,
             "descricao":  descricao,
@@ -295,6 +331,7 @@ def try_open_library(titulo, isbn=None, autor=None):
     except KeyboardInterrupt:
         raise
     except Exception as e:
+        _ol_consecutive_failures += 1  # ConnectTimeout/ReadTimeout abre o circuit breaker
         log(f"[SCRAPER] Open Library falhou: {type(e).__name__}")
         return None
 
@@ -474,8 +511,8 @@ def run(idioma=None, pacote=50):
             else:
                 falhas += 1
 
-            # Rate limiting respeitoso
-            time.sleep(0.5)
+            # Rate limiting respeitoso — jitter evita padrão fixo detectável
+            time.sleep(0.5 + random.uniform(0, 1.0))
 
     except KeyboardInterrupt:
         log(f"[SCRAPER] Interrompido pelo usuário — progresso salvo até aqui.")

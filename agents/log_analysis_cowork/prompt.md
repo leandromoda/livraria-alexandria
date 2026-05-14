@@ -13,15 +13,21 @@ resolução automatizada de problemas no código.
 
 Use suas ferramentas de arquivo para encontrar e ler os logs:
 
-1. **Liste os arquivos** em `scripts/data/` que correspondam ao padrão `pipeline_*.log`
-   (use Glob com `scripts/data/pipeline_*.log`)
-2. Se nenhum `.log` encontrado, tente `scripts/log*.txt` como fallback
-3. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
-4. **Leia o arquivo inteiro**
-5. **Anote o identificador** do log (timestamp do filename ou número) — será usado no nome do output
+1. **Liste os arquivos** com Glob:
+   Padrão: `scripts/data/logs/pipeline_*.log`
 
-Se nenhum log existir, responda:
-"Nenhum log de pipeline encontrado em scripts/data/. Execute o pipeline primeiro."
+   Se o Glob retornar vazio, use Bash como fallback:
+   ```bash
+   ls scripts/data/logs/pipeline_*.log 2>/dev/null
+   ```
+2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
+3. **Leia o arquivo inteiro**
+4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
+
+Se nenhum log for encontrado via Glob nem via Bash, responda:
+"Nenhum log encontrado em scripts/data/logs/. Rode o pipeline para gerar logs."
+
+Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
 ---
 
@@ -102,6 +108,36 @@ Use esta tabela para preencher o campo `source_file` nas falhas e `suggested_inv
 | LLM / VALIDATOR | markdown_executor.py | `scripts/core/markdown_executor.py` |
 | FACT_EXTRACTOR | fact_extractor | `agents/synopsis/fact_extractor/` |
 | SYNOPSIS_WRITER | synopsis_writer | `agents/synopsis/synopsis_writer/` |
+| SYNOPSIS_EXPORT / COWORK_EXPORT (sinopse) | synopsis_export.py | `scripts/steps/synopsis_export.py` |
+| SYNOPSIS_IMPORT / COWORK_IMPORT (sinopse) | synopsis_import.py | `scripts/steps/synopsis_import.py` |
+| CATEGORIZE_EXPORT / COWORK_EXPORT (categoria) | categorize_export.py | `scripts/steps/categorize_export.py` |
+| CATEGORIZE_IMPORT / COWORK_IMPORT (categoria) | categorize_import.py | `scripts/steps/categorize_import.py` |
+| APPLY_BLACKLIST / BLACKLIST | apply_blacklist.py | `scripts/steps/apply_blacklist.py` |
+| DEDUP_AUTORES | dedup_autores.py | `scripts/steps/dedup_autores.py` |
+| PUBLISH_AUTORES | publish_autores.py | `scripts/steps/publish_autores.py` |
+| PUBLISH_CAT / PUBLISH_CATEGORIAS | publish_categorias.py | `scripts/steps/publish_categorias.py` |
+| PUBLISH_LISTAS | publish_listas.py | `scripts/steps/publish_listas.py` |
+| AUTOPILOT | autopilot.py | `scripts/steps/autopilot.py` |
+| MANUTENCAO / AUTOPILOT_MANUTENCAO | autopilot_manutencao.py | `scripts/steps/autopilot_manutencao.py` |
+
+---
+
+## Limites de atuação — CRÍTICO
+
+**Você é um agente de análise e diagnóstico. Você NÃO aplica correções.**
+
+| Permitido | Proibido |
+|-----------|----------|
+| Ler arquivos de log | Editar arquivos `.py` |
+| Ler arquivos JSON de output do pipeline | Editar arquivos JSON de dados (`*_output.json`, `blacklist.json`, etc.) |
+| Gravar o relatório `log_analysis_*.json` | Editar qualquer outro arquivo |
+| Mover o log processado para `processed_logs/` | Rodar o pipeline ou qualquer step |
+| Listar e descrever bugs encontrados | Corrigir bugs diretamente |
+
+Quando encontrar um bug (ex.: JSON malformado, exceção não tratada, arquivo corrompido):
+- **Descreva** o problema em detalhes no JSON de output (`failures`, `actionable_insights`)
+- **Documente** a causa raiz, os arquivos afetados e a correção sugerida
+- **NÃO edite** nenhum arquivo de código ou dado — o Claude Code lerá seu relatório e aplicará as correções
 
 ---
 
@@ -146,10 +182,8 @@ Mover o log fonte para `scripts/data/log_analysis/processed_logs/`:
 
 ```bash
 mkdir -p scripts/data/log_analysis/processed_logs
-mv scripts/data/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
+mv scripts/data/logs/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
 ```
-
-(ou para logs legados: `mv scripts/logN.txt scripts/data/log_analysis/processed_logs/`)
 
 ### Schema do JSON
 
@@ -216,14 +250,20 @@ mv scripts/data/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
       "step": "SYNOPSIS",
       "pattern": "INVALID_AGENT_OUTPUT",
       "affected_books": ["A Vaca Roxa"],
+      "root_cause": "Descrição da causa raiz identificada na análise",
       "suggested_investigation": "scripts/core/markdown_executor.py",
+      "suggested_fix": "Descrição textual da correção recomendada — o Claude Code aplicará",
+      "affected_data_files": [],
       "priority": "high"
     },
     {
       "type": "pipeline_bottleneck",
       "step": "COVERS",
       "pattern": "100% failure rate — 0 capas geradas de 200 tentativas",
+      "root_cause": "Descrição da causa raiz identificada na análise",
       "suggested_investigation": "scripts/steps/covers.py",
+      "suggested_fix": "Descrição textual da correção recomendada — o Claude Code aplicará",
+      "affected_data_files": [],
       "priority": "critical"
     }
   ]
@@ -233,17 +273,21 @@ mv scripts/data/pipeline_TIMESTAMP.log scripts/data/log_analysis/processed_logs/
 ### Regras do output
 - `meta.total_failures` conta apenas `failures` (erros inesperados), não `rejections`
 - Cada entrada em `failures` DEVE ter `source_file` mapeado via tabela step→módulo
-- `actionable_insights` deve ser útil para o Claude Code: indicar **onde** investigar e **o que** procurar
+- `actionable_insights` deve ser útil para o Claude Code: indicar **onde** investigar, **o que** procurar e **o que** corrigir
+- `actionable_insights[].root_cause`: causa raiz identificada na análise — obrigatório para severity high/critical
+- `actionable_insights[].suggested_fix`: descrição textual da correção a ser aplicada pelo Claude Code
+- `actionable_insights[].affected_data_files`: lista de arquivos de dados (JSON, etc.) corrompidos ou que precisam de correção manual — o Claude Code inspecionará e corrigirá
 - `rejections` com mesma razão podem ser agrupadas se >10 ocorrências (ex: "100 livros com Capa pendente")
 - Os contadores em `meta` devem refletir os totais reais
 - `exceptions` captura tracebacks Python completos — campo `traceback` com texto integral
+- **NUNCA** editar arquivos de código ou dados no output — apenas documentar
 
 ---
 
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/pipeline_*.log (+ scripts/log*.txt)
+Glob scripts/data/logs/pipeline_*.log (ou Bash ls como fallback)
   → Selecionar o mais antigo
   → Ler o arquivo inteiro
   → Passada 1: parsing linha-a-linha
