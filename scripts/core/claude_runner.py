@@ -24,6 +24,7 @@ _ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
 load_dotenv(dotenv_path=_ENV_PATH, override=False)
 
 from core import claude_usage_tracker as _tracker
+from core.logger import log as _log
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 AGENTS_DIR = REPO_ROOT / "agents"
@@ -139,8 +140,9 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[
     limit_hit = _tracker.record_call(success, output)
 
     if limit_hit:
-        # Aguarda reset de sessão e tenta novamente uma única vez
-        _tracker.wait_for_reset(output, log_fn=print)
+        # Aguarda reset de sessão e tenta novamente uma única vez.
+        # Usa _log em vez de print para persistir a mensagem no pipeline.log.
+        _tracker.wait_for_reset(output, log_fn=_log)
         success, output = _invoke(prompt_text, timeout, env)
         _tracker.record_call(success, output)
 
