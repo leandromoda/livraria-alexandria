@@ -100,10 +100,12 @@ export default async function LivroPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: livro.titulo,
-    description: livro.descricao,
+    url: `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`,
+    description: livro.sinopse ?? livro.descricao ?? undefined,
     image: livro.imagem_url || undefined,
     sku: livro.isbn,
-    ...(livro.autor ? { brand: { "@type": "Brand", name: livro.autor } } : {}),
+    isbn: livro.isbn || undefined,
+    ...(livro.autor?.trim() ? { brand: { "@type": "Brand", name: livro.autor.trim().substring(0, 70) } } : {}),
     additionalProperty: [
       {
         "@type": "PropertyValue",
