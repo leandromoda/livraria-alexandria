@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.claude_runner import agent_prompt_path, claude_available, run_agent
-from core.claude_usage_tracker import status as claude_usage_status
+from core.claude_usage_tracker import status as claude_usage_status, is_limit_error as _is_limit_error
 from core.cowork_numbering import next_batch_number
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
@@ -391,6 +391,82 @@ def _export_consistency() -> bool:
 
 
 # =========================
+# IMPORT — CONSISTENCY ACTIONS
+# =========================
+
+def _import_consistency_actions(conn) -> int:
+    """Lê o arquivo *_consistency_actions.json mais recente e executa as ações
+    automáticas identificadas pelo agente consistency_review.
+
+    Ações suportadas:
+      - livro_sem_oferta   → limpa offer_url / offer_status para re-disparar
+                             offer_resolver no próximo ciclo do autopilot.
+      - sinopse_suspeita   → reseta sinopse/status_synopsis quando o problema
+                             for ausência ou tamanho (não padrão suspeito, que
+                             requer revisão humana).
+
+    Retorna o número de registros alterados no SQLite.
+    """
+    pattern = str(COWORK_DIR / "*_consistency_actions.json")
+    files = sorted(glob.glob(pattern))
+    if not files:
+        return 0
+
+    latest = files[-1]
+    try:
+        with open(latest, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (json.JSONDecodeError, OSError) as exc:
+        log(f"[LLM_ORCH] AVISO: falha ao ler consistency_actions ({latest}): {exc}")
+        return 0
+
+    acoes = data.get("acoes_manuais", [])
+    if not acoes:
+        log("[LLM_ORCH] consistency_actions: nenhuma ação manual pendente.")
+        return 0
+
+    processed = 0
+    for acao in acoes:
+        tipo    = acao.get("tipo", "")
+        slug    = acao.get("slug", "")
+        livro_id = acao.get("id") or acao.get("livro_id", "")
+        problema = acao.get("problema", "")
+
+        if tipo == "livro_sem_oferta" and slug:
+            # Re-disparar pipeline de oferta: limpa offer_url para que
+            # offer_resolver tente novamente na próxima rodada do autopilot.
+            conn.execute("""
+                UPDATE livros
+                SET offer_url           = NULL,
+                    offer_status        = NULL,
+                    status_publish_oferta = 0,
+                    updated_at          = CURRENT_TIMESTAMP
+                WHERE slug = ?
+            """, (slug,))
+            log(f"[LLM_ORCH] consistency_actions → offer reset: {slug}")
+            processed += 1
+
+        elif tipo == "sinopse_suspeita" and livro_id:
+            # Só reseta sinopses ausentes/curtas; padrões suspeitos requerem
+            # revisão humana e não são tocados automaticamente.
+            if "padrao_suspeito" not in problema:
+                conn.execute("""
+                    UPDATE livros
+                    SET sinopse         = NULL,
+                        status_synopsis = 0,
+                        updated_at      = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (livro_id,))
+                log(f"[LLM_ORCH] consistency_actions → synopsis reset: {livro_id}")
+                processed += 1
+
+    if processed:
+        conn.commit()
+        log(f"[LLM_ORCH] consistency_actions → {processed} ação(ões) automáticas aplicadas.")
+    return processed
+
+
+# =========================
 # EXPORT — TITLE AUDITOR
 # =========================
 
@@ -440,17 +516,30 @@ def _import_offers() -> int:
 # RUN SINGLE AGENT
 # =========================
 
-def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> bool:
+def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[bool, bool]:
+    """Invoca um agente via claude CLI.
+
+    Retorna (success, limit_persists):
+      - success: True se o agente concluiu sem erro.
+      - limit_persists: True se o limite de uso ainda está ativo APÓS o retry
+        automático feito dentro de run_agent(). Quando True, o ciclo inteiro
+        deve ser interrompido para não disparar novas chamadas com limite ativo.
+    """
     prompt = agent_prompt_path(prompt_name)
     log(f"[LLM_ORCH] → {label}: invocando claude CLI…")
     success, output = run_agent(prompt, timeout=timeout)
 
     if success:
         log(f"[LLM_ORCH] ✓ {label} concluído")
+        return True, False
+
+    # Falha — verificar se ainda é erro de limite após o retry interno
+    limit_persists = _is_limit_error(output)
+    if limit_persists:
+        log(f"[LLM_ORCH] ⛔ {label} — limite de uso persistente após retry. Ciclo será interrompido.")
     else:
         log(f"[LLM_ORCH] ✗ {label} falhou: {output[:200]}")
-
-    return success
+    return False, limit_persists
 
 
 # =========================
@@ -486,7 +575,8 @@ def run(idioma: str, pacote: int):
             f"{usage['calls_total']} total | "
             f"limites atingidos: {usage['limit_hit_count']}]"
         )
-        cycle_done = 0
+        cycle_done      = 0
+        cycle_limit_hit = False   # sinaliza se o limite persistiu após retry
 
         conn = get_conn()
 
@@ -496,84 +586,108 @@ def run(idioma: str, pacote: int):
             log(f"[LLM_ORCH] synopsis: {n_syn} pendentes")
             exported = _export_synopsis(conn, idioma)
             if exported > 0:
-                ok = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
-                if ok:
+                ok, limit_persists = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
+                if limit_persists:
+                    cycle_limit_hit = True
+                elif ok:
                     _import_synopsis()
                     cycle_done += exported
         else:
             log("[LLM_ORCH] synopsis: nenhum pendente — skip")
 
         # ── 2. CLASSIFY ──────────────────────────────────────
-        n_cls = _count_pending_classify(conn)
-        if n_cls > 0:
-            log(f"[LLM_ORCH] classify: {n_cls} pendentes")
-            exported = _export_classify(conn)
-            if exported > 0:
-                ok = _run_agent_step("classify", "classify_cowork", timeout=900)
-                if ok:
-                    _import_classify()
-                    cycle_done += exported
-        else:
-            log("[LLM_ORCH] classify: nenhum pendente — skip")
+        if not cycle_limit_hit:
+            n_cls = _count_pending_classify(conn)
+            if n_cls > 0:
+                log(f"[LLM_ORCH] classify: {n_cls} pendentes")
+                exported = _export_classify(conn)
+                if exported > 0:
+                    ok, limit_persists = _run_agent_step("classify", "classify_cowork", timeout=900)
+                    if limit_persists:
+                        cycle_limit_hit = True
+                    elif ok:
+                        _import_classify()
+                        cycle_done += exported
+            else:
+                log("[LLM_ORCH] classify: nenhum pendente — skip")
 
         conn.close()
 
         # ── 3. AUTHOR BIO ─────────────────────────────────────
-        conn = get_conn()
-        n_bio = _count_pending_author_bio(conn)
-        if n_bio > 0:
-            log(f"[LLM_ORCH] author_bio: {n_bio} pendentes")
-            exported = _export_author_bio(conn)
-            if exported > 0:
-                ok = _run_agent_step("author_bio", "author_bio", timeout=900)
-                if ok:
-                    imported = _import_author_bio()
-                    cycle_done += imported
-        else:
-            log("[LLM_ORCH] author_bio: nenhum pendente — skip")
-        conn.close()
+        if not cycle_limit_hit:
+            conn = get_conn()
+            n_bio = _count_pending_author_bio(conn)
+            if n_bio > 0:
+                log(f"[LLM_ORCH] author_bio: {n_bio} pendentes")
+                exported = _export_author_bio(conn)
+                if exported > 0:
+                    ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900)
+                    if limit_persists:
+                        cycle_limit_hit = True
+                    elif ok:
+                        imported = _import_author_bio()
+                        cycle_done += imported
+            else:
+                log("[LLM_ORCH] author_bio: nenhum pendente — skip")
+            conn.close()
 
         # ── 4. LOG ANALYSIS (sempre, 1x por ciclo) ────────────
-        log("[LLM_ORCH] log_analysis: executando…")
-        ok = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=600)
-        if ok:
-            cycle_done += 1
-
-        # ── 5. CONSISTENCY REVIEW (sempre, 1x por ciclo) ──────
-        log("[LLM_ORCH] consistency_review: gerando relatório…")
-        has_report = _export_consistency()
-        if has_report:
-            ok = _run_agent_step("consistency_review", "consistency_review", timeout=600)
-            if ok:
+        if not cycle_limit_hit:
+            log("[LLM_ORCH] log_analysis: executando…")
+            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=600)
+            if limit_persists:
+                cycle_limit_hit = True
+            elif ok:
                 cycle_done += 1
 
+        # ── 5. CONSISTENCY REVIEW (sempre, 1x por ciclo) ──────
+        if not cycle_limit_hit:
+            log("[LLM_ORCH] consistency_review: gerando relatório…")
+            has_report = _export_consistency()
+            if has_report:
+                ok, limit_persists = _run_agent_step("consistency_review", "consistency_review", timeout=600)
+                if limit_persists:
+                    cycle_limit_hit = True
+                elif ok:
+                    cycle_done += 1
+                    # Processar ações automáticas identificadas pelo agente
+                    conn = get_conn()
+                    _import_consistency_actions(conn)
+                    conn.close()
+
         # ── 6. OFFER FINDER ───────────────────────────────────
-        conn = get_conn()
-        n_off = _count_pending_offers(conn)
-        conn.close()
-        if n_off > 0:
-            log(f"[LLM_ORCH] offer_finder: {n_off} livros sem oferta ativa")
-            ok = _run_agent_step("offer_finder", "offer_finder", timeout=1800)
-            if ok:
-                imported = _import_offers()
-                cycle_done += imported
-        else:
-            log("[LLM_ORCH] offer_finder: nenhum pendente — skip")
+        if not cycle_limit_hit:
+            conn = get_conn()
+            n_off = _count_pending_offers(conn)
+            conn.close()
+            if n_off > 0:
+                log(f"[LLM_ORCH] offer_finder: {n_off} livros sem oferta ativa")
+                ok, limit_persists = _run_agent_step("offer_finder", "offer_finder", timeout=1800)
+                if limit_persists:
+                    cycle_limit_hit = True
+                elif ok:
+                    imported = _import_offers()
+                    cycle_done += imported
+            else:
+                log("[LLM_ORCH] offer_finder: nenhum pendente — skip")
 
         # ── 7. TITLE AUDITOR ──────────────────────────────────
-        conn = get_conn()
-        n_aud = _count_pending_audit(conn)
-        conn.close()
-        if n_aud > 0:
-            log(f"[LLM_ORCH] title_auditor: {n_aud} livros sem auditoria")
-            has_export = _export_audit()
-            if has_export:
-                ok = _run_agent_step("title_auditor", "title_auditor", timeout=1200)
-                if ok:
-                    imported = _import_audit()
-                    cycle_done += imported
-        else:
-            log("[LLM_ORCH] title_auditor: nenhum pendente — skip")
+        if not cycle_limit_hit:
+            conn = get_conn()
+            n_aud = _count_pending_audit(conn)
+            conn.close()
+            if n_aud > 0:
+                log(f"[LLM_ORCH] title_auditor: {n_aud} livros sem auditoria")
+                has_export = _export_audit()
+                if has_export:
+                    ok, limit_persists = _run_agent_step("title_auditor", "title_auditor", timeout=1200)
+                    if limit_persists:
+                        cycle_limit_hit = True
+                    elif ok:
+                        imported = _import_audit()
+                        cycle_done += imported
+            else:
+                log("[LLM_ORCH] title_auditor: nenhum pendente — skip")
 
         # ── AUTOPILOT NÃO-LLM ────────────────────────────────
         # Após imports de synopsis/classify, roda autopilot para processar
@@ -586,7 +700,13 @@ def run(idioma: str, pacote: int):
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
         # ── FIM DO CICLO ─────────────────────────────────────
-        log(f"[LLM_ORCH] Ciclo {cycle} concluído — trabalho realizado: {cycle_done}")
+        log(f"[LLM_ORCH] Ciclo {cycle} concluído — trabalho realizado: {cycle_done}"
+            + (" | ⛔ interrompido por limite de uso" if cycle_limit_hit else ""))
+
+        if cycle_limit_hit:
+            log("[LLM_ORCH] Limite de uso persistente após retry — orquestrador encerrado.")
+            log("[LLM_ORCH] Aguarde o reset de sessão e reexecute a opção O.")
+            break
 
         if cycle_done == 0:
             log("[LLM_ORCH] Nenhum trabalho pendente em nenhum agente.")
