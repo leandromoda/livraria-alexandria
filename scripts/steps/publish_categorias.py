@@ -156,9 +156,8 @@ def run():
     for slug in slugs_usados:
         nome = taxonomy.get(slug, slug.replace("-", " ").title())
         payload = {
-            "slug":           slug,
-            "nome":           nome,
-            "status_publish": True,
+            "slug": slug,
+            "nome": nome,
         }
         if upsert(categorias_url, payload, headers):
             cat_ok += 1
