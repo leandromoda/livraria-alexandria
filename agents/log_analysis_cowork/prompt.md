@@ -11,23 +11,47 @@ resolução automatizada de problemas no código.
 
 ## Input
 
-Use suas ferramentas de arquivo para encontrar e ler os logs:
+### Passo 1 — Localizar a raiz do repositório e listar os logs
 
-1. **Liste os arquivos** com Glob (tente em ordem até encontrar resultados):
-   - Padrão 1 (relativo ao CWD): `scripts/data/logs/pipeline_*.log`
-   - Padrão 2 (um nível acima): `../scripts/data/logs/pipeline_*.log`
-   - Padrão 3 (dois níveis acima): `../../scripts/data/logs/pipeline_*.log`
+Execute **este único comando Bash** — ele detecta a raiz do repo a partir de qualquer CWD (repo raiz, worktree, subdiretório) e imprime os arquivos de log disponíveis com caminho absoluto:
 
-   Se todos os Glob retornarem vazio, use Bash como fallback (funciona no Windows/PowerShell e Linux):
-   ```bash
-   python -c "from pathlib import Path; cands=[Path('scripts/data/logs'), Path('../scripts/data/logs'), Path('../../scripts/data/logs')]; d=next((p for p in cands if p.exists()), None); files=sorted(d.glob('pipeline_*.log')) if d else []; [print(f) for f in files]"
-   ```
-2. **Selecione o mais antigo** (por nome/timestamp) que ainda não foi processado
-3. **Leia o arquivo inteiro** com Read (caminho absoluto ou relativo ao CWD encontrado)
-4. **Anote o identificador** do log (timestamp do filename) — será usado no nome do output
+```bash
+python -c "
+from pathlib import Path
+import sys
 
-Se nenhum log for encontrado via Glob nem via Bash, responda:
-"Nenhum log encontrado em scripts/data/logs/. Rode o pipeline para gerar logs."
+def find_repo_root():
+    for p in [Path.cwd()] + list(Path.cwd().parents):
+        if (p / 'scripts' / 'main.py').exists():
+            return p
+    return None
+
+repo = find_repo_root()
+if not repo:
+    print('REPO_NAO_ENCONTRADO', file=sys.stderr)
+    sys.exit(1)
+
+logs_dir = repo / 'scripts' / 'data' / 'logs'
+files = sorted(logs_dir.glob('pipeline_*.log')) if logs_dir.exists() else []
+if files:
+    print(f'REPO_ROOT={repo}')
+    for f in files:
+        print(f)
+else:
+    print('SEM_LOGS')
+"
+```
+
+**Regra crítica:** qualquer arquivo presente em `scripts/data/logs/` **ainda não foi processado** — quando um log é processado, ele é movido para `scripts/data/log_analysis/processed_logs/` e deixa de aparecer aqui. Não tente inferir se um log foi processado por outros meios (JSONs em `log_analysis/`, etc.).
+
+### Passo 2 — Selecionar e ler o log
+
+- Se `SEM_LOGS` foi impresso → responda: "Nenhum log encontrado em scripts/data/logs/. Rode o pipeline para gerar logs." e pare.
+- Caso contrário: selecione o **mais antigo** (primeiro da lista, que já está ordenada por nome/timestamp)
+- Leia o arquivo inteiro com a ferramenta Read usando o **caminho absoluto** retornado pelo comando
+- Anote o identificador (timestamp do filename) — será usado no nome do output
+
+Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
 Se o usuário colar o conteúdo do log diretamente na conversa, use-o como input e execute normalmente o fluxo de análise (Passadas 1, 2, 3 → output JSON). Nesse caso, derive o nome do arquivo de saída do timestamp presente nas primeiras linhas do log.
 
@@ -290,9 +314,10 @@ python -c "import shutil, pathlib; pathlib.Path('scripts/data/log_analysis/proce
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/logs/pipeline_*.log (padrões 1/2/3) ou Bash python como fallback
-  → Selecionar o mais antigo
-  → Ler o arquivo inteiro
+Bash python detect-repo-root → listar scripts/data/logs/pipeline_*.log com path absoluto
+  → Se SEM_LOGS: parar e informar
+  → Selecionar o mais antigo (qualquer arquivo em logs/ é não processado por definição)
+  → Read com caminho absoluto
   → Passada 1: parsing linha-a-linha
       ignorar linhas sem [HH:MM:SS], blocos RAW_OUTPUT
       classificar cada linha: success, error, rejection, heartbeat, summary
@@ -303,6 +328,6 @@ Glob scripts/data/logs/pipeline_*.log (padrões 1/2/3) ou Bash python como fallb
       detectar padrões recorrentes, taxas de erro, bottlenecks
       mapear para arquivos do código
   → Gravar log_analysis_TIMESTAMP.json em scripts/data/log_analysis/
-  → mv log processado → scripts/data/log_analysis/processed_logs/
+  → Mover log processado → scripts/data/log_analysis/processed_logs/
   → Reportar: "Análise concluída: X falhas, Y rejeições, Z insights acionáveis"
 ```
