@@ -128,7 +128,9 @@ def record_call(success: bool, output: str) -> bool:
         data["calls_today"] = data.get("calls_today", 0) + 1
         data["calls_total"] = data.get("calls_total", 0) + 1
 
-        limit_hit = not success and is_limit_error(output)
+        # Detecta limite independente do exit code (o Claude CLI pode retornar
+        # código 0 mesmo ao atingir o limite de uso — verificamos o output diretamente).
+        limit_hit = is_limit_error(output)
         if limit_hit:
             data["limit_hit_at"]    = datetime.now(timezone.utc).isoformat()
             data["limit_hit_count"] = data.get("limit_hit_count", 0) + 1

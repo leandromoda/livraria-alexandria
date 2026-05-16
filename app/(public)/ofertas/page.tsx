@@ -52,27 +52,31 @@ export default async function OfertasPage() {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Ofertas de livros",
-    itemListElement: ofertas?.map((o: any, index: number) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "Product",
-        name: o.livros.titulo,
-        image: o.livros.imagem_url || undefined,
-        sku: o.livros.isbn,
-        ...(o.livros.autor ? { brand: { "@type": "Brand", name: o.livros.autor } } : {}),
-        offers: {
-          "@type": "Offer",
-          ...(Number(o.preco) > 0 ? { price: Number(o.preco), priceCurrency: "BRL" } : {}),
-          availability: "https://schema.org/InStock",
-          url: o.url_afiliada || `${baseUrl}/livros/${o.livros.slug}`,
-          seller: {
-            "@type": "Organization",
-            name: MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace,
+    // Google requires price on every Offer — only include offers with valid price in schema
+    itemListElement: (ofertas ?? [])
+      .filter((o: any) => Number(o.preco) > 0)
+      .map((o: any, index: number) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        item: {
+          "@type": "Product",
+          name: o.livros.titulo,
+          image: o.livros.imagem_url || undefined,
+          ...(o.livros.isbn ? { isbn: o.livros.isbn } : {}),
+          ...(o.livros.autor ? { brand: { "@type": "Brand", name: o.livros.autor } } : {}),
+          offers: {
+            "@type": "Offer",
+            price: Number(o.preco),
+            priceCurrency: "BRL",
+            availability: "https://schema.org/InStock",
+            url: o.url_afiliada || `${baseUrl}/livros/${o.livros.slug}`,
+            seller: {
+              "@type": "Organization",
+              name: MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace,
+            },
           },
         },
-      },
-    })),
+      })),
   };
 
   return (

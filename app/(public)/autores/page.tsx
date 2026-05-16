@@ -93,7 +93,7 @@ export default async function AutoresPage({ searchParams }: PageProps) {
             ) : (
               <span
                 key={c}
-                className="text-xs font-semibold text-center py-1 rounded text-[#E6DED3] select-none"
+                className="text-xs font-semibold text-center py-1 rounded text-[#C4B9AE] select-none"
               >
                 {c}
               </span>
