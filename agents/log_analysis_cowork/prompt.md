@@ -204,13 +204,30 @@ Quando encontrar um bug (ex.: JSON malformado, exceção não tratada, arquivo c
 
 ### Pós-processamento
 
-Mover o log fonte para `scripts/data/log_analysis/processed_logs/`:
+Mover o log fonte para `scripts/data/log_analysis/processed_logs/` usando caminho absoluto (mesmo `find_repo_root` do Passo 1 — substitua `TIMESTAMP` pelo identificador real do log):
 
 ```bash
-python -c "import shutil, pathlib; pathlib.Path('scripts/data/log_analysis/processed_logs').mkdir(parents=True, exist_ok=True); shutil.move('scripts/data/logs/pipeline_TIMESTAMP.log', 'scripts/data/log_analysis/processed_logs/')"
-```
+python -c "
+from pathlib import Path
+import shutil
 
-(substitua `pipeline_TIMESTAMP.log` pelo nome real do arquivo processado)
+def find_repo_root():
+    for p in [Path.cwd()] + list(Path.cwd().parents):
+        if (p / 'scripts' / 'main.py').exists():
+            return p
+    return None
+
+repo = find_repo_root()
+if not repo:
+    raise RuntimeError('repo root nao encontrado')
+
+src  = repo / 'scripts' / 'data' / 'logs' / 'pipeline_TIMESTAMP.log'
+dest = repo / 'scripts' / 'data' / 'log_analysis' / 'processed_logs'
+dest.mkdir(parents=True, exist_ok=True)
+shutil.move(str(src), str(dest / src.name))
+print(f'Movido: {src.name} → {dest}')
+"
+```
 
 ### Schema do JSON
 
