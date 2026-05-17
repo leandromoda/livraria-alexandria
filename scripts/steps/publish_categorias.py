@@ -98,6 +98,26 @@ def upsert(url: str, payload: dict | list, headers: dict) -> bool:
     return False
 
 
+def delete_livro_categorias(supabase_url: str, livro_supabase_id: str, headers: dict) -> bool:
+    """Remove todas as entradas de livros_categorias para um livro antes de reinserir."""
+    del_headers = {**headers, "Prefer": "return=minimal"}
+    for attempt in range(MAX_RETRIES):
+        try:
+            res = requests.delete(
+                f"{supabase_url}/rest/v1/livros_categorias?livro_id=eq.{livro_supabase_id}",
+                headers=del_headers,
+                timeout=TIMEOUT,
+            )
+            if res.status_code in [200, 204]:
+                return True
+            log(f"[PUBLISH_CAT] DELETE categorias ERRO {res.status_code} livro={livro_supabase_id} → {res.text[:200]}")
+            time.sleep(2)
+        except Exception as e:
+            log(f"[PUBLISH_CAT] DELETE categorias RETRY → {e}")
+            time.sleep(2)
+    return False
+
+
 def lookup_categoria_id(supabase_url: str, slug: str, headers: dict) -> str | None:
     """Resolve o UUID da categoria no Supabase pelo slug."""
     for attempt in range(MAX_RETRIES):
@@ -167,7 +187,9 @@ def run():
 
     log(f"[PUBLISH_CAT] Categorias: OK={cat_ok} | Falhas={cat_fail}")
 
-    # ── 2. Upsert livros_categorias ───────────────────────────────────────────
+    # ── 2. Delete + Insert livros_categorias (por livro) ─────────────────────
+    # Deletar categorias antigas antes de inserir novas garante que
+    # recategorizações removam entradas obsoletas do Supabase.
 
     log("[PUBLISH_CAT] Publicando vínculos livros↔categorias…")
     rel_ok = rel_fail = 0
@@ -178,36 +200,58 @@ def run():
     # Rastreia sucesso por livro: {supabase_id: bool}
     livro_success: dict[str, bool] = {}
 
-    for i, (livro_supabase_id, cat_slug) in enumerate(pares, 1):
+    # Agrupar slugs por livro para deletar uma vez antes de inserir
+    from collections import defaultdict as _defaultdict
+    livro_slugs: dict[str, list[str]] = _defaultdict(list)
+    for livro_supabase_id, cat_slug in pares:
+        livro_slugs[livro_supabase_id].append(cat_slug)
 
-        if cat_slug not in cat_id_cache:
-            cat_id = lookup_categoria_id(supabase_url, cat_slug, headers)
-            if cat_id is not None:
-                cat_id_cache[cat_slug] = cat_id
-        else:
-            cat_id = cat_id_cache[cat_slug]
+    livros_ordenados = list(livro_slugs.items())
+    total_pares = sum(len(slugs) for slugs in livro_slugs.values())
+    par_counter = 0
 
-        if not cat_id:
-            log(f"[PUBLISH_CAT] SKIP vínculo — categoria não encontrada: {cat_slug}")
-            rel_fail += 1
-            livro_success.setdefault(livro_supabase_id, True)
+    for livro_supabase_id, cat_slugs in livros_ordenados:
+
+        # Delete categorias antigas deste livro
+        if not delete_livro_categorias(supabase_url, livro_supabase_id, headers):
+            log(f"[PUBLISH_CAT] FALHA ao deletar categorias antigas livro={livro_supabase_id} — pulando")
             livro_success[livro_supabase_id] = False
+            rel_fail += len(cat_slugs)
+            par_counter += len(cat_slugs)
             continue
 
-        payload = {
-            "livro_id":     livro_supabase_id,
-            "categoria_id": cat_id,
-        }
+        # Inserir novas categorias
+        for cat_slug in cat_slugs:
+            par_counter += 1
 
-        if upsert(livros_cat_url, payload, headers):
-            rel_ok += 1
-            livro_success.setdefault(livro_supabase_id, True)
-        else:
-            rel_fail += 1
-            livro_success[livro_supabase_id] = False
+            if cat_slug not in cat_id_cache:
+                cat_id = lookup_categoria_id(supabase_url, cat_slug, headers)
+                if cat_id is not None:
+                    cat_id_cache[cat_slug] = cat_id
+            else:
+                cat_id = cat_id_cache[cat_slug]
 
-        if i % 50 == 0:
-            log(f"[PUBLISH_CAT] Vínculos: {i}/{len(pares)}")
+            if not cat_id:
+                log(f"[PUBLISH_CAT] SKIP vínculo — categoria não encontrada: {cat_slug}")
+                rel_fail += 1
+                livro_success.setdefault(livro_supabase_id, True)
+                livro_success[livro_supabase_id] = False
+                continue
+
+            payload = {
+                "livro_id":     livro_supabase_id,
+                "categoria_id": cat_id,
+            }
+
+            if upsert(livros_cat_url, payload, headers):
+                rel_ok += 1
+                livro_success.setdefault(livro_supabase_id, True)
+            else:
+                rel_fail += 1
+                livro_success[livro_supabase_id] = False
+
+            if par_counter % 50 == 0:
+                log(f"[PUBLISH_CAT] Vínculos: {par_counter}/{total_pares}")
 
     # ── 3. Marcar livros com categorias publicadas ────────────────────────────
 

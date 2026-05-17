@@ -79,20 +79,45 @@ def fetch_pending(conn, pacote):
 
 SYSTEM_PROMPT = """Você é um classificador bibliográfico especializado.
 Dado um livro (título, autor, descrição), você retorna uma lista JSON de slugs de categorias temáticas em ordem de relevância (mais relevante primeiro).
-Responda APENAS com o JSON, sem explicações ou texto adicional."""
+Responda APENAS com o JSON, sem explicações ou texto adicional.
+
+REGRAS OBRIGATÓRIAS:
+- Use APENAS os slugs listados na taxonomia abaixo.
+- Prefira categorias específicas sobre genéricas.
+- "historia-antiga" é EXCLUSIVA para textos historiográficos primários da Antiguidade (Heródoto, Tucídides, Tito Lívio, Tácito) — NUNCA para livros modernos com tema antigo, alegorias ou ficção.
+- Thrillers de Dan Brown (Anjos e Demônios, O Código Da Vinci etc.) → "thriller" ou "suspense-psicologico", jamais categorias históricas.
+- Livros modernos sobre estoicismo (Ryan Holiday etc.) → "estoicismo-pratico". Textos originais de Sêneca, Marco Aurélio → "filosofia-classica".
+- Livros de finanças pessoais e alegorias sobre riqueza (O Homem Mais Rico da Babilônia) → "financas-pessoais", não "historia-antiga".
+- Horácio, Virgílio, Ovídio, Cícero (textos latinos originais) → "epica-latina".
+- A Arte da Guerra (Sun Tzu, texto original) → "literatura-chinesa-classica"; se com foco em negócios, combinar com "estrategia-empresarial".
+- Sapiens (Harari) e obras de macro-história/antropologia → "sociologia-e-antropologia", não "historia-antiga".
+- Quando a descrição indica campo de conhecimento (não texto primário), prefira as categorias de Não-Ficção Humanística, História, Psicologia etc."""
 
 
-def build_prompt(titulo, autor, descricao, sinopse, slugs_list):
+def taxonomy_labeled_list(taxonomy):
+    """Retorna lista de strings 'slug — Label: description' para uso no prompt."""
+    lines = []
+    for slug, item in taxonomy.items():
+        label = item.get("label", slug)
+        desc  = item.get("description", "")
+        if desc:
+            lines.append(f'"{slug}" — {label}: {desc}')
+        else:
+            lines.append(f'"{slug}" — {label}')
+    return lines
+
+
+def build_prompt(titulo, autor, descricao, sinopse, taxonomy):
 
     texto_base = descricao or sinopse or ""
     texto_base = texto_base[:800] if len(texto_base) > 800 else texto_base
 
-    slugs_sample = slugs_list  # taxonomia completa (~190 slugs ≈ 1.400 tokens, seguro para Gemini)
+    taxonomia_str = "\n".join(taxonomy_labeled_list(taxonomy))
 
     return f"""{SYSTEM_PROMPT}
 
-Taxonomia disponível (slugs válidos):
-{json.dumps(slugs_sample, ensure_ascii=False)}
+Taxonomia disponível (slug — rótulo: descrição):
+{taxonomia_str}
 
 Livro:
 Título: {titulo}
@@ -212,12 +237,43 @@ def reset_failed(conn=None):
 # RUN
 # =========================
 
+def reset_wrong_category(conn, categoria_slug):
+    """Remove todas as categorizações com o slug errado e reseta status_categorize=0.
+
+    Retorna lista de livro_ids afetados.
+    """
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT DISTINCT livro_id FROM livros_categorias_tematicas WHERE categoria_slug = ?",
+        (categoria_slug,)
+    )
+    livro_ids = [r[0] for r in cur.fetchall()]
+
+    if not livro_ids:
+        return []
+
+    placeholders = ",".join("?" * len(livro_ids))
+    cur.execute(
+        f"DELETE FROM livros_categorias_tematicas WHERE livro_id IN ({placeholders})",
+        livro_ids
+    )
+    cur.execute(
+        f"""UPDATE livros
+            SET status_categorize  = 0,
+                status_publish_cat = 0,
+                updated_at         = CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})""",
+        livro_ids
+    )
+    conn.commit()
+    return livro_ids
+
+
 def run(idioma=None, pacote=50):
 
     log("Categorize iniciado…")
 
     taxonomy = load_taxonomy()
-    slugs_list = taxonomy_slugs_list(taxonomy)
 
     log(f"Taxonomia carregada: {len(taxonomy)} categorias")
 
@@ -243,7 +299,7 @@ def run(idioma=None, pacote=50):
 
         print(f"[CATEGORIZE][{i:03d}/{total:03d}] → {titulo}")
 
-        prompt = build_prompt(titulo, autor, descricao, sinopse, slugs_list)
+        prompt = build_prompt(titulo, autor, descricao, sinopse, taxonomy)
 
         try:
             response = call_llm(prompt)

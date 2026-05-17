@@ -60,11 +60,14 @@ Estrutura do arquivo:
 ```json
 [
   { "id": "romance-brasileiro", "slug": "romance-brasileiro", "label": "Romance Brasileiro", "group": "Literatura Brasileira" },
+  { "id": "historia-antiga", "slug": "historia-antiga", "label": "História Antiga", "group": "Literatura Clássica e Antiga", "description": "EXCLUSIVO para textos historiográficos primários da Antiguidade: Heródoto, Tucídides, Tito Lívio, Tácito..." },
   ...
 ]
 ```
 
 Extraia o campo `slug` de cada item para montar o conjunto válido.
+
+**IMPORTANTE:** Muitas categorias possuem o campo `description`. Leia-o com atenção — ele especifica o que **cabe** e o que **NÃO cabe** em cada categoria. As descrições contêm exemplos de autores/obras e alertas sobre confusões comuns (ex: `historia-antiga` vs `filosofia-classica` vs `estoicismo-pratico`).
 
 ---
 
@@ -110,6 +113,16 @@ Regras:
 - Quando em dúvida entre uma categoria específica e uma genérica, preferir a específica
 - Autores conhecidos ajudam a inferir a tradição literária (ex: Machado de Assis → realismo-brasileiro)
 - Livros de não-ficção devem ser classificados pelo tema, não pela nacionalidade do autor
+- Use o campo `description` da taxonomia para desambiguar categorias similares
+
+### Desambiguações críticas (erros mais frequentes)
+- `historia-antiga` → APENAS textos historiográficos primários da Antiguidade (Heródoto, Tucídides, Tito Lívio, Tácito, Políbio). NUNCA para alegorias, livros de negócios, ficção ou divulgação científica com cenário antigo.
+- Thrillers de Dan Brown (Anjos e Demônios, O Código Da Vinci) → `thriller` + `suspense-psicologico`, não categorias históricas.
+- Livros modernos sobre estoicismo (Ryan Holiday, William Irvine) → `estoicismo-pratico`. Sêneca, Marco Aurélio, Epicteto (textos originais) → `filosofia-classica`.
+- Alegorias financeiras (O Homem Mais Rico da Babilônia) → `financas-pessoais`, não `historia-antiga`.
+- Horácio, Virgílio, Ovídio (textos latinos originais) → `epica-latina`.
+- A Arte da Guerra (Sun Tzu, texto original) → `literatura-chinesa-classica`; se foco em negócios, combinar com `estrategia-empresarial`.
+- Sapiens (Harari), Homo Deus e similares de macro-história → `sociologia-e-antropologia` + `biologia-e-evolucao`, não `historia-antiga`.
 
 ### Proibições
 - NÃO explicar suas escolhas no output
