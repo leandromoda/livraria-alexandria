@@ -404,13 +404,18 @@
       {
         "name": "synopsis",
         "memory_key": "agent::synopsis::memory",
-        "populated_by": ["auditor (content audit issues)", "synopsis pipeline (approved patterns)"]
+        "populated_by": [
+          "auditor (content audit issues)",
+          "synopsis pipeline (approved patterns)"
+        ]
       },
       {
         "name": "offer_finder",
         "memory_key": "agents/offer_finder/memory.md",
         "storage": "markdown file (persistido entre sessões)",
-        "populated_by": ["offer_finder — após cada execução: search_patterns, failed_books, marketplace_notes"],
+        "populated_by": [
+          "offer_finder — após cada execução: search_patterns, failed_books, marketplace_notes"
+        ],
         "invocation": "Claude Code (Claude Cowork) — agente autônomo com WebSearch + WebFetch",
         "prompt": "Você é o agente Offer Finder.\n\nLeia agents/offer_finder/identity.md, rules.md e task.md para carregar suas instruções completas.\nLeia agents/offer_finder/memory.md para consultar padrões de busca anteriores e livros já confirmados sem oferta.\n\nExecute a tarefa find_valid_offers:\n- Pergunte ao usuário quantos livros deseja processar (padrão: 100)\n- Leia .env.local para obter NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY\n- Consulte o Supabase para obter livros publicados sem ofertas ativas\n- Pesquise e valide ofertas no Amazon BR e Mercado Livre via WebSearch + WebFetch\n- Grave o resultado em scripts/data/offer_list.json\n- Atualize agents/offer_finder/memory.md ao final"
       },
@@ -442,12 +447,22 @@
         "type": "claude_cowork",
         "prompt_path": "agents/cowork_autopilot/prompt.md",
         "structure": "single prompt.md — agente unificado (sinopse + categorização + blacklist)",
-        "inputs": ["scripts/data/synopsis_input.json", "scripts/data/categorize_input.json"],
-        "outputs": ["scripts/data/synopsis_output.json", "scripts/data/categorize_output.json", "scripts/data/blacklist.json"],
+        "inputs": [
+          "scripts/data/synopsis_input.json",
+          "scripts/data/categorize_input.json"
+        ],
+        "outputs": [
+          "scripts/data/synopsis_output.json",
+          "scripts/data/categorize_output.json",
+          "scripts/data/blacklist.json"
+        ],
         "auto_generates_inputs": true,
         "auto_imports_results": true,
         "auto_applies_blacklist": true,
-        "batch_sizes": {"synopsis": 25, "categorize": 50},
+        "batch_sizes": {
+          "synopsis": 25,
+          "categorize": 50
+        },
         "schedule": "pendente — */30 * * * * (a cada 30 min, via Claude Code /schedule)",
         "invocation": "Leia agents/cowork_autopilot/prompt.md e execute as instruções.",
         "created_on": "2026-04-04"
@@ -726,7 +741,10 @@
         "script": "scripts/steps/offer_price_monitor.py",
         "idioma_aware": false,
         "menu_option": 17,
-        "flags": ["--limit N", "--dry-run"],
+        "flags": [
+          "--limit N",
+          "--dry-run"
+        ],
         "progress_format": "[MONITOR][NNN/TTT] → titulo"
       },
       {
@@ -757,7 +775,10 @@
         ],
         "memory_integration": "issues encontradas salvas em agent::synopsis::memory",
         "output": "scripts/data/audit_content_{ts}.json + SQLite audit_log",
-        "flags": ["--limit N", "--dry-run"]
+        "flags": [
+          "--limit N",
+          "--dry-run"
+        ]
       },
       {
         "order": 25,
@@ -778,7 +799,9 @@
           "merge_strategy": "aditivo — entradas removidas apenas manualmente",
           "severity_threshold": "medium ou high (low ignorado)"
         },
-        "flags": ["--dry-run"],
+        "flags": [
+          "--dry-run"
+        ],
         "workflow": [
           "Opção 26: exporta audit_input.json (catálogo completo ou lote rotativo)",
           "Claude Code: lê audit_input.json + prompt.md → escreve blacklist.json",
@@ -808,7 +831,10 @@
           "wrap_around": true,
           "description": "limit=0 → catálogo completo (sem rotação). limit>0 → offset avança a cada execução, garantindo cobertura sistemática."
         },
-        "flags": ["--limit N", "--format json|csv"],
+        "flags": [
+          "--limit N",
+          "--format json|csv"
+        ],
         "known_bugs_fixed": [
           "credenciais: _load_env() procurava SUPABASE_URL em scripts/.env (não existe lá) → corrigido para .env.local",
           "filtro: is_publishable=eq.true excluía livros despublicados pós-publicação (ex: A Cabana) → corrigido para status=eq.publish"
@@ -862,7 +888,10 @@
         "script": "scripts/steps/offer_list_importer.py",
         "menu_option": 30,
         "llm_required": false,
-        "depends_on": ["agente offer_finder (gera offer_list.json)", "livros publicados (supabase_id preenchido)"],
+        "depends_on": [
+          "agente offer_finder (gera offer_list.json)",
+          "livros publicados (supabase_id preenchido)"
+        ],
         "output": "Supabase ofertas table + SQLite offer_url/marketplace/offer_status",
         "idempotent": true,
         "created_on": "2026-04-04"
@@ -985,7 +1014,14 @@
       "json": "scripts/data/audit_input.json",
       "csv": "scripts/data/audit_input.csv"
     },
-    "input_fields": ["id", "slug", "titulo", "autor", "sinopse", "imagem_url"],
+    "input_fields": [
+      "id",
+      "slug",
+      "titulo",
+      "autor",
+      "sinopse",
+      "imagem_url"
+    ],
     "detects": [
       "sinopse_absurda: sinopse incoerente, alucinada ou incompatível com título/autor",
       "capa_incompativel: URL com segmentos de categoria não-livro ou imagem_url vazia"
@@ -1046,11 +1082,11 @@
     "last_measured": "2026-04-10",
     "sqlite_db": "scripts/data/books.db",
     "livros": {
-      "total": "4994",
-      "status_publish_1": 523,
-      "com_offer_url": 4568,
-      "publicados_sem_offer_url": 0,
-      "nota": "Sessão 14: backfill resolveu 37 livros publicados sem oferta. 0 publicados sem offer_url."
+      "total": "nao medido (SQLite > 12000)",
+      "supabase_publicados": 1050,
+      "supabase_com_oferta_ativa": 999,
+      "sem_oferta_ativa": 51,
+      "nota": "Sessao 2026-05-17: 111 livros sem oferta corrigidos (supabase_id sincronizado, offer_status normalizado). 15 livros com offer_status=error corrigidos. Total 51 sem oferta (maioria indisponiveis digitalmente)."
     },
     "supabase_publicados": 523,
     "supabase_ofertas_ativas": 587,
@@ -1122,7 +1158,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-30",
       "resolution": "autopilot.py: adicionado contador erros_no_ciclo (reset a cada ciclo) e ciclos_com_erro_sem_progresso. Quando pending não diminui: se houve erros no ciclo → loga [GUARDRAIL] e continua (o erro pode ter impedido o progresso, não o LLM); só para definitivamente em ciclo limpo sem progresso. Válvula de segurança MAX_CICLOS_COM_ERRO=3 evita loop infinito em falha permanente. Log de fim de ciclo agora inclui 'Erros no ciclo: N' quando N>0.",
-      "files": ["scripts/steps/autopilot.py"]
+      "files": [
+        "scripts/steps/autopilot.py"
+      ]
     },
     {
       "id": "TASK-PIPE-014",
@@ -1131,7 +1169,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-30",
       "resolution": "Adicionada função _ensure_columns(conn) que executa ALTER TABLE listas ADD COLUMN status_publish / updated_at (idempotente — ignora coluna já existente) no início de run(), antes de qualquer query. Causa raiz: o UPDATE introduzido na sessão 21 referenciava updated_at, mas bancos SQLite criados antes da migration do list_composer.py não tinham a coluna. O autopilot capturava a exceção silenciosamente e emitia 'Sem progresso', mascarando o erro real.",
-      "files": ["scripts/steps/publish_listas.py"]
+      "files": [
+        "scripts/steps/publish_listas.py"
+      ]
     },
     {
       "id": "TASK-PIPE-012",
@@ -1140,7 +1180,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-29",
       "resolution": "fetch_listas() agora filtra WHERE status_publish=0. run() marca status_publish=1 no SQLite após publicar cada lista com sucesso. A tabela listas já tinha a coluna (DEFAULT 0 em list_composer.py:57) mas publish_listas nunca a usava.",
-      "files": ["scripts/steps/publish_listas.py"]
+      "files": [
+        "scripts/steps/publish_listas.py"
+      ]
     },
     {
       "id": "TASK-PIPE-013",
@@ -1149,7 +1191,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-29",
       "resolution": "count_pending() expandido: adicionadas sub-queries (SELECT COUNT(*) FROM listas WHERE status_publish=0) e (SELECT COUNT(*) FROM livros WHERE status_publish=1 AND status_publish_cat=0). Antes, pending_atual==pending_anterior quando somente listas/cats pendentes → autopilot parava. Agora esgota todas as publicações downstream antes de ceder ao bloqueio LLM.",
-      "files": ["scripts/steps/autopilot.py"]
+      "files": [
+        "scripts/steps/autopilot.py"
+      ]
     },
     {
       "id": "TASK-SEO-010",
@@ -1536,7 +1580,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-27",
       "resolution": "livros/page.tsx: adicionado PageProps com searchParams: Promise<{q?:string}>, lê q via await searchParams, filtra com .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase quando q presente. Header muda para 'Resultados da busca' com contagem correta; mensagem amigável quando 0 resultados. Commit 35eab46.",
-      "files": ["app/(public)/livros/page.tsx"]
+      "files": [
+        "app/(public)/livros/page.tsx"
+      ]
     },
     {
       "id": "TASK-SITE-005",
@@ -1545,7 +1591,9 @@
       "status": "resolved",
       "resolved_on": "2026-04-27",
       "resolution": "publish_categorias.py: adicionado 'status_publish': True ao payload do upsert de categorias. Campo estava ausente desde PR #40 (que o removeu por erro PGRST204 — cujo contexto era provavelmente diferente). Se PGRST204 reaparecer ao rodar step 16, executar migration: ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true no Supabase SQL Editor. Após o fix, re-rodar step 16 (Publicar Categorias) para propagar status_publish=True em todas as categorias existentes. Commit 35eab46.",
-      "files": ["scripts/steps/publish_categorias.py"],
+      "files": [
+        "scripts/steps/publish_categorias.py"
+      ],
       "note": "A coluna status_publish é referenciada no sitemap.ts (`.eq('status_publish', true)`) — evidência de que existe na tabela remota. Caso não exista, criar via migration antes de rodar step 16."
     },
     {
@@ -1555,7 +1603,10 @@
       "status": "resolved",
       "resolved_on": "2026-04-27",
       "resolution": "main.py — menu C reformulado: status em tempo real (lotes pendentes + outputs), 4 opções fixas: 1=importar todos, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções. autopilot.py — novo parâmetro manter_cowork:bool + cowork_target:int=10: ao selecionar A o menu pergunta 'Manter lotes Cowork? [s/N]'; se ativo, _topup_cowork() exporta lotes no início da execução e ao final de cada ciclo, mantendo sempre `cowork_target` inputs disponíveis. Exemplo: se agente consumiu 3 lotes (10→7), próximo autopilot com manter_cowork=True exporta 3 novos. Commit 35eab46.",
-      "files": ["scripts/main.py", "scripts/steps/autopilot.py"]
+      "files": [
+        "scripts/main.py",
+        "scripts/steps/autopilot.py"
+      ]
     },
     {
       "id": "TASK-COWORK-001",
@@ -1593,6 +1644,16 @@
         "NÃO-CRÍTICO Product Snippets: É preciso especificar priceCurrency (em offers)",
         "NÃO-CRÍTICO Merchant Listings: Nenhum identificador global fornecido (GTIN, marca)"
       ]
+    },
+    {
+      "id": "TASK-BUG-005",
+      "title": "Bug: nomes de autores com artefatos LLM (:contentReference[oaicite:N])",
+      "status": "resolved",
+      "priority": "low",
+      "resolved_on": "2026-05-17",
+      "description": "Dois autores publicados no Supabase com nome = :contentReference[oaicite:26]{index=26} e :contentReference[oaicite:30]{index=30}. Artefatos de citacao gerados por LLM durante ingestao de bios/autores. Nenhum livro vinculado (autores fantasmas).",
+      "resolution": "Deletados diretamente do Supabase (REST DELETE) e do SQLite local. Nao ha validacao de formato no pipeline de autores — considerar adicionar filtro de pattern no step de publicacao de autores.",
+      "files": []
     }
   ]
 }
