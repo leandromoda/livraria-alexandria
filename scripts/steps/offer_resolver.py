@@ -9,7 +9,7 @@ import os
 import sqlite3
 import time
 from pathlib import Path
-from urllib.parse import quote_plus, urlparse, urlencode, parse_qs, urlunparse
+from urllib.parse import quote, quote_plus, urlparse, urlencode, parse_qs, urlunparse
 
 
 # =========================
@@ -99,8 +99,12 @@ def build_amazon_url(query: str) -> str:
 
 
 def build_mercadolivre_url(query: str) -> str:
-    q = quote_plus(query)
-    url = f"https://lista.mercadolivre.com.br/{q}"
+    # Usar hífens em vez de "+" no path para evitar redirect 301 do ML
+    # que descarta os query params de afiliado (matt_tool/matt_word).
+    # ML normaliza espaços→hífens canonicamente; usar o formato final
+    # diretamente faz a página retornar 200 com os params intactos.
+    slug = quote(query.lower().replace(" ", "-"), safe="-")
+    url = f"https://lista.mercadolivre.com.br/{slug}"
     return inject_ml_affiliate(url)
 
 
