@@ -263,10 +263,11 @@ def menu_geracao_conteudo(idioma):
         print("""
 --- GERAÇÃO DE CONTEÚDO ---
 
-10 → Classificar Categorias Temáticas (LLM)
-11 → Gerar sinopses via Gemini (requer review concluído)
-12 → Gerar capas
-29 → Gerar Bios de Autores (LLM)
+10  → Classificar Categorias Temáticas (LLM)
+10R → Resetar categoria equivocada (limpa e recategoriza)
+11  → Gerar sinopses via Gemini (requer review concluído)
+12  → Gerar capas
+29  → Gerar Bios de Autores (LLM)
 
 V  → Voltar
 """)
@@ -285,6 +286,25 @@ V  → Voltar
             log("Classificando categorias temáticas…")
             with StepRun("categorize", idioma=idioma, pacote=pacote):
                 categorize.run(idioma, pacote)
+
+        elif op.upper() == "10R":
+            from core.db import get_conn as _get_conn
+            slug = input_safe("Slug da categoria a resetar (ex: historia-antiga): ").strip()
+            if not slug:
+                print("Slug inválido.")
+                continue
+            conn_r = _get_conn()
+            afetados = categorize.reset_wrong_category(conn_r, slug)
+            conn_r.close()
+            if afetados:
+                print(f"\n{len(afetados)} livro(s) tiveram a categorização apagada e status_categorize=0.")
+                print("Próximos passos:")
+                print("  1. Rode a opção 10 (Classificar Categorias Temáticas) para recategorizar.")
+                print("  2. Rode o step 20 (Publicar Categorias) para atualizar o Supabase.")
+                print("  3. No Supabase, delete manualmente as entradas antigas de 'livros_categorias'")
+                print(f"     para a categoria '{slug}' que não foram substituídas.")
+            else:
+                print(f"Nenhum livro encontrado com a categoria '{slug}'.")
 
         elif op == "11":
             pacote = escolher_pacote()
