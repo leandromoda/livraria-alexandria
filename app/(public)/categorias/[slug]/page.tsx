@@ -80,10 +80,14 @@ export default async function CategoriaPage({ params }: PageProps) {
   /**
    * Merge sem duplicar
    */
-  const slugsEditorial = new Set(editoriais.map((l) => l.slug));
+  const seenSlugs = new Set(editoriais.map((l) => l.slug));
   const listas = [
     ...editoriais,
-    ...automaticas.filter((l) => !slugsEditorial.has(l.slug)),
+    ...automaticas.filter((l) => {
+      if (seenSlugs.has(l.slug)) return false;
+      seenSlugs.add(l.slug);
+      return true;
+    }),
   ];
 
   return (
