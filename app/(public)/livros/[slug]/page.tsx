@@ -119,28 +119,29 @@ export default async function LivroPage({ params }: PageProps) {
       },
     ],
     offers: (() => {
-      // Google requires price on every Offer — exclude offers without valid price from schema
-      const ofertasComPreco = (ofertas ?? []).filter((o: any) => Number(o.preco) > 0);
-      if (!ofertasComPreco.length) return undefined;
+      const ofertasAtivas = (ofertas ?? []);
+      if (!ofertasAtivas.length) return undefined;
 
       const pageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`;
-      const offerList = ofertasComPreco.map((o: any) => ({
-        "@type": "Offer" as const,
-        price: Number(o.preco),
-        priceCurrency: "BRL",
-        availability: "https://schema.org/InStock",
-        url: o.url_afiliada || pageUrl,
-        seller: { "@type": "Organization" as const, name: o.marketplace },
-      }));
+      const offerList = ofertasAtivas.map((o: any) => {
+        const hasPrice = Number(o.preco) > 0;
+        return {
+          "@type": "Offer" as const,
+          ...(hasPrice ? { price: Number(o.preco), priceCurrency: "BRL" } : {}),
+          availability: "https://schema.org/InStock",
+          url: o.url_afiliada || pageUrl,
+          seller: { "@type": "Organization" as const, name: o.marketplace },
+        };
+      });
 
       if (offerList.length === 1) return offerList[0];
 
-      const prices = ofertasComPreco.map((o: any) => Number(o.preco));
+      const prices = ofertasAtivas
+        .filter((o: any) => Number(o.preco) > 0)
+        .map((o: any) => Number(o.preco));
       return {
         "@type": "AggregateOffer" as const,
-        lowPrice: Math.min(...prices),
-        highPrice: Math.max(...prices),
-        priceCurrency: "BRL",
+        ...(prices.length ? { lowPrice: Math.min(...prices), highPrice: Math.max(...prices), priceCurrency: "BRL" } : {}),
         offerCount: offerList.length,
         offers: offerList,
       };
@@ -150,11 +151,13 @@ export default async function LivroPage({ params }: PageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-10">
 
-      {/* Schema JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
+      {/* Schema JSON-LD — só renderiza quando há offers para satisfazer requisito do Google */}
+      {schema.offers && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      )}
 
       {/* =========================
           HERO DO LIVRO

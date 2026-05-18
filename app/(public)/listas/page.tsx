@@ -1,6 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+
+export const metadata: Metadata = {
+  title: "Listas editoriais",
+  description:
+    "Seleções temáticas de livros organizadas por gênero, época e estilo. Encontre sua próxima leitura nas listas editoriais da Livraria Alexandria.",
+};
 
 type PageProps = {
   searchParams: Promise<{ categoria?: string }>;
