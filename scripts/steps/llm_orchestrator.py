@@ -634,7 +634,7 @@ def run(idioma: str, pacote: int):
         # ── 4. LOG ANALYSIS (sempre, 1x por ciclo) ────────────
         if not cycle_limit_hit:
             log("[LLM_ORCH] log_analysis: executando…")
-            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=600)
+            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=900)
             if limit_persists:
                 cycle_limit_hit = True
             elif ok:

@@ -475,8 +475,9 @@ def _gerar_listas_tematicas(listas_ja_criadas):
         log("Nenhuma categoria temática elegível.")
         return 0
 
-    listas_tematicas  = 0
-    total_tematicas   = len(categorias)
+    listas_tematicas   = 0
+    skipped_tematicas  = 0
+    total_tematicas    = len(categorias)
 
     for k, row in enumerate(categorias, start=1):
 
@@ -491,6 +492,8 @@ def _gerar_listas_tematicas(listas_ja_criadas):
 
         # Dedup: não criar lista se slug idêntico já existir
         if lista_existe(slug):
+            skipped_tematicas += 1
+            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_tematica(categoria_slug)
@@ -513,6 +516,7 @@ def _gerar_listas_tematicas(listas_ja_criadas):
         listas_tematicas += 1
         log(f"Lista temática criada → {titulo}")
 
+    log(f"[LISTAS] Temáticas: {listas_tematicas} criadas | {skipped_tematicas} já existiam | {total_tematicas} elegíveis.")
     return listas_tematicas
 
 
@@ -532,6 +536,7 @@ def run():
         log("Nenhuma categoria elegível encontrada.")
 
     listas_criadas  = 0
+    skipped_cat     = 0
     total_categorias = len(categorias)
 
     for i, row in enumerate(categorias, start=1):
@@ -549,6 +554,8 @@ def run():
         slug = slug_categoria(categoria)
 
         if lista_existe(slug):
+            skipped_cat += 1
+            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_categoria(categoria)
@@ -580,14 +587,15 @@ def run():
 
         log(f"Lista criada → {titulo}")
 
-    log(f"List Composer finalizado → {listas_criadas} listas de categoria geradas.")
+    log(f"List Composer finalizado → {listas_criadas} criadas | {skipped_cat} já existiam | {total_categorias} elegíveis.")
 
     # --------------------------------------------------------
     # LISTAS POR AUTOR
     # --------------------------------------------------------
 
-    autores      = fetch_autores_validos()
-    listas_autor = 0
+    autores       = fetch_autores_validos()
+    listas_autor  = 0
+    skipped_autor = 0
     total_autores = len(autores)
 
     for j, autor_row in enumerate(autores, start=1):
@@ -604,6 +612,8 @@ def run():
         slug = slug_autor(autor_slug)
 
         if lista_existe(slug):
+            skipped_autor += 1
+            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_autor(autor_id)
@@ -622,7 +632,7 @@ def run():
 
         log(f"Lista criada → {titulo}")
 
-    log(f"List Composer finalizado → {listas_autor} listas de autor geradas.")
+    log(f"List Composer finalizado → {listas_autor} criadas | {skipped_autor} já existiam | {total_autores} elegíveis.")
 
     # --------------------------------------------------------
     # LISTAS POR CATEGORIA TEMÁTICA

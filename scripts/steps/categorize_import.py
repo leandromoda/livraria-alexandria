@@ -127,7 +127,7 @@ def _process_file(filepath, taxonomy, conn, cur):
         status     = item.get("status", "")
         motivo     = item.get("motivo", "")
 
-        cur.execute("SELECT titulo, status_categorize, is_publishable FROM livros WHERE id = ?", (livro_id,))
+        cur.execute("SELECT titulo, autor, status_categorize, is_publishable FROM livros WHERE id = ?", (livro_id,))
         row = cur.fetchone()
 
         if not row:
@@ -135,7 +135,7 @@ def _process_file(filepath, taxonomy, conn, cur):
             erros += 1
             continue
 
-        titulo, status_atual, is_publishable = row
+        titulo, autor, status_atual, is_publishable = row
 
         if status_atual == 1:
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Já processado → {titulo}")
@@ -169,7 +169,7 @@ def _process_file(filepath, taxonomy, conn, cur):
 
         try:
             save_categories(conn, livro_id, categorias)
-            log(f"[CATEGORIZE_IMPORT][{i:03d}] OK → {titulo} → {categorias}")
+            log(f"[CATEGORIZE_IMPORT][{i:03d}] OK → {titulo} ({autor or '?'}) → {categorias}")
             ok += 1
 
         except Exception as e:
