@@ -119,29 +119,28 @@ export default async function LivroPage({ params }: PageProps) {
       },
     ],
     offers: (() => {
-      const ofertasAtivas = (ofertas ?? []);
-      if (!ofertasAtivas.length) return undefined;
+      // Apenas ofertas com preço válido — Google exige price em todo Offer
+      const ofertasComPreco = (ofertas ?? []).filter((o: any) => Number(o.preco) > 0);
+      if (!ofertasComPreco.length) return undefined;
 
       const pageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`;
-      const offerList = ofertasAtivas.map((o: any) => {
-        const hasPrice = Number(o.preco) > 0;
-        return {
-          "@type": "Offer" as const,
-          ...(hasPrice ? { price: Number(o.preco), priceCurrency: "BRL" } : {}),
-          availability: "https://schema.org/InStock",
-          url: o.url_afiliada || pageUrl,
-          seller: { "@type": "Organization" as const, name: o.marketplace },
-        };
-      });
+      const offerList = ofertasComPreco.map((o: any) => ({
+        "@type": "Offer" as const,
+        price: Number(o.preco),
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        url: o.url_afiliada || pageUrl,
+        seller: { "@type": "Organization" as const, name: o.marketplace },
+      }));
 
       if (offerList.length === 1) return offerList[0];
 
-      const prices = ofertasAtivas
-        .filter((o: any) => Number(o.preco) > 0)
-        .map((o: any) => Number(o.preco));
+      const prices = ofertasComPreco.map((o: any) => Number(o.preco));
       return {
         "@type": "AggregateOffer" as const,
-        ...(prices.length ? { lowPrice: Math.min(...prices), highPrice: Math.max(...prices), priceCurrency: "BRL" } : {}),
+        lowPrice: Math.min(...prices),
+        highPrice: Math.max(...prices),
+        priceCurrency: "BRL",
         offerCount: offerList.length,
         offers: offerList,
       };
