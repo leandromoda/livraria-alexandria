@@ -1323,14 +1323,13 @@
       "resolution": "inject_ml_affiliate() criada em offer_resolver.py (urllib.parse, idempotente). Aplicada em build_mercadolivre_url() e no loop de publish_ofertas.run(). Parâmetros: matt_word=leandro_moda&matt_tool=45905535. Testes unitários em scripts/test_inject_ml_affiliate.py (3 casos: sem params, idempotente, Amazon intacta). PR #50. Pendente: rodar opção 27 (run_repair) após merge."
     },
     {
-      "id": "TASK-AFF-004",
-      "description": "Validar tracking de conversão por marketplace",
-      "priority": "medium"
-    },
-    {
       "id": "TASK-SYN-OPT-001",
-      "description": "Reduzir tempo de geração de sinopses via otimização do executor Markdown e critic lightweight",
-      "priority": "medium"
+      "description": "Throughput de sinopses: avaliar se llm_orchestrator (opção O, Claude CLI) resolve o gargalo de volume",
+      "priority": "medium",
+      "status": "reformulated",
+      "reformulated_on": "2026-05-20",
+      "context": "Otimizações de código já concluídas: abstract_structurer e synopsis_validator são Python puro (sem LLM), timeouts configurados, batches adaptativos no autopilot. O gargalo restante é o rate limit do Gemini (12 RPM / 1400 RPD). O llm_orchestrator (TASK-PIPE-016, 2026-05-10) via Claude CLI é a resposta estratégica — usa plano Pro sem custo de API extra.",
+      "next_action": "Monitorar throughput real com opção O ativa por alguns ciclos. Fechar se o volume de sinopses/dia for suficiente para o ritmo atual de ingestão."
     },
     {
       "id": "TASK-SYN-PIPE-001",
@@ -1338,16 +1337,6 @@
       "priority": "high",
       "status": "resolved",
       "resolution": "Validator min_words reduzido 90→80. Synopsis writer gera 80-160 palavras consistentemente."
-    },
-    {
-      "id": "TASK-SYN-PIPE-002",
-      "description": "Criar teste de pipeline completo (fact_extractor → abstract_structurer → synopsis_writer → synopsis_validator)",
-      "priority": "high"
-    },
-    {
-      "id": "TASK-SYN-PIPE-003",
-      "description": "Adicionar validação estrutural automática para abstract_structurer",
-      "priority": "medium"
     },
     {
       "id": "TASK-SYN-PIPE-004",
@@ -1387,14 +1376,6 @@
         "scripts/core/logger.py",
         "scripts/main.py"
       ]
-    },
-    {
-      "id": "TASK-OFERTA-001",
-      "description": "Popular preços nas ofertas do Supabase",
-      "priority": "medium",
-      "status": "open",
-      "analysis": "587 ofertas no Supabase têm preco=NULL. Frontend trata corretamente (exibe 'Consulte o site'). Para preencher preços: (a) rodar offer_price_monitor.py (step 17) nas URLs existentes — funciona melhor com URLs diretas de produto do que URLs de busca; (b) usar offer_list.json com preços confirmados via agente offer_finder.",
-      "recommendation": "Rodar agente offer_finder para 523 publicados sem oferta com preço confirmado. URLs de busca (lista.ml, amazon/s?) não expõem preço direto — scraper retorna NULL nessas URLs."
     },
     {
       "id": "TASK-SITE-002",
