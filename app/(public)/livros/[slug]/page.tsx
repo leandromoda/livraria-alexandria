@@ -119,7 +119,7 @@ export default async function LivroPage({ params }: PageProps) {
       },
     ],
     offers: (() => {
-      // Google requires price on every Offer — exclude offers without valid price from schema
+      // Apenas ofertas com preço válido — Google exige price em todo Offer
       const ofertasComPreco = (ofertas ?? []).filter((o: any) => Number(o.preco) > 0);
       if (!ofertasComPreco.length) return undefined;
 
@@ -150,11 +150,13 @@ export default async function LivroPage({ params }: PageProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-10">
 
-      {/* Schema JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-      />
+      {/* Schema JSON-LD — só renderiza quando há offers para satisfazer requisito do Google */}
+      {schema.offers && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      )}
 
       {/* =========================
           HERO DO LIVRO

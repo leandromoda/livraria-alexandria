@@ -1,6 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+
+export const metadata: Metadata = {
+  title: "Autores",
+  description:
+    "Conheça os autores do acervo da Livraria Alexandria. Explore biografias, nacionalidades e todas as obras disponíveis por autor.",
+};
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
