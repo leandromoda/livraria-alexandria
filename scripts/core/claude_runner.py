@@ -149,5 +149,26 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[
     return success, output
 
 
+def run_prompt(prompt_text: str, timeout: int = 120) -> tuple[bool, str]:
+    """Invoca claude --print com o prompt passado diretamente via stdin.
+
+    Para chamadas LLM pontuais (não baseadas em arquivo de agente).
+    Integra com claude_usage_tracker para detecção de limite de sessão
+    e retry automático (igual a run_agent).
+
+    Retorna (sucesso: bool, saída: str).
+    """
+    env = {**os.environ}
+    success, output = _invoke(prompt_text, timeout, env)
+    limit_hit = _tracker.record_call(success, output)
+
+    if limit_hit:
+        _tracker.wait_for_reset(output, log_fn=_log)
+        success, output = _invoke(prompt_text, timeout, env)
+        _tracker.record_call(success, output)
+
+    return success, output
+
+
 def agent_prompt_path(agent_name: str) -> Path:
     return AGENTS_DIR / agent_name / "prompt.md"

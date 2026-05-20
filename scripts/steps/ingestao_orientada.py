@@ -65,7 +65,16 @@ PACOTE_LLM     = 50
 
 MAX_CICLOS_COM_ERRO = 3
 
-GEMINI_LIMIT_MARKER = "GEMINI_DAILY_LIMIT_REACHED"
+# Marcadores de limite de quota/sessão — Gemini e Claude
+LLM_LIMIT_MARKERS = {
+    "GEMINI_DAILY_LIMIT_REACHED",
+    "CLAUDE_SESSION_LIMIT_REACHED",
+}
+
+
+def _is_llm_limit(e: Exception) -> bool:
+    msg = str(e)
+    return any(marker in msg for marker in LLM_LIMIT_MARKERS)
 
 
 # =========================
@@ -226,7 +235,7 @@ def _run_pipeline(idioma: str, label: str) -> bool:
                              invocado_por="ingestao_orientada"):
                     step_fn(pacote_step)
             except RuntimeError as e:
-                if GEMINI_LIMIT_MARKER in str(e):
+                if _is_llm_limit(e):
                     log(f"[INGEST_ORIENTADA] ⚠️ Limite diário do Gemini atingido em {nome}.")
                     gemini_limit = True
                     break
@@ -305,7 +314,7 @@ def _import_seed(filename: str, filepath: str) -> bool:
 # RUN
 # =========================
 
-def run(idioma: str, provider: str = "gemini"):
+def run(idioma: str, provider: str = "claude"):
     """Autopilot orientado a seeds, com LLM incluído.
 
     Processa seeds pendentes um a um (menor número primeiro).

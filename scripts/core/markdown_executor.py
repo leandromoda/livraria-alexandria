@@ -182,18 +182,53 @@ def _call_ollama(prompt: str) -> str:
 
 
 # ======================================================
-# MODEL CALL — ROUTER (Gemini → Ollama fallback)
+# MODEL CALL — CLAUDE CLI
+# ======================================================
+
+def _call_claude(prompt: str) -> str:
+    """Roteia chamada LLM para o claude CLI (--print mode via stdin).
+
+    Requer o Claude Code CLI instalado (claude_runner._find_claude()).
+    Levanta RuntimeError("CLAUDE_SESSION_LIMIT_REACHED") se limite atingido.
+    """
+    from core.claude_runner import run_prompt, claude_available
+    from core import claude_usage_tracker as _claude_tracker
+
+    if not claude_available():
+        raise RuntimeError(
+            "CLAUDE_CLI_NOT_FOUND — instale o Claude Code CLI e tente novamente."
+        )
+
+    success, output = run_prompt(prompt, timeout=120)
+
+    if _claude_tracker.is_limit_error(output):
+        raise RuntimeError("CLAUDE_SESSION_LIMIT_REACHED")
+
+    if not success:
+        raise RuntimeError(f"CLAUDE_CLI_ERROR: {output[:300]}")
+
+    return output
+
+
+# ======================================================
+# MODEL CALL — ROUTER
 # ======================================================
 
 def _call_llm(prompt: str) -> str:
     """
     Roteia chamada LLM conforme _active_provider:
-      "ollama" -> Ollama local (padrao)
+      "claude" -> Claude via CLI (padrão)
       "gemini" -> Gemini cloud
+      "ollama" -> Ollama local
       "auto"   -> Gemini -> Ollama fallback (comportamento legado)
     """
 
     provider = _active_provider
+
+    if provider == "claude":
+        result = _call_claude(prompt)
+        print("[LLM] Provider: claude")
+        return result
 
     if provider == "gemini":
         result = _call_gemini(prompt)

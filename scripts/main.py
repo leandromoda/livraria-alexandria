@@ -145,14 +145,15 @@ def escolher_provider():
     print("""
 Modelo LLM:
 
-1 → Ollama (local)
-2 → Gemini (cloud) [padrão]
-3 → Auto (Gemini → Ollama fallback)
+1 → Claude (API) [padrão]
+2 → Gemini (cloud)
+3 → Ollama (local)
+4 → Auto (Gemini → Ollama fallback)
 """)
 
     op = input_safe("Modelo: ")
 
-    return {"1": "ollama", "2": "gemini", "3": "auto"}.get(op, "gemini")
+    return {"1": "claude", "2": "gemini", "3": "ollama", "4": "auto"}.get(op, "claude")
 
 
 # =========================
@@ -737,7 +738,7 @@ E  → Exports
             autopilot.run(idioma, 100, manter_cowork=manter_cowork)
 
         elif op.upper() == "I":
-            log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=gemini)…")
+            log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=claude)…")
             ingestao_orientada.run(idioma)
 
         elif op.upper() == "O":
