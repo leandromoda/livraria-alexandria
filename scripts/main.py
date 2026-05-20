@@ -31,6 +31,7 @@ from steps import autopilot
 from steps import llm_orchestrator
 from steps import autopilot_audit
 from steps import autopilot_manutencao
+from steps import ingestao_orientada
 from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
@@ -703,6 +704,7 @@ def main():
 
 S  → Status do pipeline (gargalos)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
+I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
 M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Cowork Autopilot (sinopse + categorias via Claude)
@@ -733,6 +735,10 @@ E  → Exports
             manter_str    = input_safe("Manter lotes Cowork? (mantém 10 inputs prontos p/ agente) [s/N]: ").strip().lower()
             manter_cowork = manter_str == "s"
             autopilot.run(idioma, 100, manter_cowork=manter_cowork)
+
+        elif op.upper() == "I":
+            log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=gemini)…")
+            ingestao_orientada.run(idioma)
 
         elif op.upper() == "O":
             from core.claude_runner import claude_available
