@@ -119,23 +119,25 @@ def _build_steps(idioma: str) -> list:
 # PENDING
 # =========================
 
-def _count_pending_llm(conn) -> int:
+def _count_pending_llm(conn, idioma: str) -> int:
     cur = conn.cursor()
     cur.execute("""
         SELECT
             (SELECT COUNT(*) FROM livros
              WHERE status_synopsis  = 0
                AND status_review    = 1
-               AND is_book          = 1) +
+               AND is_book          = 1
+               AND idioma           = ?) +
             (SELECT COUNT(*) FROM livros
              WHERE status_categorize = 0
-               AND status_review     = 1)
-    """)
+               AND status_review     = 1
+               AND idioma            = ?)
+    """, (idioma, idioma))
     return cur.fetchone()[0]
 
 
-def _count_total_pending(conn) -> int:
-    return autopilot.count_pending(conn) + _count_pending_llm(conn)
+def _count_total_pending(conn, idioma: str) -> int:
+    return autopilot.count_pending(conn) + _count_pending_llm(conn, idioma)
 
 
 # =========================
@@ -215,7 +217,7 @@ def _run_pipeline(idioma: str, label: str) -> bool:
     STEPS = _build_steps(idioma)
 
     conn = get_conn()
-    pending_anterior = _count_total_pending(conn)
+    pending_anterior = _count_total_pending(conn, idioma)
     conn.close()
 
     ciclos_com_erro_sem_progresso = 0
@@ -249,7 +251,7 @@ def _run_pipeline(idioma: str, label: str) -> bool:
             return True
 
         conn = get_conn()
-        pending_atual = _count_total_pending(conn)
+        pending_atual = _count_total_pending(conn, idioma)
         conn.close()
 
         log(f"[INGEST_ORIENTADA][{label}] Fim ciclo {ciclo} | "
@@ -365,7 +367,7 @@ def run(idioma: str, provider: str = "claude"):
 
     # ─── FASE 1: Flush de pendências anteriores ───────────────
     conn = get_conn()
-    pending_pre = _count_total_pending(conn)
+    pending_pre = _count_total_pending(conn, idioma)
     conn.close()
 
     if pending_pre > 0:
