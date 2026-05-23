@@ -22,6 +22,7 @@ import re
 import shutil
 import sqlite3
 from datetime import datetime
+from os import urandom
 
 
 # =========================
@@ -316,8 +317,13 @@ def load_seeds(filepath):
 # INSERT SEED
 # =========================
 
-def insert_seed(conn, seed):
+def insert_seed(conn, seed, seed_id=None):
+    """Insere um seed no banco e retorna (resultado, book_id).
 
+    resultado: "inserted" | "duplicate" | "filtered" | "invalid"
+    book_id:   ID gerado (apenas quando resultado == "inserted", None caso contrário)
+    seed_id:   identificador do arquivo de origem (ex: "026_offer_seeds.json")
+    """
     now = datetime.utcnow().isoformat()
 
     titulo       = seed.get("titulo")
@@ -330,10 +336,10 @@ def insert_seed(conn, seed):
     preco        = seed.get("preco")
 
     if not titulo or not lookup_query:
-        return "invalid"
+        return "invalid", None
 
     if not is_editorial(titulo):
-        return "filtered"
+        return "filtered", None
 
     idioma_resolved = resolve_language(idioma, isbn, titulo)
 
@@ -347,33 +353,37 @@ def insert_seed(conn, seed):
     """, (titulo, autor))
 
     if cur.fetchone():
-        return "duplicate"
+        return "duplicate", None
+
+    # Gera o ID no Python para poder retorná-lo ao caller
+    book_id = urandom(12).hex()
 
     cur.execute("""
         INSERT INTO livros (
             id, titulo, autor, isbn,
             cluster, fonte, idioma, categoria,
             lookup_query, marketplace, offer_status,
-            preco,
+            preco, seed_id,
             cluster_id, nacionalidade_id, popularidade_id,
             ano_publicacao,
             created_at, updated_at
         )
         VALUES (
-            lower(hex(randomblob(12))),
+            ?,
             ?, ?, ?,
             ?, 'offer_seed', ?, ?,
             ?, ?, 'active',
-            ?,
+            ?, ?,
             ?, ?, ?,
             ?,
             ?, ?
         )
     """, (
+        book_id,
         titulo, autor, isbn,
         categoria, idioma_resolved, categoria,
         lookup_query, marketplace,
-        preco,
+        preco, seed_id,
         seed.get("cluster_id"),
         seed.get("nacionalidade_id"),
         seed.get("popularidade_id"),
@@ -381,7 +391,7 @@ def insert_seed(conn, seed):
         now, now
     ))
 
-    return "inserted"
+    return "inserted", book_id
 
 
 # =========================
@@ -389,7 +399,11 @@ def insert_seed(conn, seed):
 # =========================
 
 def process_file(conn, filename, filepath):
+    """Processa um arquivo de seed e insere os livros no banco.
 
+    Retorna (inserted_count, skipped_count, inserted_ids).
+    Em caso de erro de leitura retorna (None, None, None).
+    """
     log(f"Processando {filename}…")
 
     try:
@@ -397,18 +411,21 @@ def process_file(conn, filename, filepath):
     except Exception as e:
         log(f"[ERRO] Falha ao carregar {filename}: {e}")
         log(f"[ERRO] Arquivo ignorado — corrija o conteúdo e execute novamente.")
-        return None, None
+        return None, None, None
 
     total  = len(seeds)
     counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0, "error": 0}
+    inserted_ids = []
 
     for i, seed in enumerate(seeds, start=1):
         titulo_log = seed.get("titulo", "?")
         print(f"[SEED][{i:03d}/{total:03d}] → {titulo_log}")
 
         try:
-            result = insert_seed(conn, seed)
+            result, book_id = insert_seed(conn, seed, seed_id=filename)
             counts[result] = counts.get(result, 0) + 1
+            if book_id:
+                inserted_ids.append(book_id)
         except Exception as e:
             log(f"[ERRO] {titulo_log}: {e}")
             counts["error"] += 1
@@ -426,7 +443,7 @@ def process_file(conn, filename, filepath):
         f"Total: {total}"
     )
 
-    return inserted, skipped
+    return inserted, skipped, inserted_ids
 
 
 # =========================
@@ -455,7 +472,7 @@ def run():
 
     for filename, filepath in seed_files:
 
-        inserted, skipped = process_file(conn, filename, filepath)
+        inserted, skipped, _ids = process_file(conn, filename, filepath)
 
         if inserted is None:
             log(f"[SKIP] {filename} não marcado como importado — arquivo permanece em seeds/ para correção.")

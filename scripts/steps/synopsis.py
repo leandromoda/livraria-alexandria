@@ -15,6 +15,9 @@ from core.logger import log
 from core.markdown_executor import execute_agent
 from steps.quality_gate import check_synopsis_generic
 
+# Marcadores de limite LLM — usados para re-raise e não engolir o erro
+_LLM_LIMIT_MARKERS = ("CLAUDE_SESSION_LIMIT_REACHED", "GEMINI_DAILY_LIMIT_REACHED")
+
 
 # =========================
 # CONFIG
@@ -27,20 +30,37 @@ AGENT_PATH = "agents/synopsis"
 # FETCH
 # =========================
 
-def fetch_pending(conn, idioma, limit):
+def fetch_pending(conn, idioma, limit, book_ids=None):
+    """Busca livros pendentes de sinopse.
 
+    Se `book_ids` for fornecida, filtra apenas esses IDs (modo per-livro).
+    Caso contrário, usa filtro por idioma (modo batch).
+    """
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, titulo, autor, idioma, descricao
-        FROM livros
-        WHERE status_synopsis = 0
-          AND status_review   = 1
-          AND is_book         = 1
-          AND idioma          = ?
-        ORDER BY priority_score DESC, created_at ASC
-        LIMIT ?
-    """, (idioma, limit))
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        cur.execute(f"""
+            SELECT id, titulo, autor, idioma, descricao
+            FROM livros
+            WHERE status_synopsis = 0
+              AND status_review   = 1
+              AND is_book         = 1
+              AND id IN ({placeholders})
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (*book_ids, limit))
+    else:
+        cur.execute("""
+            SELECT id, titulo, autor, idioma, descricao
+            FROM livros
+            WHERE status_synopsis = 0
+              AND status_review   = 1
+              AND is_book         = 1
+              AND idioma          = ?
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (idioma, limit))
 
     return cur.fetchall()
 
@@ -68,13 +88,20 @@ def update_synopsis(conn, livro_id, sinopse):
 # RUN
 # =========================
 
-def run(idioma, pacote):
+def run(idioma, pacote, book_ids=None):
+    """Gera sinopses via LLM.
 
+    Args:
+        idioma:   idioma do livro (usado no filtro batch).
+        pacote:   número máximo de livros a processar.
+        book_ids: lista opcional de IDs para modo per-livro. Se fornecida,
+                  ignora o filtro de idioma e processa apenas esses livros.
+    """
     log("[SYNOPSIS] Iniciando geração de sinopses")
 
     conn = get_conn()
 
-    rows = fetch_pending(conn, idioma, pacote)
+    rows = fetch_pending(conn, idioma, pacote, book_ids=book_ids)
 
     if not rows:
         log("[SYNOPSIS] Nada pendente.")
@@ -102,6 +129,12 @@ def run(idioma, pacote):
         try:
             result = execute_agent(AGENT_PATH, payload)
         except Exception as e:
+            msg = str(e)
+            # Propaga erros de limite LLM para o orquestrador — não engolir
+            if any(m in msg for m in _LLM_LIMIT_MARKERS):
+                log(f"[SYNOPSIS] ⚠️ Limite LLM atingido em '{titulo}' — interrompendo step.")
+                conn.close()
+                raise
             log(f"[SYNOPSIS] ERRO → {titulo} | {e}")
             continue
 

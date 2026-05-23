@@ -131,6 +131,7 @@ def ensure_schema(conn):
         ("status_descricao",      "INTEGER DEFAULT 0"),
         ("priority_score",        "INTEGER DEFAULT 0"),
         ("status_publish_cat",    "INTEGER DEFAULT 0"),
+        ("seed_id",               "TEXT"),          # identificador do seed de origem
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
@@ -284,6 +285,21 @@ def ensure_schema(conn):
     cur.execute("""
     CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at
     ON pipeline_runs(started_at);
+    """)
+
+    # Fila de seeds aguardando processamento pela Ingestão Orientada.
+    # Lifecycle: pending → processing → done | failed
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS seed_queue (
+        filename      TEXT PRIMARY KEY,
+        status        TEXT    DEFAULT 'pending',
+        queued_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+        started_at    DATETIME,
+        completed_at  DATETIME,
+        inserted      INTEGER DEFAULT 0,
+        skipped       INTEGER DEFAULT 0,
+        error_msg     TEXT
+    );
     """)
 
     conn.commit()
