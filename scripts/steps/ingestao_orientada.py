@@ -353,21 +353,21 @@ def _process_book_llm(idioma: str, book_id: str) -> bool:
     except Exception as e:
         log(f"[INGEST_ORIENTADA] ERRO Synopsis [{book_id}]: {e}")
 
-    # Quality Gate — avalia publishability deste livro
+    # Quality Gate — avalia publishability deste livro (escopo: apenas este book_id)
     log(f"[INGEST_ORIENTADA][per-livro] Quality Gate → {book_id}")
     try:
         with StepRun("13 Quality Gate", idioma=idioma, pacote=1,
                      invocado_por="ingestao_orientada"):
-            quality_gate.evaluate_quality(idioma, 1)
+            quality_gate.evaluate_quality(idioma, 1, book_ids=[book_id])
     except Exception as e:
         log(f"[INGEST_ORIENTADA] ERRO Quality Gate [{book_id}]: {e}")
 
-    # Publicar livro (se aprovado pelo QG)
+    # Publicar livro (se aprovado pelo QG) — escopo: apenas este book_id
     log(f"[INGEST_ORIENTADA][per-livro] Publicar → {book_id}")
     try:
         with StepRun("14 Publicar Livros", idioma=idioma, pacote=1,
                      invocado_por="ingestao_orientada"):
-            publish.run(idioma, 1)
+            publish.run(idioma, 1, book_ids=[book_id])
     except Exception as e:
         log(f"[INGEST_ORIENTADA] ERRO Publicar [{book_id}]: {e}")
 
@@ -451,22 +451,25 @@ def _run_flush(idioma: str) -> bool:
     log("[INGEST_ORIENTADA][flush] Iniciando batch não-LLM...")
     _run_nonllm_batch(idioma, "flush")
 
-    # Obtém livros pendentes de LLM
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT id FROM livros
-        WHERE (status_synopsis = 0 OR status_categorize = 0)
-          AND status_review = 1
-          AND is_book = 1
-          AND idioma = ?
-        ORDER BY priority_score DESC, created_at ASC
-        LIMIT ?
-    """, (idioma, PACOTE_LLM * 5))
-    pending_llm_ids = [r[0] for r in cur.fetchall()]
-    conn.close()
+    # Per-livro LLM: processa em lotes de PACOTE_LLM até exaurir todos os pendentes
+    while True:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id FROM livros
+            WHERE (status_synopsis = 0 OR status_categorize = 0)
+              AND status_review = 1
+              AND is_book = 1
+              AND idioma = ?
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (idioma, PACOTE_LLM))
+        pending_llm_ids = [r[0] for r in cur.fetchall()]
+        conn.close()
 
-    if pending_llm_ids:
+        if not pending_llm_ids:
+            break
+
         log(f"[INGEST_ORIENTADA][flush] Per-livro LLM: {len(pending_llm_ids)} livro(s).")
         limit_hit = _run_llm_per_book(idioma, pending_llm_ids, "flush")
         if limit_hit:
@@ -483,7 +486,9 @@ def _run_flush(idioma: str) -> bool:
 def _import_seed(filename: str, filepath: str) -> tuple:
     """Importa um único seed e o move para ingested_seeds/.
 
-    Retorna (ok: bool, inserted_ids: list).
+    Retorna (ok: bool, inserted_ids: list, inserted: int, skipped: int).
+    Não marca seed_queue como 'done' — isso é responsabilidade do caller
+    após a conclusão completa de todos os steps (non-LLM + LLM + publicação).
     """
     conn = offer_seed.get_conn()
     offer_seed.ensure_tables(conn)
@@ -494,20 +499,16 @@ def _import_seed(filename: str, filepath: str) -> tuple:
         log(f"[INGEST_ORIENTADA] Seed {filename} ignorado (erro de leitura). "
             "Arquivo permanece em seeds/ para correção.")
         conn.close()
-        return False, []
+        return False, [], 0, 0
 
     offer_seed.mark_imported(conn, filename, inserted, skipped or 0)
-
-    # Atualiza seed_queue
-    _queue_done(conn, filename, inserted, skipped or 0)
-
     conn.close()
 
     offer_seed.move_to_ingested(filepath, filename)
     log(f"[INGEST_ORIENTADA] Seed {filename} importado: "
         f"{inserted} inserido(s) | {skipped} pulado(s) | "
         f"{len(inserted_ids)} IDs rastreados.")
-    return True, inserted_ids or []
+    return True, inserted_ids or [], inserted, skipped or 0
 
 
 # =========================
@@ -612,7 +613,7 @@ def run(idioma: str, provider: str = "claude"):
             _queue_start(conn, filename)
             conn.close()
 
-            ok, book_ids = _import_seed(filename, filepath)
+            ok, book_ids, seed_inserted, seed_skipped = _import_seed(filename, filepath)
             if not ok:
                 conn = get_conn()
                 _queue_failed(conn, filename, "erro de leitura do arquivo")
@@ -631,12 +632,19 @@ def run(idioma: str, provider: str = "claude"):
             if limit_hit:
                 log(f"[INGEST_ORIENTADA] Limite LLM atingido durante seed {filename}.")
                 log("[INGEST_ORIENTADA] Seeds restantes serão processados na próxima execução.")
+                # seed_queue permanece como 'processing' — autopilot retomará os livros já
+                # inseridos no banco na próxima execução.
                 _migrate_to_autopilot(idioma)
                 return
 
             # ── Passo 2c: publicação em lote ─────────────────────
             log(f"[INGEST_ORIENTADA][{filename}] ── Publicação em lote ──")
             _run_publication_batch(idioma, filename)
+
+            # Marca seed como concluído apenas após todos os steps completarem
+            conn = get_conn()
+            _queue_done(conn, filename, seed_inserted, seed_skipped)
+            conn.close()
 
     except KeyboardInterrupt:
         log("[INGEST_ORIENTADA] Interrompido pelo usuário (Fase 2).")

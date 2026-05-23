@@ -55,29 +55,52 @@ GENERIC_SYNOPSIS_MARKERS = [
 # FETCH
 # =========================
 
-def fetch_candidates(conn, idioma, limit):
+def fetch_candidates(conn, idioma, limit, book_ids=None):
 
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT
-            id,
-            titulo,
-            sinopse,
-            imagem_url,
-            idioma,
-            is_book,
-            editorial_score,
-            status_slug,
-            status_synopsis,
-            status_review,
-            status_cover
-        FROM livros
-        WHERE status_publish = 0
-          AND idioma = ?
-          AND NOT (is_book = 0 AND editorial_score < 0)
-        LIMIT ?
-    """, (idioma, limit))
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        cur.execute(f"""
+            SELECT
+                id,
+                titulo,
+                sinopse,
+                imagem_url,
+                idioma,
+                is_book,
+                editorial_score,
+                status_slug,
+                status_synopsis,
+                status_review,
+                status_cover
+            FROM livros
+            WHERE status_publish = 0
+              AND idioma = ?
+              AND NOT (is_book = 0 AND editorial_score < 0)
+              AND id IN ({placeholders})
+            LIMIT ?
+        """, (idioma, *book_ids, limit))
+    else:
+        cur.execute("""
+            SELECT
+                id,
+                titulo,
+                sinopse,
+                imagem_url,
+                idioma,
+                is_book,
+                editorial_score,
+                status_slug,
+                status_synopsis,
+                status_review,
+                status_cover
+            FROM livros
+            WHERE status_publish = 0
+              AND idioma = ?
+              AND NOT (is_book = 0 AND editorial_score < 0)
+            LIMIT ?
+        """, (idioma, limit))
 
     return cur.fetchall()
 
@@ -149,13 +172,13 @@ def set_publishable(conn, book_id, value):
 # RUN
 # =========================
 
-def run(idioma_base="PT", pacote=20):
+def run(idioma_base="PT", pacote=20, book_ids=None):
 
     idioma_base = idioma_base.upper()
 
     conn = get_conn()
 
-    rows = fetch_candidates(conn, idioma_base, pacote)
+    rows = fetch_candidates(conn, idioma_base, pacote, book_ids=book_ids)
 
     if not rows:
         log("QUALITY GATE — Nada para validar.")
@@ -227,5 +250,5 @@ def run(idioma_base="PT", pacote=20):
 # COMPATIBILITY LAYER
 # =========================
 
-def evaluate_quality(idioma_base="PT", pacote=20):
-    return run(idioma_base, pacote)
+def evaluate_quality(idioma_base="PT", pacote=20, book_ids=None):
+    return run(idioma_base, pacote, book_ids=book_ids)

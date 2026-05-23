@@ -69,29 +69,52 @@ UUID_NAMESPACE = uuid.UUID("11111111-2222-3333-4444-555555555555")
 # FETCH
 # =========================
 
-def fetch_pending(conn, idioma, limit):
+def fetch_pending(conn, idioma, limit, book_ids=None):
 
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT
-            id, titulo, slug, autor,
-            sinopse, isbn, ano_publicacao,
-            imagem_url, supabase_id,
-            is_publishable, editorial_score,
-            is_book, updated_at,
-            preco_atual, offer_status
-        FROM livros
-        WHERE status_publish  = 0
-          AND status_review   = 1
-          AND is_publishable  = 1
-          AND status_synopsis = 1
-          AND sinopse IS NOT NULL
-          AND sinopse != ''
-          AND idioma          = ?
-        ORDER BY priority_score DESC, created_at ASC
-        LIMIT ?
-    """, (idioma, limit))
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        cur.execute(f"""
+            SELECT
+                id, titulo, slug, autor,
+                sinopse, isbn, ano_publicacao,
+                imagem_url, supabase_id,
+                is_publishable, editorial_score,
+                is_book, updated_at,
+                preco_atual, offer_status
+            FROM livros
+            WHERE status_publish  = 0
+              AND status_review   = 1
+              AND is_publishable  = 1
+              AND status_synopsis = 1
+              AND sinopse IS NOT NULL
+              AND sinopse != ''
+              AND idioma          = ?
+              AND id IN ({placeholders})
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (idioma, *book_ids, limit))
+    else:
+        cur.execute("""
+            SELECT
+                id, titulo, slug, autor,
+                sinopse, isbn, ano_publicacao,
+                imagem_url, supabase_id,
+                is_publishable, editorial_score,
+                is_book, updated_at,
+                preco_atual, offer_status
+            FROM livros
+            WHERE status_publish  = 0
+              AND status_review   = 1
+              AND is_publishable  = 1
+              AND status_synopsis = 1
+              AND sinopse IS NOT NULL
+              AND sinopse != ''
+              AND idioma          = ?
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (idioma, limit))
 
     return cur.fetchall()
 
@@ -232,11 +255,11 @@ def mark_published(conn, local_id, supabase_id):
 # RUN
 # =========================
 
-def run(idioma, pacote=10):
+def run(idioma, pacote=10, book_ids=None):
 
     conn = get_conn()
 
-    rows = fetch_pending(conn, idioma, pacote)
+    rows = fetch_pending(conn, idioma, pacote, book_ids=book_ids)
 
     # Filtro blacklist — remove livros auditados e marcados para exclusão
     blacklisted = _load_blacklist_slugs()
