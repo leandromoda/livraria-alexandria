@@ -42,8 +42,8 @@ COWORK_DIR    = DATA_DIR / "cowork"
 LOGS_DIR      = DATA_DIR / "logs"
 AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 
-BATCH_SIZE_SYNOPSIS   = 1    # 1 livro por chamada Claude — evita timeout de sessão (~900s)
-BATCH_SIZE_CLASSIFY   = 1    # 1 livro por chamada Claude
+BATCH_SIZE_SYNOPSIS   = 10   # ~430s por batch (43s/livro × 10) — margem segura antes do timeout de 900s
+BATCH_SIZE_CLASSIFY   = 10   # classify é mais rápido (~5-10s/livro), 10 é conservador
 BATCH_SIZE_AUTHOR_BIO = 25
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
