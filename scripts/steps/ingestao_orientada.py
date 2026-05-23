@@ -7,21 +7,24 @@
 #   1. Re-ingestão: reseta steps falhos de livros QG-rejeitados
 #      → sinopse, categorias, capa, oferta (por motivo)
 #   2. Flush: processa qualquer pendência anterior ao loop de seeds
+#      (modo per-livro para LLM se houver pendências)
 #   3. Loop de seeds (menor número primeiro):
-#      a. Importa um seed
-#      b. Executa o pipeline completo até exaurir ou estagnar
-#      c. Move o seed para ingested_seeds/
-#      d. Avança para o próximo seed
-#
-# Ordem dos steps (dedup antecipado — antes do HTTP):
-#   slugify → dedup → enrich → resolver → scraper
-#   → review → categorize (LLM) → synopsis (LLM) → capas → QG
-#   → publish livros / autores / cats / ofertas / listas
+#      a. Importa um seed → obtém lista de book_ids inseridos
+#      b. Batch não-LLM: slugify → dedup → enrich → resolver → scraper
+#         → review → capas   (processa todos os títulos do seed em lote)
+#      c. Per-livro LLM: para CADA título individualmente:
+#         categorize → synopsis → QG → publicar livro
+#      d. Publicação em lote: autores / cats / ofertas / listas
+#      e. Move o seed para ingested_seeds/ e avança para o próximo
 #
 # Stop conditions:
-#   - Todos os seeds de /seeds processados
-#   - Limite diário do Gemini atingido (RuntimeError)
+#   - Todos os seeds processados
+#   - Limite de sessão do Claude CLI atingido
+#      → migra automaticamente para Autopilot (Opção A, sem LLM)
 #   - Ctrl+C
+#
+# Tabela seed_queue (db.py):
+#   Rastreia lifecycle dos seeds: pending → processing → done | failed
 # ============================================================
 
 from core.db import get_conn
@@ -78,40 +81,32 @@ def _is_llm_limit(e: Exception) -> bool:
 
 
 # =========================
-# STEPS (dedup antecipado)
+# STEPS NÃO-LLM (batch)
 # =========================
 
-def _build_steps(idioma: str) -> list:
-    """Retorna a sequência de steps na ordem otimizada.
-
-    Dedup vem logo após slugify — antes de resolver e scraper — para
-    eliminar duplicatas antes das chamadas HTTP mais custosas.
-    """
+def _build_nonllm_steps(idioma: str) -> list:
+    """Steps rápidos (CPU/banco/HTTP) sem LLM — executados em lote."""
     return [
-        # Pré-processamento rápido (CPU/banco) — sem HTTP
         ("5  Slugs",             lambda p: slugify.run(idioma, p),                   PACOTE_BASE),
         ("6  Slugs Autores",     lambda p: slugify_autores.run(p),                   PACOTE_BASE),
         ("7  Dedup Autores",     lambda p: dedup_autores.run(),                      PACOTE_BASE),
         ("8  Dedup (antecip.)",  lambda p: dedup.run(idioma, p),                     PACOTE_BASE),
-        # HTTP / APIs externas (apenas para livros não-duplicados)
         ("2  Enrich Desc",       lambda p: enrich_descricao.run(p),                  PACOTE_BASE),
         ("3  Resolver Ofertas",  lambda p: offer_resolver.run(idioma, p),            PACOTE_RESOLVE),
         ("4  Scraper",           lambda p: marketplace_scraper.run(idioma, p),       PACOTE_SCRAPER),
-        # Editorial
         ("9  Review",            lambda p: review.run(idioma, p),                    PACOTE_BASE),
-        # LLM
-        ("10 Categorize (LLM)",  lambda p: categorize.run(idioma, p),                PACOTE_LLM),
-        ("11 Synopsis (LLM)",    lambda p: synopsis.run(idioma, p),                  PACOTE_LLM),
-        # Capas + Quality Gate
         ("12 Capas",             lambda p: covers.run(idioma, p),                    PACOTE_BASE),
-        ("13 Quality Gate",      lambda p: quality_gate.evaluate_quality(idioma, p), PACOTE_BASE),
-        # Publicação
-        ("14 Publicar Livros",   lambda p: publish.run(idioma, p),                   PACOTE_BASE),
-        ("15 Publicar Autores",  lambda p: publish_autores.run(p),                   PACOTE_BASE),
-        ("16 Publicar Cats",     lambda p: publish_categorias.run(),                 PACOTE_BASE),
-        ("17 Publicar Ofertas",  lambda p: publish_ofertas.run(p),                   PACOTE_BASE),
-        ("18 Listas SEO",        lambda p: list_composer.run(),                      PACOTE_BASE),
-        ("19 Publicar Listas",   lambda p: publish_listas.run(),                     PACOTE_BASE),
+    ]
+
+
+def _build_publication_steps(idioma: str) -> list:
+    """Steps de publicação em lote — rodados ao final de cada seed."""
+    return [
+        ("15 Publicar Autores",  lambda p: publish_autores.run(p),   PACOTE_BASE),
+        ("16 Publicar Cats",     lambda p: publish_categorias.run(),  PACOTE_BASE),
+        ("17 Publicar Ofertas",  lambda p: publish_ofertas.run(p),    PACOTE_BASE),
+        ("18 Listas SEO",        lambda p: list_composer.run(),       PACOTE_BASE),
+        ("19 Publicar Listas",   lambda p: publish_listas.run(),      PACOTE_BASE),
     ]
 
 
@@ -138,6 +133,17 @@ def _count_pending_llm(conn, idioma: str) -> int:
 
 def _count_total_pending(conn, idioma: str) -> int:
     return autopilot.count_pending(conn) + _count_pending_llm(conn, idioma)
+
+
+def _book_is_ready_for_llm(conn, book_id: str) -> bool:
+    """Retorna True se o livro está pronto para LLM (review feito, is_book=1)."""
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 1 FROM livros
+        WHERE id = ? AND status_review = 1 AND is_book = 1
+        LIMIT 1
+    """, (book_id,))
+    return cur.fetchone() is not None
 
 
 # =========================
@@ -206,18 +212,60 @@ def _reset_for_reingestion(conn) -> dict:
 
 
 # =========================
-# PIPELINE PASS
+# SEED QUEUE
 # =========================
 
-def _run_pipeline(idioma: str, label: str) -> bool:
-    """Executa o pipeline em loop até exaurir, estagnar ou atingir o limite Gemini.
+def _queue_seed(conn, filename: str) -> None:
+    """Registra um seed na fila (idempotente — ignora se já existir)."""
+    conn.execute("""
+        INSERT OR IGNORE INTO seed_queue (filename, status, queued_at)
+        VALUES (?, 'pending', CURRENT_TIMESTAMP)
+    """, (filename,))
+    conn.commit()
 
-    Retorna True se o limite diário do Gemini foi atingido.
+
+def _queue_start(conn, filename: str) -> None:
+    conn.execute("""
+        UPDATE seed_queue
+        SET status = 'processing', started_at = CURRENT_TIMESTAMP
+        WHERE filename = ?
+    """, (filename,))
+    conn.commit()
+
+
+def _queue_done(conn, filename: str, inserted: int, skipped: int) -> None:
+    conn.execute("""
+        UPDATE seed_queue
+        SET status = 'done', completed_at = CURRENT_TIMESTAMP,
+            inserted = ?, skipped = ?
+        WHERE filename = ?
+    """, (inserted, skipped, filename))
+    conn.commit()
+
+
+def _queue_failed(conn, filename: str, error_msg: str) -> None:
+    conn.execute("""
+        UPDATE seed_queue
+        SET status = 'failed', completed_at = CURRENT_TIMESTAMP, error_msg = ?
+        WHERE filename = ?
+    """, (error_msg, filename))
+    conn.commit()
+
+
+# =========================
+# BATCH NÃO-LLM PASS
+# =========================
+
+def _run_nonllm_batch(idioma: str, label: str) -> None:
+    """Roda uma passagem dos steps não-LLM em lote (sem limit LLM possível).
+
+    Processa todos os títulos pendentes de slugify → capas.
+    Cicla em loop até não haver mais progresso.
     """
-    STEPS = _build_steps(idioma)
+    STEPS = _build_nonllm_steps(idioma)
 
     conn = get_conn()
-    pending_anterior = _count_total_pending(conn, idioma)
+    pending_anterior = autopilot.count_pending(conn)
     conn.close()
 
     ciclos_com_erro_sem_progresso = 0
@@ -226,9 +274,8 @@ def _run_pipeline(idioma: str, label: str) -> bool:
     while True:
         ciclo += 1
         erros_no_ciclo = 0
-        gemini_limit = False
 
-        log(f"[INGEST_ORIENTADA][{label}] Ciclo {ciclo} | Pendente: {pending_anterior}")
+        log(f"[INGEST_ORIENTADA][{label}][non-LLM] Ciclo {ciclo} | Pendente: {pending_anterior}")
 
         for nome, step_fn, pacote_step in STEPS:
             log(f"[INGEST_ORIENTADA] -- {nome} (pacote={pacote_step}) --")
@@ -236,50 +283,196 @@ def _run_pipeline(idioma: str, label: str) -> bool:
                 with StepRun(nome, idioma=idioma, pacote=pacote_step,
                              invocado_por="ingestao_orientada"):
                     step_fn(pacote_step)
-            except RuntimeError as e:
-                if _is_llm_limit(e):
-                    log(f"[INGEST_ORIENTADA] ⚠️ Limite diário do Gemini atingido em {nome}.")
-                    gemini_limit = True
-                    break
-                log(f"[INGEST_ORIENTADA] ERRO em {nome}: {e}")
-                erros_no_ciclo += 1
             except Exception as e:
                 log(f"[INGEST_ORIENTADA] ERRO em {nome}: {e}")
                 erros_no_ciclo += 1
 
-        if gemini_limit:
-            return True
-
         conn = get_conn()
-        pending_atual = _count_total_pending(conn, idioma)
+        pending_atual = autopilot.count_pending(conn)
         conn.close()
 
-        log(f"[INGEST_ORIENTADA][{label}] Fim ciclo {ciclo} | "
+        log(f"[INGEST_ORIENTADA][{label}][non-LLM] Fim ciclo {ciclo} | "
             f"Pendente: {pending_anterior} → {pending_atual}"
             + (f" | Erros: {erros_no_ciclo}" if erros_no_ciclo else ""))
 
         if pending_atual == 0:
-            log(f"[INGEST_ORIENTADA][{label}] Pipeline exaurido.")
+            log(f"[INGEST_ORIENTADA][{label}][non-LLM] Exaurido.")
             break
 
         if pending_atual >= pending_anterior:
             if erros_no_ciclo > 0:
                 ciclos_com_erro_sem_progresso += 1
-                log(f"[INGEST_ORIENTADA][⚠️ GUARDRAIL] {ciclos_com_erro_sem_progresso}/"
-                    f"{MAX_CICLOS_COM_ERRO} ciclos consecutivos com erro sem progresso.")
                 if ciclos_com_erro_sem_progresso >= MAX_CICLOS_COM_ERRO:
-                    log("[INGEST_ORIENTADA] Limite de ciclos com erro atingido. "
-                        "Avançando para o próximo seed.")
+                    log("[INGEST_ORIENTADA][non-LLM] Limite de ciclos com erro atingido.")
                     break
             else:
                 ciclos_com_erro_sem_progresso = 0
-                log(f"[INGEST_ORIENTADA][{label}] Sem progresso em ciclo limpo. "
-                    "Avançando para o próximo seed.")
+                log(f"[INGEST_ORIENTADA][{label}][non-LLM] Sem progresso — avançando para LLM.")
                 break
         else:
             ciclos_com_erro_sem_progresso = 0
             pending_anterior = pending_atual
 
+
+# =========================
+# PER-LIVRO LLM
+# =========================
+
+def _process_book_llm(idioma: str, book_id: str) -> bool:
+    """Processa UM livro individualmente pelos steps LLM + QG + publicação.
+
+    Fluxo: categorize → synopsis → quality_gate → publicar livro
+
+    Retorna True se o limite LLM foi atingido (pipeline deve parar).
+    """
+    # Categorize
+    log(f"[INGEST_ORIENTADA][per-livro] Categorize → {book_id}")
+    try:
+        with StepRun("10 Categorize (LLM)", idioma=idioma, pacote=1,
+                     invocado_por="ingestao_orientada"):
+            categorize.run(idioma, 1, book_ids=[book_id])
+    except RuntimeError as e:
+        if _is_llm_limit(e):
+            log(f"[INGEST_ORIENTADA] ⚠️ Limite LLM atingido na categorização.")
+            return True
+        log(f"[INGEST_ORIENTADA] ERRO Categorize [{book_id}]: {e}")
+    except Exception as e:
+        log(f"[INGEST_ORIENTADA] ERRO Categorize [{book_id}]: {e}")
+
+    # Synopsis
+    log(f"[INGEST_ORIENTADA][per-livro] Synopsis → {book_id}")
+    try:
+        with StepRun("11 Synopsis (LLM)", idioma=idioma, pacote=1,
+                     invocado_por="ingestao_orientada"):
+            synopsis.run(idioma, 1, book_ids=[book_id])
+    except RuntimeError as e:
+        if _is_llm_limit(e):
+            log(f"[INGEST_ORIENTADA] ⚠️ Limite LLM atingido na sinopse.")
+            return True
+        log(f"[INGEST_ORIENTADA] ERRO Synopsis [{book_id}]: {e}")
+    except Exception as e:
+        log(f"[INGEST_ORIENTADA] ERRO Synopsis [{book_id}]: {e}")
+
+    # Quality Gate — avalia publishability deste livro
+    log(f"[INGEST_ORIENTADA][per-livro] Quality Gate → {book_id}")
+    try:
+        with StepRun("13 Quality Gate", idioma=idioma, pacote=1,
+                     invocado_por="ingestao_orientada"):
+            quality_gate.evaluate_quality(idioma, 1)
+    except Exception as e:
+        log(f"[INGEST_ORIENTADA] ERRO Quality Gate [{book_id}]: {e}")
+
+    # Publicar livro (se aprovado pelo QG)
+    log(f"[INGEST_ORIENTADA][per-livro] Publicar → {book_id}")
+    try:
+        with StepRun("14 Publicar Livros", idioma=idioma, pacote=1,
+                     invocado_por="ingestao_orientada"):
+            publish.run(idioma, 1)
+    except Exception as e:
+        log(f"[INGEST_ORIENTADA] ERRO Publicar [{book_id}]: {e}")
+
+    return False
+
+
+def _run_llm_per_book(idioma: str, book_ids: list, label: str) -> bool:
+    """Itera sobre book_ids processando cada um individualmente pelos steps LLM.
+
+    Retorna True se o limite LLM foi atingido.
+    """
+    conn = get_conn()
+    # Filtra apenas livros que passaram pelo review (prontos para LLM)
+    ids_prontos = [bid for bid in book_ids if _book_is_ready_for_llm(conn, bid)]
+    conn.close()
+
+    total = len(ids_prontos)
+    log(f"[INGEST_ORIENTADA][{label}] Per-livro LLM: {total} título(s) prontos.")
+
+    for i, book_id in enumerate(ids_prontos, 1):
+        log(f"[INGEST_ORIENTADA][{label}] ── Livro {i}/{total}: {book_id} ──")
+        limit_hit = _process_book_llm(idioma, book_id)
+        if limit_hit:
+            return True
+
+    return False
+
+
+# =========================
+# PUBLICATION BATCH
+# =========================
+
+def _run_publication_batch(idioma: str, label: str) -> None:
+    """Roda os steps de publicação em lote após o ciclo per-livro."""
+    STEPS = _build_publication_steps(idioma)
+    for nome, step_fn, pacote_step in STEPS:
+        log(f"[INGEST_ORIENTADA][{label}] -- {nome} --")
+        try:
+            with StepRun(nome, idioma=idioma, pacote=pacote_step,
+                         invocado_por="ingestao_orientada"):
+                step_fn(pacote_step)
+        except Exception as e:
+            log(f"[INGEST_ORIENTADA] ERRO em {nome}: {e}")
+
+
+# =========================
+# MIGRATE TO AUTOPILOT
+# =========================
+
+def _migrate_to_autopilot(idioma: str) -> None:
+    """Ativa o Autopilot (sem LLM) após esgotamento da cota LLM.
+
+    Processa tudo o que é possível sem LLM: resolver ofertas,
+    publicar livros já aprovados, gerar listas, etc.
+    """
+    log("[INGEST_ORIENTADA] ══════════════════════════════════════")
+    log("[INGEST_ORIENTADA] Limite LLM atingido → migrando para Autopilot (sem LLM)")
+    log("[INGEST_ORIENTADA] ══════════════════════════════════════")
+    try:
+        autopilot.run(idioma, PACOTE_BASE)
+    except KeyboardInterrupt:
+        log("[INGEST_ORIENTADA] Autopilot interrompido pelo usuário.")
+    except Exception as e:
+        log(f"[INGEST_ORIENTADA] Autopilot encerrou com erro: {e}")
+
+
+# =========================
+# FLUSH DE PENDÊNCIAS (Fase 1)
+# =========================
+
+def _run_flush(idioma: str) -> bool:
+    """Processa pendências anteriores (antes do loop de seeds).
+
+    Modo híbrido:
+    - Batch não-LLM primeiro
+    - Per-livro LLM para os livros já prontos
+    - Publicação em lote
+
+    Retorna True se o limite LLM foi atingido.
+    """
+    log("[INGEST_ORIENTADA][flush] Iniciando batch não-LLM...")
+    _run_nonllm_batch(idioma, "flush")
+
+    # Obtém livros pendentes de LLM
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id FROM livros
+        WHERE (status_synopsis = 0 OR status_categorize = 0)
+          AND status_review = 1
+          AND is_book = 1
+          AND idioma = ?
+        ORDER BY priority_score DESC, created_at ASC
+        LIMIT ?
+    """, (idioma, PACOTE_LLM * 5))
+    pending_llm_ids = [r[0] for r in cur.fetchall()]
+    conn.close()
+
+    if pending_llm_ids:
+        log(f"[INGEST_ORIENTADA][flush] Per-livro LLM: {len(pending_llm_ids)} livro(s).")
+        limit_hit = _run_llm_per_book(idioma, pending_llm_ids, "flush")
+        if limit_hit:
+            return True
+
+    _run_publication_batch(idioma, "flush")
     return False
 
 
@@ -287,29 +480,34 @@ def _run_pipeline(idioma: str, label: str) -> bool:
 # SEED IMPORT (unitário)
 # =========================
 
-def _import_seed(filename: str, filepath: str) -> bool:
+def _import_seed(filename: str, filepath: str) -> tuple:
     """Importa um único seed e o move para ingested_seeds/.
 
-    Retorna True se o arquivo foi importado com sucesso.
+    Retorna (ok: bool, inserted_ids: list).
     """
     conn = offer_seed.get_conn()
     offer_seed.ensure_tables(conn)
 
-    inserted, skipped = offer_seed.process_file(conn, filename, filepath)
+    inserted, skipped, inserted_ids = offer_seed.process_file(conn, filename, filepath)
 
     if inserted is None:
         log(f"[INGEST_ORIENTADA] Seed {filename} ignorado (erro de leitura). "
             "Arquivo permanece em seeds/ para correção.")
         conn.close()
-        return False
+        return False, []
 
     offer_seed.mark_imported(conn, filename, inserted, skipped or 0)
+
+    # Atualiza seed_queue
+    _queue_done(conn, filename, inserted, skipped or 0)
+
     conn.close()
 
     offer_seed.move_to_ingested(filepath, filename)
     log(f"[INGEST_ORIENTADA] Seed {filename} importado: "
-        f"{inserted} inserido(s) | {skipped} pulado(s).")
-    return True
+        f"{inserted} inserido(s) | {skipped} pulado(s) | "
+        f"{len(inserted_ids)} IDs rastreados.")
+    return True, inserted_ids or []
 
 
 # =========================
@@ -319,10 +517,15 @@ def _import_seed(filename: str, filepath: str) -> bool:
 def run(idioma: str, provider: str = "claude"):
     """Autopilot orientado a seeds, com LLM incluído.
 
-    Processa seeds pendentes um a um (menor número primeiro).
-    Entre cada seed executa o pipeline completo.
-    Para quando todos os seeds forem processados ou o
-    limite diário do Gemini for atingido.
+    Design per-título:
+      1. Pré-processamento em lote (não-LLM): slugify → dedup → enrich →
+         resolver → scraper → review → capas
+      2. Para cada título individualmente: categorize → synopsis → QG → publish
+      3. Publicação de metadados em lote: autores / cats / ofertas / listas
+
+    Ao atingir o limite de sessão do Claude CLI:
+      → migra automaticamente para Autopilot (Opção A, sem LLM)
+      → processa o que resta sem LLM antes de encerrar
     """
     set_provider(provider)
 
@@ -373,13 +576,13 @@ def run(idioma: str, provider: str = "claude"):
     if pending_pre > 0:
         log(f"[INGEST_ORIENTADA] ── Fase 1: Flush ({pending_pre} pendentes) ──")
         try:
-            gemini_limit = _run_pipeline(idioma, "flush")
+            limit_hit = _run_flush(idioma)
         except KeyboardInterrupt:
             log("[INGEST_ORIENTADA] Interrompido pelo usuário (Fase 1).")
             return
-        if gemini_limit:
-            log("[INGEST_ORIENTADA] Limite Gemini atingido na Fase 1. "
-                "Retome amanhã para continuar.")
+        if limit_hit:
+            log("[INGEST_ORIENTADA] Limite LLM atingido na Fase 1.")
+            _migrate_to_autopilot(idioma)
             return
     else:
         log("[INGEST_ORIENTADA] Fase 1: sem pendências anteriores. Pulando.")
@@ -394,20 +597,46 @@ def run(idioma: str, provider: str = "claude"):
 
     log(f"[INGEST_ORIENTADA] ── Fase 2: {len(seed_files)} seed(s) pendente(s) ──")
 
+    # Enfilera todos os seeds descobertos
+    conn = get_conn()
+    for filename, _ in seed_files:
+        _queue_seed(conn, filename)
+    conn.close()
+
     try:
         for idx, (filename, filepath) in enumerate(seed_files, 1):
             log(f"[INGEST_ORIENTADA] ── Seed {idx}/{len(seed_files)}: {filename} ──")
 
-            ok = _import_seed(filename, filepath)
+            # Marca seed como "em processamento"
+            conn = get_conn()
+            _queue_start(conn, filename)
+            conn.close()
+
+            ok, book_ids = _import_seed(filename, filepath)
             if not ok:
+                conn = get_conn()
+                _queue_failed(conn, filename, "erro de leitura do arquivo")
+                conn.close()
                 log(f"[INGEST_ORIENTADA] Seed {filename} ignorado. Próximo seed.")
                 continue
 
-            gemini_limit = _run_pipeline(idioma, filename)
-            if gemini_limit:
-                log("[INGEST_ORIENTADA] Limite Gemini atingido. "
-                    "Seeds restantes serão processados na próxima execução.")
+            # ── Passo 2a: batch não-LLM ─────────────────────────
+            log(f"[INGEST_ORIENTADA][{filename}] ── Batch não-LLM ──")
+            _run_nonllm_batch(idioma, filename)
+
+            # ── Passo 2b: per-livro LLM ──────────────────────────
+            log(f"[INGEST_ORIENTADA][{filename}] ── Per-livro LLM ({len(book_ids)} títulos) ──")
+            limit_hit = _run_llm_per_book(idioma, book_ids, filename)
+
+            if limit_hit:
+                log(f"[INGEST_ORIENTADA] Limite LLM atingido durante seed {filename}.")
+                log("[INGEST_ORIENTADA] Seeds restantes serão processados na próxima execução.")
+                _migrate_to_autopilot(idioma)
                 return
+
+            # ── Passo 2c: publicação em lote ─────────────────────
+            log(f"[INGEST_ORIENTADA][{filename}] ── Publicação em lote ──")
+            _run_publication_batch(idioma, filename)
 
     except KeyboardInterrupt:
         log("[INGEST_ORIENTADA] Interrompido pelo usuário (Fase 2).")

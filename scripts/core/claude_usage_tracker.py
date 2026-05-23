@@ -49,6 +49,9 @@ LIMIT_PATTERNS = [
     "over the limit",
     "limit has been reached",
     "claude is unavailable",
+    "you've hit your limit",  # mensagem real do Claude CLI ao atingir cota
+    "you have hit your limit",
+    "hit your limit",
     "429",                    # HTTP status em stderr
     "unavailable",
 ]
