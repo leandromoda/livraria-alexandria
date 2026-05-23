@@ -42,9 +42,10 @@ COWORK_DIR    = DATA_DIR / "cowork"
 LOGS_DIR      = DATA_DIR / "logs"
 AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 
-BATCH_SIZE_SYNOPSIS   = 25
-BATCH_SIZE_CLASSIFY   = 25
+BATCH_SIZE_SYNOPSIS   = 1    # 1 livro por chamada Claude — evita timeout de sessão (~900s)
+BATCH_SIZE_CLASSIFY   = 1    # 1 livro por chamada Claude
 BATCH_SIZE_AUTHOR_BIO = 25
+PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
 
 NUM_PAT = re.compile(r"^(\d{3})_")
@@ -546,7 +547,8 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
 # MAIN CYCLE
 # =========================
 
-def run(idioma: str, pacote: int):
+def run(idioma: str):
+    """Autopilot LLM cíclico — 1 livro por chamada Claude (1 ciclo ≈ 1 livro publicado)."""
 
     from core.claude_runner import _find_claude
     claude_bin = _find_claude()
@@ -561,7 +563,7 @@ def run(idioma: str, pacote: int):
 
     log("[LLM_ORCH] ══════════════════════════════════════")
     log("[LLM_ORCH] LLM Autopilot iniciado (opção O)")
-    log(f"[LLM_ORCH] Idioma: {idioma} | Pacote: {pacote}")
+    log(f"[LLM_ORCH] Idioma: {idioma} | Batch: {BATCH_SIZE_SYNOPSIS} livro(s)/chamada")
     log("[LLM_ORCH] ══════════════════════════════════════")
 
     cycle = 0
@@ -695,7 +697,7 @@ def run(idioma: str, pacote: int):
         if cycle_done > 0:
             log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
             try:
-                autopilot.run(idioma, pacote, manter_cowork=False)
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
