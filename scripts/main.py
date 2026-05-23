@@ -748,9 +748,8 @@ E  → Exports
                 log("[LLM_ORCH] Instale o Claude Code CLI e tente novamente.")
                 log("[LLM_ORCH] Alternativa: use C (Cowork manual).")
             else:
-                pacote_o = escolher_pacote()
-                log(f"Iniciando LLM Autopilot (7 agentes, idioma={idioma}, pacote={pacote_o})…")
-                llm_orchestrator.run(idioma, pacote_o)
+                log(f"Iniciando LLM Autopilot (1 livro/chamada, idioma={idioma})…")
+                llm_orchestrator.run(idioma)
 
         elif op.upper() == "M":
             try:
