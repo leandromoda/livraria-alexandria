@@ -2,17 +2,16 @@
 # LLM ORCHESTRATOR — Opção O
 # Livraria Alexandria
 #
-# Autopilot cíclico para 7 agentes LLM via claude CLI local.
-# Roda de forma exaustiva até não restar trabalho pendente.
+# Gerador de relatórios de manutenção via claude CLI.
+# Executa UMA VEZ por invocação (sem loop); recomendado
+# chamar a cada 5 ciclos da opção A.
 #
 # Agentes:
-#   1. synopsis      — sinopses via synopsis_cowork
-#   2. classify      — categorias via classify_cowork
-#   3. author_bio    — bios de autores via author_bio
-#   4. log_analysis  — análise de logs (1x por ciclo)
-#   5. consistency   — relatório de consistência Supabase (1x por ciclo)
-#   6. offer_finder  — busca de ofertas afiliadas via web
-#   7. title_auditor — auditoria de sinopses/capas publicadas
+#   1. log_analysis  — análise dos logs do pipeline
+#   2. consistency   — relatório de consistência Supabase
+#
+# Quando o limite de uso Claude é atingido, aciona
+# automaticamente o Autopilot não-LLM (opção A) como fallback.
 # ============================================================
 
 import glob
@@ -553,7 +552,14 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
 # =========================
 
 def run(idioma: str):
-    """Autopilot LLM cíclico — 1 livro por chamada Claude (1 ciclo ≈ 1 livro publicado)."""
+    """Manutenção LLM (opção O): gera relatórios de log e consistência.
+
+    Executa log_analysis e consistency_review via claude CLI (uma vez por
+    invocação, sem loop). Recomendado: chamar a cada 5 ciclos da opção A.
+
+    Se o limite de uso Claude for atingido, aciona o Autopilot não-LLM
+    (opção A) como fallback automático.
+    """
 
     from core.claude_runner import _find_claude
     claude_bin = _find_claude()
@@ -566,163 +572,53 @@ def run(idioma: str):
         log("[LLM_ORCH]   CLAUDE_BIN=C:/Users/.../AppData/Roaming/Claude/claude-code/VERSION/claude.exe")
         return
 
+    usage = claude_usage_status()
     log("[LLM_ORCH] ══════════════════════════════════════")
-    log("[LLM_ORCH] LLM Autopilot iniciado (opção O)")
-    log(f"[LLM_ORCH] Idioma: {idioma} | Batch: {BATCH_SIZE_SYNOPSIS} livro(s)/chamada")
+    log("[LLM_ORCH] Opção O — Relatórios de Manutenção LLM")
+    log(
+        f"[LLM_ORCH] Claude: {usage['calls_today']} chamadas hoje | "
+        f"{usage['calls_total']} total | "
+        f"limites atingidos: {usage['limit_hit_count']}"
+    )
     log("[LLM_ORCH] ══════════════════════════════════════")
 
-    cycle = 0
+    limit_hit = False
 
-    while True:
-        cycle += 1
-        usage = claude_usage_status()
-        log(
-            f"[LLM_ORCH] ── Ciclo {cycle} ─────────────────────  "
-            f"[Claude: {usage['calls_today']} chamadas hoje | "
-            f"{usage['calls_total']} total | "
-            f"limites atingidos: {usage['limit_hit_count']}]"
-        )
-        cycle_done      = 0
-        cycle_limit_hit = False   # sinaliza se o limite persistiu após retry
+    # ── 1. LOG ANALYSIS ─────────────────────────────────
+    log("[LLM_ORCH] log_analysis: iniciando…")
+    ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE)
+    if limit_persists:
+        limit_hit = True
+    elif ok:
+        log("[LLM_ORCH] log_analysis: concluído")
+    else:
+        log("[LLM_ORCH] log_analysis: falhou (sem limite de uso)")
 
-        conn = get_conn()
-
-        # ── 1. SYNOPSIS ──────────────────────────────────────
-        n_syn = _count_pending_synopsis(conn, idioma)
-        if n_syn > 0:
-            log(f"[LLM_ORCH] synopsis: {n_syn} pendentes")
-            exported = _export_synopsis(conn, idioma)
-            if exported > 0:
-                ok, limit_persists = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
-                if limit_persists:
-                    cycle_limit_hit = True
-                elif ok:
-                    _import_synopsis()
-                    cycle_done += exported
-        else:
-            log("[LLM_ORCH] synopsis: nenhum pendente — skip")
-
-        # ── 2. CLASSIFY ──────────────────────────────────────
-        if not cycle_limit_hit:
-            n_cls = _count_pending_classify(conn)
-            if n_cls > 0:
-                log(f"[LLM_ORCH] classify: {n_cls} pendentes")
-                exported = _export_classify(conn)
-                if exported > 0:
-                    ok, limit_persists = _run_agent_step("classify", "classify_cowork", timeout=900)
-                    if limit_persists:
-                        cycle_limit_hit = True
-                    elif ok:
-                        _import_classify()
-                        cycle_done += exported
-            else:
-                log("[LLM_ORCH] classify: nenhum pendente — skip")
-
-        conn.close()
-
-        # ── 3. AUTHOR BIO ─────────────────────────────────────
-        if not cycle_limit_hit:
-            conn = get_conn()
-            n_bio = _count_pending_author_bio(conn)
-            if n_bio > 0:
-                log(f"[LLM_ORCH] author_bio: {n_bio} pendentes")
-                exported = _export_author_bio(conn)
-                if exported > 0:
-                    ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900)
-                    if limit_persists:
-                        cycle_limit_hit = True
-                    elif ok:
-                        imported = _import_author_bio()
-                        cycle_done += imported
-            else:
-                log("[LLM_ORCH] author_bio: nenhum pendente — skip")
-            conn.close()
-
-        # ── 4. LOG ANALYSIS (1× a cada N ciclos) ─────────────
-        if not cycle_limit_hit and cycle % LOG_ANALYSIS_EVERY_N_CYCLES == 0:
-            log(f"[LLM_ORCH] log_analysis: executando (ciclo {cycle}, frequência 1/{LOG_ANALYSIS_EVERY_N_CYCLES})…")
-            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE)
+    # ── 2. CONSISTENCY REVIEW ────────────────────────────
+    if not limit_hit:
+        log("[LLM_ORCH] consistency_review: gerando relatório…")
+        has_report = _export_consistency()
+        if has_report:
+            ok, limit_persists = _run_agent_step(
+                "consistency_review", "consistency_review", timeout=TIMEOUT_MAINTENANCE
+            )
             if limit_persists:
-                cycle_limit_hit = True
+                limit_hit = True
             elif ok:
-                cycle_done += 1
-        elif not cycle_limit_hit:
-            log(f"[LLM_ORCH] log_analysis: skip (ciclo {cycle}, próximo em ciclo {((cycle // LOG_ANALYSIS_EVERY_N_CYCLES) + 1) * LOG_ANALYSIS_EVERY_N_CYCLES})")
+                conn = get_conn()
+                _import_consistency_actions(conn)
+                conn.close()
+        else:
+            log("[LLM_ORCH] consistency_review: nenhum dado para exportar — skip")
 
-        # ── 5. CONSISTENCY REVIEW (1× a cada N ciclos) ────────
-        if not cycle_limit_hit and cycle % CONSISTENCY_REVIEW_EVERY_N_CYCLES == 0:
-            log(f"[LLM_ORCH] consistency_review: gerando relatório (ciclo {cycle})…")
-            has_report = _export_consistency()
-            if has_report:
-                ok, limit_persists = _run_agent_step("consistency_review", "consistency_review", timeout=TIMEOUT_MAINTENANCE)
-                if limit_persists:
-                    cycle_limit_hit = True
-                elif ok:
-                    cycle_done += 1
-                    conn = get_conn()
-                    _import_consistency_actions(conn)
-                    conn.close()
-        elif not cycle_limit_hit:
-            log(f"[LLM_ORCH] consistency_review: skip (ciclo {cycle})")
+    # ── FALLBACK: Autopilot não-LLM quando limite atingido ──
+    if limit_hit:
+        log("[LLM_ORCH] ⛔ Limite Claude atingido — iniciando Autopilot não-LLM como fallback…")
+        try:
+            autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
+        except Exception as e:
+            log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
-        # ── 6. OFFER FINDER ───────────────────────────────────
-        if not cycle_limit_hit:
-            conn = get_conn()
-            n_off = _count_pending_offers(conn)
-            conn.close()
-            if n_off > 0:
-                log(f"[LLM_ORCH] offer_finder: {n_off} livros sem oferta ativa")
-                ok, limit_persists = _run_agent_step("offer_finder", "offer_finder", timeout=1800)
-                if limit_persists:
-                    cycle_limit_hit = True
-                elif ok:
-                    imported = _import_offers()
-                    cycle_done += imported
-            else:
-                log("[LLM_ORCH] offer_finder: nenhum pendente — skip")
-
-        # ── 7. TITLE AUDITOR ──────────────────────────────────
-        if not cycle_limit_hit:
-            conn = get_conn()
-            n_aud = _count_pending_audit(conn)
-            conn.close()
-            if n_aud > 0:
-                log(f"[LLM_ORCH] title_auditor: {n_aud} livros sem auditoria")
-                has_export = _export_audit()
-                if has_export:
-                    ok, limit_persists = _run_agent_step("title_auditor", "title_auditor", timeout=1200)
-                    if limit_persists:
-                        cycle_limit_hit = True
-                    elif ok:
-                        imported = _import_audit()
-                        cycle_done += imported
-            else:
-                log("[LLM_ORCH] title_auditor: nenhum pendente — skip")
-
-        # ── AUTOPILOT NÃO-LLM ────────────────────────────────
-        # Após imports de synopsis/classify, roda autopilot para processar
-        # os livros desbloqueados até publicação (QG → Publish → Listas).
-        if cycle_done > 0:
-            log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
-            try:
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
-            except Exception as e:
-                log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
-
-        # ── FIM DO CICLO ─────────────────────────────────────
-        log(f"[LLM_ORCH] Ciclo {cycle} concluído — trabalho realizado: {cycle_done}"
-            + (" | ⛔ interrompido por limite de uso" if cycle_limit_hit else ""))
-
-        if cycle_limit_hit:
-            log("[LLM_ORCH] Limite de uso persistente após retry — orquestrador encerrado.")
-            log("[LLM_ORCH] Aguarde o reset de sessão e reexecute a opção O.")
-            break
-
-        if cycle_done == 0:
-            log("[LLM_ORCH] Nenhum trabalho pendente em nenhum agente.")
-            log("[LLM_ORCH] Orquestrador encerrado.")
-            break
-
-    log(f"[LLM_ORCH] ══════════════════════════════════════")
-    log(f"[LLM_ORCH] Total de ciclos: {cycle}")
-    log(f"[LLM_ORCH] ══════════════════════════════════════")
+    log("[LLM_ORCH] ══════════════════════════════════════")
+    log("[LLM_ORCH] Opção O concluída.")
+    log("[LLM_ORCH] ══════════════════════════════════════")
