@@ -2,17 +2,22 @@
 # LLM ORCHESTRATOR — Opção O
 # Livraria Alexandria
 #
-# Autopilot cíclico para 7 agentes LLM via claude CLI local.
+# Autopilot cíclico para agentes LLM via claude CLI local.
 # Roda de forma exaustiva até não restar trabalho pendente.
 #
 # Agentes:
 #   1. synopsis      — sinopses via synopsis_cowork
 #   2. classify      — categorias via classify_cowork
 #   3. author_bio    — bios de autores via author_bio
-#   4. log_analysis  — análise de logs (1x por ciclo)
-#   5. consistency   — relatório de consistência Supabase (1x por ciclo)
+#   4. log_analysis  — relatório de logs (1x/N ciclos; só gera, não aplica)
+#   5. consistency   — relatório Supabase (1x/N ciclos; só gera, não aplica)
 #   6. offer_finder  — busca de ofertas afiliadas via web
 #   7. title_auditor — auditoria de sinopses/capas publicadas
+#
+# Relatórios (4 e 5) são gerados aqui mas lidos/aplicados por
+# rotina externa ao pipeline.
+# Quando limite Claude atingido: fallback automático para Autopilot
+# não-LLM (opção A).
 # ============================================================
 
 import glob
@@ -47,6 +52,11 @@ BATCH_SIZE_CLASSIFY   = 10   # classify é mais rápido (~5-10s/livro), 10 é co
 BATCH_SIZE_AUTHOR_BIO = 25
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
+
+# Agentes de manutenção: rodam 1× a cada N ciclos (evitam timeout e poupam sessões)
+LOG_ANALYSIS_EVERY_N_CYCLES    = 5
+CONSISTENCY_REVIEW_EVERY_N_CYCLES = 5
+TIMEOUT_MAINTENANCE            = 1800  # 30 min — suficiente para logs acumulados
 
 NUM_PAT = re.compile(r"^(\d{3})_")
 
@@ -548,7 +558,13 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
 # =========================
 
 def run(idioma: str):
-    """Autopilot LLM cíclico — 1 livro por chamada Claude (1 ciclo ≈ 1 livro publicado)."""
+    """Autopilot LLM cíclico — processa sinopses, categorias, bios e ofertas.
+
+    A cada N ciclos também gera relatórios de log e consistência (sem aplicar
+    correções inline — leitura e aplicação são responsabilidade de rotina externa).
+
+    Quando limite Claude atingido: aciona Autopilot não-LLM como fallback.
+    """
 
     from core.claude_runner import _find_claude
     claude_bin = _find_claude()
@@ -633,29 +649,31 @@ def run(idioma: str):
                 log("[LLM_ORCH] author_bio: nenhum pendente — skip")
             conn.close()
 
-        # ── 4. LOG ANALYSIS (sempre, 1x por ciclo) ────────────
-        if not cycle_limit_hit:
-            log("[LLM_ORCH] log_analysis: executando…")
-            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=900)
+        # ── 4. LOG ANALYSIS (1× a cada N ciclos) ─────────────
+        # Apenas gera o relatório — leitura e correções por rotina externa.
+        if not cycle_limit_hit and cycle % LOG_ANALYSIS_EVERY_N_CYCLES == 0:
+            log(f"[LLM_ORCH] log_analysis: executando (ciclo {cycle}, frequência 1/{LOG_ANALYSIS_EVERY_N_CYCLES})…")
+            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE)
             if limit_persists:
                 cycle_limit_hit = True
             elif ok:
                 cycle_done += 1
+        elif not cycle_limit_hit:
+            log(f"[LLM_ORCH] log_analysis: skip (ciclo {cycle}, próximo em ciclo {((cycle // LOG_ANALYSIS_EVERY_N_CYCLES) + 1) * LOG_ANALYSIS_EVERY_N_CYCLES})")
 
-        # ── 5. CONSISTENCY REVIEW (sempre, 1x por ciclo) ──────
-        if not cycle_limit_hit:
-            log("[LLM_ORCH] consistency_review: gerando relatório…")
+        # ── 5. CONSISTENCY REVIEW (1× a cada N ciclos) ────────
+        # Apenas gera o relatório — leitura e correções por rotina externa.
+        if not cycle_limit_hit and cycle % CONSISTENCY_REVIEW_EVERY_N_CYCLES == 0:
+            log(f"[LLM_ORCH] consistency_review: gerando relatório (ciclo {cycle})…")
             has_report = _export_consistency()
             if has_report:
-                ok, limit_persists = _run_agent_step("consistency_review", "consistency_review", timeout=600)
+                ok, limit_persists = _run_agent_step("consistency_review", "consistency_review", timeout=TIMEOUT_MAINTENANCE)
                 if limit_persists:
                     cycle_limit_hit = True
                 elif ok:
                     cycle_done += 1
-                    # Processar ações automáticas identificadas pelo agente
-                    conn = get_conn()
-                    _import_consistency_actions(conn)
-                    conn.close()
+        elif not cycle_limit_hit:
+            log(f"[LLM_ORCH] consistency_review: skip (ciclo {cycle})")
 
         # ── 6. OFFER FINDER ───────────────────────────────────
         if not cycle_limit_hit:
@@ -697,7 +715,7 @@ def run(idioma: str):
         if cycle_done > 0:
             log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
             try:
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
@@ -706,8 +724,11 @@ def run(idioma: str):
             + (" | ⛔ interrompido por limite de uso" if cycle_limit_hit else ""))
 
         if cycle_limit_hit:
-            log("[LLM_ORCH] Limite de uso persistente após retry — orquestrador encerrado.")
-            log("[LLM_ORCH] Aguarde o reset de sessão e reexecute a opção O.")
+            log("[LLM_ORCH] Limite de uso persistente após retry — iniciando Autopilot não-LLM como fallback…")
+            try:
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
+            except Exception as e:
+                log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
             break
 
         if cycle_done == 0:

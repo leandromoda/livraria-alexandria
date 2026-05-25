@@ -733,9 +733,7 @@ E  → Exports
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
-            manter_str    = input_safe("Manter lotes Cowork? (mantém 10 inputs prontos p/ agente) [s/N]: ").strip().lower()
-            manter_cowork = manter_str == "s"
-            autopilot.run(idioma, 100, manter_cowork=manter_cowork)
+            autopilot.run(idioma, 100, manter_cowork=True)
 
         elif op.upper() == "I":
             log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=claude)…")

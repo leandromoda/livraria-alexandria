@@ -388,6 +388,9 @@ def try_google_books(isbn, titulo, autor):
 
 def fetch_pending(conn, pacote):
     cur = conn.cursor()
+    # Livros sem imagem_url têm prioridade — evita re-scrape desnecessário
+    # de livros que já têm capa mas ainda não têm status_enrich=1.
+    # Título vazio causa URL de busca inválida — filtrado aqui.
     cur.execute("""
         SELECT id, titulo, autor, isbn, offer_url, imagem_url,
                marketplace, lookup_query
@@ -395,7 +398,11 @@ def fetch_pending(conn, pacote):
         WHERE status_enrich = 0
           AND offer_url IS NOT NULL
           AND offer_url != ''
-        ORDER BY created_at ASC
+          AND titulo IS NOT NULL
+          AND titulo != ''
+        ORDER BY
+          CASE WHEN imagem_url IS NULL OR imagem_url = '' THEN 0 ELSE 1 END,
+          created_at ASC
         LIMIT ?
     """, (pacote,))
     return cur.fetchall()
