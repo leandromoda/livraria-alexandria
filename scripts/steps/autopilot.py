@@ -376,7 +376,7 @@ def count_pending(conn) -> int:
 # RUN
 # =========================
 
-def run(idioma: str, pacote: int, manter_cowork: bool = True, cowork_target: int = 10):
+def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: int = 10):
     """Loop automático: roda sequência não-LLM até não haver mais progresso.
 
     Para quando:
@@ -393,8 +393,10 @@ def run(idioma: str, pacote: int, manter_cowork: bool = True, cowork_target: int
       e sem progresso também encerram (evita loop infinito em falha permanente)
 
     Args:
-        manter_cowork: Se True (padrão), exporta lotes Cowork ao final de cada
-                       ciclo para manter `cowork_target` inputs disponíveis.
+        manter_cowork: Se True, exporta lotes Cowork ao final de cada ciclo
+                       para manter `cowork_target` inputs disponíveis ao agente.
+                       Padrão False para evitar side effects em callers que não
+                       gerenciam imports de Cowork (ex: ingestao_orientada).
         cowork_target: Número de lotes a manter disponíveis (padrão: 10).
     """
     MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
