@@ -85,13 +85,15 @@ def fetch_pending(conn, idioma, limit):
 
     cur = conn.cursor()
 
+    # Slugs são language-agnostic — todos os livros precisam de slug
+    # independente do idioma. Filtrar por idioma aqui causaria Progresso=0
+    # para livros de outros idiomas que o autopilot nunca processa.
     cur.execute("""
         SELECT id, titulo
         FROM livros
         WHERE status_slug = 0
-          AND idioma = ?
         LIMIT ?
-    """, (idioma, limit))
+    """, (limit,))
 
     return cur.fetchall()
 
@@ -126,7 +128,7 @@ def run(idioma, pacote=10):
     rows = fetch_pending(conn, idioma, pacote)
 
     if not rows:
-        log(f"Nada pendente para slug [{idioma}].")
+        log("Nada pendente para slug.")
         conn.close()
         return
 

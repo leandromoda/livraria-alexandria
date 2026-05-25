@@ -183,7 +183,13 @@ def run():
     listas = fetch_listas(conn)
 
     if not listas:
-        log("[PUBLISH_LISTAS] Nenhuma lista no SQLite. Rode o step 18 (Listas SEO) primeiro.")
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM listas WHERE status_publish = 1")
+        ja_publicadas = cur.fetchone()[0]
+        if ja_publicadas > 0:
+            log(f"[PUBLISH_LISTAS] Nenhuma lista pendente — {ja_publicadas} lista(s) já publicadas anteriormente.")
+        else:
+            log("[PUBLISH_LISTAS] Nenhuma lista no SQLite. Rode o step 18 (Listas SEO) primeiro.")
         conn.close()
         return
 
