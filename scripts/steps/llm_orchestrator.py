@@ -25,6 +25,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -524,6 +525,55 @@ def _import_offers() -> int:
 
 
 # =========================
+# GIT COMMIT REPORTS
+# =========================
+
+def _git_commit_reports(glob_patterns: list[str], label: str) -> None:
+    """Commita arquivos de relatório gerados pelo pipeline para o git.
+
+    O agente remoto (CCR) só enxerga arquivos versionados — sem commit,
+    os relatórios ficam apenas no disco local e nunca são processados.
+
+    Args:
+        glob_patterns: Lista de padrões glob relativos à raiz do repo.
+        label: Rótulo para o commit (ex: "log_analysis", "consistency").
+    """
+    repo_root = SCRIPTS_DIR.parent
+    matched: list[str] = []
+    for pattern in glob_patterns:
+        matched.extend(glob.glob(str(repo_root / pattern)))
+
+    if not matched:
+        log(f"[LLM_ORCH] git_commit({label}): nenhum arquivo novo para commitar")
+        return
+
+    try:
+        # git add
+        subprocess.run(
+            ["git", "add", "--"] + matched,
+            cwd=str(repo_root),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        # git commit (--allow-empty-message não necessário; só commita se houver staged)
+        result = subprocess.run(
+            ["git", "commit", "-m", f"chore(pipeline): relatórios {label} gerados automaticamente"],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            log(f"[LLM_ORCH] git_commit({label}): {len(matched)} arquivo(s) commitados")
+        elif "nothing to commit" in result.stdout or "nothing to commit" in result.stderr:
+            log(f"[LLM_ORCH] git_commit({label}): arquivos já commitados — sem alteração")
+        else:
+            log(f"[LLM_ORCH] git_commit({label}): AVISO — {result.stderr.strip()[:200]}")
+    except Exception as e:
+        log(f"[LLM_ORCH] git_commit({label}): erro ao commitar — {e}")
+
+
+# =========================
 # RUN SINGLE AGENT
 # =========================
 
@@ -657,6 +707,10 @@ def run(idioma: str):
             if limit_persists:
                 cycle_limit_hit = True
             elif ok:
+                _git_commit_reports(
+                    ["scripts/data/log_analysis/log_analysis_*.json"],
+                    "log_analysis",
+                )
                 cycle_done += 1
         elif not cycle_limit_hit:
             log(f"[LLM_ORCH] log_analysis: skip (ciclo {cycle}, próximo em ciclo {((cycle // LOG_ANALYSIS_EVERY_N_CYCLES) + 1) * LOG_ANALYSIS_EVERY_N_CYCLES})")
@@ -671,6 +725,13 @@ def run(idioma: str):
                 if limit_persists:
                     cycle_limit_hit = True
                 elif ok:
+                    _git_commit_reports(
+                        [
+                            "scripts/data/cowork/*_consistency.json",
+                            "scripts/data/cowork/*_consistency_actions.json",
+                        ],
+                        "consistency_review",
+                    )
                     cycle_done += 1
         elif not cycle_limit_hit:
             log(f"[LLM_ORCH] consistency_review: skip (ciclo {cycle})")
