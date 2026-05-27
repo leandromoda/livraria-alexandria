@@ -89,7 +89,8 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND is_publishable  = 1
               AND status_synopsis = 1
               AND sinopse IS NOT NULL
-              AND sinopse != ''
+              AND trim(sinopse) != ''
+              AND length(trim(sinopse)) >= 80
               AND idioma          = ?
               AND id IN ({placeholders})
             ORDER BY priority_score DESC, created_at ASC
@@ -110,7 +111,8 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND is_publishable  = 1
               AND status_synopsis = 1
               AND sinopse IS NOT NULL
-              AND sinopse != ''
+              AND trim(sinopse) != ''
+              AND length(trim(sinopse)) >= 80
               AND idioma          = ?
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
@@ -287,12 +289,18 @@ def run(idioma, pacote=10, book_ids=None):
 
     for i, row in enumerate(rows, start=1):
 
-        payload    = build_payload(row)
+        payload = build_payload(row)
+
+        if payload is None:
+            failed += 1
+            log(f"[PUBLISH][{i:03d}/{total:03d}] SKIP sinopse invalida -> {row[1]}")
+            continue
+
         supabase_id = upsert_book(payload)
 
         if not supabase_id:
             failed += 1
-            log(f"[PUBLISH][{i:03d}/{total:03d}] FALHA → {row[1]}")
+            log(f"[PUBLISH][{i:03d}/{total:03d}] FALHA -> {row[1]}")
             continue
 
         mark_published(conn, row[0], supabase_id)
