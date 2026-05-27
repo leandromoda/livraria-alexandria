@@ -11,6 +11,7 @@
 
 import json
 import os
+import re
 import requests
 
 from datetime import datetime
@@ -35,13 +36,23 @@ HEADERS = {
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "cowork"
 
 SINOPSE_MIN_CHARS = 80
+
+# Padrões de substring simples — aplicados no texto lowercased.
+# Não inclui "null"/"undefined" aqui pois podem aparecer em títulos de livros.
 SINOPSE_SUSPICIOUS_PATTERNS = [
     "lorem ipsum",
     "texto indisponível",
     "sem sinopse",
     "n/a",
-    "null",
-    "undefined",
+]
+
+# Padrões regex com contexto — distinguem artefatos LLM de usos legítimos.
+# "null"/"undefined" após dois-pontos, vírgula, aspas ou no fim de sentença
+# são artefatos reais (ex.: "resumo: null.", "campo: undefined").
+# NÃO disparam quando a palavra é parte de um título composto como "Null States".
+SINOPSE_SUSPICIOUS_REGEX = [
+    (re.compile(r'(?:[:,\s"])\s*null\s*(?:[.,;\n"]|$)', re.IGNORECASE), "null_artifact"),
+    (re.compile(r'(?:[:,\s"])\s*undefined\s*(?:[.,;\n"]|$)', re.IGNORECASE), "undefined_artifact"),
 ]
 
 
@@ -138,7 +149,9 @@ def _check_sinopses_suspeitas(livros: list) -> list:
             })
             continue
 
+        # 1. Padrões de substring simples (lowercased)
         sinopse_lower = sinopse.lower()
+        flagged = False
         for pat in SINOPSE_SUSPICIOUS_PATTERNS:
             if pat in sinopse_lower:
                 result.append({
@@ -146,6 +159,22 @@ def _check_sinopses_suspeitas(livros: list) -> list:
                     "slug": l.get("slug"),
                     "titulo": l.get("titulo"),
                     "problema": f"padrao_suspeito:{pat}",
+                    "sinopse_preview": sinopse[:120],
+                })
+                flagged = True
+                break
+
+        if flagged:
+            continue
+
+        # 2. Padrões regex com contexto (texto original, case-insensitive)
+        for regex, label in SINOPSE_SUSPICIOUS_REGEX:
+            if regex.search(sinopse):
+                result.append({
+                    "id": l["id"],
+                    "slug": l.get("slug"),
+                    "titulo": l.get("titulo"),
+                    "problema": f"padrao_suspeito:{label}",
                     "sinopse_preview": sinopse[:120],
                 })
                 break

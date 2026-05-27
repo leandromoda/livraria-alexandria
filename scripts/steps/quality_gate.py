@@ -110,16 +110,17 @@ def fetch_candidates(conn, idioma, limit, book_ids=None):
 # =========================
 
 def check_synopsis_len(texto):
-    if not texto:
+    # strip() antes de qualquer verificação — sinopses só-whitespace falham
+    if not texto or not texto.strip():
         return False
-    return len(texto) >= MIN_SYNOPSIS_LEN
+    return len(texto.strip()) >= MIN_SYNOPSIS_LEN
 
 
 def check_synopsis_generic(texto):
     """Retorna True se a sinopse for um template genérico do LLM."""
-    if not texto:
+    if not texto or not texto.strip():
         return False
-    lower = texto.lower()
+    lower = texto.strip().lower()
     return any(marker in lower for marker in GENERIC_SYNOPSIS_MARKERS)
 
 

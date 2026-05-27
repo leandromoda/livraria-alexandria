@@ -48,7 +48,9 @@ COWORK_DIR    = DATA_DIR / "cowork"
 LOGS_DIR      = DATA_DIR / "logs"
 AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 
-BATCH_SIZE_SYNOPSIS   = 10   # ~430s por batch (43s/livro × 10) — margem segura antes do timeout de 900s
+BATCH_SIZE_SYNOPSIS   = 5    # ~450s por batch (90s/livro × 5) — margem segura antes do timeout de 900s
+                             # Reduzido de 10→5: livros com descrições longas levam ~90s cada,
+                             # causando timeout com batch=10 (900s). Histórico: 43s/livro em 2026-05.
 BATCH_SIZE_CLASSIFY   = 10   # classify é mais rápido (~5-10s/livro), 10 é conservador
 BATCH_SIZE_AUTHOR_BIO = 25
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
@@ -649,6 +651,10 @@ def run(idioma: str):
         conn = get_conn()
 
         # ── 1. SYNOPSIS ──────────────────────────────────────
+        # Antes de checar pendentes: importar outputs já prontos de ciclos anteriores
+        # (ex: batch do ciclo anterior que gerou output mas não foi importado por timeout).
+        _import_synopsis()
+
         n_syn = _count_pending_synopsis(conn, idioma)
         if n_syn > 0:
             log(f"[LLM_ORCH] synopsis: {n_syn} pendentes")
@@ -660,6 +666,18 @@ def run(idioma: str):
                 elif ok:
                     _import_synopsis()
                     cycle_done += exported
+                else:
+                    # Timeout ou erro não-limite: arquivo input pode ter ficado no cowork
+                    # com status_synopsis=3 nos livros — o agente vai processar na próxima
+                    # invocação ao encontrar o arquivo ainda presente.
+                    import glob as _glob_inner
+                    orphans = _glob_inner.glob(str(COWORK_DIR / "*_synopsis_input.json"))
+                    if orphans:
+                        log(
+                            f"[LLM_ORCH] ⚠ synopsis timeout/erro — {len(orphans)} arquivo(s) "
+                            f"input pendente(s) em cowork/. Livros exportados ficam em "
+                            f"status_synopsis=3 até o próximo ciclo processar o arquivo."
+                        )
         else:
             log("[LLM_ORCH] synopsis: nenhum pendente — skip")
 
