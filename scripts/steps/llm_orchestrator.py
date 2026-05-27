@@ -653,7 +653,14 @@ def run(idioma: str):
         # ── 1. SYNOPSIS ──────────────────────────────────────
         # Antes de checar pendentes: importar outputs já prontos de ciclos anteriores
         # (ex: batch do ciclo anterior que gerou output mas não foi importado por timeout).
-        _import_synopsis()
+        # Conta os arquivos ANTES de importar para incrementar cycle_done — sem isso,
+        # o bloco "if cycle_done > 0" não aciona o autopilot não-LLM e os livros
+        # importados ficam sem passar pelo Quality Gate / Publicação.
+        _startup_outputs = glob.glob(str(COWORK_DIR / "*_synopsis_output.json"))
+        if _startup_outputs:
+            log(f"[LLM_ORCH] synopsis: {len(_startup_outputs)} output(s) pendente(s) de ciclo(s) anterior(es) — importando…")
+            _import_synopsis()
+            cycle_done += len(_startup_outputs)
 
         n_syn = _count_pending_synopsis(conn, idioma)
         if n_syn > 0:
