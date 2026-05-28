@@ -50,6 +50,7 @@ from steps import db_backup
 from steps import db_restore
 from steps import db_recover
 
+from core.db import get_conn
 from core.version import get_version
 from core.run_logger import StepRun
 
@@ -687,6 +688,128 @@ V  → Voltar
 
 
 # =========================
+# GARGALO PLAN (opção G)
+# =========================
+
+def _run_gargalo(idioma: str):
+    """
+    Opção G — Atacar Gargalos:
+      1. Analisa estado atual e gera plano priorizado
+      2. Exibe o plano e salva em data/gargalo_plan.json
+      3. Executa os steps auto-executáveis (audits + maintenance)
+      4. Chama Autopilot A até exaustão
+    """
+    log("[G] Analisando gargalos e construindo plano de ataque…")
+
+    conn_g = get_conn()
+    plan   = pipeline_status.build_gargalo_plan(conn_g, idioma)
+    conn_g.close()
+
+    # ── Exibe o plano ─────────────────────────────────────────
+    sep = "─" * 62
+    TYPE_LABEL = {
+        "audit":       "AUDITORIA  ",
+        "audit_llm":   "AUDIT-LLM  ",
+        "maintenance": "MANUTENÇÃO ",
+        "pipeline":    "PIPELINE   ",
+        "llm":         "LLM ⚠      ",
+        "autopilot":   "AUTOPILOT  ",
+    }
+    TYPE_ICON = {
+        "audit":       "→",
+        "audit_llm":   "!",
+        "maintenance": "→",
+        "pipeline":    "→",
+        "llm":         "!",
+        "autopilot":   "→",
+    }
+
+    print()
+    print("=" * 62)
+    print("  PLANO DE ATAQUE A GARGALOS")
+    print("=" * 62)
+
+    auto_steps  = []  # executáveis automaticamente (exceto autopilot)
+    info_steps  = []  # apenas informativos (LLM, audit_llm)
+
+    for s in plan["steps"]:
+        t    = s["type"]
+        icon = TYPE_ICON.get(t, "·")
+        tlbl = TYPE_LABEL.get(t, t.upper().ljust(11))
+        pend = f"  ({s['pending']:,} pendentes)" if s.get("pending") else ""
+        nota = "" if s.get("auto") else "  [manual]"
+
+        print(f"\n  {s['order']:>2}. [{tlbl}] {s['label']}")
+        print(f"      {icon}  {s['reason']}{pend}{nota}")
+
+        if s.get("auto") and t not in ("autopilot", "pipeline"):
+            auto_steps.append(s)
+        elif not s.get("auto"):
+            info_steps.append(s)
+
+    print()
+    print(f"  {sep}")
+    print(f"  Plano salvo em: scripts/data/gargalo_plan.json")
+    print(f"  Steps a executar agora: {len(auto_steps)} + Autopilot A")
+    if info_steps:
+        print(f"  Steps manuais/LLM (não auto): {len(info_steps)}")
+    print()
+
+    confirma = input_safe("Executar plano agora? [S/n]: ").strip().lower()
+    if confirma == "n":
+        input_safe("Pressione Enter para voltar ao menu…")
+        return
+
+    # ── Executa steps auto-executáveis ────────────────────────
+    for step in auto_steps:
+        key = step["key"]
+        log(f"[G] ── {step['label']} ──")
+        try:
+            if key == "autopilot_audit":
+                with StepRun("autopilot_audit", idioma=idioma, invocado_por="gargalo"):
+                    autopilot_audit.run()
+
+            elif key == "audit_connectivity":
+                args_g = argparse.Namespace(mode="connectivity", dry_run=False)
+                auditor.run(args_g)
+
+            elif key == "audit_list":
+                args_g = argparse.Namespace(mode="list", dry_run=False)
+                auditor.run(args_g)
+
+            elif key == "audit_author_bios":
+                args_g = argparse.Namespace(mode="author-bios", dry_run=False)
+                auditor.run(args_g)
+
+            elif key == "consistency_check":
+                out = consistency_check.run()
+                if out:
+                    log(f"[G] Relatório gerado: {out.name}")
+                    log("[G] Execute o agente consistency_review no Claude Code após o plano.")
+
+            elif key == "apply_blacklist":
+                log("[G] Aplicando blacklist.json…")
+                with StepRun("apply_blacklist", idioma=idioma, invocado_por="gargalo"):
+                    apply_blacklist.run(dry_run=False)
+
+            else:
+                log(f"[G] Step '{key}' não tem execução automática. Pule manualmente.")
+
+        except KeyboardInterrupt:
+            log("[G] Interrompido pelo usuário.")
+            return
+        except Exception as e_g:
+            log(f"[G] ERRO em {step['label']}: {e_g}")
+
+    # ── Autopilot A até exaustão ──────────────────────────────
+    log("[G] Todos os steps de auditoria/manutenção concluídos.")
+    log("[G] Iniciando Autopilot A até exaustão…")
+    autopilot.run(idioma, 100, manter_cowork=True)
+
+    log(f"[G] Plano concluído. v{get_version()}")
+
+
+# =========================
 # MAIN LOOP
 # =========================
 
@@ -698,12 +821,18 @@ def main():
     args, _ = parser.parse_known_args()
     idioma = args.lang
 
+    # ── Status automático na abertura ───────────────────────────
+    log(f"[PIPELINE] v{get_version()} | iniciando…")
+    pipeline_status.run()
+    input_safe("Pressione Enter para o menu principal… ")
+
     while True:
 
         print("""
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
-S  → Status do pipeline (gargalos)
+S  → Status do pipeline (atualizar)
+G  → Atacar gargalos — propõe sequência e executa → Autopilot A
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
 I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
@@ -730,6 +859,9 @@ E  → Exports
         elif op in ("s", "S"):
             pipeline_status.run()
             input_safe("\nPressione Enter para voltar ao menu…")
+
+        elif op.upper() == "G":
+            _run_gargalo(idioma)
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
