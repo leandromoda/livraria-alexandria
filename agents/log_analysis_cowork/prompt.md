@@ -200,11 +200,51 @@ Quando encontrar um bug (ex.: JSON malformado, exceção não tratada, arquivo c
 
 ### Localização
 
-`scripts/data/log_analysis/`
+**CRÍTICO — leia com atenção:**
 
-### Pós-processamento
+- O JSON vai para `scripts/data/log_analysis/` **diretamente** (a pasta raiz, NÃO para `processed_logs/`)
+- `processed_logs/` é exclusivo para os logs `.log` fonte — **nunca** grave o JSON lá
 
-Mover o log fonte para `scripts/data/log_analysis/processed_logs/` usando caminho absoluto (mesmo `find_repo_root` do Passo 1 — substitua `TIMESTAMP` pelo identificador real do log):
+### Ordem de execução obrigatória
+
+**PASSO A — Gravar o JSON (ferramenta Write)**
+
+Use a ferramenta Write para criar o arquivo em:
+```
+scripts/data/log_analysis/log_analysis_TIMESTAMP.json
+```
+onde `TIMESTAMP` é o identificador extraído do nome do log fonte.
+
+**PASSO B — Verificar que o JSON existe (bash)**
+
+Só avance para o PASSO C após confirmar que o arquivo foi criado:
+
+```bash
+python -c "
+from pathlib import Path
+import sys
+
+def find_repo_root():
+    for p in [Path.cwd()] + list(Path.cwd().parents):
+        if (p / 'scripts' / 'main.py').exists():
+            return p
+    return None
+
+repo = find_repo_root()
+json_path = repo / 'scripts' / 'data' / 'log_analysis' / 'log_analysis_TIMESTAMP.json'
+if json_path.exists():
+    print(f'OK: {json_path} ({json_path.stat().st_size} bytes)')
+else:
+    print(f'ERRO: JSON nao encontrado em {json_path}', file=sys.stderr)
+    sys.exit(1)
+"
+```
+
+Se o script retornar erro (JSON não encontrado), **não execute o PASSO C** — reportar falha e parar.
+
+**PASSO C — Mover o log fonte para `processed_logs/` (bash)**
+
+Apenas após a confirmação do PASSO B:
 
 ```bash
 python -c "
@@ -344,7 +384,8 @@ Bash python detect-repo-root → listar scripts/data/logs/pipeline_*.log com pat
   → Passada 3: sintetizar insights
       detectar padrões recorrentes, taxas de erro, bottlenecks
       mapear para arquivos do código
-  → Gravar log_analysis_TIMESTAMP.json em scripts/data/log_analysis/
-  → Mover log processado → scripts/data/log_analysis/processed_logs/
+  → PASSO A: Write → scripts/data/log_analysis/log_analysis_TIMESTAMP.json (root, NÃO em processed_logs/)
+  → PASSO B: bash verificar que o JSON existe (sys.exit(1) se não encontrado)
+  → PASSO C: bash mover log fonte → scripts/data/log_analysis/processed_logs/ (só após PASSO B OK)
   → Reportar: "Análise concluída: X falhas, Y rejeições, Z insights acionáveis"
 ```

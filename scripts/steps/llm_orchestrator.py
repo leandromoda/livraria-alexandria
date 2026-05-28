@@ -606,6 +606,82 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
 
 
 # =========================
+# LOG ANALYSIS WRAPPER
+# =========================
+
+def _run_log_analysis() -> tuple[bool, bool]:
+    """Invoca o agente log_analysis com verificação de output.
+
+    Garante que o JSON foi gravado em data/log_analysis/ (root).
+    Casos tratados:
+      - JSON no lugar correto → success
+      - JSON em processed_logs/ por engano → copia para o root e success
+      - Log consumido mas sem JSON em lugar algum → warning (não propaga erro)
+      - Nenhum log pendente → skip (success imediato)
+
+    Retorna (ok, limit_persists) igual a _run_agent_step.
+    """
+    pending_logs = sorted(glob.glob(str(LOGS_DIR / "pipeline_*.log")))
+    if not pending_logs:
+        log("[LLM_ORCH] log_analysis: nenhum log pendente em data/logs/ — skip")
+        return True, False
+
+    log(f"[LLM_ORCH] log_analysis: {len(pending_logs)} log(s) pendente(s) em data/logs/")
+
+    # Snapshot antes da chamada
+    log_analysis_dir = DATA_DIR / "log_analysis"
+    processed_dir    = log_analysis_dir / "processed_logs"
+    before_root = set(glob.glob(str(log_analysis_dir / "log_analysis_*.json")))
+    before_proc = set(glob.glob(str(processed_dir / "log_analysis_*.json")))
+    before_logs = set(pending_logs)
+
+    # Invocar agente
+    ok, limit_persists = _run_agent_step(
+        "log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE
+    )
+
+    if limit_persists:
+        return False, True
+
+    # Verificar output
+    after_root = set(glob.glob(str(log_analysis_dir / "log_analysis_*.json")))
+    after_proc = set(glob.glob(str(processed_dir / "log_analysis_*.json")))
+    after_logs = set(glob.glob(str(LOGS_DIR / "pipeline_*.log")))
+
+    new_root = after_root - before_root
+    new_proc = after_proc - before_proc
+    consumed = before_logs - after_logs
+
+    if new_root:
+        # Caminho correto — relatório em data/log_analysis/
+        log(f"[LLM_ORCH] log_analysis: ✓ relatório → {Path(list(new_root)[0]).name}")
+        return True, False
+
+    if new_proc:
+        # Agente gravou em processed_logs/ em vez do root — corrigir
+        import shutil as _shutil
+        for json_path in new_proc:
+            dest = log_analysis_dir / Path(json_path).name
+            _shutil.copy2(json_path, dest)
+            log(f"[LLM_ORCH] log_analysis: ⚠️ JSON estava em processed_logs/ — copiado para root → {dest.name}")
+        return True, False
+
+    # Nenhum JSON gerado
+    if consumed:
+        log(
+            f"[LLM_ORCH] log_analysis: ⚠️ {len(consumed)} log(s) consumido(s) "
+            f"mas JSON não encontrado em data/log_analysis/ nem em processed_logs/. "
+            f"Possível timeout do agente antes do Write."
+        )
+    elif not ok:
+        log("[LLM_ORCH] log_analysis: agente falhou sem consumir logs nem gerar JSON")
+    else:
+        log("[LLM_ORCH] log_analysis: agente concluiu mas não gerou JSON — verificar manualmente")
+
+    return ok, False
+
+
+# =========================
 # MAIN CYCLE
 # =========================
 
@@ -728,7 +804,7 @@ def run(idioma: str):
         # Apenas gera o relatório — leitura e correções por rotina externa.
         if not cycle_limit_hit and cycle % LOG_ANALYSIS_EVERY_N_CYCLES == 0:
             log(f"[LLM_ORCH] log_analysis: executando (ciclo {cycle}, frequência 1/{LOG_ANALYSIS_EVERY_N_CYCLES})…")
-            ok, limit_persists = _run_agent_step("log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE)
+            ok, limit_persists = _run_log_analysis()
             if limit_persists:
                 cycle_limit_hit = True
             elif ok:
