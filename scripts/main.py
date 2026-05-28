@@ -824,11 +824,16 @@ def main():
     # ── Status automático na abertura ───────────────────────────
     log(f"[PIPELINE] v{get_version()} | iniciando…")
     pipeline_status.run()
-    input_safe("Pressione Enter para o menu principal… ")
+    _startup_op = input_safe("Enter para o menu  |  ou já digite a opção (G, A, S…): ").strip()
 
     while True:
 
-        print("""
+        # Na primeira iteração usa a opção digitada no startup (se houver)
+        if _startup_op:
+            op        = _startup_op
+            _startup_op = ""
+        else:
+            print("""
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
 S  → Status do pipeline (atualizar)
@@ -850,8 +855,7 @@ E  → Exports
 
 0  → Sair
 """)
-
-        op = input_safe("Opção: ")
+            op = input_safe("Opção: ")
 
         if op == "0":
             break
