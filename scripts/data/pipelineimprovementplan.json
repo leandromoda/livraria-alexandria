@@ -23,7 +23,7 @@
       ],
       "validation": "2026-05-29: opção S renderiza o painel PRO; opção O (ciclo 1 ao vivo) drenou sinopse lote a lote (13030→13025) sem tocar nos não-críticos — WS1 confirmado.",
       "known_followups": [
-        "Reclaim de estado preso: ~1.143 livros em status_synopsis=3 e órfãos cowork/*_synopsis_input.json acumulados de execuções interrompidas — drenar/reverter no início do ciclo (ver structural_findings + WS6 changes)."
+        "RESOLVIDO 2026-05-29: reclaim de estado preso implementado em steps/reclaim.py e chamado no início de cada ação de autopilot (O: llm_orchestrator.run; A: autopilot.run; G: _run_gargalo). Idempotente: importa outputs prontos → reseta status_*=3→0 → arquiva inputs órfãos em processed_*/. Primeira execução recuperou 3.785 livros presos (1.143 sinopse + 2.642 categoria) + 21 inputs órfãos. Antecipa parte do reclaim previsto para WS6."
       ]
     }
   },

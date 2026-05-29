@@ -815,6 +815,9 @@ def run(idioma: str):
     log(f"[LLM_ORCH] Idioma: {idioma} | Batch: {BATCH_SIZE_SYNOPSIS} livro(s)/chamada")
     log("[LLM_ORCH] ══════════════════════════════════════")
 
+    from steps import reclaim
+    reclaim.run()
+
     cycle = 0
 
     while True:

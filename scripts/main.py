@@ -701,6 +701,9 @@ def _run_gargalo(idioma: str):
     """
     log("[G] Analisando gargalos e construindo plano de ataque…")
 
+    from steps import reclaim
+    reclaim.run()
+
     conn_g = get_conn()
     plan   = pipeline_status.build_gargalo_plan(conn_g, idioma)
     conn_g.close()
