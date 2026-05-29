@@ -26,7 +26,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
 
 # Provider ativo: "ollama" | "gemini" | "auto"
 # "auto" = comportamento original (gemini → ollama fallback)
-LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "ollama")
+LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "claude")
 _active_provider = LLM_PROVIDER
 
 

@@ -1,0 +1,269 @@
+{
+  "meta": {
+    "schema_name": "pipelineimprovementplan",
+    "schema_version": "2.0.0",
+    "generated_at": "2026-05-29",
+    "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
+    "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
+    "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
+    "status": "fase_1_implementada_e_validada__fases_2-5_pendentes",
+    "implementation_branch": "refactor/pipeline-pro-orquestracao"
+  },
+
+  "implementation_progress": {
+    "phase_1_fundacao": {
+      "status": "implementado_e_validado",
+      "implemented_at": "2026-05-29",
+      "workstreams": ["WS1_session_prioritization", "WS7_session_monitoring"],
+      "branch": "refactor/pipeline-pro-orquestracao",
+      "what_was_done": [
+        "WS1: ciclo do orquestrador (opção O) reordenado — drena sinopse → categorização → bios (cada um lote a lote via helpers _drain_synopsis/_drain_classify/_drain_author_bio) ANTES de qualquer agente não-crítico. Não-críticos (log_analysis, consistency, offer_finder, title_auditor) só rodam quando _content_backlog==0 e ainda há sessão (gate run_non_critical); senão são adiados com log.",
+        "WS7: claude_usage_tracker ganhou rastreio da janela de sessão (session_calls, session_started_at, _reset_at_from, session_window()) e o painel de Status (opção S) ganhou o bloco 'SESSÃO CLAUDE PRO' (chamadas na janela + cooldown/reset).",
+        "Direção PRO refletida: default LLM_PROVIDER=claude (markdown_executor) e remoção das menções a 'Gemini' em main.py/synopsis.py."
+      ],
+      "validation": "2026-05-29: opção S renderiza o painel PRO; opção O (ciclo 1 ao vivo) drenou sinopse lote a lote (13030→13025) sem tocar nos não-críticos — WS1 confirmado.",
+      "known_followups": [
+        "Reclaim de estado preso: ~1.143 livros em status_synopsis=3 e órfãos cowork/*_synopsis_input.json acumulados de execuções interrompidas — drenar/reverter no início do ciclo (ver structural_findings + WS6 changes)."
+      ]
+    }
+  },
+
+  "premise_correction": {
+    "version_change": "1.0.0 → 2.0.0",
+    "what_changed": "CORREÇÃO CRÍTICA do autor (2026-05-29): 'padronizar via API' NÃO significa a API Anthropic paga por token. Significa otimizar o uso do plano Claude PRO (assinatura, via claude CLI), operando DENTRO da quota diária / janela de sessão rotativa de 5h. Custo-alvo = ZERO além da assinatura PRO já paga.",
+    "implications": [
+      "Removido todo workstream que criava cliente da API Anthropic / ANTHROPIC_API_KEY / orçamento por token. O backend LLM continua sendo o claude CLI (claude_runner).",
+      "'Minimizar tokens' passa a significar: extrair o MÁXIMO da janela de sessão de 5h — priorizar o gargalo (sinopse), não desperdiçar a sessão em agentes não-críticos, rodar ininterrupto através dos resets, lotes que amortizem sem estourar timeout, prompts enxutos.",
+      "A opção O (llm_orchestrator + claude_runner) deixa de ser candidata a 'aposentar' e passa a ser o MOTOR a otimizar — é exatamente o que consome a quota do PRO.",
+      "Fallbacks permanecem em custo zero: sessão PRO exaurida → steps não-LLM (autopilot A) → step de maior backlog → aguardar reset e retomar. NUNCA API paga.",
+      "Gemini APOSENTADO (decisão do autor, 2026-05-29): não é usado como fallback de geração. O único motor LLM é a sessão PRO via CLI."
+    ],
+    "context_from_pr_history": "PRs #120 (1 livro/chamada p/ evitar timeout), #121 (BATCH_SIZE=10, equilíbrio timeout × uso do plano), #122 (simplificar opção O p/ relatórios), #115 (title_auditor automático no O) — confirmam iteração prévia para caber na quota do PRO."
+  },
+
+  "guiding_principles": [
+    "Custo zero além da assinatura PRO: nunca introduzir API paga por token.",
+    "Preservar e OTIMIZAR as opções de automação (S/G/A/O...) — foram o maior salto de eficiência.",
+    "Maximizar throughput dentro da janela de sessão de 5h: priorizar o gargalo real (sinopse), rodar ininterrupto através dos resets, evitar gastar a sessão em agentes não-críticos.",
+    "Fechar o ciclo de qualidade: QA sistemática integrada (detectar → despublicar/corrigir → regenerar → republicar), incluindo reprocessamento do que foi despublicado por blacklist.",
+    "Convergir a automação para a opção G como orquestrador único com fallbacks de custo zero e reinício automático.",
+    "Mudanças incrementais e reversíveis; cada workstream testável isoladamente; nada de big-bang.",
+    "Respeitar CLAUDE.md e as skills/prompts dos agentes em agents/."
+  ],
+
+  "subagent_review": {
+    "reviewed_at": "2026-05-29",
+    "verdict": "approve-with-changes (revisado SOB a premissa antiga de API paga)",
+    "note": "A revisão ocorreu antes da correção de premissa. Achados específicos de API (cliente novo, prompt caching via API, orçamento por token) foram SUPERADOS pela correção. Os achados ESTRUTURAIS abaixo permanecem válidos e foram mantidos no plano.",
+    "structural_findings_still_valid": [
+      "Há DOIS motores LLM: per-item (synopsis.py → execute_agent → markdown_executor._call_claude → run_prompt CLI) e batch (llm_orchestrator → claude_runner.run_agent sobre agents/<n>/prompt.md). Ambos no CLI, mas separados — fonte de duplicação (sinopse e categorização têm 2 implementações).",
+      "A FSM de sinopse faz 2 chamadas LLM por livro (fact_extractor + synopsis_writer); abstract_structurer e synopsis_validator são Python puro. Projeções de throughput devem usar 2 chamadas/sinopse.",
+      "Agentes de O rodam com --allowedTools Bash,Read,Write,WebSearch,WebFetch (e git commit). offer_finder/title_auditor dependem de WebSearch — relevante ao decidir o que rodar dentro da janela de sessão.",
+      "Estados presos: status_synopsis=3 (exportado-não-importado) e órfãos cowork/*_input.json precisam de reclamação.",
+      "Loop de remediação de QA precisa de max-retry + quarentena para não oscilar.",
+      "Congelar renumeração de menu ANTES de refatorar QA/orquestração (evita retrabalho)."
+    ]
+  },
+
+  "workstreams": [
+    {
+      "id": "WS1_session_prioritization",
+      "title": "Priorização e scheduling dentro da janela de sessão PRO",
+      "status": "implementado_e_validado_2026-05-29",
+      "problem_refs": ["P1_progressao_lenta", "P2_quota_tokens"],
+      "priority": "P0",
+      "effort": "M",
+      "rationale": "A quota do PRO é fixa (sessão rotativa de 5h). Hoje a opção O gasta a sessão em 7 agentes sequenciais, atingindo o limite no title_auditor/offer_finder ANTES de avançar a sinopse (o gargalo real, ~12.6k). É preciso alocar a janela ao que destrava publicação.",
+      "changes": [
+        "Reordenar o ciclo do orquestrador: sinopse e categorização (conteúdo que destrava publicação) PRIMEIRO; agentes não-críticos (title_auditor, offer_finder, log_analysis, consistency) só com 'orçamento de sessão' restante ou em cadência reduzida (ex: 1 a cada N resets).",
+        "Orçamento por agente expresso em nº de itens/sessão, não em tokens (não temos billing por token no PRO).",
+        "Rodar ininterrupto através dos resets: ao bater o limite, aguardar reset (wait_for_reset já existe) e RETOMAR pelo gargalo — sem encerrar o processo.",
+        "Garantir que cada janela de 5h seja usada ao máximo no gargalo antes de tocar em QA/auditoria."
+      ],
+      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/core/claude_usage_tracker.py"]
+    },
+    {
+      "id": "WS2_unify_cli_paths",
+      "title": "Unificar os dois motores LLM (per-item FSM vs batch prompt.md), ambos no CLI",
+      "problem_refs": ["P4_fragmentacao", "P2_quota_tokens"],
+      "priority": "P1",
+      "effort": "L",
+      "rationale": "Sinopse e categorização têm DUAS implementações (FSM em markdown_executor + prompt.md em *_cowork). Mantê-las divergentes dobra a manutenção e dispersa o tuning de quota. Unificar num único caminho CLI canônico por tarefa.",
+      "decision_needed": "Escolher 1 motor por tarefa: (a) FSM per-item (markdown_executor) — melhor controle de qualidade/validação R1-R8; ou (b) batch prompt.md (claude_runner) — menos chamadas por lote, melhor amortização da sessão. Recomendado: sinopse na FSM (qualidade), categorização em batch (taxonomia cacheável pelo CLI dentro da sessão).",
+      "tool_dependency_note": "Antes de unificar offer_finder/title_auditor: eles dependem de WebSearch via --allowedTools; manter no claude_runner (CLI) que provê tools. Não tentar movê-los para um caminho sem tools.",
+      "changes": [
+        "Mapear cada tarefa LLM → motor único; deprecar a implementação duplicada (não apagar prompts; manter como manual).",
+        "Documentar no schema_pipeline.json o motor canônico por tarefa após a decisão."
+      ],
+      "files_touched": ["scripts/core/markdown_executor.py", "scripts/steps/llm_orchestrator.py", "scripts/steps/synopsis.py"]
+    },
+    {
+      "id": "WS3_token_efficiency",
+      "title": "Eficiência por chamada dentro da sessão (batch tuning + prompts enxutos)",
+      "problem_refs": ["P2_quota_tokens"],
+      "priority": "P1",
+      "effort": "M",
+      "rationale": "Cada chamada CLI tem overhead fixo de sessão. O histórico (PR #120/#121) mostra a tensão batch vs timeout. Prompts gordos (taxonomia ~26KB no classify) consomem a janela mais rápido. O ganho aqui é caber MAIS trabalho útil por sessão.",
+      "changes": [
+        "Calibrar BATCH_SIZE por tarefa no ponto ótimo timeout × throughput (sinopse é 1 livro/geração pela natureza da FSM; categorização pode lotar mais por chamada).",
+        "Enxugar prompts: revisar agents/classify_cowork/prompt.md (taxonomia 26KB) — remover redundância, manter só o necessário para a decisão. O CLI já reaproveita contexto repetido dentro da sessão, mas prompt menor = mais itens por janela.",
+        "Evitar reprocessar itens já feitos (idempotência por status) — não gastar sessão repetindo trabalho.",
+        "NÃO depender de prompt caching de API (não aplicável); o ganho vem de prompt menor + menos chamadas redundantes."
+      ],
+      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/core/markdown_executor.py", "agents/classify_cowork/prompt.md"]
+    },
+    {
+      "id": "WS4_qa_stage",
+      "title": "Estágio de QA/auditoria/consistência padronizado e integrado",
+      "problem_refs": ["P3_qualidade_baixa"],
+      "priority": "P1",
+      "effort": "L",
+      "rationale": "Quality Gate é só heurístico. Auditoria de conteúdo (22), title-verify (31), consistência (32) e blacklist (25) estão dispersas em opções manuais e não fecham o ciclo. Resultado: páginas ruins publicadas sem correção sistemática (P3).",
+      "changes": [
+        "Pipeline de QA coeso: (1) gate heurístico PRÉ-publicação (atual); (2) auditoria LLM de conteúdo/veracidade PÓS-publicação (amostral/contínua, respeitando a quota); (3) consistência cruzada (título×sinopse×categoria×oferta); (4) remediação.",
+        "Loop de remediação com LIMITE: detectar (severity) → despublicar medium|high → resetar status do item → reenfileirar p/ geração → republicar. Max-retry (ex: 2); ao exceder → estado de QUARENTENA (não republica, não reprocessa em loop) + report manual.",
+        "Unificar 22/25/31/32 sob um módulo qa.py com modos.",
+        "Registrar achados em agent::*::memory (infra markdown_memory já existe).",
+        "QA roda como fase do orquestrador G com cadência reduzida (só após o gargalo de conteúdo andar na janela)."
+      ],
+      "files_touched": ["scripts/steps/qa.py (novo)", "scripts/steps/auditor.py", "scripts/steps/consistency_check.py", "scripts/steps/apply_blacklist.py"]
+    },
+    {
+      "id": "WS5_blacklist_reprocessing",
+      "title": "Reprocessar títulos despublicados pela blacklist",
+      "problem_refs": ["P3_qualidade_baixa", "P1_progressao_lenta"],
+      "priority": "P1",
+      "effort": "M",
+      "depends_on": ["WS4_qa_stage"],
+      "rationale": "Pedido explícito do autor. Hoje apply_blacklist (step 25) despublica severity medium|high mas NÃO há fluxo para recuperar esses títulos — ficam parados, sem nova tentativa nem destino claro. É backlog oculto e desperdício (títulos potencialmente válidos perdidos).",
+      "design": {
+        "identificar": "Selecionar livros despublicados/marcados pela blacklist (status_publish revertido + flag/origem=blacklist). Hoje a blacklist vem de blacklist.json gerado por agente — registrar a CAUSA (motivo/severity) ao despublicar, para guiar o reprocessamento.",
+        "classificar_causa": "Separar por motivo: sinopse incorreta → resetar status_synopsis e regenerar; categoria errada → resetar categorização; oferta inválida → reresolver oferta/scraper; título não-livro/duplicado → manter despublicado (quarentena definitiva).",
+        "reprocessar": "Reenfileirar apenas as causas recuperáveis na fila de geração (dentro da quota PRO, prioridade abaixo do backlog virgem para não competir com avanço novo, OU configurável).",
+        "reavaliar": "Passar pelo QA (WS4) antes de republicar; se reprovar de novo após max-retry → quarentena definitiva (não volta para a fila).",
+        "evitar_loop": "Contador de tentativas por livro persistido; blacklist 'hard' (não-livro) nunca reentra."
+      },
+      "changes": [
+        "Ao aplicar blacklist, persistir motivo/severity e timestamp (não só despublicar).",
+        "Novo modo/step: reprocess_blacklist — seleciona recuperáveis, reseta status conforme a causa, reenfileira.",
+        "Integrar como fase opcional do orquestrador G (depois do backlog principal).",
+        "Estado de quarentena compartilhado com WS4 (mesma flag/tabela)."
+      ],
+      "files_touched": ["scripts/steps/apply_blacklist.py", "scripts/steps/reprocess_blacklist.py (novo)", "scripts/steps/qa.py", "scripts/main.py"]
+    },
+    {
+      "id": "WS6_unified_orchestration",
+      "title": "Opção G como orquestrador único com fallbacks de custo zero",
+      "problem_refs": ["P1_progressao_lenta", "P4_fragmentacao"],
+      "priority": "P1",
+      "effort": "L",
+      "depends_on": ["WS1_session_prioritization", "WS4_qa_stage", "WS5_blacklist_reprocessing"],
+      "rationale": "P1: A (não-LLM) faz loop reavaliando QG sobre 1000 livros sem sinopse sem produzir nada; O processa poucas sinopses e espera o reset. P4: 8 opções de topo sobrepostas. Unificar em G com cadeia de fallback de custo zero resolve ambos.",
+      "fallback_chain": [
+        "1. Geração LLM via sessão PRO (CLI): sinopse e categorização primeiro (WS1), depois bios; QA e reprocess_blacklist com cadência reduzida.",
+        "2. Ao exaurir a sessão PRO → Autopilot A (steps não-LLM: scraper, capas, slugs, dedup, publish, listas). Gemini foi APOSENTADO (decisão 2026-05-29) — não há fallback de geração LLM alternativo.",
+        "3. Antes de A parar por 'sem progresso' → atacar o step não-LLM de MAIOR backlog (fallback dirigido), não loop vazio.",
+        "4. Se nada avança e a sessão PRO ainda está em cooldown → aguardar reset e RETOMAR do passo 1; se realmente nada resta → relatório de gargalos e encerrar."
+      ],
+      "changes": [
+        "Reescrever _run_gargalo (G) para: build_gargalo_plan → reclaim de presos (status_synopsis=3, órfãos cowork) → fase LLM priorizada (WS1) → QA/reprocess (WS4/WS5) → fallback A dirigido → aguardar reset e retomar.",
+        "Corrigir loop vazio do Autopilot: detectar backlog puramente LLM-bound e NÃO reavaliar QG infinitamente — aguardar reset da sessão ou encerrar com report.",
+        "Reduzir ruído de log: QG agrega contagem de 'Sinopse pendente' em vez de logar 1000 linhas/ciclo.",
+        "Convergir I (ingestão orientada) e parte de M (manutenção) para dentro de G; manter atalhos, um caminho canônico."
+      ],
+      "files_touched": ["scripts/main.py", "scripts/steps/autopilot.py", "scripts/steps/llm_orchestrator.py", "scripts/steps/pipeline_status.py"]
+    },
+    {
+      "id": "WS7_session_monitoring",
+      "title": "Monitorar a janela de sessão PRO (não tokens)",
+      "status": "implementado_e_validado_2026-05-29 (orquestrador G ainda consumirá os dados na fase 4 / WS6)",
+      "problem_refs": ["P2_quota_tokens", "P1_progressao_lenta"],
+      "priority": "P1",
+      "effort": "S",
+      "rationale": "Decisões de prioridade/fallback dependem de saber onde estamos na janela de 5h. Já existe claude_usage_tracker (SESSION_RESET_MINUTES=300, wait_for_reset). Falta expor e usar isso para orquestrar.",
+      "changes": [
+        "Estender claude_usage_tracker: tempo restante na janela, nº de itens processados na sessão atual, projeção do que cabe até o reset.",
+        "Expor no painel de Status (opção S): janela atual, itens/sessão, próximo reset, backlog do gargalo.",
+        "O orquestrador G consome esses dados para decidir quando passar do gargalo para QA/fallback."
+      ],
+      "files_touched": ["scripts/core/claude_usage_tracker.py", "scripts/steps/pipeline_status.py"]
+    },
+    {
+      "id": "WS8_seo_authors_automation",
+      "title": "Integrar Listas SEO e páginas de Autores às opções automatizadas",
+      "problem_refs": ["P1_progressao_lenta", "P4_fragmentacao"],
+      "priority": "P2",
+      "effort": "S",
+      "depends_on": ["WS6_unified_orchestration"],
+      "rationale": "Ponto de atenção do autor: listas SEO (18/19) e bios/páginas de autores (15, 29b) devem ser parte do fluxo automatizado.",
+      "changes": [
+        "G, após publicar livros, dispara list_composer (18) + publish_listas (19) quando houver categoria/autor com livros suficientes (min_categoria=6, min_autor=3).",
+        "author_bio (29b) entra na fase LLM de G (prioridade abaixo de sinopse/categoria — não competir pela janela), seguido de publish_autores (15).",
+        "Auditoria de listas (29a) e autores sem bio (30a) entram no QA (WS4)."
+      ],
+      "files_touched": ["scripts/main.py", "scripts/steps/list_composer.py", "scripts/steps/author_bio.py"]
+    },
+    {
+      "id": "WS9_defragment_menu",
+      "title": "Desfragmentar steps e corrigir colisões de numeração",
+      "problem_refs": ["P4_fragmentacao"],
+      "priority": "P1",
+      "effort": "M",
+      "note_ordering": "Congelar a renumeração ANTES de WS4/WS5/WS6/WS8 (que referenciam números de menu). Por isso a parte de numeração vai para a fase 0.",
+      "rationale": "~45 módulos, submenus com números colidindo (28/29/30/31 com significados diferentes).",
+      "changes": [
+        "Renumerar/agrupar submenus sem colisão (Publicação / Geração / Auditoria-QA / Manutenção / Banco).",
+        "Marcar enrich_descricao (2) como fallback-only; consolidar sinopse/categorização num motor único (WS2).",
+        "Atualizar scripts/CLAUDE.md (numeração e default de provider desatualizados).",
+        "Atualizar schema_pipeline.json com a nova numeração ao final."
+      ],
+      "files_touched": ["scripts/main.py", "scripts/CLAUDE.md", "scripts/data/schema_pipeline.json"]
+    }
+  ],
+
+  "sequencing": {
+    "phase_0_freeze_numeracao": ["WS9_defragment_menu (congelar/renumerar números de menu)"],
+    "phase_1_fundacao": ["WS1_session_prioritization", "WS7_session_monitoring"],
+    "phase_2_motor": ["WS2_unify_cli_paths", "WS3_token_efficiency"],
+    "phase_3_qualidade": ["WS4_qa_stage", "WS5_blacklist_reprocessing"],
+    "phase_4_orquestracao": ["WS6_unified_orchestration", "WS8_seo_authors_automation"],
+    "phase_5_limpeza": ["WS9_defragment_menu (consolidação restante de steps)"],
+    "note": "Cada fase mergeável e testável isoladamente. Ao fim da fase 1, validar que uma janela de sessão é gasta no gargalo (sinopse) e que o status mostra a janela corretamente, antes de prosseguir."
+  },
+
+  "success_metrics": [
+    "Cada janela de 5h é gasta primeiro no gargalo (sinopse) — backlog de ~12.6k cai monotonicamente entre janelas.",
+    "Sessão PRO deixa de ser consumida por agentes não-críticos antes do conteúdo crítico.",
+    "QG para de logar reprovação em massa repetida; loop vazio do autopilot eliminado.",
+    "% de páginas reprovadas em auditoria de conteúdo cai (loop de remediação ativo).",
+    "Títulos despublicados por blacklist são reprocessados e republicados (ou quarentenados), não esquecidos.",
+    "Um único caminho canônico (G) cobre geração → QA → reprocessamento → publicação → listas/autores, com fallbacks de custo zero e retomada automática após reset."
+  ],
+
+  "risks": [
+    {"risk": "Quota PRO insuficiente para 24k+ itens em tempo hábil", "mitigation": "Priorização rígida do gargalo + execução ininterrupta através dos resets. Gemini foi aposentado — não há complemento LLM. É limite estrutural do PRO — gerenciar expectativa de ritmo, não eliminar."},
+    {"risk": "Reprocessamento de blacklist entrar em loop ou ressuscitar lixo (não-livros)", "mitigation": "Classificar causa; blacklist 'hard' nunca reentra; max-retry + quarentena definitiva."},
+    {"risk": "Unificar motores LLM introduzir regressão de qualidade", "mitigation": "Manter synopsis_validator (R1-R8); validar amostra antes do rollout; manter prompts atuais."},
+    {"risk": "Quebrar automações existentes durante a refatoração", "mitigation": "Branch dedicado, fases mergeáveis, manter opções antigas até a fase de orquestração."}
+  ],
+
+  "open_questions": [
+    "WS2: motor único por tarefa — confirmar sinopse=FSM e categorização=batch?",
+    "Reprocessamento de blacklist deve competir com o backlog virgem pela janela ou rodar só com sobra de sessão?",
+    "Auditoria de conteúdo pós-publicação: amostragem contínua (X%/dia dentro da quota) ou varredura quando houver sessão ociosa?"
+  ],
+
+  "resolved_decisions": [
+    "2026-05-29: Premissa = só quota do plano Claude PRO (CLI), NUNCA API paga por token.",
+    "2026-05-29: Gemini APOSENTADO — não é fallback de geração LLM.",
+    "2026-05-29: Implementação faseada — fase 1 (WS1 prioritização + WS7 monitoramento) primeiro, validar, depois fases 2-5.",
+    "2026-05-29: Reprocessamento de títulos despublicados por blacklist incluído como WS5."
+  ],
+
+  "out_of_scope": [
+    "Qualquer uso da API Anthropic paga por token.",
+    "Mudanças no frontend Next.js.",
+    "Migração do banco local SQLite.",
+    "Reescrever o scraper de marketplace (apenas tratar HTTP 503 se trivial)."
+  ]
+}

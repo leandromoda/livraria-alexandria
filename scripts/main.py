@@ -268,7 +268,7 @@ def menu_geracao_conteudo(idioma):
 
 10  → Classificar Categorias Temáticas (LLM)
 10R → Resetar categoria equivocada (limpa e recategoriza)
-11  → Gerar sinopses via Gemini (requer review concluído)
+11  → Gerar sinopses (LLM) (requer review concluído)
 12  → Gerar capas
 29  → Gerar Bios de Autores (LLM)
 

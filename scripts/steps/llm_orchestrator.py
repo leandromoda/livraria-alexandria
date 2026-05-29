@@ -682,11 +682,116 @@ def _run_log_analysis() -> tuple[bool, bool]:
 
 
 # =========================
+# DRAIN HELPERS (WS1 — priorização do gargalo)
+# =========================
+# Cada helper esvazia um agente de CONTEÚDO repetidamente (vários lotes) até
+# zerar o backlog OU bater o limite de sessão. A janela de sessão PRO é gasta
+# primeiro no gargalo (sinopse), depois categorização e bios — só então os
+# agentes não-críticos (offer_finder/title_auditor/relatórios) rodam. Antes,
+# cada ciclo fazia 1 único lote de sinopse e gastava o resto da janela em
+# agentes que não destravam publicação.
+
+def _drain_synopsis(idioma: str) -> tuple[int, bool]:
+    """Esvazia o backlog de sinopses (lote a lote). Retorna (feitos, limit_hit)."""
+    done = 0
+    while True:
+        conn = get_conn()
+        n = _count_pending_synopsis(conn, idioma)
+        if n <= 0:
+            conn.close()
+            break
+        log(f"[LLM_ORCH] synopsis: {n} pendentes")
+        exported = _export_synopsis(conn, idioma)
+        conn.close()
+        if exported <= 0:
+            break
+        ok, limit_persists = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
+        if limit_persists:
+            return done, True
+        if ok:
+            _import_synopsis()
+            done += exported
+        else:
+            orphans = glob.glob(str(COWORK_DIR / "*_synopsis_input.json"))
+            if orphans:
+                log(
+                    f"[LLM_ORCH] ⚠ synopsis timeout/erro — {len(orphans)} arquivo(s) "
+                    f"input pendente(s) em cowork/. Livros ficam em status_synopsis=3 "
+                    f"até o próximo ciclo processar o arquivo."
+                )
+            break  # não há como progredir nesta janela
+    return done, False
+
+
+def _drain_classify() -> tuple[int, bool]:
+    """Esvazia o backlog de categorização (lote a lote). Retorna (feitos, limit_hit)."""
+    done = 0
+    while True:
+        conn = get_conn()
+        n = _count_pending_classify(conn)
+        if n <= 0:
+            conn.close()
+            break
+        log(f"[LLM_ORCH] classify: {n} pendentes")
+        exported = _export_classify(conn)
+        conn.close()
+        if exported <= 0:
+            break
+        ok, limit_persists = _run_agent_step("classify", "classify_cowork", timeout=900)
+        if limit_persists:
+            return done, True
+        if ok:
+            _import_classify()
+            done += exported
+        else:
+            break
+    return done, False
+
+
+def _drain_author_bio() -> tuple[int, bool]:
+    """Esvazia o backlog de bios de autores (lote a lote). Retorna (feitos, limit_hit)."""
+    done = 0
+    while True:
+        conn = get_conn()
+        n = _count_pending_author_bio(conn)
+        if n <= 0:
+            conn.close()
+            break
+        log(f"[LLM_ORCH] author_bio: {n} pendentes")
+        exported = _export_author_bio(conn)
+        conn.close()
+        if exported <= 0:
+            break
+        ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900)
+        if limit_persists:
+            return done, True
+        if ok:
+            done += _import_author_bio()
+        else:
+            break
+    return done, False
+
+
+def _content_backlog(idioma: str) -> int:
+    """Soma do backlog de conteúdo que destrava publicação (sinopse + categoria)."""
+    conn = get_conn()
+    try:
+        return _count_pending_synopsis(conn, idioma) + _count_pending_classify(conn)
+    finally:
+        conn.close()
+
+
+# =========================
 # MAIN CYCLE
 # =========================
 
 def run(idioma: str):
     """Autopilot LLM cíclico — processa sinopses, categorias, bios e ofertas.
+
+    Priorização (WS1): a janela de sessão PRO é gasta PRIMEIRO no gargalo
+    (sinopse), depois categorização e bios — esvaziando cada um (vários lotes)
+    antes de tocar nos agentes não-críticos. Estes só rodam quando o backlog de
+    conteúdo está zerado e ainda há sessão disponível.
 
     A cada N ciclos também gera relatórios de log e consistência (sem aplicar
     correções inline — leitura e aplicação são responsabilidade de rotina externa).
@@ -724,85 +829,49 @@ def run(idioma: str):
         cycle_done      = 0
         cycle_limit_hit = False   # sinaliza se o limite persistiu após retry
 
-        conn = get_conn()
-
-        # ── 1. SYNOPSIS ──────────────────────────────────────
-        # Antes de checar pendentes: importar outputs já prontos de ciclos anteriores
-        # (ex: batch do ciclo anterior que gerou output mas não foi importado por timeout).
-        # Conta os arquivos ANTES de importar para incrementar cycle_done — sem isso,
-        # o bloco "if cycle_done > 0" não aciona o autopilot não-LLM e os livros
-        # importados ficam sem passar pelo Quality Gate / Publicação.
+        # ── 0. IMPORT DE OUTPUTS PENDENTES ───────────────────
+        # Importa outputs já prontos de ciclos anteriores (ex: batch que gerou
+        # output mas não foi importado por timeout). Conta ANTES de importar para
+        # incrementar cycle_done — sem isso, o autopilot não-LLM não roda e os
+        # livros importados ficam sem passar pelo Quality Gate / Publicação.
         _startup_outputs = glob.glob(str(COWORK_DIR / "*_synopsis_output.json"))
         if _startup_outputs:
             log(f"[LLM_ORCH] synopsis: {len(_startup_outputs)} output(s) pendente(s) de ciclo(s) anterior(es) — importando…")
             _import_synopsis()
             cycle_done += len(_startup_outputs)
 
-        n_syn = _count_pending_synopsis(conn, idioma)
-        if n_syn > 0:
-            log(f"[LLM_ORCH] synopsis: {n_syn} pendentes")
-            exported = _export_synopsis(conn, idioma)
-            if exported > 0:
-                ok, limit_persists = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
-                if limit_persists:
-                    cycle_limit_hit = True
-                elif ok:
-                    _import_synopsis()
-                    cycle_done += exported
-                else:
-                    # Timeout ou erro não-limite: arquivo input pode ter ficado no cowork
-                    # com status_synopsis=3 nos livros — o agente vai processar na próxima
-                    # invocação ao encontrar o arquivo ainda presente.
-                    import glob as _glob_inner
-                    orphans = _glob_inner.glob(str(COWORK_DIR / "*_synopsis_input.json"))
-                    if orphans:
-                        log(
-                            f"[LLM_ORCH] ⚠ synopsis timeout/erro — {len(orphans)} arquivo(s) "
-                            f"input pendente(s) em cowork/. Livros exportados ficam em "
-                            f"status_synopsis=3 até o próximo ciclo processar o arquivo."
-                        )
-        else:
+        # ── FASE A — CONTEÚDO (prioridade): esvaziar o gargalo ───
+        # Sinopse primeiro (maior gargalo, hard-block do Quality Gate), depois
+        # categorização, depois bios — cada um drenado em vários lotes.
+        syn_done, cycle_limit_hit = _drain_synopsis(idioma)
+        cycle_done += syn_done
+        if syn_done == 0 and not cycle_limit_hit:
             log("[LLM_ORCH] synopsis: nenhum pendente — skip")
 
-        # ── 2. CLASSIFY ──────────────────────────────────────
         if not cycle_limit_hit:
-            n_cls = _count_pending_classify(conn)
-            if n_cls > 0:
-                log(f"[LLM_ORCH] classify: {n_cls} pendentes")
-                exported = _export_classify(conn)
-                if exported > 0:
-                    ok, limit_persists = _run_agent_step("classify", "classify_cowork", timeout=900)
-                    if limit_persists:
-                        cycle_limit_hit = True
-                    elif ok:
-                        _import_classify()
-                        cycle_done += exported
-            else:
+            cls_done, cycle_limit_hit = _drain_classify()
+            cycle_done += cls_done
+            if cls_done == 0 and not cycle_limit_hit:
                 log("[LLM_ORCH] classify: nenhum pendente — skip")
 
-        conn.close()
-
-        # ── 3. AUTHOR BIO ─────────────────────────────────────
         if not cycle_limit_hit:
-            conn = get_conn()
-            n_bio = _count_pending_author_bio(conn)
-            if n_bio > 0:
-                log(f"[LLM_ORCH] author_bio: {n_bio} pendentes")
-                exported = _export_author_bio(conn)
-                if exported > 0:
-                    ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900)
-                    if limit_persists:
-                        cycle_limit_hit = True
-                    elif ok:
-                        imported = _import_author_bio()
-                        cycle_done += imported
-            else:
+            bio_done, cycle_limit_hit = _drain_author_bio()
+            cycle_done += bio_done
+            if bio_done == 0 and not cycle_limit_hit:
                 log("[LLM_ORCH] author_bio: nenhum pendente — skip")
-            conn.close()
+
+        # ── FASE B — NÃO-CRÍTICOS ────────────────────────────
+        # Só rodam quando o backlog de CONTEÚDO está zerado e ainda há sessão.
+        # Evita que offer_finder/title_auditor/relatórios consumam a janela
+        # enquanto há sinopse/categoria pendente (causa raiz do P1/P2).
+        content_left = _content_backlog(idioma) if not cycle_limit_hit else -1
+        run_non_critical = (not cycle_limit_hit) and content_left == 0
+        if not cycle_limit_hit and not run_non_critical:
+            log(f"[LLM_ORCH] não-críticos: adiados — {content_left} item(ns) de conteúdo ainda pendente(s)")
 
         # ── 4. LOG ANALYSIS (1× a cada N ciclos) ─────────────
         # Apenas gera o relatório — leitura e correções por rotina externa.
-        if not cycle_limit_hit and cycle % LOG_ANALYSIS_EVERY_N_CYCLES == 0:
+        if run_non_critical and cycle % LOG_ANALYSIS_EVERY_N_CYCLES == 0:
             log(f"[LLM_ORCH] log_analysis: executando (ciclo {cycle}, frequência 1/{LOG_ANALYSIS_EVERY_N_CYCLES})…")
             ok, limit_persists = _run_log_analysis()
             if limit_persists:
@@ -813,12 +882,12 @@ def run(idioma: str):
                     "log_analysis",
                 )
                 cycle_done += 1
-        elif not cycle_limit_hit:
+        elif run_non_critical:
             log(f"[LLM_ORCH] log_analysis: skip (ciclo {cycle}, próximo em ciclo {((cycle // LOG_ANALYSIS_EVERY_N_CYCLES) + 1) * LOG_ANALYSIS_EVERY_N_CYCLES})")
 
         # ── 5. CONSISTENCY REVIEW (1× a cada N ciclos) ────────
         # Apenas gera o relatório — leitura e correções por rotina externa.
-        if not cycle_limit_hit and cycle % CONSISTENCY_REVIEW_EVERY_N_CYCLES == 0:
+        if run_non_critical and cycle % CONSISTENCY_REVIEW_EVERY_N_CYCLES == 0:
             log(f"[LLM_ORCH] consistency_review: gerando relatório (ciclo {cycle})…")
             has_report = _export_consistency()
             if has_report:
@@ -834,11 +903,11 @@ def run(idioma: str):
                         "consistency_review",
                     )
                     cycle_done += 1
-        elif not cycle_limit_hit:
+        elif run_non_critical:
             log(f"[LLM_ORCH] consistency_review: skip (ciclo {cycle})")
 
         # ── 6. OFFER FINDER ───────────────────────────────────
-        if not cycle_limit_hit:
+        if run_non_critical:
             conn = get_conn()
             n_off = _count_pending_offers(conn)
             conn.close()
@@ -854,7 +923,7 @@ def run(idioma: str):
                 log("[LLM_ORCH] offer_finder: nenhum pendente — skip")
 
         # ── 7. TITLE AUDITOR ──────────────────────────────────
-        if not cycle_limit_hit:
+        if run_non_critical:
             conn = get_conn()
             n_aud = _count_pending_audit(conn)
             conn.close()

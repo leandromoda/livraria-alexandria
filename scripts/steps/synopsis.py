@@ -2,7 +2,7 @@
 # STEP 7 — SYNOPSIS
 # Livraria Alexandria
 #
-# Gera sinopse editorial via Gemini.
+# Gera sinopse editorial via LLM (padrão: Claude).
 # Lê de: descricao (campo bruto)
 # Grava em: sinopse (campo gerado) — NÃO toca em descricao
 # Depende de: status_review=1 e is_book=1
