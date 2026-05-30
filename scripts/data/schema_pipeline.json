@@ -17,26 +17,21 @@
   },
 
   "llm_execution_paths": {
-    "description": "Há DUAS arquiteturas de execução LLM paralelas e não integradas — origem central da fragmentação.",
+    "description": "WS2 (2026-05-29): a sinopse foi unificada no caminho BATCH (path_b). O FSM multi-estágio de sinopse (MODE 2) foi REMOVIDO. path_a (markdown_executor) agora só executa agentes de estágio único (MODE 1: author_bio, offer_finder) + a chamada per-item de categorize.py (sub-item restante a migrar para batch).",
     "path_a_per_item_api": {
       "id": "markdown_executor",
       "module": "scripts/core/markdown_executor.py",
-      "mode": "1 chamada LLM por item, síncrona, dentro do step Python",
+      "mode": "1 chamada LLM por item, síncrona — APENAS MODE 1 (agente de estágio único com task.md)",
       "router": "_call_llm() roteia por _active_provider via set_provider()",
       "providers": {
-        "claude": "_call_claude() — ATENÇÃO: hoje invoca o claude CLI (run_prompt), NÃO a API Anthropic",
-        "gemini": "_call_gemini() — API Gemini com gemini_limiter (RPM/RPD)",
+        "claude": "_call_claude() — invoca o claude CLI (run_prompt), NÃO a API Anthropic (padrão)",
+        "gemini": "_call_gemini() — APOSENTADO (mantido no router por ora, não usado)",
         "ollama": "_call_ollama() — local, inviável (CPU ~2 tok/s)",
-        "auto": "gemini → ollama fallback (legado)"
+        "auto": "gemini → ollama fallback (legado, não usado)"
       },
-      "used_by_menu": ["9 categorize", "11 synopsis", "22 audit content", "29 author_bio", "31 title-verify"],
-      "synopsis_fsm": [
-        "fact_extractor (LLM)",
-        "abstract_structurer (Python puro — sem LLM)",
-        "synopsis_writer (LLM)",
-        "synopsis_validator (Python puro — 8 regras R1-R8)"
-      ],
-      "agent_format": "split identity.md/rules.md/task.md em agents/synopsis/<stage>/"
+      "used_by_menu": ["9 categorize (per-item — migrar p/ batch)", "22 audit content", "29 author_bio (MODE 1)", "31 title-verify"],
+      "synopsis_fsm": "REMOVIDO em WS2 (2026-05-29). agents/synopsis/* e MODE 2 (PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer) deletados. Sinopse agora é 100% batch (ver path_b + synopsis.py wrapper).",
+      "agent_format": "MODE 1: identity.md/rules.md/task.md em agents/<agente>/ (author_bio, offer_finder)"
     },
     "path_b_batch_cli_cowork": {
       "id": "claude_cli_cowork",
@@ -49,9 +44,10 @@
       "mode": "exporta lote JSON → invoca claude --print sobre prompt.md → importa output JSON",
       "backend": "claude CLI (assinatura Pro/Max) — limite de SESSÃO rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300)",
       "agent_format": "prompt.md único em agents/<agente>_cowork/ ou agents/<agente>/",
-      "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25}
+      "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25},
+      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_cowork) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis."
     },
-    "conflict": "Existem duas implementações de sinopse (FSM em markdown_executor vs prompt.md em synopsis_cowork) e duas de categorização. Nenhuma usa a API Anthropic diretamente — 'claude' em ambos os caminhos cai no CLI da assinatura, que tem teto de sessão de 5h."
+    "conflict": "WS2 RESOLVIDO p/ sinopse: motor único = batch (synopsis_cowork). FSM removido. RESTANTE: categorização ainda tem 2 implementações (categorize.py per-item vs classify_cowork batch) — migrar categorize.py → batch. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
   },
 
   "automation_options": [

@@ -311,8 +311,7 @@ V  → Voltar
 
         elif op == "11":
             pacote = escolher_pacote()
-            from core.markdown_executor import set_provider
-            set_provider(escolher_provider())
+            # Motor único: agente batch synopsis_cowork via Claude CLI (sem escolha de provider).
             with StepRun("synopsis", idioma=idioma, pacote=pacote):
                 synopsis.run(idioma, pacote)
 

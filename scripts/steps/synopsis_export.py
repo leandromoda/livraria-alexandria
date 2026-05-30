@@ -30,20 +30,37 @@ PROCESSED_DIR = os.path.join(COWORK_DIR, "processed_synopsis")
 # FETCH
 # =========================
 
-def fetch_pending(conn, idioma, limit):
+def fetch_pending(conn, idioma, limit, book_ids=None):
+    """Busca livros pendentes de sinopse.
 
+    Se `book_ids` for fornecida, filtra apenas esses IDs (modo per-livro,
+    usado pela ingestão guiada). Caso contrário, filtra por idioma (modo batch).
+    """
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT id, titulo, slug, autor, idioma, descricao
-        FROM livros
-        WHERE status_synopsis = 0
-          AND status_review   = 1
-          AND is_book         = 1
-          AND idioma          = ?
-        ORDER BY priority_score DESC, created_at ASC
-        LIMIT ?
-    """, (idioma, limit))
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        cur.execute(f"""
+            SELECT id, titulo, slug, autor, idioma, descricao
+            FROM livros
+            WHERE status_synopsis = 0
+              AND status_review   = 1
+              AND is_book         = 1
+              AND id IN ({placeholders})
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (*book_ids, limit))
+    else:
+        cur.execute("""
+            SELECT id, titulo, slug, autor, idioma, descricao
+            FROM livros
+            WHERE status_synopsis = 0
+              AND status_review   = 1
+              AND is_book         = 1
+              AND idioma          = ?
+            ORDER BY priority_score DESC, created_at ASC
+            LIMIT ?
+        """, (idioma, limit))
 
     return cur.fetchall()
 
@@ -52,7 +69,9 @@ def fetch_pending(conn, idioma, limit):
 # RUN
 # =========================
 
-def run(idioma, pacote):
+def run(idioma, pacote, book_ids=None):
+    """Exporta um lote de livros pendentes de sinopse para JSON. Retorna o
+    número de livros exportados (0 se nada pendente)."""
 
     log("[SYNOPSIS_EXPORT] Iniciando exportação")
 
@@ -61,12 +80,12 @@ def run(idioma, pacote):
 
     conn = get_conn()
 
-    rows = fetch_pending(conn, idioma, min(pacote, BATCH_SIZE))
+    rows = fetch_pending(conn, idioma, min(pacote, BATCH_SIZE), book_ids=book_ids)
 
     if not rows:
         log("[SYNOPSIS_EXPORT] Nada pendente.")
         conn.close()
-        return
+        return 0
 
     livros = []
     skipped = 0
@@ -90,7 +109,7 @@ def run(idioma, pacote):
     if not livros:
         log("[SYNOPSIS_EXPORT] Nenhum livro com descricao válida.")
         conn.close()
-        return
+        return 0
 
     num = next_batch_number(COWORK_DIR, "synopsis")
     output_path = os.path.join(COWORK_DIR, f"{num}_synopsis_input.json")
@@ -121,3 +140,5 @@ def run(idioma, pacote):
 
     log(f"[SYNOPSIS_EXPORT] Exportados: {len(livros)} | Skipped: {skipped}")
     log(f"[SYNOPSIS_EXPORT] Arquivo: {os.path.abspath(output_path)}")
+
+    return len(livros)
