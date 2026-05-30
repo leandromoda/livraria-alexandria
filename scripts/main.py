@@ -270,7 +270,7 @@ def menu_geracao_conteudo(idioma):
 10R → Resetar categoria equivocada (limpa e recategoriza)
 11  → Gerar sinopses (LLM) (requer review concluído)
 12  → Gerar capas
-29  → Gerar Bios de Autores (LLM)
+13  → Gerar Bios de Autores (LLM)
 
 V  → Voltar
 """)
@@ -302,7 +302,7 @@ V  → Voltar
                 print(f"\n{len(afetados)} livro(s) tiveram a categorização apagada e status_categorize=0.")
                 print("Próximos passos:")
                 print("  1. Rode a opção 10 (Classificar Categorias Temáticas) para recategorizar.")
-                print("  2. Rode o step 20 (Publicar Categorias) para atualizar o Supabase.")
+                print("  2. Rode o step 23 (Publicar Categorias) para atualizar o Supabase.")
                 print("  3. No Supabase, delete manualmente as entradas antigas de 'livros_categorias'")
                 print(f"     para a categoria '{slug}' que não foram substituídas.")
             else:
@@ -319,7 +319,7 @@ V  → Voltar
             with StepRun("covers", idioma=idioma, pacote=pacote):
                 covers.run(idioma, pacote)
 
-        elif op == "29":
+        elif op == "13":
             pacote = escolher_pacote()
             from core.markdown_executor import set_provider
             set_provider(escolher_provider())
@@ -339,17 +339,17 @@ def menu_publicacao(idioma):
         print("""
 --- PUBLICAÇÃO ---
 
-13 → Quality Gate
-14 → Publicar Supabase
-15 → Publicar Autores
-16 → Publicar Categorias (requer step 10)
-17 → Publicar Ofertas
-18 → Gerar listas SEO automáticas
-19 → Publicar Listas (requer step 18)
+20 → Quality Gate
+21 → Publicar Supabase
+22 → Publicar Autores
+23 → Publicar Categorias (requer step 10)
+24 → Publicar Ofertas
+25 → Gerar listas SEO automáticas
+26 → Publicar Listas (requer step 25)
 27 → Reparar Ofertas (força republicação de todas para livros publicados)
 28 → Fix Affiliate URLs (corrige URLs sem parâmetros de comissão)
-30 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
-31 → Reparar Relações Autores-Livros (re-sincroniza livros_autores no Supabase)
+29 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
+30 → Reparar Relações Autores-Livros (re-sincroniza livros_autores no Supabase)
 
 V  → Voltar
 """)
@@ -358,28 +358,28 @@ V  → Voltar
         if op.upper() == "V":
             break
 
-        elif op == "13":
+        elif op == "20":
             pacote = escolher_pacote()
             with StepRun("quality_gate", idioma=idioma, pacote=pacote):
                 quality_gate.evaluate_quality(idioma, pacote)
 
-        elif op == "14":
+        elif op == "21":
             pacote = escolher_pacote()
             with StepRun("publish", idioma=idioma, pacote=pacote):
                 publish.run(idioma, pacote)
 
-        elif op == "15":
+        elif op == "22":
             pacote = escolher_pacote()
             log("Publicando autores no Supabase…")
             with StepRun("publish_autores", idioma=idioma, pacote=pacote):
                 publish_autores.run(pacote)
 
-        elif op == "16":
+        elif op == "23":
             log("Publicando categorias temáticas no Supabase…")
             with StepRun("publish_categorias", idioma=idioma):
                 publish_categorias.run()
 
-        elif op == "17":
+        elif op == "24":
             fix = input_safe("Normalizar offer_status='active' → 1 (recomendado na 1ª vez)? [s/N] ").strip().lower()
             if fix == "s":
                 publish_ofertas.fix_offer_status()
@@ -388,12 +388,12 @@ V  → Voltar
             with StepRun("publish_ofertas", idioma=idioma, pacote=pacote):
                 publish_ofertas.run(pacote)
 
-        elif op == "18":
+        elif op == "25":
             log("Gerando listas SEO automáticas…")
             with StepRun("list_composer", idioma=idioma):
                 list_composer.run()
 
-        elif op == "19":
+        elif op == "26":
             log("Publicando listas no Supabase…")
             with StepRun("publish_listas", idioma=idioma):
                 publish_listas.run()
@@ -409,13 +409,13 @@ V  → Voltar
             with StepRun("fix_affiliate_urls", idioma=idioma):
                 fix_affiliate_urls.run()
 
-        elif op == "30":
+        elif op == "29":
             pacote = escolher_pacote()
             log("Importando offer_list.json (agente offer_finder)…")
             with StepRun("offer_list_importer", idioma=idioma, pacote=pacote):
                 offer_list_importer.run(pacote)
 
-        elif op == "31":
+        elif op == "30":
             log("Re-sincronizando relações livros_autores no Supabase…")
             with StepRun("repair_relacoes_autores", idioma=idioma):
                 publish_autores.run_repair_relacoes()
@@ -432,18 +432,18 @@ def menu_auditoria(idioma):
         print("""
 --- AUDITORIA E MONITORAMENTO ---
 
-20 → Monitorar preços e disponibilidade de ofertas
-21 → Auditar conectividade do site (sem LLM) → data/logs/NNNN_audit_connectivity.json
-22 → Auditar conteúdo publicado (LLM) → data/logs/NNNN_audit_content.json
-23 → Reparar publicações com dados ruins (sinopse, capa, preço)
-24 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
-25 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
-26 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
-28 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
-29 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
-30 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
-31 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
-32 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
+40 → Monitorar preços e disponibilidade de ofertas
+41 → Auditar conectividade do site (sem LLM) → data/logs/NNNN_audit_connectivity.json
+42 → Auditar conteúdo publicado (LLM) → data/logs/NNNN_audit_content.json
+43 → Reparar publicações com dados ruins (sinopse, capa, preço)
+44 → Reparo Direcionado por Slug (reset sinopse | capa | ambos)
+45 → Aplicar Blacklist (despublicar via blacklist.json do agente auditor)
+46 → Exportar livros para auditoria (gera audit_input.json para Claude Code)
+47 → Auditoria de Integridade (sem LLM — verifica consistência do pipeline)
+48 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
+49 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
+50 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
+51 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
 
 V  → Voltar
 """)
@@ -452,7 +452,7 @@ V  → Voltar
         if op.upper() == "V":
             break
 
-        elif op == "20":
+        elif op == "40":
             print("""
 Limite de livros para monitorar:
 
@@ -469,12 +469,12 @@ Limite de livros para monitorar:
             log(f"Monitorando preços e disponibilidade (limit={limite}, dry_run={dry_run})…")
             offer_price_monitor.run(limit=limite, dry_run=dry_run)
 
-        elif op == "21":
+        elif op == "41":
             log("Auditando conectividade do site…")
             args = argparse.Namespace(mode="connectivity", dry_run=False)
             auditor.run(args)
 
-        elif op == "22":
+        elif op == "42":
             print("""
 Limite de livros para auditoria:
 
@@ -495,16 +495,16 @@ Limite de livros para auditoria:
             args = argparse.Namespace(mode="content", limit=limite, dry_run=dry_run)
             auditor.run(args)
 
-        elif op == "23":
+        elif op == "43":
             log("Reparando publicações com dados ruins…")
             repair.run()
 
-        elif op == "24":
+        elif op == "44":
             print("""
 Tipo de reset:
 
-sinopse → reseta sinopse + status_publish (re-rodar steps 11 → 13 → 14)
-capa    → reseta capa + status_publish    (re-rodar steps 12 → 13 → 14)
+sinopse → reseta sinopse + status_publish (re-rodar steps 11 → 20 → 21)
+capa    → reseta capa + status_publish    (re-rodar steps 12 → 20 → 21)
 ambos   → ambos acima
 """)
             reset_type = input_safe("Reset type [sinopse/capa/ambos]: ").strip().lower()
@@ -523,13 +523,13 @@ ambos   → ambos acima
                 else:
                     print("Nenhum slug informado.\n")
 
-        elif op == "25":
+        elif op == "45":
             dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
             dry_run = dry_op == "s"
             log(f"Aplicando blacklist (dry_run={dry_run})…")
             apply_blacklist.run(dry_run=dry_run)
 
-        elif op == "26":
+        elif op == "46":
             try:
                 limite_str = input_safe("Limite de livros (Enter = catálogo completo): ").strip()
                 limite = int(limite_str) if limite_str else 0
@@ -542,24 +542,24 @@ ambos   → ambos acima
             log(f"Exportando {descricao} livros para auditoria (formato={fmt})…")
             _export_for_audit.run(limit=limite, fmt=fmt)
 
-        elif op == "28":
+        elif op == "47":
             log("Auditoria de integridade do pipeline (sem LLM)…")
             with StepRun("autopilot_audit", idioma=idioma):
                 autopilot_audit.run()
 
-        elif op == "29":
+        elif op == "48":
             dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
             dry_run = dry_op == "s"
             log(f"Auditando listas SEO (dry_run={dry_run})…")
             args = argparse.Namespace(mode="list", dry_run=dry_run)
             auditor.run(args)
 
-        elif op == "30":
+        elif op == "49":
             log("Verificando autores publicados sem bio…")
             args = argparse.Namespace(mode="author-bios", dry_run=False)
             auditor.run(args)
 
-        elif op == "31":
+        elif op == "50":
             print("""
 Escopo da verificação de títulos:
 
@@ -588,7 +588,7 @@ pipeline  → apenas ainda não publicados
             )
             auditor.run(args)
 
-        elif op == "32":
+        elif op == "51":
             log("Gerando relatório de consistência (consulta Supabase)…")
             out = consistency_check.run()
             if out:

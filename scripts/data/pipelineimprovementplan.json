@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fase_2_completa (WS2 unificação batch + WS3 calibração empírica)__fases_3-5_pendentes",
+    "status": "fase_2_completa + WS9_numeracao_congelada__fases_3-5 (WS4/5/6/8) pendentes",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -236,6 +236,13 @@
       "problem_refs": ["P4_fragmentacao"],
       "priority": "P1",
       "effort": "M",
+      "status": "numeracao_congelada_2026-05-30 (consolidação restante de steps = fase 5, pendente)",
+      "implemented_numbering": {
+        "date": "2026-05-30",
+        "scheme": "Renumeração completa por grupos (escolha do autor) — sem colisão. Ingestão 1-4, Pré-proc 5-9, Geração 10-19 (bios 29→13), Publicação 20-30 (13-19→20-26, 30→29, 31→30), Auditoria/QA 40-51 (20-26→40-46, 28→47, 29→48, 30→49, 31→50, 32→51), Exports 91-94, Banco 95-97. Faixa 40+ reservada para qa.py (WS4).",
+        "files": ["scripts/main.py (renumerado + cross-refs)", "state/project_state.json (menu_option + task)", "scripts/CLAUDE.md (nota de grupos)"],
+        "note": "Roteamento de submenu no topo continua 1-6 (navegação). Colisões 28/29/30/31 (2 significados) resolvidas."
+      },
       "note_ordering": "Congelar a renumeração ANTES de WS4/WS5/WS6/WS8 (que referenciam números de menu). Por isso a parte de numeração vai para a fase 0.",
       "rationale": "~45 módulos, submenus com números colidindo (28/29/30/31 com significados diferentes).",
       "changes": [

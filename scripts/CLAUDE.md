@@ -18,6 +18,25 @@ python main.py
 
 O menu interativo pede idioma, tamanho do pacote e (quando relevante) provider LLM.
 
+### Menu — numeração por grupos (WS9, 2026-05-30)
+
+O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de ação
+(S/G/A/I/O/M/C/E). Dentro de cada submenu, as opções têm faixas sem colisão:
+
+| Submenu | Faixa | Itens |
+|---|---|---|
+| Ingestão | 1-4 | seeds, enrich, resolver ofertas, scraper |
+| Pré-processamento | 5-9 | slugs, slugify autores, dedup autores, dedup, review |
+| Geração de Conteúdo | 10-19 | 10 categorizar, 10R reset, 11 sinopses, 12 capas, 13 bios |
+| Publicação | 20-30 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações |
+| Auditoria/QA | 40-51 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência |
+| Exports | 91-94 | transcripts/estado |
+| Banco | 95-97 | backup, restore, recover |
+
+> A geração LLM (10/11/13) e a auditoria de conteúdo usam o **claude CLI**
+> (assinatura PRO) via agentes batch — Gemini foi aposentado. A faixa **40+**
+> está reservada para o futuro `qa.py` (WS4). Fonte de verdade: `scripts/main.py`.
+
 ### Atalhos de diagnóstico
 
 ```bash
