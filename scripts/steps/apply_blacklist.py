@@ -111,9 +111,16 @@ def load_blacklist() -> list[dict]:
 # Despublicação — SQLite
 # ---------------------------------------------------------------------------
 
-def _despublish_sqlite(conn: sqlite3.Connection, slug: str, dry_run: bool) -> str | None:
+def _despublish_sqlite(
+    conn: sqlite3.Connection,
+    slug: str,
+    dry_run: bool,
+    reason: str = "",
+    severity: str = "",
+) -> str | None:
     """
     Localiza o livro pelo slug, aplica is_publishable=0 e status_publish=0.
+    Persiste a CAUSA (blacklist_reason/severity) para o reprocessamento (WS5).
     Retorna o id local se encontrado, None caso contrário.
     """
     row = conn.execute(
@@ -127,21 +134,24 @@ def _despublish_sqlite(conn: sqlite3.Connection, slug: str, dry_run: bool) -> st
     local_id = row[0]
 
     if dry_run:
-        log.info(f"  [DRY-RUN][SQLite] Despublicaria: {slug} (id={local_id})")
+        log.info(f"  [DRY-RUN][SQLite] Despublicaria: {slug} (id={local_id}, causa={reason})")
         return local_id
 
     conn.execute(
         """UPDATE livros
-           SET is_publishable   = 0,
-               status_publish   = 0,
-               status_synopsis  = 4,
+           SET is_publishable    = 0,
+               status_publish    = 0,
+               status_synopsis   = 4,
                status_categorize = 4,
-               updated_at       = ?
+               blacklist_reason   = ?,
+               blacklist_severity = ?,
+               updated_at        = ?
            WHERE id = ?""",
-        (datetime.now(timezone.utc).isoformat(), local_id)
+        (reason or None, severity or None,
+         datetime.now(timezone.utc).isoformat(), local_id)
     )
     conn.commit()
-    log.info(f"  [SQLite] Despublicado: {slug}")
+    log.info(f"  [SQLite] Despublicado: {slug} (causa={reason or '—'})")
     return local_id
 
 
@@ -213,7 +223,7 @@ def run(dry_run: bool = False) -> None:
         if details:
             log.info(f"  Motivo: {details}")
 
-        local_id = _despublish_sqlite(conn, slug, dry_run)
+        local_id = _despublish_sqlite(conn, slug, dry_run, reason=reason, severity=severity)
         if local_id:
             ok_sqlite += 1
         else:

@@ -43,6 +43,8 @@ from steps import categorize_import
 from steps import cowork_export
 from steps import cowork_import
 from steps import consistency_check
+from steps import reprocess_blacklist
+from steps import qa
 from core import export_for_audit as _export_for_audit
 
 from steps.export_state_transcript import export_state_transcript
@@ -444,6 +446,8 @@ def menu_auditoria(idioma):
 49 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
 50 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
 51 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
+52 → Reprocessar blacklist (recupera por causa / quarentena) [WS5]
+53 → QA — passe de remediação (aplica blacklist → reprocessa) [WS4]
 
 V  → Voltar
 """)
@@ -602,6 +606,18 @@ Abra o Claude Code e execute:
 O agente irá ler o relatório e tomar ações corretivas automaticamente.
 """)
             input_safe("\nPressione Enter para voltar ao menu…")
+
+        elif op == "52":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"Reprocessando títulos da blacklist (dry_run={dry_run})…")
+            reprocess_blacklist.run(dry_run=dry_run)
+
+        elif op == "53":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"QA — passe de remediação (dry_run={dry_run})…")
+            qa.run(mode="remediate", dry_run=dry_run)
 
         else:
             print("Opção inválida.\n")

@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fase_2_completa + WS9_numeracao_congelada__fases_3-5 (WS4/5/6/8) pendentes",
+    "status": "fases_0-3_completas (WS9 num. + WS1/7 + WS2/3 + WS4/5)__fase_4-5 (WS6/8 + WS9 consolidação) pendentes",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -145,7 +145,18 @@
       "problem_refs": ["P3_qualidade_baixa"],
       "priority": "P1",
       "effort": "L",
-      "rationale": "Quality Gate é só heurístico. Auditoria de conteúdo (22), title-verify (31), consistência (32) e blacklist (25) estão dispersas em opções manuais e não fecham o ciclo. Resultado: páginas ruins publicadas sem correção sistemática (P3).",
+      "status": "implementado_e_validado_2026-05-30 (orquestrador; G consumirá na fase 4/WS6)",
+      "decision_resolved": "DECISÃO (2026-05-30): qa.py = ORQUESTRADOR dos módulos já validados (escolha do autor), não um motor novo. Reusa auditor (content/title/list), consistency_check, apply_blacklist e reprocess_blacklist; adiciona só a camada de remediação.",
+      "implemented": {
+        "date": "2026-05-30",
+        "what": [
+          "Novo scripts/steps/qa.py com modos: remediate (default, NÃO-LLM: apply_blacklist→reprocess), full (+consistency), consistency, blacklist, reprocess, lists (não-LLM), content/titles (LLM, explícitos).",
+          "Guard: _run_apply_blacklist pula se blacklist.json ausente (load_blacklist fazia sys.exit(1) — derrubaria o orquestrador).",
+          "Menu: 52 (reprocessar blacklist) e 53 (QA passe de remediação) na faixa Auditoria/QA."
+        ],
+        "validation": "py_compile OK; dry-run de qa.run('remediate') carregou blacklist.json (536 entradas) e reprocess sem tocar no banco; 100% não-LLM (zero consumo de sessão)."
+      },
+      "rationale": "Quality Gate é só heurístico. Auditoria de conteúdo (42), title-verify (50), consistência (51) e blacklist (45) estão dispersas em opções manuais e não fecham o ciclo. Resultado: páginas ruins publicadas sem correção sistemática (P3).",
       "changes": [
         "Pipeline de QA coeso: (1) gate heurístico PRÉ-publicação (atual); (2) auditoria LLM de conteúdo/veracidade PÓS-publicação (amostral/contínua, respeitando a quota); (3) consistência cruzada (título×sinopse×categoria×oferta); (4) remediação.",
         "Loop de remediação com LIMITE: detectar (severity) → despublicar medium|high → resetar status do item → reenfileirar p/ geração → republicar. Max-retry (ex: 2); ao exceder → estado de QUARENTENA (não republica, não reprocessa em loop) + report manual.",
@@ -162,7 +173,18 @@
       "priority": "P1",
       "effort": "M",
       "depends_on": ["WS4_qa_stage"],
-      "rationale": "Pedido explícito do autor. Hoje apply_blacklist (step 25) despublica severity medium|high mas NÃO há fluxo para recuperar esses títulos — ficam parados, sem nova tentativa nem destino claro. É backlog oculto e desperdício (títulos potencialmente válidos perdidos).",
+      "status": "implementado_e_validado_2026-05-30",
+      "implemented": {
+        "date": "2026-05-30",
+        "what": [
+          "Schema (db.py): colunas blacklist_reason TEXT, blacklist_severity TEXT, qa_retry INTEGER DEFAULT 0, qa_quarantine INTEGER DEFAULT 0 (migração idempotente).",
+          "apply_blacklist.py: persiste blacklist_reason/severity ao despublicar (antes só setava status=4).",
+          "Novo scripts/steps/reprocess_blacklist.py: classify_cause(reason) → synopsis|categorize|offer|quarantine. Recuperáveis resetam status_synopsis/categorize=0 e incrementam qa_retry; offer→reactivation_pending; hard (não-livro/duplicado/title-mismatch/desconhecida)→qa_quarantine=1; max-retry (MAX_QA_RETRY=2) também → quarentena. Sem LLM."
+        ],
+        "validation": "py_compile OK; migração aplicada (4 colunas presentes); classify_cause testado (title-mismatch→quarantine, synopsis-incoherent→synopsis, category-wrong→categorize, desconhecida→quarantine); dry-run sem candidatos (causas ainda não persistidas) — esperado.",
+        "loop_prevention": "Seleção exige status_*=4 + qa_quarantine=0; após reset vira status=0 (sai da fila de reprocesso e entra na de geração). Re-blacklist incrementa qa_retry; ao atingir MAX → quarentena definitiva."
+      },
+      "rationale": "Pedido explícito do autor. Hoje apply_blacklist (menu 45) despublica severity medium|high mas NÃO havia fluxo para recuperar esses títulos — ficavam parados, sem nova tentativa nem destino claro. É backlog oculto e desperdício (títulos potencialmente válidos perdidos).",
       "design": {
         "identificar": "Selecionar livros despublicados/marcados pela blacklist (status_publish revertido + flag/origem=blacklist). Hoje a blacklist vem de blacklist.json gerado por agente — registrar a CAUSA (motivo/severity) ao despublicar, para guiar o reprocessamento.",
         "classificar_causa": "Separar por motivo: sinopse incorreta → resetar status_synopsis e regenerar; categoria errada → resetar categorização; oferta inválida → reresolver oferta/scraper; título não-livro/duplicado → manter despublicado (quarentena definitiva).",
