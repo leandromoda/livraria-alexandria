@@ -284,8 +284,7 @@ V  → Voltar
             reset = input_safe("Resetar livros com falha anterior? [s/N] ").strip().lower()
             if reset == "s":
                 categorize.reset_failed()
-            from core.markdown_executor import set_provider
-            set_provider(escolher_provider())
+            # Motor único: agente batch classify_cowork via Claude CLI (sem escolha de provider).
             log("Classificando categorias temáticas…")
             with StepRun("categorize", idioma=idioma, pacote=pacote):
                 categorize.run(idioma, pacote)

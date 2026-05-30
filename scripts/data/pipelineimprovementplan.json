@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fase_1_validada__WS2_sinopse_implementada__categorizacao_e_WS3_pendentes",
+    "status": "fase_1_validada__WS2_completo_sinopse+categorizacao__WS3_pendente",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -88,7 +88,7 @@
       "problem_refs": ["P4_fragmentacao", "P2_quota_tokens"],
       "priority": "P1",
       "effort": "L",
-      "status": "sinopse_implementado_2026-05-29__categorizacao_pendente",
+      "status": "implementado_e_validado_2026-05-29 (sinopse + categorização)",
       "rationale": "Sinopse e categorização têm DUAS implementações (FSM em markdown_executor + prompt.md em *_cowork). Mantê-las divergentes dobra a manutenção e dispersa o tuning de quota. Unificar num único caminho CLI canônico por tarefa.",
       "decision_resolved": "DECISÃO (2026-05-29): motor canônico = BATCH (synopsis_cowork / classify_cowork), invertendo o lean original do plano. Razões: (1) o drain do gargalo já roda no batch (opção O); (2) o batch já tem validação determinística no IMPORT (synopsis_import.validate_synopsis → check_synopsis_generic + comprimento + meta + markdown), então o argumento 'FSM=qualidade' era em grande parte nulo; (3) batch usa ~50x menos chamadas no backlog (≈520 vs ≈26.000 p/ 13k livros) — decisivo sob a premissa de quota PRO. O FSM per-item só era usado pelo menu e ingestão guiada.",
       "implemented": {
@@ -98,13 +98,14 @@
           "synopsis_export.fetch_pending/run ganharam book_ids (modo per-livro da ingestão guiada) e retornam contagem exportada.",
           "markdown_executor.py: removido MODE 2 (pipeline 4 estágios), PIPELINE_STAGES, _execute_stage, _run_abstract_structurer, _run_synopsis_validator (R1-R8), _validate_fact_schema, helpers _tmp_*/_read_md/_detect_language e import load_memory. MODE 1 (_execute_single_agent) preservado para author_bio/offer_finder.",
           "Removidos agents/synopsis/* (4 estágios) e os 4 testes do FSM (test_fact_extractor, test_abstract_structurer, test_synopsis_writer, test_synopsis_pipeline).",
-          "main.py opção 11: removido set_provider(escolher_provider()) — batch sempre usa o claude CLI."
+          "main.py opção 11: removido set_provider(escolher_provider()) — batch sempre usa o claude CLI.",
+          "CATEGORIZAÇÃO (2ª etapa, mesmo padrão): categorize.py reescrito como wrapper batch (categorize_export → run_agent(classify_cowork) → categorize_import). Removidos os helpers per-item mortos (SYSTEM_PROMPT, build_prompt, parse_response, save_categories, load_taxonomy, _call_llm). Preservados reset_failed/reset_wrong_category (menu 10/10R). categorize_export.py ganhou book_ids + retorno de contagem. main.py opção 10: removido set_provider."
         ],
-        "validation": "py_compile OK em markdown_executor/synopsis/synopsis_export/categorize/author_bio/main; smoke-test de imports OK; confirmado que PIPELINE_STAGES e _run_synopsis_validator não existem mais; nenhuma referência viva aos símbolos removidos (só relatórios históricos em data/log_analysis).",
-        "remaining": "Categorização ainda tem 2 caminhos: categorize.py (per-item, 1 chamada, _call_llm) vs classify_cowork (batch). Unificar categorize → batch é o sub-item restante de WS2 (mesmo padrão de synopsis). Mantido per-item por ora para validar a sinopse primeiro."
+        "validation": "py_compile OK em markdown_executor/synopsis/synopsis_export/categorize/categorize_export/author_bio/main; smoke-test de imports OK (incl. ingestao_orientada); confirmado que PIPELINE_STAGES, _run_synopsis_validator e categorize.build_prompt não existem mais; nenhuma referência viva aos símbolos removidos (só relatórios históricos em data/log_analysis).",
+        "remaining": "Nenhum. WS2 completo: sinopse e categorização agora têm motor único = batch. (categorize_import.py mantém suas próprias load_taxonomy/save_categories — não há duplicação com categorize.py, que não as tem mais.)"
       },
       "tool_dependency_note": "Antes de unificar offer_finder/title_auditor: eles dependem de WebSearch via --allowedTools; manter no claude_runner (CLI) que provê tools. Não tentar movê-los para um caminho sem tools.",
-      "files_touched": ["scripts/core/markdown_executor.py", "scripts/steps/synopsis.py", "scripts/steps/synopsis_export.py", "scripts/main.py", "agents/synopsis/*"]
+      "files_touched": ["scripts/core/markdown_executor.py", "scripts/steps/synopsis.py", "scripts/steps/synopsis_export.py", "scripts/steps/categorize.py", "scripts/steps/categorize_export.py", "scripts/main.py", "agents/synopsis/*"]
     },
     {
       "id": "WS3_token_efficiency",
@@ -257,7 +258,7 @@
   ],
 
   "open_questions": [
-    "WS2 (RESOLVIDO 2026-05-29): motor canônico = batch para ambos. Sinopse já migrada/FSM aposentado. Falta migrar categorize.py (per-item) → classify_cowork (batch).",
+    "WS2 (CONCLUÍDO 2026-05-29): motor canônico = batch para ambos. Sinopse (FSM aposentado) e categorização (per-item aposentado) migradas para classify_cowork/synopsis_cowork.",
     "Reprocessamento de blacklist deve competir com o backlog virgem pela janela ou rodar só com sobra de sessão?",
     "Auditoria de conteúdo pós-publicação: amostragem contínua (X%/dia dentro da quota) ou varredura quando houver sessão ociosa?"
   ],

@@ -17,7 +17,7 @@
   },
 
   "llm_execution_paths": {
-    "description": "WS2 (2026-05-29): a sinopse foi unificada no caminho BATCH (path_b). O FSM multi-estágio de sinopse (MODE 2) foi REMOVIDO. path_a (markdown_executor) agora só executa agentes de estágio único (MODE 1: author_bio, offer_finder) + a chamada per-item de categorize.py (sub-item restante a migrar para batch).",
+    "description": "WS2 (2026-05-29, CONCLUÍDO): sinopse E categorização foram unificadas no caminho BATCH (path_b). O FSM multi-estágio de sinopse (MODE 2) e o caminho per-item de categorize.py foram REMOVIDOS. path_a (markdown_executor) agora só executa agentes de estágio único (MODE 1: author_bio, offer_finder).",
     "path_a_per_item_api": {
       "id": "markdown_executor",
       "module": "scripts/core/markdown_executor.py",
@@ -29,7 +29,7 @@
         "ollama": "_call_ollama() — local, inviável (CPU ~2 tok/s)",
         "auto": "gemini → ollama fallback (legado, não usado)"
       },
-      "used_by_menu": ["9 categorize (per-item — migrar p/ batch)", "22 audit content", "29 author_bio (MODE 1)", "31 title-verify"],
+      "used_by_menu": ["22 audit content", "29 author_bio (MODE 1)", "31 title-verify"],
       "synopsis_fsm": "REMOVIDO em WS2 (2026-05-29). agents/synopsis/* e MODE 2 (PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer) deletados. Sinopse agora é 100% batch (ver path_b + synopsis.py wrapper).",
       "agent_format": "MODE 1: identity.md/rules.md/task.md em agents/<agente>/ (author_bio, offer_finder)"
     },
@@ -45,9 +45,10 @@
       "backend": "claude CLI (assinatura Pro/Max) — limite de SESSÃO rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300)",
       "agent_format": "prompt.md único em agents/<agente>_cowork/ ou agents/<agente>/",
       "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25},
-      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_cowork) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis."
+      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_cowork) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis.",
+      "categorize_entrypoints": "WS2: scripts/steps/categorize.py virou wrapper fino (categorize_export → run_agent(classify_cowork) → categorize_import). Menu 10 e ingestão guiada (book_ids) usam-no; opção O usa _drain_classify (mesmo motor). Funções reset_failed/reset_wrong_category preservadas para o menu."
     },
-    "conflict": "WS2 RESOLVIDO p/ sinopse: motor único = batch (synopsis_cowork). FSM removido. RESTANTE: categorização ainda tem 2 implementações (categorize.py per-item vs classify_cowork batch) — migrar categorize.py → batch. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
+    "conflict": "WS2 CONCLUÍDO: motor único = batch para sinopse (synopsis_cowork) E categorização (classify_cowork). FSM de sinopse e per-item de categorize removidos. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
   },
 
   "automation_options": [
@@ -140,8 +141,8 @@
 
   "obsolete_or_unify_candidates": [
     {"target": "enrich_descricao (step 2)", "action": "manter só como fallback manual", "reason": "soft_deprecated; coberto pelo scraper."},
-    {"target": "Sinopse: FSM markdown_executor vs synopsis_cowork prompt.md", "action": "unificar num motor CLI único (quota PRO) — ver WS2 do plano. NÃO migrar para API paga.", "reason": "duas implementações divergentes do mesmo conteúdo."},
-    {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "unificar num motor CLI único (quota PRO) — ver WS2 do plano.", "reason": "duplicação."},
+    {"target": "Sinopse: FSM markdown_executor vs synopsis_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_cowork; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
+    {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_cowork; per-item removido.", "reason": "duplicação."},
     {"target": "Opção C (Cowork manual)", "action": "absorver no orquestrador automatizado", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
     {"target": "Opção I (Ingestão Orientada)", "action": "convergir para a opção G unificada", "reason": "sobrepõe O+A."},
     {"target": "Opções A, G, M", "action": "unificar sob G como orquestrador com fallbacks", "reason": "sobreposição de responsabilidades não-LLM."},
