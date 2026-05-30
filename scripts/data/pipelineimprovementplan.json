@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fase_1_validada__WS2_completo_sinopse+categorizacao__WS3_pendente",
+    "status": "fase_2_completa (WS2 unificação batch + WS3 calibração empírica)__fases_3-5_pendentes",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -113,14 +113,31 @@
       "problem_refs": ["P2_quota_tokens"],
       "priority": "P1",
       "effort": "M",
+      "status": "implementado_e_validado_2026-05-30",
       "rationale": "Cada chamada CLI tem overhead fixo de sessão. O histórico (PR #120/#121) mostra a tensão batch vs timeout. Prompts gordos (taxonomia ~26KB no classify) consomem a janela mais rápido. O ganho aqui é caber MAIS trabalho útil por sessão.",
+      "implemented": {
+        "date": "2026-05-30",
+        "what": [
+          "BATCH_SIZE_* tornado configurável via env (BATCH_SIZE_SYNOPSIS/CLASSIFY/AUTHOR_BIO) em llm_orchestrator.py.",
+          "Calibração EMPÍRICA via tools/measure_batch.py (sweep real no motor batch pós-WS2, timeout × throughput). Defaults calibrados: BATCH_SIZE_SYNOPSIS 5→15, BATCH_SIZE_CLASSIFY 10→25.",
+          "Prompt-slimming do classify: JÁ RESOLVIDO pela migração WS2 — classify_cowork lê taxonomy.json via file tool (cacheado na sessão) em vez de reenviar ~26KB por item (que era o custo do antigo categorize.py per-item, agora removido).",
+          "Idempotência: JÁ COBERTA por sentinelas status=3 (export) + reclaim.run (no início de cada ação) — itens em voo não são reexportados nem reprocessados."
+        ],
+        "measurements": {
+          "harness": "scripts/tools/measure_batch.py (resultados em data/batch_measure_results.jsonl — gitignored)",
+          "synopsis": "size5=64.8s/item(324s wall, overhead não amortizado); size10=26.5s/item(265s); size15=25.7s/item(385s). 100% done, 0 timeouts (limite 900s). 15 → ~2.5x throughput vs 5.",
+          "classify":  "size10=11.7s/item(117s); size20=5.9s/item(118s); size25=6.5s/item(161s). 100% done, 0 timeouts. 25 → ~2x throughput vs 10 (cap do export=25).",
+          "conclusion": "Defaults antigos eram excessivamente conservadores (medo de timeout do era-FSM, 2 chamadas/livro). No motor batch o timeout fica muito distante; lotes maiores amortizam o overhead fixo. Recomendações fixadas DENTRO das faixas testadas (sem extrapolar)."
+        },
+        "followups": "Para subir além de 25 (classify) é preciso elevar o cap BATCH_SIZE=25 em categorize_export.py/synopsis_export.py. classify tem folga enorme (161s p/ 25, limite 900s) — candidato a 40+ se medido. Não feito por ora (manter recomendações empíricas)."
+      },
       "changes": [
-        "Calibrar BATCH_SIZE por tarefa no ponto ótimo timeout × throughput. Com o FSM aposentado (WS2), a sinopse agora é batch (synopsis_cowork) — BATCH_SIZE_SYNOPSIS=5 hoje, avaliar subir; categorização pode lotar mais por chamada.",
-        "Enxugar prompts: revisar agents/classify_cowork/prompt.md (taxonomia 26KB) — remover redundância, manter só o necessário para a decisão. O CLI já reaproveita contexto repetido dentro da sessão, mas prompt menor = mais itens por janela.",
-        "Evitar reprocessar itens já feitos (idempotência por status) — não gastar sessão repetindo trabalho.",
-        "NÃO depender de prompt caching de API (não aplicável); o ganho vem de prompt menor + menos chamadas redundantes."
+        "Calibrar BATCH_SIZE por tarefa no ponto ótimo timeout × throughput (FEITO empiricamente).",
+        "Enxugar prompts (RESOLVIDO via WS2 — taxonomy lida de arquivo).",
+        "Idempotência por status (JÁ COBERTA por status=3 + reclaim).",
+        "NÃO depender de prompt caching de API (não aplicável)."
       ],
-      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/core/markdown_executor.py", "agents/classify_cowork/prompt.md"]
+      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/tools/measure_batch.py", ".gitignore"]
     },
     {
       "id": "WS4_qa_stage",

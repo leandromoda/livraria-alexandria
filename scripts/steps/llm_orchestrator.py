@@ -48,11 +48,16 @@ COWORK_DIR    = DATA_DIR / "cowork"
 LOGS_DIR      = DATA_DIR / "logs"
 AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 
-BATCH_SIZE_SYNOPSIS   = 5    # ~450s por batch (90s/livro × 5) — margem segura antes do timeout de 900s
-                             # Reduzido de 10→5: livros com descrições longas levam ~90s cada,
-                             # causando timeout com batch=10 (900s). Histórico: 43s/livro em 2026-05.
-BATCH_SIZE_CLASSIFY   = 10   # classify é mais rápido (~5-10s/livro), 10 é conservador
-BATCH_SIZE_AUTHOR_BIO = 25
+# WS3: tamanhos de lote calibráveis via env, CALIBRADOS por medição empírica
+# (tools/measure_batch.py, 2026-05-30, motor batch pós-WS2). Curva real:
+#   synopsis: size 10→26,5s/item; size 15→25,7s/item, 385s wall (timeout 900s).
+#             size 5 = 64,8s/item (overhead fixo não amortizado). 15 dá ~2,5x
+#             throughput vs 5, com folga ampla antes do timeout.
+#   classify: size 20→5,9s/item; size 25→6,5s/item, 161s wall. Barato; 25 dobra
+#             o throughput vs 10 com folga enorme (cap do export = 25).
+BATCH_SIZE_SYNOPSIS   = int(os.getenv("BATCH_SIZE_SYNOPSIS", "15"))
+BATCH_SIZE_CLASSIFY   = int(os.getenv("BATCH_SIZE_CLASSIFY", "25"))
+BATCH_SIZE_AUTHOR_BIO = int(os.getenv("BATCH_SIZE_AUTHOR_BIO", "25"))
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
 

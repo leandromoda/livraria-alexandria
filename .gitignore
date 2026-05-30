@@ -61,6 +61,8 @@ scripts/data/synopsis_output.json
 scripts/data/categorize_input.json
 scripts/data/categorize_output.json
 scripts/data/offer_list.json
+scripts/data/batch_measure_results.jsonl
+scripts/data/batch_measure_run.log
 scripts/data/.fuse_hidden*
 # logs de runtime (pipeline_*.log + NNNN_audit_*.json) — consumidos pelo log_analysis e arquivados
 scripts/data/logs/
