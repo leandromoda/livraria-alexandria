@@ -395,16 +395,23 @@ def run(idioma: str, pacote: int):
 
 ---
 
-## Supabase — Migrations Manuais Pendentes
+## Supabase — Migrations Manuais
 
-As colunas abaixo existem no SQLite mas ainda precisam ser criadas no Supabase:
+**TASK-SUPABASE-001 — APLICADA.** As colunas abaixo já existem na tabela
+`livros` do Supabase (verificado em 2026-05-30 via OpenAPI do PostgREST):
 
 ```sql
--- Rodar no SQL Editor do Supabase (TASK-SUPABASE-001)
+-- JÁ APLICADO no SQL Editor do Supabase
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_atual NUMERIC;
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS offer_status TEXT DEFAULT 'active';
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_updated_at TIMESTAMPTZ;
 ```
+
+> Compatibilidade SQLite↔Supabase verificada (2026-05-30): todos os campos
+> enviados pelos steps de publicação existem no schema do Supabase. Colunas
+> locais de pipeline (`sinopse`→publicada como `descricao`; `blacklist_reason`,
+> `qa_retry`, `qa_quarantine`, `reactivation_pending`, `preco`, `marketplace`,
+> `offer_url`, etc.) NÃO são enviadas ao Supabase — são apenas estado local.
 
 ---
 
