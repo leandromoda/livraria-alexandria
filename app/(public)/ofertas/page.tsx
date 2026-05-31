@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Ofertas de livros",
   description:
     "As melhores ofertas em literatura nacional e internacional com preços atualizados.",
+  alternates: { canonical: "/ofertas" },
 };
 
 function formatPrice(value: unknown): string | null {

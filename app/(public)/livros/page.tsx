@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Livros",
   description:
     "Explore todos os livros com sinopses, autores e as melhores ofertas disponíveis.",
+  alternates: { canonical: "/livros" },
 };
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");

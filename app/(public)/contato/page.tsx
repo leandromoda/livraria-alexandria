@@ -4,6 +4,7 @@ export const metadata = {
   title: "Contato | Livraria Alexandria",
   description:
     "Entre em contato com a Livraria Alexandria para dúvidas, sugestões ou assuntos relacionados ao site.",
+  alternates: { canonical: "/contato" },
 };
 
 export default function ContatoPage() {

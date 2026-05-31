@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Autores",
   description:
     "Conheça os autores do acervo da Livraria Alexandria. Explore biografias, nacionalidades e todas as obras disponíveis por autor.",
+  alternates: { canonical: "/autores" },
 };
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");

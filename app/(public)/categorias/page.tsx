@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 export const metadata: Metadata = {
   title: "Categorias | Livraria Alexandria",
   description: "Explore livros por categoria literária na Livraria Alexandria.",
+  alternates: { canonical: "/categorias" },
 };
 
 export default async function CategoriasPage() {
