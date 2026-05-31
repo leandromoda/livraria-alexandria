@@ -707,11 +707,17 @@ V  → Voltar
 
 def _run_gargalo(idioma: str):
     """
-    Opção G — Atacar Gargalos:
-      1. Analisa estado atual e gera plano priorizado
-      2. Exibe o plano e salva em data/gargalo_plan.json
-      3. Executa os steps auto-executáveis (audits + maintenance)
-      4. Chama Autopilot A até exaustão
+    Opção G — Orquestrador único (WS6, passe único + relatório):
+      1. reclaim de estados presos
+      2. Plano priorizado (exibido + salvo em data/gargalo_plan.json)
+      3. Fase LLM priorizada (WS1) — opcional, consome a sessão PRO
+      4. QA / remediação (WS4/WS5): aplica blacklist + reprocessa recuperáveis
+      5. Steps de auditoria auto-executáveis
+      6. Autopilot A (publica downstream até exaurir)
+      7. Relatório: janela de sessão PRO (WS7) + backlog restante
+
+    Passe ÚNICO: ao esgotar a sessão PRO, NÃO aguarda o reset — reporta o
+    que falta e encerra (re-rodar após o reset).
     """
     log("[G] Analisando gargalos e construindo plano de ataque…")
 
@@ -777,6 +783,30 @@ def _run_gargalo(idioma: str):
         input_safe("Pressione Enter para voltar ao menu…")
         return
 
+    # ── FASE LLM priorizada (WS1) — opcional, consome a sessão PRO ──
+    from core.claude_runner import claude_available
+    if claude_available():
+        incl = input_safe(
+            "Incluir fase de geração LLM (drena o gargalo; consome a sessão PRO)? [S/n]: "
+        ).strip().lower()
+        if incl != "n":
+            log("[G] ── Fase LLM priorizada (orquestrador) ──")
+            try:
+                llm_orchestrator.run(idioma)
+            except KeyboardInterrupt:
+                log("[G] Fase LLM interrompida pelo usuário.")
+            except Exception as e_llm:
+                log(f"[G] AVISO: fase LLM retornou com exceção: {e_llm}")
+    else:
+        log("[G] claude CLI não encontrado — pulando fase LLM (segue só não-LLM).")
+
+    # ── FASE QA / REMEDIAÇÃO (WS4/WS5, não-LLM) ──────────────────
+    log("[G] ── QA / remediação (blacklist → reprocessamento) ──")
+    try:
+        qa.run(mode="remediate", dry_run=False)
+    except Exception as e_qa:
+        log(f"[G] AVISO: QA/remediação falhou: {e_qa}")
+
     # ── Executa steps auto-executáveis ────────────────────────
     for step in auto_steps:
         key = step["key"]
@@ -818,12 +848,76 @@ def _run_gargalo(idioma: str):
         except Exception as e_g:
             log(f"[G] ERRO em {step['label']}: {e_g}")
 
-    # ── Autopilot A até exaustão ──────────────────────────────
+    # ── Autopilot A até exaustão (publica downstream) ─────────
     log("[G] Todos os steps de auditoria/manutenção concluídos.")
     log("[G] Iniciando Autopilot A até exaustão…")
     autopilot.run(idioma, 100, manter_cowork=True)
 
-    log(f"[G] Plano concluído. v{get_version()}")
+    # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
+    _print_gargalo_report(idioma)
+
+    log(f"[G] Passe concluído. v{get_version()}")
+
+
+def _print_gargalo_report(idioma: str):
+    """Relatório de passe único: estado da janela de sessão PRO (WS7) e o
+    backlog de conteúdo que ainda destrava publicação. NÃO aguarda reset —
+    orienta a re-rodar G após o reset, se houver trabalho LLM pendente."""
+    sep = "─" * 62
+    print()
+    print("=" * 62)
+    print("  RELATÓRIO DO PASSE (G)")
+    print("=" * 62)
+
+    # Backlog de conteúdo (gargalo)
+    syn = cat = bio = quar = 0
+    try:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM livros WHERE status_synopsis=0 AND status_review=1 AND is_book=1 AND idioma=?", (idioma,))
+        syn = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM livros WHERE status_categorize=0 AND status_review=1")
+        cat = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM autores WHERE descricao IS NULL")
+        bio = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM livros WHERE COALESCE(qa_quarantine,0)=1")
+        quar = cur.fetchone()[0]
+        conn.close()
+    except Exception as e:
+        log(f"[G] (relatório) AVISO ao contar backlog: {e}")
+
+    print(f"  Backlog de conteúdo (destrava publicação):")
+    print(f"    Sinopses pendentes ({idioma}): {syn:,}")
+    print(f"    Categorizações pendentes     : {cat:,}")
+    print(f"    Bios de autores pendentes    : {bio:,}")
+    print(f"    Em quarentena (QA, definitiva): {quar:,}")
+    print(f"  {sep}")
+
+    # Janela de sessão PRO (WS7)
+    try:
+        from core.claude_usage_tracker import session_window, SESSION_RESET_MINUTES
+        win = session_window()
+        print(f"  Sessão Claude PRO (janela {SESSION_RESET_MINUTES}min):")
+        print(f"    Chamadas na janela atual: {win['session_calls']:,}")
+        content_left = syn + cat
+        if win["in_cooldown"]:
+            secs = win["seconds_until_reset"]
+            h, rem = divmod(secs, 3600)
+            m = rem // 60
+            falta = f"{h}h{m:02d}min" if h else f"{m}min"
+            print(f"    ⚠  LIMITE ATINGIDO — reset em ~{falta}.")
+            if content_left > 0:
+                print(f"    → Ainda há {content_left:,} item(ns) de conteúdo LLM. "
+                      f"Re-rode G (ou O) após o reset para continuar.")
+        else:
+            print("    ✓  Janela disponível — sem cooldown.")
+            if content_left > 0:
+                print(f"    → {content_left:,} item(ns) de conteúdo ainda pendente(s) — "
+                      f"rode G com a fase LLM para avançar.")
+    except Exception as e:
+        log(f"[G] (relatório) AVISO ao ler janela de sessão: {e}")
+    print("=" * 62)
+    print()
 
 
 # =========================

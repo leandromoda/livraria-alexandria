@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fases_0-3_completas (WS9 num. + WS1/7 + WS2/3 + WS4/5)__fase_4-5 (WS6/8 + WS9 consolidação) pendentes",
+    "status": "fases_0-4_completas (WS9 num. + WS1/7 + WS2/3 + WS4/5 + WS6 + WS8 coberto)__resta só fase_5 (WS9 consolidação de steps, baixa prioridade)",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -207,6 +207,18 @@
       "priority": "P1",
       "effort": "L",
       "depends_on": ["WS1_session_prioritization", "WS4_qa_stage", "WS5_blacklist_reprocessing"],
+      "status": "implementado_e_validado_2026-05-30 (passe único)",
+      "decision_resolved": "DECISÃO (2026-05-30): passe ÚNICO + relatório (escolha do autor), NÃO auto-aguardar-reset. Ao esgotar a sessão PRO, G reporta o backlog restante + tempo até o reset e encerra; usuário re-roda após reset. Previsível, não bloqueia o terminal por horas.",
+      "implemented": {
+        "date": "2026-05-30",
+        "what": [
+          "_run_gargalo reescrito: reclaim → plano (display+save) → FASE LLM priorizada (opcional, prompt; reusa llm_orchestrator.run que já faz WS1 + fallback A interno e RETORNA ao esgotar, sem auto-wait) → QA/remediação (qa.run('remediate') = apply_blacklist + reprocess) → audits auto-executáveis → Autopilot A → relatório.",
+          "Novo _print_gargalo_report: backlog de conteúdo (sinopse/categoria/bios) + quarentena + janela de sessão PRO (WS7: in_cooldown, reset em ~Xh) + orientação de re-rodar após reset.",
+          "Reuso (sem reescrever internals): llm_orchestrator.run (já encerra ao esgotar a sessão, sem aguardar reset — compatível com passe único)."
+        ],
+        "validation": "py_compile OK; _print_gargalo_report executado (14.133 sinopses / 14.143 categorias / 6.997 bios pendentes; janela de sessão lida corretamente). Componentes (llm_orchestrator, qa.remediate) já validados isoladamente.",
+        "remaining_minor": "Sub-bullets secundários não implementados (baixa prioridade): fallback A 'dirigido ao maior backlog' (A atual já cobre via count_pending); agregação de log do QG (ruído); convergência total de I/M em G (mantidos como atalhos)."
+      },
       "rationale": "P1: A (não-LLM) faz loop reavaliando QG sobre 1000 livros sem sinopse sem produzir nada; O processa poucas sinopses e espera o reset. P4: 8 opções de topo sobrepostas. Unificar em G com cadeia de fallback de custo zero resolve ambos.",
       "fallback_chain": [
         "1. Geração LLM via sessão PRO (CLI): sinopse e categorização primeiro (WS1), depois bios; QA e reprocess_blacklist com cadência reduzida.",
@@ -244,6 +256,8 @@
       "priority": "P2",
       "effort": "S",
       "depends_on": ["WS6_unified_orchestration"],
+      "status": "coberto_por_WS6_2026-05-30 (sem código novo)",
+      "covered_note": "Já satisfeito pela integração do WS6 + módulos existentes: author_bio é drenado na FASE LLM (llm_orchestrator._drain_author_bio); publish_autores (15), list_composer (18) e publish_listas (19) já estão na lista de steps do Autopilot A (chamado por G); auditoria de listas/autores já está nos audit auto-steps do plano de gargalos do G. Nenhum código adicional necessário.",
       "rationale": "Ponto de atenção do autor: listas SEO (18/19) e bios/páginas de autores (15, 29b) devem ser parte do fluxo automatizado.",
       "changes": [
         "G, após publicar livros, dispara list_composer (18) + publish_listas (19) quando houver categoria/autor com livros suficientes (min_categoria=6, min_autor=3).",

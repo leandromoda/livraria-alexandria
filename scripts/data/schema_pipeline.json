@@ -145,7 +145,7 @@
     {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_cowork; per-item removido.", "reason": "duplicação."},
     {"target": "Opção C (Cowork manual)", "action": "absorver no orquestrador automatizado", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
     {"target": "Opção I (Ingestão Orientada)", "action": "convergir para a opção G unificada", "reason": "sobrepõe O+A."},
-    {"target": "Opções A, G, M", "action": "unificar sob G como orquestrador com fallbacks", "reason": "sobreposição de responsabilidades não-LLM."},
+    {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
     {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-51 (sem colisão); WS4 (2026-05-30) adicionou qa.py orquestrador (modos) + menu 52/53 (reprocessar blacklist / remediação). WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine.", "reason": "colisões de numeração e dispersão."}
   ],
 
