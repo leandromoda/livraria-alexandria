@@ -17,23 +17,15 @@ export default async function ListasPage({ searchParams }: PageProps) {
   const { categoria: rawCategoria } = await searchParams;
   const categoriaAtiva = rawCategoria?.trim() ?? "";
 
-  // Tenta buscar com macrocategoria; se a coluna ainda não existir (migration pendente),
-  // cai no fallback sem o campo para não quebrar a página.
-  let todasListas: any[] = [];
-  const { data: comCat, error: errCat } = await supabase
+  // `macrocategoria` não existe no schema do Supabase (a tabela `listas` tem
+  // `tema`/`tipo`, ambos não populados pelo pipeline). Busca direta sem o campo
+  // para evitar um request 400 desnecessário; o agrupamento por macrocategoria
+  // fica inativo (sidebar não renderiza) até existir um campo real para isso.
+  const { data: todasListasData } = await supabase
     .from("listas")
-    .select("id, titulo, slug, introducao, macrocategoria")
+    .select("id, titulo, slug, introducao")
     .order("titulo");
-
-  if (!errCat) {
-    todasListas = comCat ?? [];
-  } else {
-    const { data: semCat } = await supabase
-      .from("listas")
-      .select("id, titulo, slug, introducao")
-      .order("titulo");
-    todasListas = semCat ?? [];
-  }
+  const todasListas: any[] = todasListasData ?? [];
 
   /* Macrocategorias disponíveis (campo opcional — degrade se ausente) */
   const macrocategorias = [
