@@ -16,7 +16,9 @@ cd scripts
 python main.py
 ```
 
-O menu interativo pede idioma, tamanho do pacote e (quando relevante) provider LLM.
+O menu interativo pede idioma e tamanho do pacote. A geração LLM usa o **claude CLI**
+(sem escolha de provider); só steps legados (author_bio, auditoria de conteúdo)
+ainda exibem o menu de provider.
 
 ### Menu — numeração por grupos (WS9, 2026-05-30)
 
@@ -55,8 +57,8 @@ for q, label in [
 conn.close()
 "
 
-# Uso do Gemini hoje
-python -c "from core.gemini_limiter import status; import json; print(json.dumps(status(), indent=2))"
+# Uso da sessão Claude PRO (janela rotativa de 5h)
+python -c "from core.claude_usage_tracker import status; import json; print(json.dumps(status(), indent=2))"
 
 # Schema do banco
 python -c "
@@ -79,24 +81,32 @@ scripts/
 ├── .env                      # Chaves de API (nunca commitar)
 ├── core/
 │   ├── db.py                 # Schema SQLite + conexão (WAL, timeout 60s)
-│   ├── markdown_executor.py  # Roteador LLM (Gemini / Ollama) + pipeline de agentes
-│   ├── gemini_limiter.py     # Controle de tier Gemini (RPM + RPD)
+│   ├── markdown_executor.py  # Executor de agente de estágio único (MODE 1) via _call_llm
+│   ├── claude_runner.py      # Invoca o claude CLI (run_agent / run_prompt)
+│   ├── claude_usage_tracker.py # Rastreia a janela de sessão Claude PRO (5h)
+│   ├── gemini_limiter.py     # LEGADO — Gemini aposentado (mantido por compat.)
 │   ├── markdown_memory.py    # Memória persistente de agentes (tabela pipeline_state)
 │   ├── logger.py             # Log com timestamp [HH:MM:SS] + heartbeat daemon
 │   ├── length_enforcer.py    # Utilitário de limite de caracteres
 │   └── state.py              # state.json I/O
 ├── steps/                    # Um arquivo por step (ver tabela abaixo)
 ├── data/
-│   ├── books.db              # SQLite principal (~1.3 MB)
+│   ├── books.db              # SQLite principal
 │   ├── taxonomy.json         # 100+ categorias temáticas
-│   ├── gemini_usage.json     # Contadores de uso Gemini (auto-gerado)
+│   ├── claude_usage.json     # Contadores da sessão Claude PRO (auto-gerado)
+│   ├── cowork/               # Lotes de input/output dos agentes batch (runtime)
 │   ├── seeds/                # NNN_offer_seeds.json aguardando ingestão
 │   └── seeds/ingested_seeds/ # Seeds já processados (movidos pelo step 1)
-└── agents/  (em ../agents/)  # Prompts markdown por domínio/stage
-    └── synopsis/
-        ├── fact_extractor/   {identity,rules,task}.md
-        └── synopsis_writer/  {identity,rules,task}.md
+└── agents/  (em ../agents/)  # Prompts markdown dos agentes
+    ├── synopsis_cowork/prompt.md   # Geração de sinopse em LOTE (motor único)
+    ├── classify_cowork/prompt.md   # Categorização em LOTE
+    └── author_bio/                 # Bio de autor (MODE 1: identity/rules/task)
 ```
+
+> **Motor LLM (WS2, 2026-05-30):** a geração usa o **claude CLI** (assinatura PRO)
+> via **agentes batch** (`*_cowork`). O antigo FSM de sinopse (`agents/synopsis/*`,
+> `markdown_executor` MODE 2) foi **removido**. `markdown_executor` mantém só o
+> MODE 1 (agente de estágio único, ex: `author_bio`).
 
 ---
 
@@ -105,15 +115,15 @@ scripts/
 | # | Nome | Módulo | LLM | Depende de | Status saída |
 |---|------|--------|-----|------------|--------------|
 | 1 | Importar Seeds | offer_seed.py | — | seeds/*.json | created |
-| 2 | Enriquecer Desc | enrich_descricao.py | — | — | descricao preenchida |
+| 2 | Enriquecer Desc *(fallback-only)* | enrich_descricao.py | — | — | descricao preenchida |
 | 3 | Resolver Ofertas | offer_resolver.py | — | lookup_query | offer_url |
 | 4 | Scraper Marketplace | marketplace_scraper.py | — | offer_url | imagem_url, descricao, preco |
 | 5 | Gerar Slugs | slugify.py | — | — | status_slug=1 |
 | 6 | Slugify Autores | slugify_autores.py | — | — | autores.slug |
 | 7 | Deduplicar | dedup.py | — | — | status_dedup=1 |
 | 8 | Review | review.py | — | — | status_review=1 |
-| **9** | **Categorizar** | categorize.py | **Gemini** | review=1 | livros_categorias_tematicas |
-| **10** | **Gerar Sinopses** | synopsis.py | **Gemini** | review=1 | status_synopsis=1 |
+| **9** | **Categorizar** | categorize.py | **Claude (batch)** | review=1 | livros_categorias_tematicas |
+| **10** | **Gerar Sinopses** | synopsis.py | **Claude (batch)** | review=1 | status_synopsis=1 |
 | 11 | Gerar Capas | covers.py | — | — | status_cover=1/2 |
 | 12 | Quality Gate | quality_gate.py | — | steps 5,8,10,11 | is_publishable=0/1 |
 | 13 | Publicar Supabase | publish.py | — | is_publishable=1 | status_publish=1 |
@@ -122,7 +132,7 @@ scripts/
 | 16 | Listas SEO | list_composer.py | — | step 13 | tabelas listas/listas_livros |
 | 17 | Monitor Preços | offer_price_monitor.py | — | step 13 | offer_price_log |
 | 18 | Auditoria Conectiv | auditor.py | — | — | connectivity_log |
-| **19** | **Auditoria Conteúdo** | auditor.py | **Gemini** | step 13 | audit_log |
+| **19** | **Auditoria Conteúdo** | auditor.py | **Claude** | step 13 | audit_log |
 | 91–94 | Exports | export_state_transcript.py | — | — | JSON/markdown |
 
 ### Fluxo recomendado para novos seeds
@@ -209,74 +219,64 @@ ts = datetime.utcnow().isoformat()   # "2026-03-17T18:15:30.123456"
 
 ---
 
-## LLM — Uso e Controle de Tier
+## LLM — Motor e Controle de Sessão
 
-### Providers disponíveis
+### Motor único: Claude PRO via CLI
 
-| Provider | Velocidade | Custo | Quando usar |
-|----------|-----------|-------|-------------|
-| **Gemini** (padrão) | ~150 tok/s | Grátis (tier) | Sempre — padrão atual |
-| Ollama local | ~2 tok/s (CPU) | Zero | Não viável nesta máquina (GT 720M, sem CUDA) |
-| Auto | Gemini → Ollama | Grátis/Zero | Fallback se Gemini falhar |
+A geração LLM usa **exclusivamente a quota da assinatura Claude PRO** através do
+`claude` CLI (`core/claude_runner.py`). **Sem API paga por token. Gemini/Ollama
+aposentados** (o roteador legado em `markdown_executor._call_llm` permanece, mas
+o provider padrão é `claude`).
 
-**Hardware local:** NVIDIA GeForce GT 720M (~1 GB VRAM) sem driver CUDA.
-Ollama roda em CPU a ~2 tok/s — inviável para o pipeline de sinopses (~10 min/livro).
+| Caminho | Como funciona | Usado por |
+|---------|---------------|-----------|
+| **Batch** (canônico) | exporta lote JSON → `run_agent` sobre `agents/*_cowork/prompt.md` → importa | sinopse, categorização, bios (opção O, menu 10/11/13, ingestão guiada) |
+| **MODE 1** (estágio único) | `execute_agent` sobre `agents/<n>/{identity,rules,task}.md` | author_bio, offer_finder |
 
-### Tier Gratuito Gemini
+### Controle de sessão (não tokens)
 
-| Modelo | RPM | RPD | TPM |
-|--------|-----|-----|-----|
-| gemini-2.0-flash | 15 | 1.500 | 1.000.000 |
-| gemini-2.5-flash | 15 | 1.500 | 1.000.000 |
+O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 
-**Limites conservadores (padrão):** 12 RPM · 1.400 RPD
-Sobrescrever no `.env`:
-```env
-GEMINI_RPM_LIMIT=12
-GEMINI_RPD_LIMIT=1400
-GEMINI_RPD_WARN=1200
-```
+1. `core/claude_usage_tracker.py` rastreia `session_calls`, `session_started_at` e
+   `session_window()` (in_cooldown, seconds_until_reset, reset_at).
+2. `SESSION_RESET_MINUTES=300` (5h). Ao detectar limite, `claude_runner` aguarda o
+   reset e faz **1 retry**; se persistir, o orquestrador cai no fallback não-LLM.
+3. **Persistência:** `data/claude_usage.json`.
+4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
-### Como o limiter funciona
+### Eficiência (WS3)
 
-O módulo `core/gemini_limiter.py` é chamado automaticamente dentro de `_call_gemini()`:
+Geração em lote amortiza o overhead fixo da sessão. `BATCH_SIZE_*` é configurável
+via env e calibrado por medição (`tools/measure_batch.py`):
 
-1. **RPM:** Janela deslizante de 60s. Se >= RPM_LIMIT chamadas na janela, dorme até a mais antiga expirar.
-2. **RPD:** Se >= RPD_LIMIT, levanta `RuntimeError("GEMINI_DAILY_LIMIT_REACHED")` — interrompe o step.
-3. **Aviso:** Ao atingir RPD_WARN (padrão 1.200/dia), imprime alerta mas continua.
-4. **Persistência:** `data/gemini_usage.json` — reset automático à meia-noite UTC.
-
-### Steps que usam LLM
-
-| Step | Chamadas LLM por livro | Tokens estimados |
-|------|----------------------|-----------------|
-| 8 — Sinopses | 2 (fact_extractor + synopsis_writer) | ~800–1.200 |
-| 16 — Auditoria conteúdo | 1 | ~400–600 |
-| 18 — Categorizar | 1 | ~200–400 |
-
-Com 1.400 req/dia úteis: ~700 sinopses/dia ou ~1.400 categorizações/dia.
+| Tarefa | BATCH_SIZE | Medido |
+|--------|-----------|--------|
+| Sinopse | 15 (`BATCH_SIZE_SYNOPSIS`) | ~26 s/livro, 385 s/lote |
+| Categorização | 25 (`BATCH_SIZE_CLASSIFY`) | ~6,5 s/livro, 161 s/lote |
+| Bios de autor | 25 (`BATCH_SIZE_AUTHOR_BIO`) | — |
 
 ---
 
 ## Variáveis de Ambiente (`.env`)
 
 ```env
-# LLM — Gemini (obrigatório para steps 8, 16, 18)
-GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-2.5-flash
+# LLM — Claude PRO via CLI (motor único). Sem chave de API:
+# o claude CLI usa a sessão da assinatura. Opcional:
+CLAUDE_BIN=                      # caminho explícito do claude.exe, se não estiver no PATH
+CLAUDE_SESSION_RESET_MINUTES=300 # janela de sessão (5h)
+LLM_PROVIDER=claude              # legado: ollama | gemini | auto (não recomendados)
 
-# Google Books (step 2 — opcional, sem chave usa quota pública)
+# Tamanhos de lote (opcional — sobrescreve defaults calibrados)
+BATCH_SIZE_SYNOPSIS=15
+BATCH_SIZE_CLASSIFY=25
+BATCH_SIZE_AUTHOR_BIO=25
+
+# Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
 
-# Ollama (fallback local — lento em CPU)
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=mistral:latest
-LLM_PROVIDER=gemini      # ollama | gemini | auto
-
-# Controle de tier Gemini (opcional — sobrescreve defaults)
-GEMINI_RPM_LIMIT=12
-GEMINI_RPD_LIMIT=1400
-GEMINI_RPD_WARN=1200
+# Gemini/Ollama — LEGADO (aposentados; só se reativar o roteador antigo)
+# GEMINI_API_KEY=...
+# OLLAMA_URL=http://localhost:11434
 ```
 
 **Supabase** (hard-coded nos steps de publicação):
@@ -349,9 +349,11 @@ Campos obrigatórios: `titulo`, `lookup_query`.
 
 1. **Criar** `steps/meu_step.py` com função `run(idioma, pacote)` e padrão de log padrão
 2. **Adicionar coluna** `status_meu_step INTEGER DEFAULT 0` em `ensure_schema()` no `core/db.py`
-3. **Registrar no menu** em `main.py`: nova opção numérica (próximo inteiro disponível após 19)
+3. **Registrar no menu** em `main.py`: número na faixa do grupo (Geração 10-19,
+   Publicação 20-30, Auditoria/QA 40-59 — ver "Menu — numeração por grupos")
 4. **Importar** no topo de `main.py`: `from steps import meu_step`
-5. Se usar LLM: chamar `set_provider(escolher_provider())` antes de `meu_step.run(...)`
+5. Se usar LLM, prefira o **motor batch** (export → `run_agent(<agente>_cowork)` →
+   import), como `synopsis.py`/`categorize.py`. Evite o roteador legado `set_provider`.
 
 ### Template mínimo
 
@@ -415,14 +417,11 @@ ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_updated_at TIMESTAMPTZ;
 
 ---
 
-## Estado Atual (ref. 2026-03-17)
+## Estado Atual
 
-| Métrica | Valor |
-|---------|-------|
-| Total de livros no SQLite | 1.339 |
-| Com review concluído | 196 |
-| Com sinopse gerada | 112 |
-| Publicados no Supabase | 112 |
-| Seeds aguardando ingestão | 026–058 (33 arquivos) |
-| Step 17 — scraper marketplace | 20 feitos · 250 pendentes |
-| Step 8 — sinopses pendentes | 84 |
+As métricas de estado (totais, pendências por step, backlog do gargalo) mudam a
+cada execução e **não são versionadas aqui**. Fontes de verdade:
+
+- **Painel de Status** (opção **S** no menu) — visão ao vivo do pipeline + janela de sessão.
+- **`state/project_state.json`** — arquitetura, decisões e métricas de estado do banco.
+- Diagnóstico rápido: ver "Atalhos de diagnóstico" no topo deste arquivo.

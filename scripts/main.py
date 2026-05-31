@@ -169,7 +169,7 @@ def menu_ingestao(idioma):
 --- INGESTÃO ---
 
 1  → Importar Offer Seeds
-2  → Enriquecer descrições (Google Books / OpenLibrary)
+2  → Enriquecer descrições (Google Books / OpenLibrary) [fallback manual — coberto pelo step 4]
 3  → Resolver Ofertas (lookup → URL afiliado)
 4  → Enriquecer via Marketplace Scraper (capa + descrição + preço)
 
