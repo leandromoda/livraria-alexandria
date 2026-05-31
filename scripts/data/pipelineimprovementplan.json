@@ -6,7 +6,7 @@
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
     "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
-    "status": "fases_0-4_completas (WS9 num. + WS1/7 + WS2/3 + WS4/5 + WS6 + WS8 coberto)__resta só fase_5 (WS9 consolidação de steps, baixa prioridade)",
+    "status": "TODAS as fases concluídas (0-5). Fase 5: docs+numeração+enrich feitos; consolidação de código DEFERIDA por risco>valor (ver WS9.fase5_2026-05-31).",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
 
@@ -272,7 +272,14 @@
       "problem_refs": ["P4_fragmentacao"],
       "priority": "P1",
       "effort": "M",
-      "status": "numeracao_congelada_2026-05-30 (consolidação restante de steps = fase 5, pendente)",
+      "status": "concluido_2026-05-31 (numeração + docs + enrich fallback-only; consolidação de código DEFERIDA por risco>valor)",
+      "fase5_2026-05-31": {
+        "feito": [
+          "scripts/CLAUDE.md reescrito: motor Claude batch + janela de sessão PRO (substitui toda a seção Gemini/RPM-RPD); tabela de steps LLM=Claude; arquitetura/.env/atalhos atualizados; Estado Atual aponta para o painel S + project_state.json.",
+          "enrich_descricao (menu 2) marcado como 'fallback manual' no rótulo do menu (já era soft_deprecated/fora do autopilot)."
+        ],
+        "deferido_com_motivo": "Consolidação de código (absorver opção C/Cowork e opção I/Ingestão Orientada no orquestrador G; mesclar as duas implementações de export sinopse — synopsis_export.run standalone vs llm_orchestrator._export_synopsis inline) NÃO executada. Motivo: risco > valor. São módulos em produção (opção O depende do _export_synopsis; C/I são opções de menu em uso); o ganho é puramente cosmético (dedup), e a fase 5 é explicitamente baixa prioridade. Mexer arriscaria regressão num código recém-deployado. Recomendação: só consolidar com sign-off explícito e teste dedicado, se/quando houver necessidade real."
+      },
       "implemented_numbering": {
         "date": "2026-05-30",
         "scheme": "Renumeração completa por grupos (escolha do autor) — sem colisão. Ingestão 1-4, Pré-proc 5-9, Geração 10-19 (bios 29→13), Publicação 20-30 (13-19→20-26, 30→29, 31→30), Auditoria/QA 40-51 (20-26→40-46, 28→47, 29→48, 30→49, 31→50, 32→51), Exports 91-94, Banco 95-97. Faixa 40+ reservada para qa.py (WS4).",

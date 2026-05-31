@@ -1136,7 +1136,7 @@
         "scripts/tools/measure_batch.py",
         "scripts/main.py"
       ],
-      "remaining": "Fases 0-4 feitas (WS9 num. + WS1/7 + WS2/3 + WS4/5 + WS6 + WS8 coberto). Resta só fase 5: WS9 consolidação restante de steps (mesclar/agrupar módulos cowork e similares — baixa prioridade, cosmético). Ver scripts/data/pipelineimprovementplan.json.",
+      "remaining": "TODAS as fases (0-5) concluídas. Fase 5 (2026-05-31): scripts/CLAUDE.md reescrito p/ motor Claude batch (Gemini aposentado) + enrich marcado fallback-only. Consolidação de código da fase 5 (absorver opções C/I no G; mesclar exports duplicados) DEFERIDA por risco>valor — código em produção, ganho cosmético; só com sign-off + teste. Ver scripts/data/pipelineimprovementplan.json (WS9.fase5_2026-05-31).",
       "docs": ["scripts/data/pipelineimprovementplan.json", "scripts/data/schema_pipeline.json"]
     },
     {
