@@ -140,11 +140,11 @@
   ],
 
   "obsolete_or_unify_candidates": [
-    {"target": "enrich_descricao (step 2)", "action": "manter só como fallback manual", "reason": "soft_deprecated; coberto pelo scraper."},
+    {"target": "enrich_descricao (step 2)", "action": "FEITO (fase 5, 2026-05-31): rótulo do menu marca 'fallback manual'; já era soft_deprecated/fora do autopilot.", "reason": "soft_deprecated; coberto pelo scraper."},
     {"target": "Sinopse: FSM markdown_executor vs synopsis_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_cowork; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
     {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_cowork; per-item removido.", "reason": "duplicação."},
-    {"target": "Opção C (Cowork manual)", "action": "absorver no orquestrador automatizado", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
-    {"target": "Opção I (Ingestão Orientada)", "action": "convergir para a opção G unificada", "reason": "sobrepõe O+A."},
+    {"target": "Opção C (Cowork manual)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
+    {"target": "Opção I (Ingestão Orientada)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso; convergir para G só com sign-off + teste.", "reason": "sobrepõe O+A."},
     {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
     {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-51 (sem colisão); WS4 (2026-05-30) adicionou qa.py orquestrador (modos) + menu 52/53 (reprocessar blacklist / remediação). WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine.", "reason": "colisões de numeração e dispersão."}
   ],
