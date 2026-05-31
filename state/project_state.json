@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-05-28 (sessão 26 — feat(pipeline): painel de status estendido + opção G de ataque a gargalos. (1) pipeline_status.py reescrito: 3 novas seções exibidas ao final do run() — 'ÚLTIMA EXECUÇÃO DOS STEPS' (22 steps rastreados via pipeline_runs, com variantes de nome autopilot+manual), 'AUDITORIA — ÚLTIMA EXECUÇÃO E SITUAÇÃO' (7 steps de auditoria com staleness configurable: 21 Conectividade <24h, 22 Conteúdo <48h, 28 Integridade <12h, 29 Listas <48h, 30 Bios <72h, 31 Título <168h, 32 Consistência <48h; ícone ⚠ quando stale; fallback mtime de arquivos JSON em data/logs/ para steps sem StepRun), 'LLM — PROCESSAMENTO DE OUTPUTS' (blacklist.json mtime, llm_orchestrator, cowork_import, offer_list_importer), contador de logs pendentes em data/logs/ aguardando revisão LLM. Nova função build_gargalo_plan(conn, idioma): analisa audits stale, blacklist pendente, top-6 gargalos de pipeline (via _count_per_step), gargalos LLM (10 Categorizar: 11403 pendentes, 11 Sinopses: 12906 pendentes), sempre termina com Autopilot A; salva em scripts/data/gargalo_plan.json. (2) main.py: status automático exibido ao abrir (pipeline_status.run() antes do while loop); prompt de startup aceita opção diretamente (digitando G, A, S etc. sem precisar passar pelo menu); nova opção G no menu chama _run_gargalo(idioma): exibe plano por tipo [AUDITORIA/PIPELINE/LLM/AUTOPILOT], executa steps auto-executáveis (audit_connectivity, autopilot_audit, audit_list, audit_author_bios, consistency_check, apply_blacklist), finaliza sempre com autopilot.run() até exaustão. PRs: #125 (feature principal) + #126 (UX fix startup prompt).) | 2026-05-20 (sessão 25 — novo steps/ingestao_orientada.py: Opção I no menu principal — autopilot full-pipeline com LLM orientado a seeds. Sequência: import seeds → enrich → resolver ofertas → scraper → slugify → dedup → review → categorize LLM → synopsis LLM → capas → quality gate → publish livros/autores/cats/ofertas/listas. Re-ingestão automática: ao iniciar, reseta status_synopsis=0 para livros QG-rejeitados (is_publishable=0, status_synopsis=1, status_review=1) forçando nova geração de sinopse; livros aprovados mas não publicados (is_publishable=1, status_publish=0) são capturados naturalmente pelo step 14. Diferença vs Autopilot A: inclui steps LLM (10-Categorize, 11-Synopsis) inline — pipeline genuinamente exaustivo sem depender de Cowork manual. Arquivo: scripts/steps/ingestao_orientada.py; entrypoint: main.py opção I.) | 2026-05-14 (sessão 20 fix GSC round 2 — TASK-GSC-001+TASK-GSC-002: pré-filtro ofertasComPreco remove Offers sem price do JSON-LD; isbn substitui sku como ID global; PR #105) | 2026-05-10 (sessão 24 — 7 fixes via análise de 7 relatórios log_analysis (2026-05-03 a 2026-05-10): (1) autopilot.py FIX-1: cowork outputs importados automaticamente no início de cada ciclo via _has_cowork_outputs() + cowork_import.run() — synopsis/categorize outputs nunca eram importados no ciclo A; (2) publish_listas.py FIX-2: _ensure_columns() reescrita com PRAGMA table_info — detecta colunas existentes antes de ALTER TABLE, valida colunas pós-commit, levanta RuntimeError se ainda faltarem; corrige falha silenciosa do except Exception que mascarava 'no such column: updated_at'; (3) marketplace_scraper.py FIX-3: except Exception em try_open_library agora incrementa _ol_consecutive_failures — ConnectTimeout/ReadTimeout de 112+ sessões nunca abriam o circuit breaker; (4) synopsis_import.py FIX-4: rejeições com motivo=None/vazio não atualizam status_synopsis (livro permanece pendente para retry); contador sem_motivo + alerta de massa quando >80% das rejeições sem motivo; (5) quality_gate.py FIX-5: fetch_candidates exclui NOT (is_book=0 AND editorial_score<0) — non-books com score negativo não reaparecem em cada ciclo; (6) autopilot.py FIX-6: QG_BOTTLENECK_THRESHOLD=8 — para automaticamente após 8 ciclos sem aprovação no Quality Gate, loga mensagem informativa e chama autopilot_audit.run(); (7) llm_orchestrator.py FIX-7: após cada ciclo produtivo (cycle_done>0) chama autopilot.run(manter_cowork=False) para processar resultados importados via pipeline não-LLM; (8) NOVO: core/claude_usage_tracker.py — rastreia chamadas ao claude CLI (calls_today, calls_total, limit_hit_count), detecta limite de sessão via LIMIT_PATTERNS no output, aguarda CLAUDE_SESSION_RESET_MINUTES (padrão 300 min/5h) com retry automático; (9) core/claude_runner.py: integrado com tracker — record_call() após cada invoke, wait_for_reset() + 1 retry quando limite detectado; relatórios log_analysis movidos para processed_logs/) | 2026-05-03 (sessão 23 — fix crítico publish_listas.py: _ensure_columns() usava 'DATETIME DEFAULT CURRENT_TIMESTAMP' que o SQLite proíbe em ALTER TABLE ADD COLUMN — o ALTER falhava silenciosamente (except Exception: pass engolia o erro), a coluna updated_at nunca era criada, e o UPDATE subsequente estourava com 'no such column: updated_at'; fix: trocar DEFAULT para sem valor (NULL implícito), usar except sqlite3.OperationalError filtrando 'duplicate column name' e logando outros erros; adicionado import sqlite3; bug ativo desde 29/04 causou 9+ sessões com GUARDRAIL 3/3; logs 30/04, 01/05 (×2) e 02/05 movidos para processed_logs) | 2026-04-30 (sessão 22 — (1) fix crítico publish_listas.py: adicionada _ensure_columns(conn) que cria status_publish/updated_at via ALTER TABLE antes de qualquer query — corrige 'no such column: updated_at' que abortava PUBLISH_LISTAS em [001/166] e era mascarado como 'Sem progresso'; (2) guardrail autopilot.py: ciclos com erros de step não disparam mais o stop 'Sem progresso' — apenas ciclos limpos (sem exceção) sem progresso indicam bloqueio de LLM; válvula de segurança MAX_CICLOS_COM_ERRO=3 para erros permanentes; (3) count_pending() completo: adicionadas sub-queries para step 3 (offer_resolver: lookup_query NOT NULL AND offer_url IS NULL), step 4 (scraper: status_enrich=0 AND offer_url IS NOT NULL) e step 15 (autores não publicados de livros publicados) — antes o autopilot parava quando scraper/resolver tinham pendências mas count_pending não as enxergava; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — fix crítico publish_listas.py: adicionada função _ensure_columns(conn) que roda ALTER TABLE listas ADD COLUMN status_publish / updated_at antes de qualquer query em run() — o UPDATE introduzido na sessão 21 causava 'no such column: updated_at' em bancos criados antes da migration do list_composer, abortando o PUBLISH_LISTAS em [001/166] e mascarando o erro como 'Sem progresso' no autopilot; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — (1) fix publish_listas.py: fetch_listas() agora filtra WHERE status_publish=0 — antes republicava todas as 166 listas a cada ciclo do autopilot; após publicar com sucesso, marca status_publish=1 no SQLite; (2) fix autopilot.py: count_pending() agora inclui listas não publicadas (listas WHERE status_publish=0) e livros publicados com categorias pendentes (livros WHERE status_publish=1 AND status_publish_cat=0) — antes o autopilot parava prematuramente quando o pipeline básico estagnava aguardando LLM mas ainda havia listas/categorias a publicar; (3) logs de log_analysis (2026-04-26 a 2026-04-28) movidos para processed_logs/) | 2026-04-27 (sessão 20 — (1) busca de livros implementada: livros/page.tsx aceita searchParams.q, filtra via .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase, exibe contagem e mensagem de vazio; (2) publish_categorias.py: status_publish=True re-adicionado ao payload do upsert de categorias — estava ausente desde PR #40, impedindo visibilidade das categorias via cliente anon; ATENÇÃO: se PGRST204 reaparecer no step 16, rodar migration ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true; (3) menu C reformulado: menu unificado com status em tempo real (lotes pendentes + outputs disponíveis), opções fixas: 1=importar, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções; (4) autopilot.py: novo parâmetro manter_cowork=True/False — quando ativo, exporta lotes no início e ao final de cada ciclo para manter cowork_target inputs disponíveis (padrão 10); (5) log_analysis/: 22 arquivos de log processados movidos para processed_logs/) | 2026-04-16 (sessão 19b — melhoria qualidade sinopses: (1) fact_extractor schema expandido com personagens/ambientacao/conflito_central para suporte a ficção; (2) _run_abstract_structurer: remap corrigido — conflito_central→situacao_central, ambientacao→contexto (antes: abordagem/publico_alvo, campos corretos só para não-ficção); (3) synopsis_writer R1 relaxado: writer pode usar conhecimento geral do LLM quando 3+ campos do structured input chegam vazios (livros famosos com descricao_base escassa); (4) GENERIC_SYNOPSIS_MARKERS expandido de 9→29 marcadores com padrões identificados em auditoria; (5) _run_synopsis_validator: nova regra R7 rejeita sinopses com 3+ marcadores de abstração genérica de lista de 16 padrões) | 2026-04-16 (sessão 19a — estratégia de manutenção contínua do site sem LLM: (1) novo autopilot_manutencao.py — opção M no menu, orquestra price monitor + conectividade + listas SEO + bios de autores; (2) auditor.py: relatórios sequenciais em data/logs/ (0001_audit_connectivity.json…), novos modos list (verifica membros de listas, despublica listas vazias) e author-bios (report), validação de imagem via HEAD request; (3) offer_price_monitor.py: novo supabase_patch_oferta() — sincroniza ofertas.ativa=false quando indisponível, ativa=true + preco na reativação; (4) logger.py: logs de execução movidos para data/logs/; (5) main.py: opção M + opções 29/30 no menu de auditoria; (6) scripts/data/offer_seeds.json deletado — obsoleto, seeds residem em data/seeds/ingested_seeds/) | 2026-04-14 (sessão 18 — correções de pipeline identificadas via log_analysis + reorganização cowork: (1) fix publish.py — isbn/ano_publicacao enviados como string vazia para Supabase → convertidos para None/int; (2) fix list_composer.py — NoneType.strip() em categorias NULL → AND categoria IS NOT NULL na query + guard no loop; (3) todos os arquivos de lote cowork movidos para scripts/data/cowork/ — exports, imports, agentes e cowork_numbering.py atualizados; processed_synopsis/ e processed_categorize/ ficam dentro de cowork/; agentes já usavam menor prefixo numérico — confirmado correto) | 2026-04-11 (sessão 17 — novo agente Cowork log_analysis_cowork: lê logs do pipeline, identifica falhas, gera JSON estruturado em scripts/data/log_analysis/ com failures, rejections, steps_summary e actionable_insights para consumo pelo Claude Code) | 2026-04-10 (sessão 16 — fix crítico: página /livros/[slug] retornava erro 500 em produção; causa: onError handler em <img> dentro de Server Component não é serializável no RSC do Next.js; solução: BookCover.tsx Client Component em app/_components/ encapsula a lógica de fallback da capa) | 2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-05-30 (sessão 27 — refactor(pipeline) fases 1+2 da orquestração PRO no branch refactor/pipeline-pro-orquestracao. PREMISSA: geração LLM só pela quota da assinatura Claude PRO (claude CLI, janela 5h), NUNCA API paga; Gemini APOSENTADO. WS1: llm_orchestrator drena o gargalo de conteúdo (sinopse→categoria→bios) lote-a-lote antes de agentes não-críticos. WS7: claude_usage_tracker.session_window + bloco 'SESSÃO CLAUDE PRO' no pipeline_status. reclaim.py (idempotente) recupera estados presos (status_*=3 órfãos + inputs órfãos) no início de cada ação — 1ª execução recuperou 3.785 livros. WS2: motor LLM ÚNICO = batch (synopsis_cowork/classify_cowork); FSM de sinopse REMOVIDO (markdown_executor MODE 2, agents/synopsis/*, R1-R8, 4 testes); categorize.py per-item removido; synopsis.py e categorize.py viraram wrappers finos do batch; markdown_executor MODE 1 preservado (author_bio/offer_finder). WS3: BATCH_SIZE_* env-configurável e calibrado por medição empírica (tools/measure_batch.py): synopsis 5→15, classify 10→25. WS9 (fase 0): menu renumerado por grupos sem colisão — Geração 10-19 (bios→13), Publicação 20-30, Auditoria/QA 40-51 (libera 40+ para o qa.py do WS4); main.py é a fonte de verdade. WS4/WS5 (fase 3): estágio de QA + reprocessamento de blacklist. db.py +colunas blacklist_reason/severity/qa_retry/qa_quarantine; apply_blacklist persiste a causa; novo reprocess_blacklist.py (classifica por causa → reset+regenera ou quarentena, MAX_QA_RETRY=2); novo qa.py orquestrador (modos remediate/full/consistency/blacklist/reprocess/lists/content/titles); menu 52/53. WS6 (fase 4): opção G virou orquestrador único de passe único (reclaim → fase LLM priorizada opcional → QA/remediação → audits → Autopilot A → relatório de sessão + backlog); WS8 (SEO/autores) coberto sem código novo (bios na fase LLM, publish autores/listas no Autopilot A). Commits: 6edbb37, c7f1083, 5a6250d, 26b8a3a, 442c639, ab9c2e3, fbc09b1 (WS4/5) + WS6. Docs: pipelineimprovementplan.json + schema_pipeline.json. Resta só fase 5 (WS9 consolidação de steps, baixa prioridade).) | 2026-05-28 (sessão 26 — feat(pipeline): painel de status estendido + opção G de ataque a gargalos. (1) pipeline_status.py reescrito: 3 novas seções exibidas ao final do run() — 'ÚLTIMA EXECUÇÃO DOS STEPS' (22 steps rastreados via pipeline_runs, com variantes de nome autopilot+manual), 'AUDITORIA — ÚLTIMA EXECUÇÃO E SITUAÇÃO' (7 steps de auditoria com staleness configurable: 21 Conectividade <24h, 22 Conteúdo <48h, 28 Integridade <12h, 29 Listas <48h, 30 Bios <72h, 31 Título <168h, 32 Consistência <48h; ícone ⚠ quando stale; fallback mtime de arquivos JSON em data/logs/ para steps sem StepRun), 'LLM — PROCESSAMENTO DE OUTPUTS' (blacklist.json mtime, llm_orchestrator, cowork_import, offer_list_importer), contador de logs pendentes em data/logs/ aguardando revisão LLM. Nova função build_gargalo_plan(conn, idioma): analisa audits stale, blacklist pendente, top-6 gargalos de pipeline (via _count_per_step), gargalos LLM (10 Categorizar: 11403 pendentes, 11 Sinopses: 12906 pendentes), sempre termina com Autopilot A; salva em scripts/data/gargalo_plan.json. (2) main.py: status automático exibido ao abrir (pipeline_status.run() antes do while loop); prompt de startup aceita opção diretamente (digitando G, A, S etc. sem precisar passar pelo menu); nova opção G no menu chama _run_gargalo(idioma): exibe plano por tipo [AUDITORIA/PIPELINE/LLM/AUTOPILOT], executa steps auto-executáveis (audit_connectivity, autopilot_audit, audit_list, audit_author_bios, consistency_check, apply_blacklist), finaliza sempre com autopilot.run() até exaustão. PRs: #125 (feature principal) + #126 (UX fix startup prompt).) | 2026-05-20 (sessão 25 — novo steps/ingestao_orientada.py: Opção I no menu principal — autopilot full-pipeline com LLM orientado a seeds. Sequência: import seeds → enrich → resolver ofertas → scraper → slugify → dedup → review → categorize LLM → synopsis LLM → capas → quality gate → publish livros/autores/cats/ofertas/listas. Re-ingestão automática: ao iniciar, reseta status_synopsis=0 para livros QG-rejeitados (is_publishable=0, status_synopsis=1, status_review=1) forçando nova geração de sinopse; livros aprovados mas não publicados (is_publishable=1, status_publish=0) são capturados naturalmente pelo step 14. Diferença vs Autopilot A: inclui steps LLM (10-Categorize, 11-Synopsis) inline — pipeline genuinamente exaustivo sem depender de Cowork manual. Arquivo: scripts/steps/ingestao_orientada.py; entrypoint: main.py opção I.) | 2026-05-14 (sessão 20 fix GSC round 2 — TASK-GSC-001+TASK-GSC-002: pré-filtro ofertasComPreco remove Offers sem price do JSON-LD; isbn substitui sku como ID global; PR #105) | 2026-05-10 (sessão 24 — 7 fixes via análise de 7 relatórios log_analysis (2026-05-03 a 2026-05-10): (1) autopilot.py FIX-1: cowork outputs importados automaticamente no início de cada ciclo via _has_cowork_outputs() + cowork_import.run() — synopsis/categorize outputs nunca eram importados no ciclo A; (2) publish_listas.py FIX-2: _ensure_columns() reescrita com PRAGMA table_info — detecta colunas existentes antes de ALTER TABLE, valida colunas pós-commit, levanta RuntimeError se ainda faltarem; corrige falha silenciosa do except Exception que mascarava 'no such column: updated_at'; (3) marketplace_scraper.py FIX-3: except Exception em try_open_library agora incrementa _ol_consecutive_failures — ConnectTimeout/ReadTimeout de 112+ sessões nunca abriam o circuit breaker; (4) synopsis_import.py FIX-4: rejeições com motivo=None/vazio não atualizam status_synopsis (livro permanece pendente para retry); contador sem_motivo + alerta de massa quando >80% das rejeições sem motivo; (5) quality_gate.py FIX-5: fetch_candidates exclui NOT (is_book=0 AND editorial_score<0) — non-books com score negativo não reaparecem em cada ciclo; (6) autopilot.py FIX-6: QG_BOTTLENECK_THRESHOLD=8 — para automaticamente após 8 ciclos sem aprovação no Quality Gate, loga mensagem informativa e chama autopilot_audit.run(); (7) llm_orchestrator.py FIX-7: após cada ciclo produtivo (cycle_done>0) chama autopilot.run(manter_cowork=False) para processar resultados importados via pipeline não-LLM; (8) NOVO: core/claude_usage_tracker.py — rastreia chamadas ao claude CLI (calls_today, calls_total, limit_hit_count), detecta limite de sessão via LIMIT_PATTERNS no output, aguarda CLAUDE_SESSION_RESET_MINUTES (padrão 300 min/5h) com retry automático; (9) core/claude_runner.py: integrado com tracker — record_call() após cada invoke, wait_for_reset() + 1 retry quando limite detectado; relatórios log_analysis movidos para processed_logs/) | 2026-05-03 (sessão 23 — fix crítico publish_listas.py: _ensure_columns() usava 'DATETIME DEFAULT CURRENT_TIMESTAMP' que o SQLite proíbe em ALTER TABLE ADD COLUMN — o ALTER falhava silenciosamente (except Exception: pass engolia o erro), a coluna updated_at nunca era criada, e o UPDATE subsequente estourava com 'no such column: updated_at'; fix: trocar DEFAULT para sem valor (NULL implícito), usar except sqlite3.OperationalError filtrando 'duplicate column name' e logando outros erros; adicionado import sqlite3; bug ativo desde 29/04 causou 9+ sessões com GUARDRAIL 3/3; logs 30/04, 01/05 (×2) e 02/05 movidos para processed_logs) | 2026-04-30 (sessão 22 — (1) fix crítico publish_listas.py: adicionada _ensure_columns(conn) que cria status_publish/updated_at via ALTER TABLE antes de qualquer query — corrige 'no such column: updated_at' que abortava PUBLISH_LISTAS em [001/166] e era mascarado como 'Sem progresso'; (2) guardrail autopilot.py: ciclos com erros de step não disparam mais o stop 'Sem progresso' — apenas ciclos limpos (sem exceção) sem progresso indicam bloqueio de LLM; válvula de segurança MAX_CICLOS_COM_ERRO=3 para erros permanentes; (3) count_pending() completo: adicionadas sub-queries para step 3 (offer_resolver: lookup_query NOT NULL AND offer_url IS NULL), step 4 (scraper: status_enrich=0 AND offer_url IS NOT NULL) e step 15 (autores não publicados de livros publicados) — antes o autopilot parava quando scraper/resolver tinham pendências mas count_pending não as enxergava; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — fix crítico publish_listas.py: adicionada função _ensure_columns(conn) que roda ALTER TABLE listas ADD COLUMN status_publish / updated_at antes de qualquer query em run() — o UPDATE introduzido na sessão 21 causava 'no such column: updated_at' em bancos criados antes da migration do list_composer, abortando o PUBLISH_LISTAS em [001/166] e mascarando o erro como 'Sem progresso' no autopilot; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — (1) fix publish_listas.py: fetch_listas() agora filtra WHERE status_publish=0 — antes republicava todas as 166 listas a cada ciclo do autopilot; após publicar com sucesso, marca status_publish=1 no SQLite; (2) fix autopilot.py: count_pending() agora inclui listas não publicadas (listas WHERE status_publish=0) e livros publicados com categorias pendentes (livros WHERE status_publish=1 AND status_publish_cat=0) — antes o autopilot parava prematuramente quando o pipeline básico estagnava aguardando LLM mas ainda havia listas/categorias a publicar; (3) logs de log_analysis (2026-04-26 a 2026-04-28) movidos para processed_logs/) | 2026-04-27 (sessão 20 — (1) busca de livros implementada: livros/page.tsx aceita searchParams.q, filtra via .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase, exibe contagem e mensagem de vazio; (2) publish_categorias.py: status_publish=True re-adicionado ao payload do upsert de categorias — estava ausente desde PR #40, impedindo visibilidade das categorias via cliente anon; ATENÇÃO: se PGRST204 reaparecer no step 16, rodar migration ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true; (3) menu C reformulado: menu unificado com status em tempo real (lotes pendentes + outputs disponíveis), opções fixas: 1=importar, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções; (4) autopilot.py: novo parâmetro manter_cowork=True/False — quando ativo, exporta lotes no início e ao final de cada ciclo para manter cowork_target inputs disponíveis (padrão 10); (5) log_analysis/: 22 arquivos de log processados movidos para processed_logs/) | 2026-04-16 (sessão 19b — melhoria qualidade sinopses: (1) fact_extractor schema expandido com personagens/ambientacao/conflito_central para suporte a ficção; (2) _run_abstract_structurer: remap corrigido — conflito_central→situacao_central, ambientacao→contexto (antes: abordagem/publico_alvo, campos corretos só para não-ficção); (3) synopsis_writer R1 relaxado: writer pode usar conhecimento geral do LLM quando 3+ campos do structured input chegam vazios (livros famosos com descricao_base escassa); (4) GENERIC_SYNOPSIS_MARKERS expandido de 9→29 marcadores com padrões identificados em auditoria; (5) _run_synopsis_validator: nova regra R7 rejeita sinopses com 3+ marcadores de abstração genérica de lista de 16 padrões) | 2026-04-16 (sessão 19a — estratégia de manutenção contínua do site sem LLM: (1) novo autopilot_manutencao.py — opção M no menu, orquestra price monitor + conectividade + listas SEO + bios de autores; (2) auditor.py: relatórios sequenciais em data/logs/ (0001_audit_connectivity.json…), novos modos list (verifica membros de listas, despublica listas vazias) e author-bios (report), validação de imagem via HEAD request; (3) offer_price_monitor.py: novo supabase_patch_oferta() — sincroniza ofertas.ativa=false quando indisponível, ativa=true + preco na reativação; (4) logger.py: logs de execução movidos para data/logs/; (5) main.py: opção M + opções 29/30 no menu de auditoria; (6) scripts/data/offer_seeds.json deletado — obsoleto, seeds residem em data/seeds/ingested_seeds/) | 2026-04-14 (sessão 18 — correções de pipeline identificadas via log_analysis + reorganização cowork: (1) fix publish.py — isbn/ano_publicacao enviados como string vazia para Supabase → convertidos para None/int; (2) fix list_composer.py — NoneType.strip() em categorias NULL → AND categoria IS NOT NULL na query + guard no loop; (3) todos os arquivos de lote cowork movidos para scripts/data/cowork/ — exports, imports, agentes e cowork_numbering.py atualizados; processed_synopsis/ e processed_categorize/ ficam dentro de cowork/; agentes já usavam menor prefixo numérico — confirmado correto) | 2026-04-11 (sessão 17 — novo agente Cowork log_analysis_cowork: lê logs do pipeline, identifica falhas, gera JSON estruturado em scripts/data/log_analysis/ com failures, rejections, steps_summary e actionable_insights para consumo pelo Claude Code) | 2026-04-10 (sessão 16 — fix crítico: página /livros/[slug] retornava erro 500 em produção; causa: onError handler em <img> dentro de Server Component não é serializável no RSC do Next.js; solução: BookCover.tsx Client Component em app/_components/ encapsula a lógica de fallback da capa) | 2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para cowork: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/cowork_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — cowork autopilot: agente unificado agents/cowork_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 cowork_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Cowork para sinopses e categorização: steps 31-34; prompt.md único por agente Cowork) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -14,7 +14,7 @@
       "database_staging_path": "scripts/data/books.db",
       "llm_local": "Ollama (mistral:latest — CPU only, ~2 tok/s, NÃO viável para pipeline; GT 720M sem CUDA)",
       "llm_model": "gemini-2.5-flash (primary) / mistral:latest (fallback local — inviável nesta máquina)",
-      "llm_execution_model": "multi_agent_fsm (Gemini primary)",
+      "llm_execution_model": "batch_agent via claude CLI (assinatura PRO) — WS2 2026-05-30; FSM multi-estágio e Gemini APOSENTADOS",
       "llm_provider_control": "menu_driven — padrão Gemini (Enter seleciona Gemini); Ollama e Auto disponíveis mas não recomendados sem GPU",
       "llm_tier_control": "core/gemini_limiter.py — RPM 12/min, RPD 1400/dia, persiste em data/gemini_usage.json",
       "python_env": "venv (Windows)",
@@ -347,8 +347,9 @@
     }
   },
   "synopsis_architecture": {
-    "model": "factual_transformation_pipeline",
-    "objective": "eliminate_llm_hallucination",
+    "model": "batch_agent (WS2, 2026-05-30) — motor único = agente synopsis_cowork via claude CLI",
+    "objective": "eliminate_llm_hallucination + maximizar throughput por janela de sessão PRO",
+    "engine_note": "WS2 APOSENTOU o FSM multi-estágio (fact_extractor→abstract_structurer→synopsis_writer→synopsis_validator). Agora a sinopse é gerada em LOTE pelo agente synopsis_cowork (1 chamada/lote). synopsis.py é wrapper fino (synopsis_export→run_agent→synopsis_import). Validação determinística no import: synopsis_import.validate_synopsis (check_synopsis_generic + comprimento ≥400 + meta artifacts + markdown). Os campos abaixo descrevem o FSM HISTÓRICO (removido) — mantidos para referência da lógica de qualidade portada.",
     "strategy": [
       "mandatory_source_description",
       "fact_extraction",
@@ -566,32 +567,17 @@
       {
         "order": 10,
         "name": "Synopsis Generation",
-        "status": "operational_factual_fsm_pipeline",
+        "status": "operational_batch_agent (WS2, 2026-05-30)",
         "idioma_aware": true,
-        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
-        "executor": "Markdown Agent Executor FSM",
-        "agent_path": "agents/synopsis",
-        "pipeline_architecture": [
-          "fact_extractor",
-          "abstract_structurer",
-          "synopsis_writer",
-          "synopsis_validator"
-        ],
-        "generation_mode": "transformational_with_knowledge_fallback",
-        "source_required": "descricao_base",
-        "hallucination_control": [
-          "fact_extraction",
-          "structured_abstraction",
-          "constrained_synthesis",
-          "json_validation",
-          "specificity_check (validator R7 — rejeita 3+ marcadores genéricos)",
-          "generic_markers_gate (quality_gate — 29 marcadores)"
-        ],
-        "fiction_support": "personagens/ambientacao/conflito_central extraídos e priorizados no remap",
-        "knowledge_fallback": "synopsis_writer usa conhecimento LLM quando 3+ campos do abstract chegam vazios",
-        "on_fail": "continue (livro pulado, status_synopsis permanece 0)",
-        "validator_min_words": 80,
-        "validator_max_words": 160
+        "llm": "claude CLI (assinatura PRO) — agente batch synopsis_cowork",
+        "executor": "synopsis.py (wrapper) → claude_runner.run_agent(synopsis_cowork) → synopsis_import",
+        "agent_path": "agents/synopsis_cowork/prompt.md",
+        "engine_change": "WS2 aposentou o FSM (agents/synopsis/* + markdown_executor MODE 2). Motivo: motor único = batch (drain já era batch; ~50x menos chamadas; validação determinística no import). Menu 11 e ingestão guiada (book_ids) usam synopsis.py; opção O usa _drain_synopsis (mesmo motor).",
+        "batch_size": "BATCH_SIZE_SYNOPSIS=15 (calibrado WS3; env-configurável)",
+        "source_required": "descricao",
+        "validation_on_import": "synopsis_import.validate_synopsis: não-vazia, ≥400 chars, sem marcador genérico (check_synopsis_generic), sem meta artifacts, sem heading markdown",
+        "on_fail": "agente falhou/limite → livros ficam status_synopsis=3 até reclaim/próximo ciclo reprocessar",
+        "blacklist_inline": "synopsis_cowork detecta synopsis-incoherent/title-mismatch/fabricated → merge em blacklist.json"
       },
       {
         "order": 8,
@@ -713,7 +699,7 @@
         ],
         "source": "livros publicados",
         "execution_mode": "manual_menu_option",
-        "menu_option": 16
+        "menu_option": 25
       },
       {
         "order": 4,
@@ -728,13 +714,15 @@
       {
         "order": 9,
         "name": "Categorize",
-        "status": "operational",
-        "description": "Classifica livros em até 5 categorias temáticas da taxonomy.json usando LLM. Insere em livros_categorias_tematicas.",
-        "script": "scripts/steps/categorize.py",
+        "status": "operational_batch_agent (WS2, 2026-05-30)",
+        "description": "Classifica livros em até 5 categorias temáticas da taxonomy.json via agente batch classify_cowork (claude CLI). Insere em livros_categorias_tematicas.",
+        "script": "scripts/steps/categorize.py (wrapper: categorize_export → run_agent(classify_cowork) → categorize_import)",
         "idioma_aware": false,
-        "llm": "gemini-2.5-flash (primary) / mistral:latest (fallback local)",
-        "menu_option": 9,
-        "progress_format": "[CATEGORIZE][NNN/TTT] → titulo"
+        "llm": "claude CLI (assinatura PRO) — agente batch classify_cowork",
+        "engine_change": "WS2 aposentou o caminho per-item (_call_llm + prompt/taxonomia inline). Funções reset_failed/reset_wrong_category preservadas (menu 10/10R). classify_cowork lê taxonomy.json via file tool (não reenvia ~26KB por item).",
+        "batch_size": "BATCH_SIZE_CLASSIFY=25 (calibrado WS3; env-configurável)",
+        "menu_option": 10,
+        "progress_format": "agente batch — sem progresso per-item"
       },
       {
         "order": 17,
@@ -743,7 +731,7 @@
         "description": "Monitora preço e disponibilidade das ofertas no marketplace. Despublica automaticamente após detecção de indisponibilidade. Marca reactivation_pending=1 para reativação manual.",
         "script": "scripts/steps/offer_price_monitor.py",
         "idioma_aware": false,
-        "menu_option": 17,
+        "menu_option": 40,
         "flags": [
           "--limit N",
           "--dry-run"
@@ -758,7 +746,7 @@
         "script": "scripts/steps/auditor.py",
         "mode": "connectivity",
         "llm_required": false,
-        "menu_option": 18,
+        "menu_option": 41,
         "output": "scripts/data/audit_connectivity_{ts}.json + SQLite connectivity_log"
       },
       {
@@ -770,7 +758,7 @@
         "mode": "content",
         "llm_required": true,
         "llm": "configurável via menu (ollama | gemini | auto)",
-        "menu_option": 19,
+        "menu_option": 42,
         "unpublish_threshold": "medium ou high",
         "unpublish_actions": [
           "SQLite: is_publishable=0, status_publish=0",
@@ -791,7 +779,7 @@
         "script": "scripts/steps/apply_blacklist.py",
         "idioma_aware": false,
         "llm_required": false,
-        "menu_option": 25,
+        "menu_option": 45,
         "unpublish_actions": [
           "SQLite: is_publishable=0, status_publish=0 (lookup por slug)",
           "Supabase: PATCH is_publishable=false (por slug)"
@@ -820,7 +808,7 @@
         "script": "scripts/core/export_for_audit.py",
         "idioma_aware": false,
         "llm_required": false,
-        "menu_option": 26,
+        "menu_option": 46,
         "credentials": "PROJECT_ROOT/.env.local → NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY",
         "supabase_filter": "status=eq.publish (não filtra is_publishable — audita tudo que já foi ao ar)",
         "output_paths": {
@@ -858,7 +846,7 @@
         "status": "operational",
         "description": "8 checks de integridade sem LLM. Chamado automaticamente ao exaurir o autopilot.",
         "script": "scripts/steps/autopilot_audit.py",
-        "menu_option": 28,
+        "menu_option": 47,
         "created_on": "2026-04-02"
       },
       {
@@ -869,7 +857,7 @@
         "script": "scripts/steps/author_bio.py",
         "agent": "agents/author_bio/",
         "llm_required": true,
-        "menu_option": 29,
+        "menu_option": 13,
         "created_on": "2026-04-02",
         "upgraded_on": "2026-04-17",
         "upgrade_notes": "Migrado de _call_llm inline (300 chars) para execute_agent com agente estruturado (900 chars max). Bio agora cobre escola/movimento e principais obras."
@@ -889,7 +877,7 @@
         "status": "operational",
         "description": "Lê scripts/data/offer_list.json gerado pelo agente offer_finder. Para cada livro: localiza registro SQLite pelo supabase_id, atualiza offer_url/marketplace/offer_status=1, faz upsert de TODAS as ofertas (amazon + mercadolivre) no Supabase e marca status_publish_oferta=1. Ofertas com confiança 'low' são publicadas como ativa=false para revisão manual.",
         "script": "scripts/steps/offer_list_importer.py",
-        "menu_option": 30,
+        "menu_option": 29,
         "llm_required": false,
         "depends_on": [
           "agente offer_finder (gera offer_list.json)",
@@ -906,7 +894,7 @@
         "description": "Verifica veracidade dos títulos via Google Books API + LLM. Para cada livro (scope: all|published|pipeline): lookup na API, verificação LLM, combinação de sinais em severity. Ações: medium=reactivation_pending=1; high+publicado=despublica; high+pipeline=is_publishable=0. Resultado em audit_log (mode=title_verify) + relatório JSON.",
         "script": "scripts/steps/auditor.py",
         "mode": "title-verify",
-        "menu_option": 31,
+        "menu_option": 50,
         "llm_required": true,
         "api_required": "GOOGLE_BOOKS_API_KEY (opcional — sem ela severity máx=medium)",
         "created_on": "2026-04-17"
@@ -1121,6 +1109,36 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-PIPE-019",
+      "description": "refactor(pipeline): orquestração PRO — priorização do gargalo (WS1), monitoramento de sessão (WS7), motor LLM único = batch (WS2) e calibração empírica de BATCH_SIZE (WS3)",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-05-30",
+      "branch": "refactor/pipeline-pro-orquestracao",
+      "premissa": "Geração LLM usa SOMENTE a quota da assinatura Claude PRO via claude CLI (janela rotativa de 5h, CLAUDE_SESSION_RESET_MINUTES=300). NUNCA a API Anthropic paga por token. Gemini APOSENTADO (não é mais fallback). 'Minimizar tokens' = maximizar a janela de 5h no gargalo (sinopse).",
+      "resolution": "FASE 1 — WS1 (priorização): llm_orchestrator.py drena o gargalo de conteúdo (sinopse→categoria→bios) lote-a-lote ANTES de qualquer agente não-crítico (offer_finder/title_auditor/relatórios), que só rodam com backlog de conteúdo zerado e sessão disponível. WS7 (monitoramento): claude_usage_tracker.py rastreia a janela de sessão (session_window); pipeline_status.py exibe bloco 'SESSÃO CLAUDE PRO'. Reclaim de estados presos: novo steps/reclaim.py (idempotente) roda no início de cada ação do autopilot/orquestrador — importa outputs pendentes, reverte status_*=3 órfãos para 0, arquiva inputs órfãos em processed_*/; primeira execução recuperou 3.785 livros presos. .gitignore: artefatos de runtime do cowork/logs ignorados, relatórios commitáveis preservados. | FASE 2 — WS2 (motor único): DECISÃO (invertendo o lean original do plano) = motor canônico BATCH (synopsis_cowork/classify_cowork via claude CLI), não o FSM per-item. Razões: o drain já roda em batch (opção O); o batch valida de forma determinística no import (synopsis_import.validate_synopsis); ~50x menos chamadas no backlog (~520 vs ~26.000 p/ 13k livros). synopsis.py e categorize.py viraram wrappers finos do batch (export→run_agent→import; assinatura run(idioma,pacote,book_ids) preservada). REMOVIDO: FSM de sinopse (markdown_executor MODE 2, PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer), agents/synopsis/* (4 estágios) e 4 testes do FSM; helpers per-item de categorize.py. markdown_executor MODE 1 preservado (author_bio/offer_finder). WS3 (eficiência): BATCH_SIZE_* configurável via env + calibrado por medição empírica (tools/measure_batch.py): synopsis 5→15 (25,7s/item, 385s wall), classify 10→25 (6,5s/item, 161s wall) — defaults antigos eram do era-FSM, conservadores demais. Prompt-slimming e idempotência já cobertos pela migração WS2 (taxonomy lida de arquivo; sentinelas status=3 + reclaim).",
+      "ws6_orchestration": "WS6 (fase 4, 2026-05-30): opção G virou orquestrador único de PASSE ÚNICO (escolha do autor — não auto-aguarda reset). _run_gargalo: reclaim → plano → FASE LLM priorizada opcional (reusa llm_orchestrator.run, que já faz WS1 + fallback A e RETORNA ao esgotar a sessão) → QA/remediação (qa.remediate) → audits → Autopilot A → _print_gargalo_report (backlog sinopse/categoria/bios + quarentena + janela de sessão PRO + orientação de re-rodar após reset). WS8 (SEO/autores): COBERTO sem código novo — bios na fase LLM, publish_autores/list_composer/publish_listas já no Autopilot A, auditorias de listas/autores nos audit auto-steps. Resta só fase 5 (WS9 consolidação de steps, baixa prioridade).",
+      "ws4_ws5_qa": "WS4/WS5 (fase 3, 2026-05-30): estágio de QA + reprocessamento de blacklist. db.py: novas colunas blacklist_reason, blacklist_severity, qa_retry, qa_quarantine. apply_blacklist passa a persistir a causa ao despublicar. Novo reprocess_blacklist.py: classifica por causa (synopsis/categorize→reset+regenera; offer→revisão manual; hard/desconhecida→quarentena; MAX_QA_RETRY=2). Novo qa.py: ORQUESTRADOR (não reimplementa) com modos remediate(default, não-LLM)/full/consistency/blacklist/reprocess/lists/content/titles. Menu: 52 (reprocessar blacklist), 53 (QA remediação). Loop evitado via status_*=4 + qa_quarantine + qa_retry.",
+      "ws9_menu_renumber": "WS9 (fase 0, 2026-05-30): menu renumerado por grupos sem colisão (resolve 28/29/30/31 com 2 significados). Faixas: Ingestão 1-4, Pré-proc 5-9, Geração 10-19 (bios 29→13), Publicação 20-30 (QG 13→20, Publicar 14→21, Autores 15→22, Categorias 16→23, Ofertas 17→24, Listas SEO 18→25, Publicar Listas 19→26, 27/28 mantidos, offer_list 30→29, relações 31→30), Auditoria/QA 40-51 (20→40 … 32→51), Exports 91-94, Banco 95-97. Faixa 40+ livre para o qa.py (WS4). Fonte de verdade = scripts/main.py.",
+      "commits": ["6edbb37 (reclaim+autopilot)", "c7f1083 (.gitignore)", "5a6250d (WS2 sinopse)", "26b8a3a (WS2 categorização)", "442c639 (WS3 calibração)"],
+      "files": [
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/steps/reclaim.py",
+        "scripts/steps/synopsis.py",
+        "scripts/steps/synopsis_export.py",
+        "scripts/steps/categorize.py",
+        "scripts/steps/categorize_export.py",
+        "scripts/steps/autopilot.py",
+        "scripts/core/markdown_executor.py",
+        "scripts/core/claude_usage_tracker.py",
+        "scripts/steps/pipeline_status.py",
+        "scripts/tools/measure_batch.py",
+        "scripts/main.py"
+      ],
+      "remaining": "Fases 0-4 feitas (WS9 num. + WS1/7 + WS2/3 + WS4/5 + WS6 + WS8 coberto). Resta só fase 5: WS9 consolidação restante de steps (mesclar/agrupar módulos cowork e similares — baixa prioridade, cosmético). Ver scripts/data/pipelineimprovementplan.json.",
+      "docs": ["scripts/data/pipelineimprovementplan.json", "scripts/data/schema_pipeline.json"]
+    },
     {
       "id": "TASK-PIPE-018",
       "description": "feat(pipeline): painel de status estendido com histórico de execuções e opção G de ataque a gargalos",

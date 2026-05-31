@@ -86,6 +86,8 @@ def _load() -> dict:
             "calls_total":     data.get("calls_total", 0),  # acumula entre dias
             "limit_hit_count": data.get("limit_hit_count", 0),
             "limit_hit_at":    data.get("limit_hit_at"),
+            "session_calls":   data.get("session_calls", 0),
+            "session_started_at": data.get("session_started_at"),
         }
         _save(data)
 
@@ -116,6 +118,19 @@ def _parse_wait_minutes(output: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
+def _reset_at_from(limit_hit_at: str | None) -> datetime | None:
+    """Calcula o instante de reset (limit_hit_at + janela) a partir do ISO salvo."""
+    if not limit_hit_at:
+        return None
+    try:
+        hit = datetime.fromisoformat(limit_hit_at)
+    except (ValueError, TypeError):
+        return None
+    if hit.tzinfo is None:
+        hit = hit.replace(tzinfo=timezone.utc)
+    return hit + timedelta(minutes=SESSION_RESET_MINUTES)
+
+
 # ============================================================
 # CONTABILIZAÇÃO
 # ============================================================
@@ -128,14 +143,24 @@ def record_call(success: bool, output: str) -> bool:
     """
     with _lock:
         data = _load()
-        data["calls_today"] = data.get("calls_today", 0) + 1
-        data["calls_total"] = data.get("calls_total", 0) + 1
+        now = datetime.now(timezone.utc)
+
+        # Início de uma nova janela de sessão: primeira chamada, ou primeira
+        # chamada após o cooldown da janela anterior ter expirado.
+        prev_reset = _reset_at_from(data.get("limit_hit_at"))
+        if not data.get("session_started_at") or (prev_reset and now >= prev_reset):
+            data["session_started_at"] = now.isoformat()
+            data["session_calls"]      = 0
+
+        data["calls_today"]   = data.get("calls_today", 0) + 1
+        data["calls_total"]   = data.get("calls_total", 0) + 1
+        data["session_calls"] = data.get("session_calls", 0) + 1
 
         # Detecta limite independente do exit code (o Claude CLI pode retornar
         # código 0 mesmo ao atingir o limite de uso — verificamos o output diretamente).
         limit_hit = is_limit_error(output)
         if limit_hit:
-            data["limit_hit_at"]    = datetime.now(timezone.utc).isoformat()
+            data["limit_hit_at"]    = now.isoformat()
             data["limit_hit_count"] = data.get("limit_hit_count", 0) + 1
 
         _save(data)
@@ -186,10 +211,41 @@ def wait_for_reset(output: str = "", log_fn=print) -> None:
 # INTERFACE PÚBLICA
 # ============================================================
 
+def session_window() -> dict:
+    """Estado da janela de sessão PRO (sem side effects).
+
+    Usado pelo orquestrador (opção G/O) para decidir entre seguir gastando a
+    janela no gargalo, aguardar o reset, ou cair para fallback não-LLM; e pelo
+    painel de Status (opção S) para exibir quanto resta da janela.
+
+    Retorna:
+      - in_cooldown:        True se um limite foi atingido e o reset ainda não passou.
+      - seconds_until_reset: segundos até o reset (0 se fora de cooldown).
+      - reset_at:           ISO UTC do reset previsto (ou None).
+      - session_calls:      chamadas feitas na janela atual.
+    """
+    with _lock:
+        data = _load()
+        now = datetime.now(timezone.utc)
+        reset_at = _reset_at_from(data.get("limit_hit_at"))
+        in_cooldown = bool(reset_at and now < reset_at)
+        secs = int((reset_at - now).total_seconds()) if in_cooldown else 0
+        return {
+            "in_cooldown":         in_cooldown,
+            "seconds_until_reset": secs,
+            "reset_at":            reset_at.isoformat() if reset_at else None,
+            "session_calls":       data.get("session_calls", 0),
+            "session_started_at":  data.get("session_started_at"),
+        }
+
+
 def status() -> dict:
     """Retorna snapshot dos contadores (sem side effects)."""
     with _lock:
         data = _load()
+        now = datetime.now(timezone.utc)
+        reset_at = _reset_at_from(data.get("limit_hit_at"))
+        in_cooldown = bool(reset_at and now < reset_at)
         return {
             "date":            data.get("date"),
             "calls_today":     data.get("calls_today", 0),
@@ -197,6 +253,9 @@ def status() -> dict:
             "limit_hit_count": data.get("limit_hit_count", 0),
             "limit_hit_at":    data.get("limit_hit_at"),
             "session_reset_minutes": SESSION_RESET_MINUTES,
+            "session_calls":   data.get("session_calls", 0),
+            "in_cooldown":     in_cooldown,
+            "seconds_until_reset": int((reset_at - now).total_seconds()) if in_cooldown else 0,
         }
 
 

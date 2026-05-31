@@ -416,6 +416,13 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
         log("[AUTOPILOT] Restaure o backup em scripts/data/backup/ e tente novamente.")
         return
 
+    # Reclama estados presos de execuções interrompidas (status_*=3 + inputs órfãos)
+    try:
+        from steps import reclaim
+        reclaim.run()
+    except Exception as e:
+        log(f"[AUTOPILOT] AVISO: reclaim de estados presos falhou: {e}. Continuando.")
+
     # Normaliza offer_status='active' → 1 uma única vez
     try:
         publish_ofertas.fix_offer_status()

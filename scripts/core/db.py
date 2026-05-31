@@ -132,6 +132,11 @@ def ensure_schema(conn):
         ("priority_score",        "INTEGER DEFAULT 0"),
         ("status_publish_cat",    "INTEGER DEFAULT 0"),
         ("seed_id",               "TEXT"),          # identificador do seed de origem
+        # WS5 — reprocessamento de blacklist / quarentena de QA
+        ("blacklist_reason",      "TEXT"),          # causa registrada ao despublicar (synopsis-incoherent, title-mismatch…)
+        ("blacklist_severity",    "TEXT"),          # medium | high
+        ("qa_retry",              "INTEGER DEFAULT 0"),   # tentativas de reprocessamento já feitas
+        ("qa_quarantine",         "INTEGER DEFAULT 0"),   # 1 = quarentena definitiva (não reentra na fila)
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")

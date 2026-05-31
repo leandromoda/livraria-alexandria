@@ -104,6 +104,47 @@ def q(conn, sql, *params):
 
 
 # =========================
+# SESSÃO CLAUDE PRO (WS7)
+# =========================
+
+def _print_session_pro():
+    """Painel da janela de sessão PRO (quota do plano via claude CLI).
+
+    Mostra quantas chamadas foram feitas na janela atual e, se um limite foi
+    atingido, quanto falta para o reset — permite decidir entre seguir gastando
+    a janela no gargalo, aguardar o reset ou cair para fallback não-LLM.
+    """
+    try:
+        from core.claude_usage_tracker import session_window, SESSION_RESET_MINUTES
+    except Exception:
+        return
+
+    win = session_window()
+    sep = "─" * 62
+
+    print()
+    print(f"  SESSÃO CLAUDE PRO (janela {SESSION_RESET_MINUTES}min)")
+    print(f"  {sep}")
+    print(f"    Chamadas na janela atual: {win['session_calls']:,}")
+
+    if win["in_cooldown"]:
+        secs = win["seconds_until_reset"]
+        h, rem = divmod(secs, 3600)
+        m = rem // 60
+        falta = f"{h}h{m:02d}min" if h else f"{m}min"
+        reset_local = ""
+        if win.get("reset_at"):
+            try:
+                rt = datetime.fromisoformat(win["reset_at"])
+                reset_local = f" (reset às {rt.strftime('%H:%M UTC')})"
+            except (ValueError, TypeError):
+                pass
+        print(f"    ⚠  LIMITE ATINGIDO — aguardando reset: faltam {falta}{reset_local}")
+    else:
+        print("    ✓  Janela disponível — sem cooldown ativo")
+
+
+# =========================
 # HELPERS DE HISTÓRICO
 # =========================
 
@@ -659,6 +700,9 @@ def run():
     # Listas
     print()
     print(f"  LISTAS SEO: {total_listas:,} total, {listas_publicadas:,} publicadas")
+
+    # ── Sessão Claude PRO (WS7) ───────────────────────────────
+    _print_session_pro()
 
     # ── Histórico de execução ─────────────────────────────────
     conn2 = get_conn()

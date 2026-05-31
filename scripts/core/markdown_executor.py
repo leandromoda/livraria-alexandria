@@ -3,11 +3,9 @@ from datetime import datetime
 import json
 import os
 import re
-import uuid
 
 import requests
 from dotenv import load_dotenv
-from core.markdown_memory import load_memory
 from core.gemini_limiter import acquire as _gemini_acquire
 
 # ======================================================
@@ -26,7 +24,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
 
 # Provider ativo: "ollama" | "gemini" | "auto"
 # "auto" = comportamento original (gemini → ollama fallback)
-LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "ollama")
+LLM_PROVIDER    = os.getenv("LLM_PROVIDER", "claude")
 _active_provider = LLM_PROVIDER
 
 
@@ -42,22 +40,6 @@ def set_provider(provider: str) -> None:
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 AGENTS_DIR = BASE_DIR / "agents"
-RUNTIME_DIR = BASE_DIR / "runtime" / "tmp"
-
-RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-
-# ======================================================
-# PIPELINE CONFIG (DETERMINÍSTICO)
-# ======================================================
-
-DOMAIN = "synopsis"
-
-PIPELINE_STAGES = [
-    "fact_extractor",
-    "abstract_structurer",
-    "synopsis_writer",
-    "synopsis_validator",
-]
 
 # ======================================================
 # HEARTBEAT
@@ -71,33 +53,11 @@ def _heartbeat(stage: str):
 # FILE HELPERS
 # ======================================================
 
-def _read_md(domain: str, stage: str, filename: str) -> str:
-    path = AGENTS_DIR / domain / stage / filename
-    if not path.exists():
-        return ""
-    return path.read_text(encoding="utf-8")
-
 def _read_md_direct(path: Path, filename: str) -> str:
     file_path = path / filename
     if not file_path.exists():
         return ""
     return file_path.read_text(encoding="utf-8")
-
-def _tmp_path():
-    return RUNTIME_DIR / f"tmp_synopsis_{uuid.uuid4().hex}.json"
-
-def _tmp_write(path: Path, data: dict):
-    path.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-def _tmp_read(path: Path):
-    return json.loads(path.read_text(encoding="utf-8"))
-
-def _tmp_delete(path: Path):
-    if path.exists():
-        path.unlink()
 
 # ======================================================
 # MODEL CALL — GEMINI (primary)
@@ -290,223 +250,6 @@ def _extract_json(text: str):
     raise RuntimeError("INVALID_AGENT_OUTPUT")
 
 # ======================================================
-# FACT EXTRACTOR SCHEMA VALIDATION
-# ======================================================
-
-def _validate_fact_schema(data: dict):
-
-    required_keys = {
-        "tema_central",
-        "abordagem",
-        "conceitos_chave",
-        "publico_alvo",
-        "proposta_valor",
-        "personagens",
-        "ambientacao",
-        "conflito_central",
-    }
-
-    if not required_keys.issubset(set(data.keys())):
-        raise RuntimeError("INVALID_FACT_SCHEMA_KEYS")
-
-    if not isinstance(data["tema_central"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["abordagem"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["conceitos_chave"], list):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["publico_alvo"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["proposta_valor"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["personagens"], list):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["ambientacao"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-    if not isinstance(data["conflito_central"], str):
-        raise RuntimeError("INVALID_FACT_SCHEMA_TYPE")
-
-# ======================================================
-# ABSTRACT STRUCTURER — PYTHON PURO (SEM LLM)
-# ======================================================
-
-def _run_abstract_structurer(state: dict) -> dict:
-    """
-    Remap determinístico: fact_extractor → abstract_structurer.
-    Substitui chamada LLM por transformação Python pura.
-
-    Prioriza campos narrativos (ficção) sobre campos analíticos (não-ficção):
-    - contexto:         ambientacao > tema_central
-    - situacao_central: conflito_central > abordagem
-    - temas:            conceitos_chave
-    - escopo_narrativo: proposta_valor > publico_alvo
-    - personagens:      personagens (novo campo)
-    """
-
-    _heartbeat("abstract_structurer_started")
-
-    conceitos = state.get("conceitos_chave", [])
-
-    result = {
-        "contexto":         state.get("ambientacao", "") or state.get("tema_central", ""),
-        "situacao_central": state.get("conflito_central", "") or state.get("abordagem", ""),
-        "temas":            conceitos,
-        "escopo_narrativo": state.get("proposta_valor", "") or state.get("publico_alvo", ""),
-        "personagens":      state.get("personagens", []),
-    }
-
-    _heartbeat("abstract_structurer_finished")
-
-    print("[ABSTRACT_STRUCTURER][PYTHON_REMAP]")
-    print(json.dumps(result, ensure_ascii=False, indent=2))
-
-    return result
-
-# ======================================================
-# SYNOPSIS VALIDATOR — PYTHON PURO (SEM LLM)
-# ======================================================
-
-_META_ARTIFACTS = [
-    "[SYSTEM]",
-    "[PROCESS]",
-    "[TASK]",
-    "INPUT_DATA_BEGIN",
-    "INPUT_DATA_END",
-    "EXECUTION_STAGE",
-]
-
-_LANGUAGE_MARKERS = {
-    "PT": ["o ", "a ", "os ", "as ", "de ", "que ", "em ", "um ", "uma ", "com ", "para "],
-    "EN": ["the ", "and ", "of ", "to ", "in ", "a ", "is ", "that ", "it ", "for "],
-    "ES": ["el ", "la ", "los ", "las ", "de ", "que ", "en ", "un ", "una ", "con ", "para "],
-    "IT": ["il ", "la ", "i ", "le ", "di ", "che ", "in ", "un ", "una ", "con ", "per "],
-}
-
-def _detect_language(text: str, expected_idioma: str) -> bool:
-    """
-    Heurística leve: verifica se o texto contém marcadores do idioma esperado.
-    Retorna True se compatível.
-    """
-
-    text_lower = text.lower()
-    markers = _LANGUAGE_MARKERS.get(expected_idioma.upper(), [])
-
-    if not markers:
-        return True
-
-    hits = sum(1 for m in markers if m in text_lower)
-
-    return hits >= 3
-
-def _run_synopsis_validator(state: dict) -> dict:
-    """
-    Validação determinística: substitui chamada LLM por regras Python puras.
-    Aplica as mesmas regras do synopsis_validator original.
-    """
-
-    _heartbeat("synopsis_validator_started")
-
-    synopsis = state.get("synopsis", "")
-    idioma = state.get("idioma_resolved", "PT").upper()
-
-    # R1 — Synopsis não pode ser vazia
-    if not synopsis or not synopsis.strip():
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R2 — Detecção de meta artifacts
-    synopsis_upper = synopsis.upper()
-    for artifact in _META_ARTIFACTS:
-        if artifact.upper() in synopsis_upper:
-            print(f"[VALIDATOR] Meta artifact detectado: {artifact}")
-            _heartbeat("synopsis_validator_finished")
-            return {"status": "REWRITE_REQUIRED"}
-
-    # R3 — Markdown headings
-    if re.search(r"^#{1,6}\s", synopsis, re.MULTILINE):
-        print("[VALIDATOR] Markdown heading detectado")
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R4 — Contagem de palavras (90–160)
-    word_count = len(synopsis.split())
-    if word_count < 80 or word_count > 160:
-        print(f"[VALIDATOR] Word count fora do range: {word_count}")
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R5 — Integridade estrutural: deve terminar com pontuação
-    stripped = synopsis.strip()
-    if stripped and stripped[-1] not in ".!?":
-        print("[VALIDATOR] Sinopse não termina com pontuação")
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R6 — Verificação de idioma
-    if not _detect_language(synopsis, idioma):
-        print(f"[VALIDATOR] Idioma divergente. Esperado: {idioma}")
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R7 — Especificidade mínima: rejeitar sinopses intercambiáveis
-    # Uma sinopse aprovável deve conter ao menos um elemento concreto.
-    # Detectamos intercambiabilidade pela presença de 3+ marcadores genéricos.
-    _GENERIC_SPECIFICITY_MARKERS = [
-        "condição humana",
-        "questões universais",
-        "temas universais",
-        "reflexões profundas",
-        "aspectos fundamentais",
-        "complexidades da vida",
-        "tensões inerentes",
-        "confronta as complexidades",
-        "desafios complexos",
-        "transformações rápidas",
-        "convida o leitor a refletir",
-        "mergulha em questões",
-        "aspectos da experiência humana",
-        "leva o leitor a refletir",
-        "obra que explora",
-        "narrativa envolvente",
-    ]
-    synopsis_lower = synopsis.lower()
-    generic_hits = sum(1 for m in _GENERIC_SPECIFICITY_MARKERS if m in synopsis_lower)
-    if generic_hits >= 3:
-        print(f"[VALIDATOR] Sinopse genérica detectada ({generic_hits} marcadores)")
-        _heartbeat("synopsis_validator_finished")
-        return {"status": "REWRITE_REQUIRED"}
-
-    # R8 — Tom promocional
-    promotional_patterns = [
-        r"\bimperdível\b",
-        r"\bmust.read\b",
-        r"\bcompre\b",
-        r"\badquira\b",
-        r"\bclique\b",
-        r"\bgaranta\b",
-        r"\bincrível\b",
-        r"\bfantástico\b",
-    ]
-    for pattern in promotional_patterns:
-        if re.search(pattern, synopsis, re.IGNORECASE):
-            print(f"[VALIDATOR] Tom promocional detectado: {pattern}")
-            _heartbeat("synopsis_validator_finished")
-            return {"status": "REWRITE_REQUIRED"}
-
-    _heartbeat("synopsis_validator_finished")
-
-    print(f"[VALIDATOR] APPROVED — {word_count} palavras")
-
-    return {"status": "APPROVED"}
-
-# ======================================================
 # PROMPT BUILDER
 # ======================================================
 
@@ -562,60 +305,19 @@ def _execute_single_agent(agent_path: Path, context: dict):
 
     data = _extract_json(raw_output)
 
-    # ===============================================
-    # FACT SCHEMA VALIDATION
-    # ===============================================
-
-    if stage_name == "fact_extractor":
-        _validate_fact_schema(data)
-
     return data
 
 # ======================================================
-# PIPELINE STAGE EXECUTION
-# ======================================================
-
-def _execute_stage(stage: str, state: dict):
-
-    # -----------------------------------------------
-    # ESTÁGIOS PYTHON PURO — SEM CHAMADA LLM
-    # -----------------------------------------------
-
-    if stage == "abstract_structurer":
-        return _run_abstract_structurer(state)
-
-    if stage == "synopsis_validator":
-        return _run_synopsis_validator(state)
-
-    # -----------------------------------------------
-    # ESTÁGIOS LLM
-    # -----------------------------------------------
-
-    identity = _read_md(DOMAIN, stage, "identity.md")
-    rules = _read_md(DOMAIN, stage, "rules.md")
-    task = _read_md(DOMAIN, stage, "task.md")
-
-    prompt = _build_prompt(identity, rules, task, state, stage)
-
-    _heartbeat(f"{stage}_generation_started")
-
-    raw_output = _call_llm(prompt)
-
-    _heartbeat(f"{stage}_generation_finished")
-
-    print(f"[{stage.upper()}][RAW_OUTPUT_BEGIN]")
-    print(raw_output)
-    print(f"[{stage.upper()}][RAW_OUTPUT_END]")
-
-    data = _extract_json(raw_output)
-
-    return data
-
-# ======================================================
-# MAIN EXECUTOR
+# MAIN EXECUTOR — MODE 1 (single agent)
 # ======================================================
 
 def execute_agent(agent_name: str, context: dict):
+    """Executa um agente de estágio único (agents/<name>/task.md).
+
+    Usado por author_bio e offer_finder. O motor FSM de sinopse (MODE 2,
+    pipeline de 4 estágios) foi aposentado — a geração de sinopse agora usa
+    exclusivamente o agente batch `synopsis_cowork` via claude_runner.run_agent.
+    """
 
     print(f"[agent] executing '{agent_name}'")
 
@@ -623,69 +325,16 @@ def execute_agent(agent_name: str, context: dict):
 
     agent_path = BASE_DIR / agent_name
 
-    # ==================================================
-    # MODE 1 — SINGLE AGENT
-    # ==================================================
-
-    if (agent_path / "task.md").exists():
-
-        _heartbeat("payload_ready")
-
-        result = _execute_single_agent(agent_path, context)
-
-        _heartbeat("finalized")
-
-        return result
-
-    # ==================================================
-    # MODE 2 — PIPELINE EXECUTION
-    # ==================================================
-
-    tmp_file = _tmp_path()
-
-    state = {
-        "titulo": context.get("titulo"),
-        "autor": context.get("autor"),
-        "idioma_resolved": context.get("idioma", "PT"),
-        "descricao_base": context.get("descricao_base", ""),
-        "reference_synopses": [],
-        "reader_signals": [],
-        "abstract": "",
-        "synopsis": "",
-    }
-
-    agent_memory = load_memory("synopsis")
-    if agent_memory:
-        state["agent_memory"] = agent_memory
-        print(f"[MEMORY] Memória do agente synopsis carregada ({len(agent_memory)} chars)")
-
-    _tmp_write(tmp_file, state)
+    if not (agent_path / "task.md").exists():
+        raise RuntimeError(
+            f"AGENT_NOT_SINGLE_STAGE: '{agent_name}' não tem task.md. "
+            "O pipeline FSM multi-estágio foi removido; use o motor batch."
+        )
 
     _heartbeat("payload_ready")
 
-    for stage in PIPELINE_STAGES:
-
-        state = _tmp_read(tmp_file)
-
-        result = _execute_stage(stage, state)
-
-        state.update(result)
-
-        _tmp_write(tmp_file, state)
-
-        if stage == "synopsis_validator":
-
-            if result.get("status") != "APPROVED":
-                # Log and return empty synopsis — caller decides what to do
-                print(f"[VALIDATOR] REJECTED — returning empty synopsis")
-                return {"synopsis": ""}
+    result = _execute_single_agent(agent_path, context)
 
     _heartbeat("finalized")
 
-    final_state = _tmp_read(tmp_file)
-
-    _tmp_delete(tmp_file)
-
-    return {
-        "synopsis": final_state.get("synopsis", "")
-    }
+    return result

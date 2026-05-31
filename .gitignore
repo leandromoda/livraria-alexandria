@@ -54,15 +54,29 @@ scripts/data/seeds/
 scripts/data/audit_*.json
 scripts/data/blacklist.json
 scripts/data/gemini_usage.json
+scripts/data/claude_usage.json
+scripts/data/gargalo_plan.json
 scripts/data/synopsis_input.json
 scripts/data/synopsis_output.json
 scripts/data/categorize_input.json
 scripts/data/categorize_output.json
 scripts/data/offer_list.json
+scripts/data/batch_measure_results.jsonl
+scripts/data/batch_measure_run.log
 scripts/data/.fuse_hidden*
-# cowork/logs: apenas subpastas de processados excluídas do git; Glob enxerga inputs/outputs ativos
+# logs de runtime (pipeline_*.log + NNNN_audit_*.json) — consumidos pelo log_analysis e arquivados
+scripts/data/logs/
+# cowork: lotes transitórios de input/output são runtime (ignorar não afeta o glob do Python).
+# Mantém rastreáveis os relatórios commitados pelo orquestrador (*_consistency*.json).
+scripts/data/cowork/*_synopsis_input.json
+scripts/data/cowork/*_synopsis_output.json
+scripts/data/cowork/*_categorize_input.json
+scripts/data/cowork/*_categorize_output.json
+scripts/data/cowork/*_author_bio_input.json
+scripts/data/cowork/*_author_bio_output.json
 scripts/data/cowork/processed_synopsis/
 scripts/data/cowork/processed_categorize/
+scripts/data/cowork/processed_author_bio/
 scripts/data/log_analysis/processed_logs/
 test.txt
 

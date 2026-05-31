@@ -18,6 +18,25 @@ python main.py
 
 O menu interativo pede idioma, tamanho do pacote e (quando relevante) provider LLM.
 
+### Menu — numeração por grupos (WS9, 2026-05-30)
+
+O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de ação
+(S/G/A/I/O/M/C/E). Dentro de cada submenu, as opções têm faixas sem colisão:
+
+| Submenu | Faixa | Itens |
+|---|---|---|
+| Ingestão | 1-4 | seeds, enrich, resolver ofertas, scraper |
+| Pré-processamento | 5-9 | slugs, slugify autores, dedup autores, dedup, review |
+| Geração de Conteúdo | 10-19 | 10 categorizar, 10R reset, 11 sinopses, 12 capas, 13 bios |
+| Publicação | 20-30 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações |
+| Auditoria/QA | 40-51 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência |
+| Exports | 91-94 | transcripts/estado |
+| Banco | 95-97 | backup, restore, recover |
+
+> A geração LLM (10/11/13) e a auditoria de conteúdo usam o **claude CLI**
+> (assinatura PRO) via agentes batch — Gemini foi aposentado. A faixa **40+**
+> está reservada para o futuro `qa.py` (WS4). Fonte de verdade: `scripts/main.py`.
+
 ### Atalhos de diagnóstico
 
 ```bash
@@ -376,16 +395,23 @@ def run(idioma: str, pacote: int):
 
 ---
 
-## Supabase — Migrations Manuais Pendentes
+## Supabase — Migrations Manuais
 
-As colunas abaixo existem no SQLite mas ainda precisam ser criadas no Supabase:
+**TASK-SUPABASE-001 — APLICADA.** As colunas abaixo já existem na tabela
+`livros` do Supabase (verificado em 2026-05-30 via OpenAPI do PostgREST):
 
 ```sql
--- Rodar no SQL Editor do Supabase (TASK-SUPABASE-001)
+-- JÁ APLICADO no SQL Editor do Supabase
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_atual NUMERIC;
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS offer_status TEXT DEFAULT 'active';
 ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_updated_at TIMESTAMPTZ;
 ```
+
+> Compatibilidade SQLite↔Supabase verificada (2026-05-30): todos os campos
+> enviados pelos steps de publicação existem no schema do Supabase. Colunas
+> locais de pipeline (`sinopse`→publicada como `descricao`; `blacklist_reason`,
+> `qa_retry`, `qa_quarantine`, `reactivation_pending`, `preco`, `marketplace`,
+> `offer_url`, etc.) NÃO são enviadas ao Supabase — são apenas estado local.
 
 ---
 

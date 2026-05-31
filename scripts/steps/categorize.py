@@ -1,230 +1,34 @@
 # ============================================================
-# STEP 18 — CATEGORIZE
+# STEP 10 — CATEGORIZE (motor único: batch via Claude CLI)
 # Livraria Alexandria
 #
 # Classifica cada livro em até 5 categorias temáticas da
-# taxonomy.json usando LLM (Gemini ou Ollama).
+# taxonomy.json usando o ÚNICO motor de categorização do
+# pipeline: o agente batch `classify_cowork` (Claude CLI).
 #
-# Insere resultados em livros_categorias_tematicas.
-# Seta status_categorize=1 após classificação.
+# Fluxo: categorize_export → run_agent(classify_cowork) → categorize_import
 #
-# Progresso: [CATEGORIZE][NNN/TTT] → titulo
+# O caminho per-item (_call_llm + prompt inline) foi aposentado em
+# favor do batch (WS2) — menos chamadas na quota PRO e um único prompt
+# de taxonomia (sem divergência com classify_cowork).
+#
+# Funções de manutenção (reset_failed, reset_wrong_category) são
+# preservadas — usadas pelo menu (opções 10/10R).
 # ============================================================
 
-import json
 import os
+
+from core.claude_runner import agent_prompt_path, run_agent
+from core.db import get_conn
+from core.logger import log
+from steps import categorize_export, categorize_import
 
 MAX_CATEGORIZE_ATTEMPTS = int(os.getenv("MAX_CATEGORIZE_ATTEMPTS", "3"))
 
-# Marcadores de limite LLM — usados para re-raise e não engolir o erro
-_LLM_LIMIT_MARKERS = ("CLAUDE_SESSION_LIMIT_REACHED", "GEMINI_DAILY_LIMIT_REACHED")
+# Timeout generoso: o agente classifica o lote inteiro numa sessão.
+AGENT_TIMEOUT = 900
 
-from datetime import datetime
-from core.db import get_conn
-from core.logger import log
-from core.markdown_executor import _call_llm as call_llm
-
-
-# =========================
-# CONFIG
-# =========================
-
-BASE_DIR     = os.path.dirname(os.path.dirname(__file__))
-TAXONOMY_PATH = os.path.join(BASE_DIR, "data", "taxonomy.json")
-
-MAX_CATEGORIES = 5
-
-
-# =========================
-# LOAD TAXONOMY
-# =========================
-
-def load_taxonomy():
-    with open(TAXONOMY_PATH, "r", encoding="utf-8") as f:
-        items = json.load(f)
-    return {item["slug"]: item for item in items}
-
-
-def taxonomy_slugs_list(taxonomy):
-    return list(taxonomy.keys())
-
-
-# =========================
-# FETCH PENDING
-# =========================
-
-def fetch_pending(conn, pacote, book_ids=None):
-    """Busca livros pendentes de categorização.
-
-    Se `book_ids` for fornecida, filtra apenas esses IDs (modo per-livro).
-    """
-    cur = conn.cursor()
-
-    if book_ids:
-        placeholders = ",".join("?" * len(book_ids))
-        try:
-            cur.execute(f"""
-                SELECT id, titulo, autor, descricao, sinopse, cluster
-                FROM livros
-                WHERE status_categorize = 0
-                  AND status_review = 1
-                  AND id IN ({placeholders})
-                ORDER BY priority_score DESC, created_at ASC
-                LIMIT ?
-            """, (*book_ids, pacote))
-        except Exception:
-            cur.execute(f"""
-                SELECT id, titulo, autor, descricao, NULL as sinopse, NULL as cluster
-                FROM livros
-                WHERE status_categorize = 0
-                  AND status_review = 1
-                  AND id IN ({placeholders})
-                ORDER BY priority_score DESC, created_at ASC
-                LIMIT ?
-            """, (*book_ids, pacote))
-    else:
-        try:
-            cur.execute("""
-                SELECT id, titulo, autor, descricao, sinopse, cluster
-                FROM livros
-                WHERE status_categorize = 0
-                  AND status_review = 1
-                ORDER BY priority_score DESC, created_at ASC
-                LIMIT ?
-            """, (pacote,))
-        except Exception:
-            cur.execute("""
-                SELECT id, titulo, autor, descricao, NULL as sinopse, NULL as cluster
-                FROM livros
-                WHERE status_categorize = 0
-                  AND status_review = 1
-                ORDER BY priority_score DESC, created_at ASC
-                LIMIT ?
-            """, (pacote,))
-    return cur.fetchall()
-
-
-# =========================
-# BUILD PROMPT
-# =========================
-
-SYSTEM_PROMPT = """Você é um classificador bibliográfico especializado.
-Dado um livro (título, autor, descrição), você retorna uma lista JSON de slugs de categorias temáticas em ordem de relevância (mais relevante primeiro).
-Responda APENAS com o JSON, sem explicações ou texto adicional.
-
-REGRAS OBRIGATÓRIAS:
-- Use APENAS os slugs listados na taxonomia abaixo.
-- Prefira categorias específicas sobre genéricas.
-- "historia-antiga" é EXCLUSIVA para textos historiográficos primários da Antiguidade (Heródoto, Tucídides, Tito Lívio, Tácito) — NUNCA para livros modernos com tema antigo, alegorias ou ficção.
-- Thrillers de Dan Brown (Anjos e Demônios, O Código Da Vinci etc.) → "thriller" ou "suspense-psicologico", jamais categorias históricas.
-- Livros modernos sobre estoicismo (Ryan Holiday etc.) → "estoicismo-pratico". Textos originais de Sêneca, Marco Aurélio → "filosofia-classica".
-- Livros de finanças pessoais e alegorias sobre riqueza (O Homem Mais Rico da Babilônia) → "financas-pessoais", não "historia-antiga".
-- Horácio, Virgílio, Ovídio, Cícero (textos latinos originais) → "epica-latina".
-- A Arte da Guerra (Sun Tzu, texto original) → "literatura-chinesa-classica"; se com foco em negócios, combinar com "estrategia-empresarial".
-- Sapiens (Harari) e obras de macro-história/antropologia → "sociologia-e-antropologia", não "historia-antiga".
-- Quando a descrição indica campo de conhecimento (não texto primário), prefira as categorias de Não-Ficção Humanística, História, Psicologia etc."""
-
-
-def taxonomy_labeled_list(taxonomy):
-    """Retorna lista de strings 'slug — Label: description' para uso no prompt."""
-    lines = []
-    for slug, item in taxonomy.items():
-        label = item.get("label", slug)
-        desc  = item.get("description", "")
-        if desc:
-            lines.append(f'"{slug}" — {label}: {desc}')
-        else:
-            lines.append(f'"{slug}" — {label}')
-    return lines
-
-
-def build_prompt(titulo, autor, descricao, sinopse, taxonomy):
-
-    texto_base = descricao or sinopse or ""
-    texto_base = texto_base[:800] if len(texto_base) > 800 else texto_base
-
-    taxonomia_str = "\n".join(taxonomy_labeled_list(taxonomy))
-
-    return f"""{SYSTEM_PROMPT}
-
-Taxonomia disponível (slug — rótulo: descrição):
-{taxonomia_str}
-
-Livro:
-Título: {titulo}
-Autor: {autor or 'desconhecido'}
-Descrição: {texto_base}
-
-Retorne um JSON com até {MAX_CATEGORIES} slugs da taxonomia acima, em ordem de relevância:
-{{"categorias": ["slug-1", "slug-2", "slug-3"]}}"""
-
-
-# =========================
-# PARSE LLM RESPONSE
-# =========================
-
-def parse_response(response_text, taxonomy):
-    """Extrai lista de slugs válidos da resposta do LLM."""
-
-    if not response_text:
-        return []
-
-    # Tentar extrair JSON da resposta
-    try:
-        # Remover markdown code blocks se presentes
-        text = response_text.strip()
-        if "```" in text:
-            parts = text.split("```")
-            text = parts[1] if len(parts) >= 2 else text
-            if text.startswith("json"):
-                text = text[4:]
-        text = text.strip()
-
-        data = json.loads(text)
-        slugs = data.get("categorias", [])
-
-    except Exception:
-        # Fallback: extrair slugs com regex
-        import re
-        log("[CATEGORIZE] WARN — fallback regex acionado (resposta LLM não é JSON válido)")
-        slugs = re.findall(r'"([a-z][a-z0-9\-]+)"', response_text)
-
-    # Validar slugs contra taxonomy
-    valid = []
-    for slug in slugs:
-        if slug in taxonomy:
-            valid.append(slug)
-        if len(valid) >= MAX_CATEGORIES:
-            break
-
-    return valid
-
-
-# =========================
-# SAVE CATEGORIES
-# =========================
-
-def save_categories(conn, livro_id, slugs):
-    """Insere em livros_categorias_tematicas."""
-
-    for i, slug in enumerate(slugs):
-        primary = 1 if i == 0 else 0
-        confidence = round(1.0 - i * 0.1, 1)  # 1.0, 0.9, 0.8, 0.7, 0.6
-
-        conn.execute("""
-            INSERT OR IGNORE INTO livros_categorias_tematicas
-                (livro_id, categoria_slug, confidence, primary_cat, created_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """, (livro_id, slug, confidence, primary))
-
-    conn.execute("""
-        UPDATE livros
-        SET status_categorize = 1,
-            updated_at        = CURRENT_TIMESTAMP
-        WHERE id = ?
-    """, (livro_id,))
-
-    conn.commit()
+_LLM_LIMIT_MARKERS = ("CLAUDE_SESSION_LIMIT_REACHED", "limit", "usage limit")
 
 
 # =========================
@@ -265,7 +69,7 @@ def reset_failed(conn=None):
 
 
 # =========================
-# RUN
+# RESET WRONG CATEGORY
 # =========================
 
 def reset_wrong_category(conn, categoria_slug):
@@ -300,79 +104,36 @@ def reset_wrong_category(conn, categoria_slug):
     return livro_ids
 
 
+# =========================
+# RUN — motor batch
+# =========================
+
 def run(idioma=None, pacote=50, book_ids=None):
-    """Categoriza livros via LLM.
+    """Categoriza livros via o motor batch (agente classify_cowork no Claude CLI).
 
     Args:
         idioma:   não usado no filtro, mantido por compatibilidade.
-        pacote:   número máximo de livros a processar.
-        book_ids: lista opcional de IDs para modo per-livro.
+        pacote:   máximo de livros a exportar nesta invocação (cap em 25/lote).
+        book_ids: lista opcional de IDs (modo per-livro da ingestão guiada).
     """
-    log("Categorize iniciado…")
+    log("[CATEGORIZE] Iniciando classificação (motor batch classify_cowork)")
 
-    taxonomy = load_taxonomy()
-
-    log(f"Taxonomia carregada: {len(taxonomy)} categorias")
-
-    conn  = get_conn()
-    rows  = fetch_pending(conn, pacote, book_ids=book_ids)
-    total = len(rows)
-
-    if not rows:
-        log("Nenhum livro pendente de classificação temática (status_categorize=0 AND status_review=1).")
-        conn.close()
+    exported = categorize_export.run(pacote, book_ids=book_ids)
+    if not exported:
+        log("[CATEGORIZE] Nada pendente.")
         return
 
-    ok = falhas = 0
+    log(f"[CATEGORIZE] {exported} livro(s) exportado(s) — invocando agente classify_cowork…")
+    success, output = run_agent(agent_prompt_path("classify_cowork"), timeout=AGENT_TIMEOUT)
 
-    for i, row in enumerate(rows, start=1):
+    if not success:
+        if any(m.lower() in output.lower() for m in _LLM_LIMIT_MARKERS):
+            log("[CATEGORIZE] ⚠️ Limite de sessão Claude atingido — livros ficam em "
+                "status_categorize=3 até o próximo ciclo/reclaim reprocessar o input.")
+        else:
+            log(f"[CATEGORIZE] ✗ Agente falhou: {output[:200]}")
+        return
 
-        livro_id = row["id"]
-        titulo   = row["titulo"]
-        autor    = row["autor"]
-        descricao = row["descricao"]
-        sinopse  = row["sinopse"]
-        cluster  = row["cluster"]
-
-        print(f"[CATEGORIZE][{i:03d}/{total:03d}] → {titulo}")
-
-        prompt = build_prompt(titulo, autor, descricao, sinopse, taxonomy)
-
-        try:
-            response = call_llm(prompt)
-            slugs    = parse_response(response, taxonomy)
-
-            if slugs:
-                save_categories(conn, livro_id, slugs)
-                log(f"[CATEGORIZE] {titulo} → {slugs}")
-                ok += 1
-            else:
-                log(f"[CATEGORIZE] Sem categorias válidas para: {titulo}")
-                # Marca como tentado e incrementa contador de tentativas
-                conn.execute("""
-                    UPDATE livros
-                    SET status_categorize    = 2,
-                        categorize_attempts  = COALESCE(categorize_attempts, 0) + 1,
-                        updated_at           = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                """, (livro_id,))
-                conn.commit()
-                falhas += 1
-
-        except Exception as e:
-            msg = str(e)
-            # Propaga erros de limite LLM para o orquestrador — não engolir
-            if any(m in msg for m in _LLM_LIMIT_MARKERS):
-                log(f"[CATEGORIZE] ⚠️ Limite LLM atingido em '{titulo}' — interrompendo step.")
-                conn.close()
-                raise
-            log(f"[CATEGORIZE] Erro em '{titulo}': {e}")
-            falhas += 1
-
-    conn.close()
-
-    log(
-        f"[CATEGORIZE] OK: {ok} | "
-        f"Falhas: {falhas} | "
-        f"Total: {total}"
-    )
+    log("[CATEGORIZE] ✓ Agente concluído — importando resultados…")
+    categorize_import.run()
+    log("[CATEGORIZE] Finalizado")

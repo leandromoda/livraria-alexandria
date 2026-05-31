@@ -32,28 +32,42 @@ MAX_TEXT_LEN = 800
 # FETCH
 # =========================
 
-def fetch_pending(conn, pacote):
+def fetch_pending(conn, pacote, book_ids=None):
+    """Busca livros pendentes de categorização.
 
+    Se `book_ids` for fornecida, filtra apenas esses IDs (modo per-livro,
+    usado pela ingestão guiada).
+    """
     cur = conn.cursor()
 
+    id_filter = ""
+    params = []
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        id_filter = f"AND id IN ({placeholders})"
+        params.extend(book_ids)
+    params.append(pacote)
+
     try:
-        cur.execute("""
+        cur.execute(f"""
             SELECT id, titulo, slug, autor, descricao, sinopse
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
+              {id_filter}
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
-        """, (pacote,))
+        """, params)
     except Exception:
-        cur.execute("""
+        cur.execute(f"""
             SELECT id, titulo, slug, autor, descricao, NULL as sinopse
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
+              {id_filter}
             ORDER BY created_at ASC
             LIMIT ?
-        """, (pacote,))
+        """, params)
 
     return cur.fetchall()
 
@@ -62,7 +76,9 @@ def fetch_pending(conn, pacote):
 # RUN
 # =========================
 
-def run(pacote):
+def run(pacote, book_ids=None):
+    """Exporta um lote de livros pendentes de categorização. Retorna o número
+    de livros exportados (0 se nada pendente)."""
 
     log("[CATEGORIZE_EXPORT] Iniciando exportação")
 
@@ -71,12 +87,12 @@ def run(pacote):
 
     conn = get_conn()
 
-    rows = fetch_pending(conn, min(pacote, BATCH_SIZE))
+    rows = fetch_pending(conn, min(pacote, BATCH_SIZE), book_ids=book_ids)
 
     if not rows:
         log("[CATEGORIZE_EXPORT] Nada pendente.")
         conn.close()
-        return
+        return 0
 
     livros = []
 
@@ -126,3 +142,5 @@ def run(pacote):
 
     log(f"[CATEGORIZE_EXPORT] Exportados: {len(livros)}")
     log(f"[CATEGORIZE_EXPORT] Arquivo: {os.path.abspath(output_path)}")
+
+    return len(livros)

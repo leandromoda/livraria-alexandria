@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "schema_name": "schema_pipeline",
+    "schema_version": "1.0.0",
+    "generated_at": "2026-05-29",
+    "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
+    "purpose": "Registro permanente e commitável da arquitetura do pipeline de ingestão (scripts/). Fonte de verdade estrutural para revisões, refatorações e sessões futuras. Acompanha pipelineimprovementplan.json (plano de ação) e state/project_state.json (estado/decisões).",
+    "entrypoint": "scripts/main.py",
+    "db_local": "scripts/data/books.db (SQLite, WAL, busy_timeout 60s)",
+    "db_prod": "Supabase (PostgreSQL)",
+    "related_files": [
+      "scripts/data/pipelineimprovementplan.json",
+      "state/project_state.json",
+      "scripts/CLAUDE.md",
+      "CLAUDE.md"
+    ]
+  },
+
+  "llm_execution_paths": {
+    "description": "WS2 (2026-05-29, CONCLUÍDO): sinopse E categorização foram unificadas no caminho BATCH (path_b). O FSM multi-estágio de sinopse (MODE 2) e o caminho per-item de categorize.py foram REMOVIDOS. path_a (markdown_executor) agora só executa agentes de estágio único (MODE 1: author_bio, offer_finder).",
+    "path_a_per_item_api": {
+      "id": "markdown_executor",
+      "module": "scripts/core/markdown_executor.py",
+      "mode": "1 chamada LLM por item, síncrona — APENAS MODE 1 (agente de estágio único com task.md)",
+      "router": "_call_llm() roteia por _active_provider via set_provider()",
+      "providers": {
+        "claude": "_call_claude() — invoca o claude CLI (run_prompt), NÃO a API Anthropic (padrão)",
+        "gemini": "_call_gemini() — APOSENTADO (mantido no router por ora, não usado)",
+        "ollama": "_call_ollama() — local, inviável (CPU ~2 tok/s)",
+        "auto": "gemini → ollama fallback (legado, não usado)"
+      },
+      "used_by_menu": ["22 audit content", "29 author_bio (MODE 1)", "31 title-verify"],
+      "synopsis_fsm": "REMOVIDO em WS2 (2026-05-29). agents/synopsis/* e MODE 2 (PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer) deletados. Sinopse agora é 100% batch (ver path_b + synopsis.py wrapper).",
+      "agent_format": "MODE 1: identity.md/rules.md/task.md em agents/<agente>/ (author_bio, offer_finder)"
+    },
+    "path_b_batch_cli_cowork": {
+      "id": "claude_cli_cowork",
+      "modules": [
+        "scripts/steps/llm_orchestrator.py (opção O)",
+        "scripts/steps/cowork_export.py + cowork_import.py (opção C)",
+        "scripts/core/claude_runner.py",
+        "scripts/core/claude_usage_tracker.py"
+      ],
+      "mode": "exporta lote JSON → invoca claude --print sobre prompt.md → importa output JSON",
+      "backend": "claude CLI (assinatura Pro/Max) — limite de SESSÃO rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300)",
+      "agent_format": "prompt.md único em agents/<agente>_cowork/ ou agents/<agente>/",
+      "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25},
+      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_cowork) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis.",
+      "categorize_entrypoints": "WS2: scripts/steps/categorize.py virou wrapper fino (categorize_export → run_agent(classify_cowork) → categorize_import). Menu 10 e ingestão guiada (book_ids) usam-no; opção O usa _drain_classify (mesmo motor). Funções reset_failed/reset_wrong_category preservadas para o menu."
+    },
+    "conflict": "WS2 CONCLUÍDO: motor único = batch para sinopse (synopsis_cowork) E categorização (classify_cowork). FSM de sinopse e per-item de categorize removidos. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
+  },
+
+  "automation_options": [
+    {"key": "S", "label": "Status", "module": "pipeline_status.run", "llm": false, "desc": "Painel de status do pipeline."},
+    {"key": "G", "label": "Atacar Gargalos", "module": "main._run_gargalo + pipeline_status.build_gargalo_plan", "llm": false, "desc": "Gera plano priorizado (gargalo_plan.json), roda auditorias auto-executáveis e finaliza com Autopilot A. NÃO inclui geração de conteúdo LLM.", "note": "Candidata a virar o orquestrador unificado com fallbacks (ver plano)."},
+    {"key": "A", "label": "Autopilot", "module": "autopilot.run", "llm": false, "desc": "Loop de todos os steps não-LLM até exaurir progresso. Guardrails: FAILURE_THRESHOLD=3, MAX_CICLOS_COM_ERRO=3, QG_BOTTLENECK_THRESHOLD=8. Fase de fallback (enrich/resolver/gargalos lote 1000)."},
+    {"key": "I", "label": "Ingestão Orientada", "module": "ingestao_orientada.run", "llm": true, "desc": "Pipeline full incluindo steps LLM inline (categorize+synopsis). Sobrepõe O+A."},
+    {"key": "O", "label": "LLM Autopilot", "module": "llm_orchestrator.run", "llm": true, "backend": "claude CLI", "desc": "Ciclo exaustivo de 7 agentes: synopsis, classify, author_bio, log_analysis(1/5), consistency(1/5), offer_finder, title_auditor. Fallback para Autopilot A ao bater limite de sessão."},
+    {"key": "M", "label": "Manutenção", "module": "autopilot_manutencao.run", "llm": false, "desc": "Preços + conectividade + listas + bios (report). Sobrepõe parte de G/A."},
+    {"key": "C", "label": "Cowork", "module": "cowork_export/cowork_import", "llm": "manual", "desc": "Export/import manual de lotes para agente Claude Code. Amplamente superado pelo O (automático)."},
+    {"key": "E", "label": "Exports", "module": "menu_exports", "llm": false}
+  ],
+
+  "steps": [
+    {"n": 1, "name": "Offer Seed", "module": "offer_seed", "llm": false, "phase": "ingestao", "depends_on": ["seeds/*.json"], "produces": "livros (created)", "in_autopilot": true},
+    {"n": 2, "name": "Enrich Descrição", "module": "enrich_descricao", "llm": false, "phase": "ingestao", "produces": "descricao", "status": "soft_deprecated", "note": "Coberto pelo step 4 (scraper). Removido do autopilot; só fallback/manual."},
+    {"n": 3, "name": "Resolver Ofertas", "module": "offer_resolver", "llm": false, "phase": "ingestao", "depends_on": ["lookup_query"], "produces": "offer_url, tag afiliado", "in_autopilot": true},
+    {"n": 4, "name": "Marketplace Scraper", "module": "marketplace_scraper", "llm": false, "phase": "ingestao", "depends_on": ["offer_url"], "produces": "imagem_url, descricao, preco", "in_autopilot": true, "note": "Circuit breaker p/ OpenLibrary; HTTP 503 frequente na Amazon nos logs."},
+    {"n": 5, "name": "Slugify", "module": "slugify", "llm": false, "phase": "preprocess", "produces": "status_slug=1", "in_autopilot": true},
+    {"n": 6, "name": "Slugify Autores", "module": "slugify_autores", "llm": false, "phase": "preprocess", "produces": "autores.slug", "in_autopilot": true},
+    {"n": 7, "name": "Dedup Autores", "module": "dedup_autores", "llm": false, "phase": "preprocess", "in_autopilot": true},
+    {"n": 8, "name": "Deduplicar", "module": "dedup", "llm": false, "phase": "preprocess", "depends_on": ["status_slug=1"], "produces": "status_dedup=1", "in_autopilot": true},
+    {"n": 9, "name": "Review (editorial+idioma)", "module": "review", "llm": false, "phase": "preprocess", "depends_on": ["status_dedup=1"], "produces": "status_review=1, is_book, editorial_score", "in_autopilot": true, "note": "project_state marca review como LLM em alguns trechos; código atual roda sem LLM."},
+    {"n": 10, "name": "Categorizar (temática)", "module": "categorize", "llm": true, "llm_path": "markdown_executor", "phase": "conteudo", "depends_on": ["status_review=1"], "produces": "livros_categorias_tematicas (max 5)", "in_autopilot": false, "backlog_ref": "~11.4k pendentes (gargalo_plan)"},
+    {"n": 11, "name": "Gerar Sinopses", "module": "synopsis", "llm": true, "llm_path": "markdown_executor (FSM)", "phase": "conteudo", "depends_on": ["status_review=1", "is_book=1"], "produces": "sinopse, status_synopsis=1", "in_autopilot": false, "backlog_ref": "~12.6k pendentes (log 2026-05-28) — MAIOR GARGALO"},
+    {"n": 12, "name": "Gerar Capas", "module": "covers", "llm": false, "phase": "conteudo", "produces": "status_cover=1/2", "in_autopilot": true, "sources": ["amazon isbn", "google_books", "openlibrary"]},
+    {"n": 13, "name": "Quality Gate", "module": "quality_gate", "llm": false, "phase": "publish", "depends_on": ["5", "9", "11", "12"], "produces": "is_publishable", "in_autopilot": true, "hard_blocks": ["sinopse<400 chars", "idioma UNKNOWN/divergente", "is_book=0", "editorial_score<0"], "note": "Reprova em massa por 'Sinopse pendente' — loga 1000 livros sem sinopse a cada ciclo (ruído nos logs)."},
+    {"n": 14, "name": "Publicar Livros", "module": "publish", "llm": false, "phase": "publish", "depends_on": ["is_publishable=1"], "target": "Supabase.livros", "in_autopilot": true, "filter": "lê blacklist.json e pula slugs listados"},
+    {"n": 15, "name": "Publicar Autores", "module": "publish_autores", "llm": false, "phase": "publish", "depends_on": ["14"], "target": "Supabase.autores + livros_autores", "in_autopilot": true},
+    {"n": 16, "name": "Publicar Categorias", "module": "publish_categorias", "llm": false, "phase": "publish", "depends_on": ["10"], "target": "Supabase.livros_categorias", "in_autopilot": true},
+    {"n": 17, "name": "Publicar Ofertas", "module": "publish_ofertas", "llm": false, "phase": "publish", "depends_on": ["14"], "target": "Supabase.ofertas", "in_autopilot": true},
+    {"n": 18, "name": "Listas SEO", "module": "list_composer", "llm": false, "phase": "publish", "depends_on": ["14"], "produces": "listas, listas_livros", "in_autopilot": true, "rules": {"min_categoria": 6, "min_autor": 3, "max_por_lista": 12}},
+    {"n": 19, "name": "Publicar Listas", "module": "publish_listas", "llm": false, "phase": "publish", "depends_on": ["18"], "target": "Supabase.listas", "in_autopilot": true},
+    {"n": 20, "name": "Monitor Preços", "module": "offer_price_monitor", "llm": false, "phase": "manutencao", "produces": "offer_price_log, reactivation_pending"},
+    {"n": 21, "name": "Auditoria Conectividade", "module": "auditor (mode=connectivity)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_connectivity.json + connectivity_log"},
+    {"n": 22, "name": "Auditoria Conteúdo", "module": "auditor (mode=content)", "llm": true, "llm_path": "markdown_executor", "phase": "auditoria", "depends_on": ["14"], "action": "despublica severity medium|high; salva em agent::synopsis::memory"},
+    {"n": 23, "name": "Reparar Publicações", "module": "repair", "llm": false, "phase": "auditoria"},
+    {"n": 24, "name": "Reparo Direcionado por Slug", "module": "targeted_repair", "llm": false, "phase": "auditoria", "reset_types": ["sinopse", "capa", "ambos"]},
+    {"n": 25, "name": "Aplicar Blacklist", "module": "apply_blacklist", "llm": false, "phase": "auditoria", "input": "blacklist.json (gerado por agente)", "action": "despublica severity medium|high"},
+    {"n": 26, "name": "Exportar p/ Auditoria", "module": "core/export_for_audit", "llm": false, "phase": "auditoria", "output": "audit_input.json"},
+    {"n": "28a", "name": "Auditoria Integridade", "module": "autopilot_audit", "llm": false, "phase": "auditoria", "note": "8 checks sem LLM; chamado automaticamente ao exaurir autopilot."},
+    {"n": "29a", "name": "Auditar Listas SEO", "module": "auditor (mode=list)", "llm": false, "phase": "auditoria"},
+    {"n": "30a", "name": "Verificar Autores sem Bio", "module": "auditor (mode=author-bios)", "llm": false, "phase": "auditoria"},
+    {"n": "31a", "name": "Verificar Veracidade de Títulos", "module": "auditor (mode=title-verify)", "llm": true, "phase": "auditoria"},
+    {"n": 32, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/cowork/*_consistency.json (lido por agente consistency_review)"},
+    {"n": "29b", "name": "Bios de Autores", "module": "author_bio", "llm": true, "phase": "conteudo", "produces": "autores.descricao"},
+    {"n": 30, "name": "Importar offer_list.json", "module": "offer_list_importer", "llm": false, "phase": "publish", "input": "offer_list.json (agente offer_finder)"},
+    {"n": 27, "name": "Reparar Ofertas", "module": "publish_ofertas.run_repair", "llm": false, "phase": "publish"},
+    {"n": 28, "name": "Fix Affiliate URLs", "module": "fix_affiliate_urls", "llm": false, "phase": "publish"},
+    {"n": "91-94", "name": "Exports", "module": "export_state_transcript", "llm": false, "phase": "export"},
+    {"n": "95-97", "name": "Banco (backup/restore/recover)", "module": "db_backup/db_restore/db_recover", "llm": false, "phase": "banco"}
+  ],
+
+  "menu_numbering_issues": {
+    "description": "O submenu de Auditoria reusa números 28/29/30/31 com significados diferentes do submenu de Publicação e do menu de Geração — fonte de confusão e bug latente.",
+    "collisions": [
+      "29 = 'Bios de Autores' (Geração) E 'Auditar Listas SEO' (Auditoria)",
+      "30 = 'Importar offer_list' (Publicação) E 'Verificar Autores sem Bio' (Auditoria)",
+      "31 = 'Reparar Relações Autores' (Publicação) E 'Verificar Títulos' (Auditoria)",
+      "28 = 'Fix Affiliate URLs' (Publicação) E 'Auditoria Integridade' (Auditoria)"
+    ]
+  },
+
+  "identified_problems": [
+    {
+      "id": "P1_progressao_lenta",
+      "title": "Progressão de conteúdo/publicações muito lenta",
+      "root_cause": "O gargalo real (sinopse, ~12.6k pendentes) só avança via LLM, mas o Autopilot A (sem LLM) entra em loop reavaliando o Quality Gate sobre ~1000 livros sem sinopse a cada ciclo, sem produzir nada. O orquestrador O processa ~5 sinopses e bate o teto de sessão de 5h.",
+      "evidence": "pipeline_2026-05-28_20-11-42.log: TRIGGER 'sem progresso' em todos os steps por 6 ciclos; QG reprova 1000/1000 por 'Sinopse pendente'. pipeline_2026-05-28_19-03-13.log: ciclo 1 do O processou 5 sinopses, depois 300 min de espera."
+    },
+    {
+      "id": "P2_quota_tokens",
+      "title": "Quota de tokens/sessão atingida rapidamente",
+      "root_cause": "O orquestrador O usa o claude CLI da assinatura PRO (janela de sessão rotativa de 5h — custo já pago, NÃO API por token) e gasta essa janela escassa em agentes NÃO-críticos (title_auditor, author_bio, offer_finder) na mesma rodada da sinopse (o gargalo real). Lotes pequenos maximizam o overhead fixo por chamada. Sem priorização/scheduling por agente dentro da janela. Prompts gordos (taxonomy de 26KB no classify) consomem a janela mais rápido.",
+      "evidence": "llm_orchestrator roda 7 agentes sequenciais por ciclo; limite atingido no title_auditor ao fim do ciclo 1."
+    },
+    {
+      "id": "P3_qualidade_baixa",
+      "title": "Páginas de baixa qualidade publicadas sem correção sistemática",
+      "root_cause": "QG é só heurístico (tamanho/idioma/flags). As verificações reais de qualidade (auditoria de conteúdo LLM step 22, title-verify 31, consistency 32, blacklist 25) estão fragmentadas em opções manuais separadas e não integradas ao fluxo de publicação nem ao loop automatizado. Não há um estágio padronizado de QA/revisão que rode sistematicamente e feche o ciclo (detectar → despublicar/corrigir → regenerar).",
+      "evidence": "Sinopses incorretas, categorização equivocada (opção 10R existe para reset manual), ofertas inválidas (HTTP 503 no scraper, offer_finder manual)."
+    },
+    {
+      "id": "P4_fragmentacao",
+      "title": "Fragmentação excessiva de opções/steps",
+      "root_cause": "~45 módulos em steps/, 8 opções de topo (S/G/A/I/O/M/C/E) com forte sobreposição (O vs C vs I todos geram sinopse; A vs G vs M sobrepõem não-LLM) e 6 submenus com números colidindo. Não há um único 'processo de geração de página de título' coeso.",
+      "evidence": "menu_numbering_issues + automation_options."
+    }
+  ],
+
+  "obsolete_or_unify_candidates": [
+    {"target": "enrich_descricao (step 2)", "action": "manter só como fallback manual", "reason": "soft_deprecated; coberto pelo scraper."},
+    {"target": "Sinopse: FSM markdown_executor vs synopsis_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_cowork; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
+    {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_cowork; per-item removido.", "reason": "duplicação."},
+    {"target": "Opção C (Cowork manual)", "action": "absorver no orquestrador automatizado", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
+    {"target": "Opção I (Ingestão Orientada)", "action": "convergir para a opção G unificada", "reason": "sobrepõe O+A."},
+    {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
+    {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-51 (sem colisão); WS4 (2026-05-30) adicionou qa.py orquestrador (modos) + menu 52/53 (reprocessar blacklist / remediação). WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine.", "reason": "colisões de numeração e dispersão."}
+  ],
+
+  "constraints": {
+    "hardware": "GPU GT 720M sem CUDA — Ollama inviável (~2 tok/s).",
+    "gemini_free_tier": "12 RPM / 1400 RPD (gemini_limiter).",
+    "claude_cli_session": "teto rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300) — não escala para o backlog.",
+    "supabase": "service role hard-coded nos steps de publicação; algumas migrations manuais pendentes (preco_atual, offer_status)."
+  }
+}
