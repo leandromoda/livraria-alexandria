@@ -14,13 +14,15 @@ export async function generateMetadata({
 
   const { data: livro } = await supabase
     .from("livros")
-    .select("titulo, descricao, sinopse, autor, imagem_url")
+    .select("titulo, descricao, autor, imagem_url")
     .eq("slug", slug)
     .single();
 
   if (!livro) return {};
 
-  const description = (livro.sinopse ?? livro.descricao)?.slice(0, 160)
+  // No Supabase, `descricao` já contém a sinopse editorial gerada (publish.py
+  // envia o campo `sinopse` do SQLite para a coluna `descricao`).
+  const description = livro.descricao?.slice(0, 160)
     ?? `Sinopse, ofertas e informações sobre ${livro.titulo}${livro.autor ? ` de ${livro.autor}` : ""}.`;
 
   return {
@@ -101,7 +103,7 @@ export default async function LivroPage({ params }: PageProps) {
     "@type": "Product",
     name: livro.titulo,
     url: `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`,
-    description: livro.sinopse ?? livro.descricao ?? undefined,
+    description: livro.descricao ?? undefined,
     image: livro.imagem_url || undefined,
     sku: livro.isbn,
     isbn: livro.isbn || undefined,
@@ -242,7 +244,7 @@ export default async function LivroPage({ params }: PageProps) {
       {/* =========================
           SINOPSE
       ========================== */}
-      {(livro.sinopse ?? livro.descricao) && (
+      {livro.descricao && (
         <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
 
           <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
@@ -250,7 +252,7 @@ export default async function LivroPage({ params }: PageProps) {
           </h2>
 
           <p className="text-[#4A4A4A] leading-relaxed text-base">
-            {livro.sinopse ?? livro.descricao}
+            {livro.descricao}
           </p>
 
         </section>
