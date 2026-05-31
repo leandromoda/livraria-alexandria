@@ -27,7 +27,7 @@ Use suas ferramentas de arquivo para encontrar e ler o input correto:
 5. **Anote o prefixo numérico** (ex: `037`) — você vai usá-lo no nome do output
 
 Se nenhum arquivo `*_synopsis_input.json` for encontrado (ou todos já tiverem output correspondente), responda:
-"Nenhum input de sinopse pendente. Rode o export primeiro (opção 31 ou C no menu)."
+"Nenhum input de sinopse pendente. Rode o export primeiro (opção C no menu, ou a opção O para o autopilot LLM)."
 
 ```json
 {

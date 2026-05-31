@@ -95,27 +95,26 @@ def _quarantine(conn, livro_id, motivo):
     conn.commit()
 
 
-def _reset_for_regen(conn, livro_id, status_col):
-    """Reseta o status recuperável para 0 e incrementa qa_retry. O livro
-    reentra na fila de geração; is_publishable permanece 0 até o QG reavaliar."""
+def _recover(conn, livro_id, offer=False):
+    """Recupera um título: LIMPA AMBOS os sentinelas de blacklist (status_*=4 → 0)
+    e incrementa qa_retry. O livro reentra na fila de geração; is_publishable
+    permanece 0 até o QG reavaliar.
+
+    IMPORTANTE: apply_blacklist seta status_synopsis=4 E status_categorize=4.
+    A seleção em _fetch_candidates usa (status_synopsis=4 OR status_categorize=4),
+    então é obrigatório zerar OS DOIS sentinelas — caso contrário o que ficar em 4
+    re-seleciona o livro e o leva a quarentena falsa após MAX_QA_RETRY.
+    O CASE preserva qualquer progresso já feito (só toca nos que estão em 4).
+    """
+    extra = "reactivation_pending = 1," if offer else ""
     conn.execute(
         f"""UPDATE livros
-            SET {status_col}  = 0,
-                qa_retry      = COALESCE(qa_retry, 0) + 1,
-                updated_at    = CURRENT_TIMESTAMP
+            SET status_synopsis   = CASE WHEN status_synopsis   = 4 THEN 0 ELSE status_synopsis   END,
+                status_categorize = CASE WHEN status_categorize = 4 THEN 0 ELSE status_categorize END,
+                {extra}
+                qa_retry          = COALESCE(qa_retry, 0) + 1,
+                updated_at        = CURRENT_TIMESTAMP
             WHERE id = ?""",
-        (livro_id,),
-    )
-    conn.commit()
-
-
-def _flag_offer_manual(conn, livro_id):
-    conn.execute(
-        """UPDATE livros
-           SET reactivation_pending = 1,
-               qa_retry             = COALESCE(qa_retry, 0) + 1,
-               updated_at           = CURRENT_TIMESTAMP
-           WHERE id = ?""",
         (livro_id,),
     )
     conn.commit()
@@ -166,21 +165,21 @@ def run(dry_run: bool = False, limit=None) -> dict:
             counts["quarantined"] += 1
 
         elif action == "synopsis":
-            log(f"[REPROCESS_BL] regen sinopse (retry→{retry+1}) → {titulo} | {reason}")
+            log(f"[REPROCESS_BL] regen conteúdo/sinopse (retry→{retry+1}) → {titulo} | {reason}")
             if not dry_run:
-                _reset_for_regen(conn, livro_id, "status_synopsis")
+                _recover(conn, livro_id)
             counts["regen_synopsis"] += 1
 
         elif action == "categorize":
             log(f"[REPROCESS_BL] recategorizar (retry→{retry+1}) → {titulo} | {reason}")
             if not dry_run:
-                _reset_for_regen(conn, livro_id, "status_categorize")
+                _recover(conn, livro_id)
             counts["regen_categorize"] += 1
 
         elif action == "offer":
-            log(f"[REPROCESS_BL] oferta → revisão manual (reactivation_pending) → {titulo} | {reason}")
+            log(f"[REPROCESS_BL] oferta → revisão manual + regen (retry→{retry+1}) → {titulo} | {reason}")
             if not dry_run:
-                _flag_offer_manual(conn, livro_id)
+                _recover(conn, livro_id, offer=True)
             counts["offer_manual"] += 1
 
     conn.close()
