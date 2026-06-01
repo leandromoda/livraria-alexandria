@@ -124,7 +124,9 @@ def run(idioma=None, pacote=50, book_ids=None):
         return
 
     log(f"[CATEGORIZE] {exported} livro(s) exportado(s) — invocando agente classify_cowork…")
-    success, output = run_agent(agent_prompt_path("classify_cowork"), timeout=AGENT_TIMEOUT)
+    # wait_on_limit=False: não bloquear 5h no menu/ingestão guiada (re-roda após reset).
+    success, output = run_agent(agent_prompt_path("classify_cowork"),
+                                timeout=AGENT_TIMEOUT, wait_on_limit=False)
 
     if not success:
         if any(m.lower() in output.lower() for m in _LLM_LIMIT_MARKERS):

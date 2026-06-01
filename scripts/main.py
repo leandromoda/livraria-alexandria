@@ -792,7 +792,10 @@ def _run_gargalo(idioma: str):
         if incl != "n":
             log("[G] ── Fase LLM priorizada (orquestrador) ──")
             try:
-                llm_orchestrator.run(idioma)
+                # Passe único: ao esgotar a sessão, o orquestrador roda o
+                # Autopilot A (fallback) e DEVOLVE o controle ao G (não aguarda
+                # o reset). O G então faz QA + Autopilot A + relatório.
+                llm_orchestrator.run(idioma, wait_for_reset=False)
             except KeyboardInterrupt:
                 log("[G] Fase LLM interrompida pelo usuário.")
             except Exception as e_llm:

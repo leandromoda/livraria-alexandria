@@ -585,23 +585,26 @@ def _git_commit_reports(glob_patterns: list[str], label: str) -> None:
 # =========================
 
 def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[bool, bool]:
-    """Invoca um agente via claude CLI.
+    """Invoca um agente via claude CLI — NÃO bloqueia no limite de sessão.
+
+    Usa wait_on_limit=False: ao bater o limite, run_agent retorna imediatamente
+    (sem dormir 5h). Quem decide o fallback é o ciclo do orquestrador (rodar
+    Autopilot A não-LLM e só então aguardar/retomar ou encerrar) — antes, a
+    espera ficava escondida dentro do run_agent e o fallback A nunca rodava.
 
     Retorna (success, limit_persists):
       - success: True se o agente concluiu sem erro.
-      - limit_persists: True se o limite de uso ainda está ativo APÓS o retry
-        automático feito dentro de run_agent(). Quando True, o ciclo inteiro
-        deve ser interrompido para não disparar novas chamadas com limite ativo.
+      - limit_persists: True se o output indica limite de sessão.
     """
     prompt = agent_prompt_path(prompt_name)
     log(f"[LLM_ORCH] → {label}: invocando claude CLI…")
-    success, output = run_agent(prompt, timeout=timeout)
+    success, output = run_agent(prompt, timeout=timeout, wait_on_limit=False)
 
     if success:
         log(f"[LLM_ORCH] ✓ {label} concluído")
         return True, False
 
-    # Falha — verificar se ainda é erro de limite após o retry interno
+    # Falha — verificar se é erro de limite de sessão
     limit_persists = _is_limit_error(output)
     if limit_persists:
         log(f"[LLM_ORCH] ⛔ {label} — limite de uso persistente após retry. Ciclo será interrompido.")
@@ -787,10 +790,31 @@ def _content_backlog(idioma: str) -> int:
 
 
 # =========================
+# ESPERA DE RESET (não-bloqueante para o run_agent)
+# =========================
+
+def _wait_for_session_reset():
+    """Aguarda até o reset da janela de sessão PRO, usando o cooldown REAL do
+    tracker (session_window), o que DESCONTA o tempo já gasto no Autopilot A.
+    Loga progresso a cada ~5 min. Retorna quando a janela está disponível."""
+    import time as _time
+    from core.claude_usage_tracker import session_window
+    while True:
+        win = session_window()
+        if not win.get("in_cooldown"):
+            log("[LLM_ORCH] Sessão resetada — retomando fase LLM.")
+            return
+        secs = win.get("seconds_until_reset", 0)
+        log(f"[LLM_ORCH] Aguardando reset de sessão… {secs // 60} min restantes "
+            f"(reset às {win.get('reset_at')}).")
+        _time.sleep(min(300, max(1, secs)))
+
+
+# =========================
 # MAIN CYCLE
 # =========================
 
-def run(idioma: str):
+def run(idioma: str, wait_for_reset: bool = True):
     """Autopilot LLM cíclico — processa sinopses, categorias, bios e ofertas.
 
     Priorização (WS1): a janela de sessão PRO é gasta PRIMEIRO no gargalo
@@ -801,7 +825,12 @@ def run(idioma: str):
     A cada N ciclos também gera relatórios de log e consistência (sem aplicar
     correções inline — leitura e aplicação são responsabilidade de rotina externa).
 
-    Quando limite Claude atingido: aciona Autopilot não-LLM como fallback.
+    Fallback ao esgotar a sessão PRO (cadeia de custo zero):
+      1. Autopilot A não-LLM (publica o que já foi gerado + ataca backlog não-LLM).
+      2. Se `wait_for_reset=True` (opção O): aguarda o reset da sessão e RETOMA a
+         fase LLM (loop ininterrupto através das janelas de 5h).
+         Se `wait_for_reset=False` (opção G, passe único): ENCERRA e devolve o
+         controle ao orquestrador G (que faz QA + Autopilot A + relatório).
     """
 
     from core.claude_runner import _find_claude
@@ -948,10 +977,11 @@ def run(idioma: str):
             else:
                 log("[LLM_ORCH] title_auditor: nenhum pendente — skip")
 
-        # ── AUTOPILOT NÃO-LLM ────────────────────────────────
-        # Após imports de synopsis/classify, roda autopilot para processar
-        # os livros desbloqueados até publicação (QG → Publish → Listas).
-        if cycle_done > 0:
+        # ── AUTOPILOT NÃO-LLM (publicação periódica) ─────────
+        # Após imports, publica os livros desbloqueados (QG → Publish → Listas).
+        # No caminho de limite, o Autopilot A roda no bloco de fallback abaixo
+        # (guard `not cycle_limit_hit` evita rodar duas vezes no mesmo ciclo).
+        if cycle_done > 0 and not cycle_limit_hit:
             log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
             try:
                 autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
@@ -960,15 +990,27 @@ def run(idioma: str):
 
         # ── FIM DO CICLO ─────────────────────────────────────
         log(f"[LLM_ORCH] Ciclo {cycle} concluído — trabalho realizado: {cycle_done}"
-            + (" | ⛔ interrompido por limite de uso" if cycle_limit_hit else ""))
+            + (" | ⛔ limite de sessão atingido" if cycle_limit_hit else ""))
 
         if cycle_limit_hit:
-            log("[LLM_ORCH] Limite de uso persistente após retry — iniciando Autopilot não-LLM como fallback…")
+            # FALLBACK DE CUSTO ZERO: roda Autopilot A não-LLM (publica o que já
+            # foi gerado nesta janela + ataca o backlog não-LLM) ANTES de aguardar.
+            log("[LLM_ORCH] Limite de sessão — fallback Autopilot não-LLM (publica + drena backlog não-LLM)…")
             try:
                 autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
-            break
+
+            if not wait_for_reset:
+                log("[LLM_ORCH] Passe único: fase LLM encerrada (limite de sessão). "
+                    "Controle devolvido ao orquestrador (QA + relatório).")
+                break
+
+            # Opção O: aguarda o reset (descontando o tempo já gasto no Autopilot A)
+            # e RETOMA a fase LLM no próximo ciclo.
+            _wait_for_session_reset()
+            cycle_limit_hit = False
+            continue
 
         if cycle_done == 0:
             log("[LLM_ORCH] Nenhum trabalho pendente em nenhum agente.")
