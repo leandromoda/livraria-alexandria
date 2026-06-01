@@ -38,7 +38,10 @@ def run(idioma, pacote, book_ids=None):
         return
 
     log(f"[SYNOPSIS] {exported} livro(s) exportado(s) — invocando agente synopsis_cowork…")
-    success, output = run_agent(agent_prompt_path("synopsis_cowork"), timeout=AGENT_TIMEOUT)
+    # wait_on_limit=False: não bloquear 5h no menu/ingestão guiada — ao bater o
+    # limite, retorna na hora com mensagem (o usuário re-roda após o reset).
+    success, output = run_agent(agent_prompt_path("synopsis_cowork"),
+                                timeout=AGENT_TIMEOUT, wait_on_limit=False)
 
     if not success:
         if any(m.lower() in output.lower() for m in _LLM_LIMIT_MARKERS):

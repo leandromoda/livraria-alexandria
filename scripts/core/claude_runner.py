@@ -117,7 +117,8 @@ def _invoke(prompt_text: str, timeout: int, env: dict) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[bool, str]:
+def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
+              wait_on_limit: bool = True) -> tuple[bool, str]:
     """
     Carrega o prompt de `prompt_path` e invoca `claude --print` via subprocess.
 
@@ -126,8 +127,12 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[
 
     Controle de uso:
       - Registra cada chamada em claude_usage.json (calls_today, calls_total).
-      - Se o output indicar limite de sessão, aguarda o reset automático e tenta
-        uma segunda vez. Se o retry também falhar com limite, retorna falha.
+      - `wait_on_limit=True` (padrão): se o output indicar limite de sessão,
+        aguarda o reset (bloqueante) e tenta uma 2ª vez.
+      - `wait_on_limit=False`: NÃO bloqueia — retorna o limite imediatamente para
+        que o chamador (orquestrador) decida o fallback (ex: rodar Autopilot A
+        não-LLM e só então aguardar/retomar). O limite continua registrado no
+        tracker (session_window reflete o cooldown).
     """
     path = Path(prompt_path)
     if not path.is_file():
@@ -139,7 +144,7 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[
     success, output = _invoke(prompt_text, timeout, env)
     limit_hit = _tracker.record_call(success, output)
 
-    if limit_hit:
+    if limit_hit and wait_on_limit:
         # Aguarda reset de sessão e tenta novamente uma única vez.
         # Usa _log em vez de print para persistir a mensagem no pipeline.log.
         _tracker.wait_for_reset(output, log_fn=_log)
@@ -149,12 +154,13 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT) -> tuple[
     return success, output
 
 
-def run_prompt(prompt_text: str, timeout: int = 120) -> tuple[bool, str]:
+def run_prompt(prompt_text: str, timeout: int = 120,
+               wait_on_limit: bool = True) -> tuple[bool, str]:
     """Invoca claude --print com o prompt passado diretamente via stdin.
 
     Para chamadas LLM pontuais (não baseadas em arquivo de agente).
-    Integra com claude_usage_tracker para detecção de limite de sessão
-    e retry automático (igual a run_agent).
+    Integra com claude_usage_tracker para detecção de limite de sessão.
+    `wait_on_limit` segue a mesma semântica de run_agent.
 
     Retorna (sucesso: bool, saída: str).
     """
@@ -162,7 +168,7 @@ def run_prompt(prompt_text: str, timeout: int = 120) -> tuple[bool, str]:
     success, output = _invoke(prompt_text, timeout, env)
     limit_hit = _tracker.record_call(success, output)
 
-    if limit_hit:
+    if limit_hit and wait_on_limit:
         _tracker.wait_for_reset(output, log_fn=_log)
         success, output = _invoke(prompt_text, timeout, env)
         _tracker.record_call(success, output)
