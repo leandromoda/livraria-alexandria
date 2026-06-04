@@ -55,42 +55,94 @@ ISBN_PREFIX_LANG = {
     ("0", "1"): "EN",
 }
 
+# Marcas FORTES de português no título — se presentes, o livro é PT e NUNCA é
+# relabelado como estrangeiro (protege traduções PT com ISBN/forma estrangeira).
+_PT_MARK = re.compile(r"[ãõ]|ç|nh|lh|ção|ções")
 
-def detect_lang_by_title(title):
-    if not title:
-        return None
-    t = title.lower()
-    patterns = {
-        "PT": r"(ção|ções|lh|nh|ã|õ)",
-        "ES": r"(ñ|¿|¡)",
-        "IT": r"(gli|zione)",
-        "FR": r"(é|à|è)",
-        "DE": r"\b(der|die|das)\b",
-    }
-    for lang, pattern in patterns.items():
-        if re.search(pattern, t):
-            return lang
-    return None
+# Palavras-função DISCRIMINATIVAS por idioma — escolhidas para NÃO existirem em
+# português (evita falso-positivo: "A Cabana" não vira EN por causa do "a").
+# Comparação por palavra inteira (set de tokens do título).
+_FOREIGN_STOPWORDS = {
+    "EN": {"the", "of", "and", "with", "from", "how", "why", "an", "is", "are",
+           "were", "your", "our", "you", "this", "that", "what", "when", "where",
+           "which", "into", "about", "through", "against", "between"},
+    "ES": {"el", "los", "las", "del", "cómo", "qué", "muy", "y", "hacia"},
+    "IT": {"gli", "della", "dei", "degli", "delle", "perché", "anche", "sono",
+           "molto", "questo", "nella"},
+    "FR": {"les", "des", "une", "comment", "pourquoi", "dans", "avec", "cette",
+           "cet", "nous", "vous"},
+}
 
 
 def detect_lang_by_isbn(isbn):
     if not isbn:
         return None
+    # Normaliza: só dígitos (remove hífens/espaços).
+    s = "".join(ch for ch in str(isbn) if ch.isdigit())
+    if not s:
+        return None
+    # ISBN-13 começa com o prefixo EAN 978/979 — o GRUPO DE IDIOMA vem depois.
+    # Sem remover, todo ISBN-13 começaria com "97" e a detecção falharia.
+    if len(s) >= 13 and s[:3] in ("978", "979"):
+        s = s[3:]
     for prefixes, lang in ISBN_PREFIX_LANG.items():
-        if isbn.startswith(prefixes):
+        if s.startswith(prefixes):
             return lang
     return None
 
 
-def resolve_language(current_lang, isbn, title):
+def detect_foreign_lang(isbn, titulo):
+    """Detecta, com CONFIANÇA, que o livro está em idioma estrangeiro (não-PT),
+    a partir do título e ISBN. Conservador — só retorna um idioma quando a
+    evidência é forte, para não rebaixar livros PT legítimos. Retorna
+    'EN'/'ES'/'IT'/'FR' ou None.
+
+    Ordem de decisão:
+      1. Marca forte de PT no título (ã, õ, ç, nh, lh, ção) → None (é PT).
+      2. ISBN com prefixo PT (85/65/972) → None (é PT).
+      3. ISBN com prefixo estrangeiro (EN 0/1, ES 84, IT 88) → esse idioma.
+      4. ñ/¿/¡ no título → ES.
+      5. Palavra-função discriminativa do título → idioma correspondente.
+    """
+    t = (titulo or "").lower().strip()
+    if not t:
+        return None
+    if _PT_MARK.search(t):
+        return None
+
+    isbn_lang = detect_lang_by_isbn(isbn)
+    if isbn_lang == "PT":
+        return None
+    if isbn_lang in ("EN", "ES", "IT"):
+        return isbn_lang
+
+    if "ñ" in t or "¿" in t or "¡" in t:
+        return "ES"
+
+    words = set(re.findall(r"[a-zà-ÿ']+", t))
+    for lang, stops in _FOREIGN_STOPWORDS.items():
+        if words & stops:
+            return lang
+    return None
+
+
+def resolve_language(current_lang, isbn, title, target="PT"):
+    """Resolve o idioma do livro. Diferente da versão antiga, NÃO confia cegamente
+    no idioma do seed: se há evidência forte de que o livro é estrangeiro (mal
+    rotulado como `target`), relabela — o QG depois reprova por 'idioma divergente'
+    e a sinopse pula esse livro (que filtra por idioma=target)."""
+    target = (target or "PT").upper()
+
+    foreign = detect_foreign_lang(isbn, title)
+    if foreign and foreign != target:
+        return foreign
+
     if current_lang and current_lang != "UNKNOWN":
         return current_lang.upper()
+
     isbn_lang = detect_lang_by_isbn(isbn)
     if isbn_lang:
         return isbn_lang
-    title_lang = detect_lang_by_title(title)
-    if title_lang:
-        return title_lang
     return "UNKNOWN"
 
 
@@ -221,12 +273,13 @@ def run(idioma="PT", pacote=20):
         conn.close()
         return
 
-    reviewed = 0
-    total    = len(rows)
+    reviewed   = 0
+    relabelado = 0
+    total      = len(rows)
 
     for i, (book_id, titulo, isbn, current_lang) in enumerate(rows, start=1):
 
-        idioma_final = resolve_language(current_lang, isbn, titulo)
+        idioma_final = resolve_language(current_lang, isbn, titulo, target=idioma)
         score        = calculate_editorial_score(titulo, isbn)
         is_book      = classify_editorial(score)
 
@@ -234,8 +287,13 @@ def run(idioma="PT", pacote=20):
 
         reviewed += 1
         tipo = "BOOK" if is_book else "NON-BOOK"
-        log(f"[REVIEW][{i:03d}/{total:03d}] {titulo} → {idioma_final} | {tipo} | score={score}")
+        if idioma_final != idioma:
+            relabelado += 1
+            log(f"[REVIEW][{i:03d}/{total:03d}] ⚠ IDIOMA ESTRANGEIRO: {titulo} → {idioma_final} "
+                f"(saía como {current_lang or '?'}) | será reprovado no QG por idioma divergente")
+        else:
+            log(f"[REVIEW][{i:03d}/{total:03d}] {titulo} → {idioma_final} | {tipo} | score={score}")
 
     conn.close()
 
-    log(f"[REVIEW] Finalizado → {reviewed}")
+    log(f"[REVIEW] Finalizado → {reviewed} revisados | {relabelado} relabelado(s) como idioma estrangeiro (≠ {idioma})")
