@@ -984,7 +984,10 @@ def run(idioma: str, wait_for_reset: bool = True):
         if cycle_done > 0 and not cycle_limit_hit:
             log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
             try:
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
+                # manter_cowork=False: o orquestrador já gera os inputs LLM no
+                # drain; o top-up de cowork aqui só criaria status_synopsis=3 preso
+                # (sem consumidor externo no fluxo automático O/G).
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
@@ -997,7 +1000,10 @@ def run(idioma: str, wait_for_reset: bool = True):
             # foi gerado nesta janela + ataca o backlog não-LLM) ANTES de aguardar.
             log("[LLM_ORCH] Limite de sessão — fallback Autopilot não-LLM (publica + drena backlog não-LLM)…")
             try:
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=True)
+                # manter_cowork=False: evita o churn de cowork (status=3 preso)
+                # observado no log pipeline_2026-06-02 — o drain do orquestrador
+                # gera os inputs; não há consumidor externo no fluxo automático.
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
