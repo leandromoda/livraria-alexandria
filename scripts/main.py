@@ -854,7 +854,9 @@ def _run_gargalo(idioma: str):
     # ── Autopilot A até exaustão (publica downstream) ─────────
     log("[G] Todos os steps de auditoria/manutenção concluídos.")
     log("[G] Iniciando Autopilot A até exaustão…")
-    autopilot.run(idioma, 100, manter_cowork=True)
+    # manter_cowork=False: G já faz a fase LLM via orquestrador; o top-up de
+    # cowork aqui só geraria status=3 preso (sem consumidor externo).
+    autopilot.run(idioma, 100, manter_cowork=False)
 
     # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
     _print_gargalo_report(idioma)
