@@ -56,6 +56,25 @@ Se nenhum arquivo `*_synopsis_input.json` for encontrado (ou todos já tiverem o
 
 Para cada livro no array:
 
+0. **GATE de coerência e idioma (ANTES de gerar)** — verifique e, se reprovar,
+   marque `REJECTED` + adicione à `blacklist`, e **NÃO gere sinopse** (economiza
+   esforço e evita publicar conteúdo errado). Esta é a checagem mais importante:
+
+   a. **Título × descrição** — o `titulo` e a `descricao` descrevem **a mesma
+      obra**? Compare autor, enredo, gênero e personagens. Se a descrição for
+      claramente de **outro livro** (autor diferente, trama incompatível,
+      catálogo/estudo acadêmico sobre o livro em vez do livro em si, ou outra
+      edição/sequência) → `REJECTED` + blacklist `synopsis-title-mismatch`.
+   b. **Idioma da descrição** — a `descricao` está no mesmo idioma do campo
+      `idioma`? Se a descrição estiver em **outro idioma** (ex: idioma=PT mas a
+      descrição está em inglês/espanhol/holandês/francês) → `REJECTED` + blacklist
+      `descricao_idioma_errado`. **NÃO traduza** a descrição para gerar a sinopse.
+   c. **Conteúdo aproveitável** — a `descricao` tem informação real sobre a obra
+      (não é nota de catálogo genérica, lista enciclopédica, gibberish ou < ~15
+      palavras úteis)? Se não → `REJECTED` + blacklist `descricao_insuficiente`.
+
+   Só prossiga para os passos 1-3 se o livro passar no GATE.
+
 1. **Analisar a `descricao`** — extrair apenas fatos explicitamente declarados no texto:
    - Tema central
    - Abordagem ou metodologia
@@ -131,8 +150,14 @@ Se sua sinopse contiver qualquer um desses marcadores, REESCREVA antes de inclui
 
 Enquanto processa cada livro, avalie se há problemas graves que justifiquem despublicação. Adicione ao array `blacklist` no output quando detectar:
 
+- **synopsis-title-mismatch** — `titulo` e `descricao` descrevem obras diferentes
+  (autor/enredo/gênero incompatíveis; descrição de outra edição/sequência; texto
+  de catálogo ou estudo acadêmico *sobre* o livro em vez do livro). **Causa mais
+  comum** — seja rigoroso aqui.
+- **descricao_idioma_errado** — a `descricao` está em idioma diferente do campo `idioma`
+- **descricao_insuficiente** — descrição é nota de catálogo genérica, lista
+  enciclopédica, ou tem informação real insuficiente (< ~15 palavras úteis)
 - **synopsis-incoherent** — `descricao` é texto sem sentido, gibberish, ou completamente incoerente
-- **synopsis-title-mismatch** — `titulo` contradiz a `descricao` de forma clara (ex: título sobre programação, descrição sobre culinária)
 - **synopsis-fabricated** — conteúdo parece fabricado/alucinado (strings aleatórias, Lorem Ipsum, texto repetitivo sem significado)
 
 Regras:

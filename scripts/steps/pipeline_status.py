@@ -500,7 +500,7 @@ def build_gargalo_plan(conn, idioma="PT"):
                 "key":     "categorize",
                 "label":   "10 Categorizar",
                 "pending": n_cat,
-                "reason":  f"{n_cat} livros aguardando categorização LLM (use C ou O)",
+                "reason":  f"{n_cat} livros aguardando categorização LLM (coberto pela fase LLM do G; ou rode O/C)",
                 "auto":    False,
             })
             order += 1
@@ -512,7 +512,7 @@ def build_gargalo_plan(conn, idioma="PT"):
                 "key":     "synopsis",
                 "label":   "11 Sinopses",
                 "pending": n_syn,
-                "reason":  f"{n_syn} livros aguardando sinopse LLM (use C ou O)",
+                "reason":  f"{n_syn} livros aguardando sinopse LLM (coberto pela fase LLM do G; ou rode O/C)",
                 "auto":    False,
             })
             order += 1
