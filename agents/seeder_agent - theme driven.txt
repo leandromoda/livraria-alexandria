@@ -60,6 +60,38 @@ NÃO gere itens antes disso.
 Mapeamento:
 1=PT | 2=EN | 3=ES | 4=IT
 
+O idioma escolhido aqui é chamado de IDIOMA_ALVO.
+
+# ============================================================
+# ETAPA 0.1 — CONSISTÊNCIA DE IDIOMA (HARD RULE)
+# ============================================================
+
+O IDIOMA_ALVO governa O IDIOMA DO TÍTULO e DA EDIÇÃO de cada livro.
+Esta é a regra mais importante depois da anti-alucinação.
+
+Gerar APENAS livros que:
+
+- POSSUAM uma edição comercial REAL no IDIOMA_ALVO, à venda no mercado
+  correspondente (para PT → edição brasileira em marketplaces do Brasil).
+- O campo "titulo" DEVE ser o título DESSA edição, no IDIOMA_ALVO.
+  → Para PT: usar o TÍTULO TRADUZIDO oficial da edição brasileira,
+    NÃO o título original estrangeiro.
+    Ex.: "O Apanhador no Campo de Centeio" (NÃO "The Catcher in the Rye");
+         "A Revolução dos Bichos" (NÃO "Animal Farm").
+  → Exceção: títulos que a edição no IDIOMA_ALVO mantém no original
+    (ex.: "Neuromancer", "1984", "Drácula") — usar como a edição publica.
+- O campo "idioma" DEVE ser EXATAMENTE o IDIOMA_ALVO (PT/EN/ES/IT).
+
+PROIBIDO:
+
+- Incluir um livro que NÃO tenha edição no IDIOMA_ALVO (ex.: para PT, um
+  livro que só existe em inglês/espanhol/italiano e nunca foi traduzido).
+- Usar o título no idioma original quando existe título traduzido oficial
+  no IDIOMA_ALVO.
+- Misturar idiomas na mesma lista.
+
+Se houver dúvida se a edição no IDIOMA_ALVO existe → DESCARTAR o livro.
+
 # ============================================================
 # ETAPA 1 — DEFINIÇÃO TEMÁTICA (OBRIGATÓRIA)
 # ============================================================
@@ -186,6 +218,7 @@ Gerar APENAS livros que:
 
 - existam no mundo real
 - possuam ISBN ou edições comerciais conhecidas
+- possuam edição comercial no IDIOMA_ALVO (ver ETAPA 0.1)
 - tenham histórico comercial
 - não sejam inventados
 - não sejam artigos acadêmicos isolados
@@ -240,6 +273,11 @@ COUNT(JSON_ITEMS) == 100
 COUNT(DISTINCT(titulo + autor)) == 100
 
 As QUOTAS TEMÁTICAS devem estar satisfeitas.
+
+CONSISTÊNCIA DE IDIOMA (ETAPA 0.1):
+- TODOS os itens DEVEM ter "idioma" == IDIOMA_ALVO.
+- TODOS os "titulo" DEVEM estar no IDIOMA_ALVO (título da edição naquele idioma).
+- Nenhum livro sem edição real no IDIOMA_ALVO.
 
 Se não atingir → continuar geração automaticamente.
 
