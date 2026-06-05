@@ -55,23 +55,8 @@ ISBN_PREFIX_LANG = {
     ("0", "1"): "EN",
 }
 
-# Marcas FORTES de português no título — se presentes, o livro é PT e NUNCA é
-# relabelado como estrangeiro (protege traduções PT com ISBN/forma estrangeira).
+# Marcas FORTES de português no título → o livro é PT (protege traduções).
 _PT_MARK = re.compile(r"[ãõ]|ç|nh|lh|ção|ções")
-
-# Palavras-função DISCRIMINATIVAS por idioma — escolhidas para NÃO existirem em
-# português (evita falso-positivo: "A Cabana" não vira EN por causa do "a").
-# Comparação por palavra inteira (set de tokens do título).
-_FOREIGN_STOPWORDS = {
-    "EN": {"the", "of", "and", "with", "from", "how", "why", "an", "is", "are",
-           "were", "your", "our", "you", "this", "that", "what", "when", "where",
-           "which", "into", "about", "through", "against", "between"},
-    "ES": {"el", "los", "las", "del", "cómo", "qué", "muy", "y", "hacia"},
-    "IT": {"gli", "della", "dei", "degli", "delle", "perché", "anche", "sono",
-           "molto", "questo", "nella"},
-    "FR": {"les", "des", "une", "comment", "pourquoi", "dans", "avec", "cette",
-           "cet", "nous", "vous"},
-}
 
 
 def detect_lang_by_isbn(isbn):
@@ -92,17 +77,21 @@ def detect_lang_by_isbn(isbn):
 
 
 def detect_foreign_lang(isbn, titulo):
-    """Detecta, com CONFIANÇA, que o livro está em idioma estrangeiro (não-PT),
-    a partir do título e ISBN. Conservador — só retorna um idioma quando a
-    evidência é forte, para não rebaixar livros PT legítimos. Retorna
-    'EN'/'ES'/'IT'/'FR' ou None.
+    """Detecta, com CONFIANÇA, que o livro é de IDIOMA ESTRANGEIRO (≠ PT), usando
+    o sinal CONFIÁVEL de EDIÇÃO (ISBN) — NÃO o título.
+
+    IMPORTANTE: título em inglês ≠ livro em inglês. Editoras brasileiras mantêm
+    títulos originais (ex.: "Mindset", "Sapiens"). Por isso NÃO relabelamos por
+    palavras do título — isso derrubava livros PT de título inglês sem ISBN BR.
+    O idioma do CONTEÚDO (descrição) é checado depois, no GATE do synopsis_cowork
+    (descrição em idioma errado → rejeita). Aqui só usamos a edição (ISBN).
 
     Ordem de decisão:
       1. Marca forte de PT no título (ã, õ, ç, nh, lh, ção) → None (é PT).
       2. ISBN com prefixo PT (85/65/972) → None (é PT).
       3. ISBN com prefixo estrangeiro (EN 0/1, ES 84, IT 88) → esse idioma.
-      4. ñ/¿/¡ no título → ES.
-      5. Palavra-função discriminativa do título → idioma correspondente.
+      4. ñ/¿/¡ no título → ES (caracteres exclusivos do espanhol; sem risco em PT).
+      5. Caso contrário → None (não relabela por título; deixa para o GATE/descrição).
     """
     t = (titulo or "").lower().strip()
     if not t:
@@ -119,10 +108,6 @@ def detect_foreign_lang(isbn, titulo):
     if "ñ" in t or "¿" in t or "¡" in t:
         return "ES"
 
-    words = set(re.findall(r"[a-zà-ÿ']+", t))
-    for lang, stops in _FOREIGN_STOPWORDS.items():
-        if words & stops:
-            return lang
     return None
 
 
