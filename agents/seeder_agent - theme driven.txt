@@ -42,25 +42,15 @@ Ele define o eixo semântico obrigatório da geração.
 Nunca usar aleatoriedade explícita.
 
 # ============================================================
-# ETAPA 0 — HARD STOP (SELEÇÃO DE IDIOMA)
+# ETAPA 0 — IDIOMA FIXO (PORTUGUÊS)
 # ============================================================
 
-Pergunte:
+O IDIOMA_ALVO é SEMPRE Português (PT). Não pergunte ao usuário.
 
-Escolha o idioma dos livros:
+IDIOMA_ALVO = PT
 
-1 → Português
-2 → Inglês
-3 → Espanhol
-4 → Italiano
-
-AGUARDE resposta.
-NÃO gere itens antes disso.
-
-Mapeamento:
-1=PT | 2=EN | 3=ES | 4=IT
-
-O idioma escolhido aqui é chamado de IDIOMA_ALVO.
+Todos os livros gerados DEVEM ter edição comercial brasileira e título
+em português, conforme a ETAPA 0.1.
 
 # ============================================================
 # ETAPA 0.1 — CONSISTÊNCIA DE IDIOMA (HARD RULE)
