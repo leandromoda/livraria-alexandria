@@ -425,10 +425,10 @@
         "type": "claude_cowork",
         "prompt_path": "agents/synopsis_cowork/prompt.md",
         "structure": "single prompt.md (não usa split identity/rules/task)",
-        "input": "scripts/data/synopsis_input.json (gerado pelo step 31)",
-        "output": "scripts/data/synopsis_output.json (consumido pelo step 32)",
+        "input": "scripts/data/cowork/NNN_synopsis_input.json (gerado pelo step 31)",
+        "output": "scripts/data/cowork/NNN_synopsis_output.json (consumido pelo step 32)",
         "batch_size_recommended": 25,
-        "invocation": "Leia agents/synopsis_cowork/prompt.md e aplique sobre scripts/data/synopsis_input.json. Salve em scripts/data/synopsis_output.json.",
+        "invocation": "Leia agents/synopsis_cowork/prompt.md — o agente descobre o input via Glob em scripts/data/cowork/.",
         "created_on": "2026-04-04"
       },
       {
@@ -436,11 +436,11 @@
         "type": "claude_cowork",
         "prompt_path": "agents/classify_cowork/prompt.md",
         "structure": "single prompt.md (não usa split identity/rules/task)",
-        "input": "scripts/data/categorize_input.json (gerado pelo step 33)",
-        "output": "scripts/data/categorize_output.json (consumido pelo step 34)",
-        "batch_size_recommended": 50,
-        "taxonomy": "scripts/data/taxonomy.json (171 categorias, 23 grupos — embedada no prompt)",
-        "invocation": "Leia agents/classify_cowork/prompt.md e aplique sobre scripts/data/categorize_input.json. Salve em scripts/data/categorize_output.json.",
+        "input": "scripts/data/cowork/NNN_categorize_input.json (gerado pelo step 33)",
+        "output": "scripts/data/cowork/NNN_categorize_output.json (consumido pelo step 34)",
+        "batch_size_recommended": 25,
+        "taxonomy": "scripts/data/taxonomy.json (lida de arquivo pelo agente — não embedada no prompt)",
+        "invocation": "Leia agents/classify_cowork/prompt.md — o agente descobre o input via Glob em scripts/data/cowork/.",
         "created_on": "2026-04-04"
       },
       {
@@ -449,22 +449,23 @@
         "prompt_path": "agents/cowork_autopilot/prompt.md",
         "structure": "single prompt.md — agente unificado (sinopse + categorização + blacklist)",
         "inputs": [
-          "scripts/data/synopsis_input.json",
-          "scripts/data/categorize_input.json"
+          "scripts/data/cowork/NNN_synopsis_input.json",
+          "scripts/data/cowork/NNN_categorize_input.json"
         ],
         "outputs": [
-          "scripts/data/synopsis_output.json",
-          "scripts/data/categorize_output.json",
+          "scripts/data/cowork/NNN_synopsis_output.json",
+          "scripts/data/cowork/NNN_categorize_output.json",
           "scripts/data/blacklist.json"
         ],
-        "auto_generates_inputs": true,
-        "auto_imports_results": true,
-        "auto_applies_blacklist": true,
+        "auto_generates_inputs": false,
+        "auto_imports_results": false,
+        "auto_applies_blacklist": false,
+        "note": "O agente apenas gera o output — export e import são responsabilidade do .bat ou do menu C.",
         "batch_sizes": {
           "synopsis": 25,
-          "categorize": 50
+          "categorize": 25
         },
-        "schedule": "pendente — */30 * * * * (a cada 30 min, via Claude Code /schedule)",
+        "schedule": "scripts/cowork_autopilot.bat agendado via Windows Task Scheduler (setup_autopilot_schedule.bat). Regra: só exporta quando scripts/data/cowork/ não tem inputs pendentes — evita acúmulo de status_synopsis=3 preso.",
         "invocation": "Leia agents/cowork_autopilot/prompt.md e execute as instruções.",
         "created_on": "2026-04-04"
       },
@@ -496,7 +497,7 @@
       "adaptive_batching": "STEP_PACOTES no autopilot: scraper→20, resolver→50, capas→50; demais usam base 100 (fixo, sem prompt)",
       "failure_triggers": "autopilot rastreia steps sem progresso; após 3x consecutivas sem resultado loga [⚠️ TRIGGER]",
       "audit_autopilot": "autopilot_audit.py executa 8 checks sem LLM; chamado automaticamente ao exaurir pipeline",
-      "cowork_autopilot": "autopilot.run() aceita manter_cowork=True + cowork_target=N (padrão 10). Quando ativo: top-up de lotes Cowork no início da execução e ao final de cada ciclo — exporta apenas a diferença (target - lotes_atuais). Menu A pergunta 'Manter lotes Cowork?' antes de iniciar.",
+      "cowork_autopilot": "autopilot.run() aceita manter_cowork=True + cowork_target=N (padrão 10). Quando ativo: _topup_cowork() exporta lotes SOMENTE quando a fila está vazia (0 inputs pendentes em data/cowork/) — evita acúmulo de status=3 preso. Menu A pergunta 'Manter lotes Cowork?' antes de iniciar. Fluxos automáticos O/G usam manter_cowork=False. O cowork_autopilot.bat (Task Scheduler) aplica a mesma regra de fila-vazia antes de exportar.",
       "startup_status": "pipeline_status.run() exibido automaticamente ao abrir main.py (antes do while loop). Prompt de startup aceita opção diretamente (ex: G, A, S) sem precisar exibir menu.",
       "option_G": "Opção G — Atacar Gargalos: (1) build_gargalo_plan() analisa audits stale + blacklist pendente + top-6 gargalos pipeline + gargalos LLM; salva scripts/data/gargalo_plan.json; (2) executa steps auto-executáveis (audit_connectivity, autopilot_audit, audit_list, audit_author_bios, consistency_check, apply_blacklist); (3) finaliza sempre com autopilot.run() até exaustão.",
       "status_tracking": "pipeline_status.py rastreia última execução via pipeline_runs (22 steps, variantes autopilot+manual) + mtime arquivos data/logs/ para steps sem StepRun. Seções: ÚLTIMA EXECUÇÃO DOS STEPS, AUDITORIA (staleness configurable por step), LLM PROCESSAMENTO DE OUTPUTS."
@@ -903,7 +904,7 @@
         "order": 31,
         "name": "Synopsis Export (Cowork)",
         "status": "operational",
-        "description": "Exporta livros pendentes de sinopse em lotes de até 25 para scripts/data/NNN_synopsis_input.json (numeração zero-padded sequencial). Consumido pelo agente Claude Cowork (agents/synopsis_cowork/prompt.md). Cria processed_synopsis/ se não existir.",
+        "description": "Exporta livros pendentes de sinopse em lotes de até 25 para scripts/data/cowork/NNN_synopsis_input.json (numeração zero-padded sequencial). Consumido pelo agente Claude Cowork (agents/synopsis_cowork/prompt.md). Cria data/cowork/processed_synopsis/ se não existir.",
         "script": "scripts/steps/synopsis_export.py",
         "menu_option": 31,
         "llm_required": false,
@@ -918,7 +919,7 @@
         "order": 32,
         "name": "Synopsis Import (Cowork)",
         "status": "operational",
-        "description": "Escaneia todos scripts/data/NNN_synopsis_output.json, processa cada um em ordem crescente e move para processed_synopsis/ após importar. Valida com check_synopsis_generic + comprimento + artefatos meta. Suporta múltiplos lotes em uma única execução.",
+        "description": "Escaneia todos scripts/data/cowork/NNN_synopsis_output.json, processa cada um em ordem crescente e move para data/cowork/processed_synopsis/ após importar. Valida com check_synopsis_generic + comprimento + artefatos meta. Suporta múltiplos lotes em uma única execução.",
         "script": "scripts/steps/synopsis_import.py",
         "menu_option": 32,
         "llm_required": false,
@@ -933,13 +934,13 @@
         "order": 33,
         "name": "Categorize Export (Cowork)",
         "status": "operational",
-        "description": "Exporta livros pendentes de categorização em lotes de até 25 para scripts/data/NNN_classify_input.json (numeração zero-padded sequencial). Consumido pelo agente Claude Cowork (agents/classify_cowork/prompt.md). Cria processed_classify/ se não existir.",
+        "description": "Exporta livros pendentes de categorização em lotes de até 25 para scripts/data/cowork/NNN_categorize_input.json (numeração zero-padded sequencial). Consumido pelo agente Claude Cowork (agents/classify_cowork/prompt.md). Cria data/cowork/processed_categorize/ se não existir.",
         "script": "scripts/steps/categorize_export.py",
         "menu_option": 33,
         "llm_required": false,
         "idioma_aware": false,
         "batch_size": 25,
-        "output_pattern": "NNN_classify_input.json",
+        "output_pattern": "NNN_categorize_input.json",
         "numbering_util": "scripts/core/cowork_numbering.py",
         "created_on": "2026-04-04",
         "updated_on": "2026-04-09"
@@ -948,14 +949,14 @@
         "order": 34,
         "name": "Categorize Import (Cowork)",
         "status": "operational",
-        "description": "Escaneia todos scripts/data/NNN_classify_output.json, processa cada um em ordem crescente e move para processed_classify/ após importar. Valida slugs contra taxonomy.json, computa confidence/primary_cat no Python. Suporta múltiplos lotes em uma única execução.",
+        "description": "Escaneia todos scripts/data/cowork/NNN_categorize_output.json, processa cada um em ordem crescente e move para data/cowork/processed_categorize/ após importar. Valida slugs contra taxonomy.json, computa confidence/primary_cat no Python. Suporta múltiplos lotes em uma única execução.",
         "script": "scripts/steps/categorize_import.py",
         "menu_option": 34,
         "llm_required": false,
         "idioma_aware": false,
         "idempotent": true,
-        "input_pattern": "NNN_classify_output.json",
-        "archive_dir": "scripts/data/processed_classify/",
+        "input_pattern": "NNN_categorize_output.json",
+        "archive_dir": "scripts/data/cowork/processed_categorize/",
         "created_on": "2026-04-04",
         "updated_on": "2026-04-09"
       },
@@ -1614,6 +1615,19 @@
         "scripts/steps/publish_categorias.py"
       ],
       "note": "A coluna status_publish é referenciada no sitemap.ts (`.eq('status_publish', true)`) — evidência de que existe na tabela remota. Caso não exista, criar via migration antes de rodar step 16."
+    },
+    {
+      "id": "TASK-COWORK-003",
+      "description": "fix: cowork_autopilot.bat exportava lotes de forma descontrolada — guard quebrado + paths stale pós-TASK-COWORK-001",
+      "priority": "high",
+      "status": "resolved",
+      "resolved_on": "2026-06-06",
+      "resolution": "Três bugs encadeados: (1) .bat exportava synopsis+categorize incondicionalmente a cada ciclo do Task Scheduler; (2) guard de 'nada pendente' checava data\\synopsis_input.json (path pré-COWORK-001) — nunca disparava; (3) agents/cowork_autopilot/prompt.md listava scripts/data/* em vez de scripts/data/cowork/* → agente nunca achava inputs → fila acumulava ilimitadamente (20 lotes presos com 10+10 inputs em 2026-06-06). Fix: .bat reescrito com guard Python que verifica data/cowork/*_synopsis_input.json e *_categorize_input.json — só exporta quando fila VAZIA; encerra cedo se nada a processar. Prompt cowork_autopilot atualizado: seleção de modo, paths de output e processed_* agora apontam para data/cowork/. Também corrigido: classify_input → categorize_input (nome real do arquivo). Compatível com decisão qualidade_e_cowork_2026-06-04 (mesma regra de fila-vazia do _topup_cowork). project_state.json: references stale em synopsis_cowork/classify_cowork/cowork_autopilot agents + steps 31-34 corrigidas.",
+      "files": [
+        "scripts/cowork_autopilot.bat",
+        "agents/cowork_autopilot/prompt.md",
+        "state/project_state.json"
+      ]
     },
     {
       "id": "TASK-COWORK-002",
