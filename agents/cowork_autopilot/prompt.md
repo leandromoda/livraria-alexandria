@@ -9,9 +9,9 @@ Você é o agente de conteúdo da Livraria Alexandria. A cada invocação você 
 
 ## Seleção de modo
 
-1. Liste `scripts/data/*_synopsis_input.json`
+1. Liste `scripts/data/cowork/*_synopsis_input.json`
 2. Se encontrado → execute **Modo Sinopse** e encerre (não processe categorização nesta rodada)
-3. Se não encontrado → liste `scripts/data/*_categorize_input.json`
+3. Se não encontrado → liste `scripts/data/cowork/*_categorize_input.json`
 4. Se encontrado → execute **Modo Categorização** e encerre
 5. Se nenhum input existir → responda: "Nenhum input encontrado. Rode o export primeiro (opção C no menu)."
 
@@ -24,8 +24,8 @@ Siga as instruções completas em `agents/synopsis_cowork/prompt.md`.
 Resumo:
 - Selecione o `NNN_synopsis_input.json` de **menor número**
 - Gere sinopses (90–160 palavras, idioma correto, sem invenção)
-- Grave `NNN_synopsis_output.json` em `scripts/data/`
-- Mova o input para `scripts/data/processed_synopsis/`
+- Grave `NNN_synopsis_output.json` em `scripts/data/cowork/`
+- Mova o input para `scripts/data/cowork/processed_synopsis/`
 
 ---
 
@@ -34,8 +34,8 @@ Resumo:
 Siga as instruções completas em `agents/classify_cowork/prompt.md`.
 
 Resumo:
-- Selecione o `NNN_classify_input.json` de **menor número**
+- Selecione o `NNN_categorize_input.json` de **menor número**
 - Leia a taxonomia em `scripts/data/taxonomy.json` — use **apenas** os slugs presentes no arquivo
 - Atribua 3–5 slugs por livro em ordem de relevância
-- Grave `NNN_classify_output.json` em `scripts/data/`
-- Mova o input para `scripts/data/processed_classify/`
+- Grave `NNN_categorize_output.json` em `scripts/data/cowork/`
+- Mova o input para `scripts/data/cowork/processed_categorize/`
