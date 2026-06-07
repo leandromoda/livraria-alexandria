@@ -78,7 +78,11 @@ def fetch_candidates(conn, idioma, limit, book_ids=None):
             WHERE status_publish = 0
               AND idioma = ?
               AND NOT (is_book = 0 AND editorial_score < 0)
+              AND COALESCE(qa_quarantine, 0) = 0
               AND id IN ({placeholders})
+            ORDER BY (status_synopsis = 1)      DESC,
+                     (status_cover IN (1, 2))   DESC,
+                     (status_slug = 1)          DESC
             LIMIT ?
         """, (idioma, *book_ids, limit))
     else:
@@ -99,6 +103,10 @@ def fetch_candidates(conn, idioma, limit, book_ids=None):
             WHERE status_publish = 0
               AND idioma = ?
               AND NOT (is_book = 0 AND editorial_score < 0)
+              AND COALESCE(qa_quarantine, 0) = 0
+            ORDER BY (status_synopsis = 1)      DESC,
+                     (status_cover IN (1, 2))   DESC,
+                     (status_slug = 1)          DESC
             LIMIT ?
         """, (idioma, limit))
 

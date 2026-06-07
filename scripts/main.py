@@ -730,52 +730,74 @@ def _run_gargalo(idioma: str):
 
     # ── Exibe o plano ─────────────────────────────────────────
     sep = "─" * 62
-    TYPE_LABEL = {
-        "audit":       "AUDITORIA  ",
-        "audit_llm":   "AUDIT-LLM  ",
-        "maintenance": "MANUTENÇÃO ",
-        "pipeline":    "PIPELINE   ",
-        "llm":         "LLM ⚠      ",
-        "autopilot":   "AUTOPILOT  ",
-    }
-    TYPE_ICON = {
-        "audit":       "→",
-        "audit_llm":   "!",
-        "maintenance": "→",
-        "pipeline":    "→",
-        "llm":         "!",
-        "autopilot":   "→",
-    }
 
     print()
     print("=" * 62)
-    print("  PLANO DE ATAQUE A GARGALOS")
+    print("  PLANO DE ATAQUE — ORDEM REAL DE EXECUÇÃO")
     print("=" * 62)
 
-    auto_steps  = []  # executáveis automaticamente (exceto autopilot)
-    info_steps  = []  # apenas informativos (LLM, audit_llm)
+    # A execução do G é uma sequência fixa por FASES (LLM → QA → auditorias →
+    # Autopilot A), NÃO a ordem 'order' do plano. O display abaixo espelha o que
+    # realmente roda. Classificamos os steps do plano nesses grupos:
+    auto_steps     = []    # auditorias/consistência auto-executáveis (fase 3)
+    pipeline_steps = []    # gargalos não-LLM — cobertos pelo Autopilot A (fase 4)
+    info_steps     = []    # manuais / LLM informativos (NÃO auto)
+    blacklist_pend = None  # entrada de blacklist — coberta pela fase QA (não duplicar)
 
     for s in plan["steps"]:
-        t    = s["type"]
-        icon = TYPE_ICON.get(t, "·")
-        tlbl = TYPE_LABEL.get(t, t.upper().ljust(11))
-        pend = f"  ({s['pending']:,} pendentes)" if s.get("pending") else ""
-        nota = "" if s.get("auto") else "  [manual]"
-
-        print(f"\n  {s['order']:>2}. [{tlbl}] {s['label']}")
-        print(f"      {icon}  {s['reason']}{pend}{nota}")
-
-        if s.get("auto") and t not in ("autopilot", "pipeline"):
-            auto_steps.append(s)
-        elif not s.get("auto"):
+        t = s["type"]
+        if t == "autopilot":
+            continue                       # fase final fixa, exibida abaixo
+        if not s.get("auto"):
             info_steps.append(s)
+        elif t == "pipeline":
+            pipeline_steps.append(s)
+        elif s.get("key") == "apply_blacklist":
+            blacklist_pend = s             # a fase QA já aplica a blacklist
+        else:
+            auto_steps.append(s)
+
+    def _pend(s):
+        return f"  ({s['pending']:,} pendentes)" if s.get("pending") else ""
+
+    n = 0
+    # Fase 1 — geração LLM (condicional)
+    n += 1
+    print(f"\n  {n}. [LLM ⚠     ] Fase de geração LLM (sinopses/categorias)")
+    print(f"      !  Condicional: só se o claude CLI existir e você confirmar — consome a sessão PRO")
+
+    # Fase 2 — QA / remediação (sempre)
+    n += 1
+    bl_txt = (f" ({blacklist_pend['pending']:,} entradas)"
+              if blacklist_pend and blacklist_pend.get("pending") else "")
+    print(f"\n  {n}. [QA        ] Remediação não-LLM: aplica blacklist{bl_txt} + reprocessa recuperáveis")
+
+    # Fase 3 — auditorias auto-executáveis
+    for s in auto_steps:
+        n += 1
+        print(f"\n  {n}. [AUDITORIA ] {s['label']}")
+        print(f"      →  {s['reason']}{_pend(s)}")
+
+    # Fase 4 — Autopilot A (cobre os gargalos de pipeline)
+    n += 1
+    print(f"\n  {n}. [AUTOPILOT ] Autopilot A — drena todos os steps não-LLM até exaurir")
+    if pipeline_steps:
+        print(f"      →  cobre os gargalos de pipeline:")
+        for s in pipeline_steps:
+            print(f"           • {s['label']}{_pend(s)}")
+
+    # Manuais / LLM — NÃO executados automaticamente pelo G
+    if info_steps:
+        print(f"\n  {sep}")
+        print(f"  NÃO executados automaticamente (rode manualmente):")
+        for s in info_steps:
+            print(f"      · [{s['type']}] {s['label']}{_pend(s)} — {s['reason']}")
 
     print()
     print(f"  {sep}")
     print(f"  Plano salvo em: scripts/data/gargalo_plan.json")
-    print(f"  Steps a executar agora: {len(auto_steps)} + Autopilot A")
-    if info_steps:
-        print(f"  Steps manuais/LLM (não auto): {len(info_steps)}")
+    print(f"  Fases automáticas: LLM (opcional) → QA → "
+          f"{len(auto_steps)} auditoria(s) → Autopilot A")
     print()
 
     confirma = input_safe("Executar plano agora? [S/n]: ").strip().lower()
