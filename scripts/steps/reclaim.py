@@ -44,9 +44,21 @@ _INPUT_KINDS = [
 
 def _has_pending() -> bool:
     """True se há qualquer artefato/estado preso a tratar."""
-    for kind, _ in _INPUT_KINDS:
+    for kind, processed in _INPUT_KINDS:
         if glob.glob(str(COWORK_DIR / f"*_{kind}_input.json")):
             return True
+        # Inputs em processed_*/ sem output correspondente são stale:
+        # bloqueiam is_queue_busy() mesmo após reclaim resetar o banco.
+        proc_dir = COWORK_DIR / processed
+        if proc_dir.exists():
+            for inp in proc_dir.glob(f"*_{kind}_input.json"):
+                nnn = inp.name.split("_")[0]
+                has_out = (
+                    (proc_dir / f"{nnn}_{kind}_output.json").exists()
+                    or (COWORK_DIR / f"{nnn}_{kind}_output.json").exists()
+                )
+                if not has_out:
+                    return True
     for kind, _, _ in _RECOVERABLE:
         if glob.glob(str(COWORK_DIR / f"*_{kind}_output.json")):
             return True
@@ -85,6 +97,48 @@ def _reset_stuck(conn) -> dict:
         counts[col] = n
     conn.commit()
     return counts
+
+
+def _archive_stale_processed_inputs() -> int:
+    """Arquiva inputs em processed_*/ sem output correspondente → processed_*/reclaimed/.
+
+    Cenário: agente interrompido APÓS mover input para processed_*/ mas ANTES
+    de gerar output. reclaim reseta status=3→0 no banco mas não move o input
+    de processed_*/. Em seguida, is_queue_busy() vê esse input como "em voo"
+    e bloqueia toda exportação indefinidamente.
+
+    Segurança: só arquiva inputs SEM output matching (em processed_*/ ou na
+    raiz de cowork/). Inputs com output correspondente não são tocados — o
+    agente concluiu e o import ainda não rodou.
+    """
+    moved = 0
+    for kind, processed in _INPUT_KINDS:
+        proc_dir = COWORK_DIR / processed
+        if not proc_dir.exists():
+            continue
+        # Filhos diretos de processed_*/ (glob pathlib não é recursivo aqui)
+        inputs = list(proc_dir.glob(f"*_{kind}_input.json"))
+        if not inputs:
+            continue
+        # NNNs com output correspondente — não tocar
+        done_nums: set[str] = set()
+        for p in proc_dir.glob(f"*_{kind}_output.json"):
+            done_nums.add(p.name.split("_")[0])
+        for p in COWORK_DIR.glob(f"*_{kind}_output.json"):
+            done_nums.add(p.name.split("_")[0])
+        reclaimed_dir = proc_dir / "reclaimed"
+        for inp_path in inputs:
+            nnn = inp_path.name.split("_")[0]
+            if nnn in done_nums:
+                continue  # tem output — agente concluiu, não arquivar
+            os.makedirs(reclaimed_dir, exist_ok=True)
+            dest = reclaimed_dir / inp_path.name
+            if dest.exists():
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                dest = reclaimed_dir / f"{inp_path.stem}__{stamp}{inp_path.suffix}"
+            shutil.move(str(inp_path), str(dest))
+            moved += 1
+    return moved
 
 
 def _archive_orphan_inputs() -> int:
@@ -133,7 +187,9 @@ def run() -> dict:
     finally:
         conn.close()
 
-    archived = _archive_orphan_inputs()
+    archived_root = _archive_orphan_inputs()
+    archived_stale = _archive_stale_processed_inputs()
+    archived = archived_root + archived_stale
     total_reset = sum(reset_counts.values())
 
     log(
