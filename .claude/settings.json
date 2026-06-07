@@ -6,6 +6,8 @@
       "Read(scripts/data/cowork/*.json)",
       "Read(scripts/data/taxonomy.json)",
       "Read(scripts/data/logs/*.log)",
+      "Read(scripts/data/logs/*.json)",
+      "Read(agents/audit_cowork/prompt.md)",
       "Glob(scripts/data/seeds/**)",
       "Glob(scripts/data/seeds/ingested_seeds/**)",
       "Glob(scripts/data/cowork/**)",
