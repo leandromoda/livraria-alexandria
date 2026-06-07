@@ -88,13 +88,22 @@ def _reset_stuck(conn) -> dict:
 
 
 def _archive_orphan_inputs() -> int:
-    """Move *_input.json órfãos para processed_*/ (consumidos / sem uso futuro)."""
+    """Move *_input.json órfãos para processed_*/reclaimed/ (nunca processados pelo agente).
+
+    Usa subdiretório `reclaimed/` em vez de `processed_*/` diretamente para
+    distinguir lotes abandonados de lotes em voo (agent move input para
+    processed_*/ ENQUANTO processa; reclaim move para processed_*/reclaimed/
+    APÓS desistir). O guard de fila (cowork_guard.py) só verifica filhos
+    diretos de processed_*/, então reclaimed/ não gera falso positivo de
+    "lote em voo". cowork_numbering.py inclui reclaimed/ no scan de números
+    para evitar reutilização de NNNs.
+    """
     moved = 0
     for kind, processed in _INPUT_KINDS:
         orphans = glob.glob(str(COWORK_DIR / f"*_{kind}_input.json"))
         if not orphans:
             continue
-        dest_dir = COWORK_DIR / processed
+        dest_dir = COWORK_DIR / processed / "reclaimed"
         os.makedirs(dest_dir, exist_ok=True)
         for path in orphans:
             dest = dest_dir / os.path.basename(path)

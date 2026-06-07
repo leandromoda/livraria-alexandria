@@ -83,20 +83,31 @@ def _has_cowork_outputs() -> bool:
 
 
 def _topup_cowork(idioma: str, target: int = 10):
-    """Exporta lotes de Cowork SOMENTE quando a fila está vazia.
+    """Exporta lotes de Cowork SOMENTE quando a fila está completamente ociosa.
 
-    Antes fazia top-up até `target` (5 na fila → exportava +5). Como no fluxo
-    automático não há consumidor externo (o agente Cowork manual), os lotes
-    exportados acumulavam como status_synopsis=3 preso e o reclaim os recuperava
-    no run seguinte (churn — visto no log pipeline_2026-06-02).
+    Usa cowork_guard.is_queue_busy() — mesmo guard do cowork_autopilot.bat —
+    que cobre três casos de "fila ocupada":
+      1. Inputs não processados em data/cowork/ (aguardando o agente)
+      2. Outputs aguardando import em data/cowork/
+      3. Lotes em voo: input movido pelo agente para processed_*/ mas output
+         ainda não gerado.
 
-    Agora: se houver QUALQUER input pendente na fila, NÃO exporta nada; só repõe
-    o buffer quando a fila zera (drenada/arquivada)."""
-    atual = _count_input_batches()
-    if atual > 0:
-        log(f"[AUTOPILOT][COWORK] {atual} lote(s) ainda na fila — não exporta (evita acúmulo de lotes não processados).")
+    Inputs arquivados pelo reclaim (em processed_*/reclaimed/) NÃO ativam o
+    guard — o reclaim usa subdir dedicado justamente para evitar falso positivo
+    de "lote em voo" neste check."""
+    try:
+        from cowork_guard import is_queue_busy
+        busy, reason = is_queue_busy()
+    except ImportError:
+        # Fallback defensivo — usa contagem básica se cowork_guard indisponível
+        busy   = _count_input_batches() > 0
+        reason = f"{_count_input_batches()} lote(s) na fila"
+
+    if busy:
+        log(f"[AUTOPILOT][COWORK] Fila ocupada ({reason}) — não exporta.")
         return
-    log(f"[AUTOPILOT][COWORK] Fila vazia — exportando {target} lote(s).")
+
+    log(f"[AUTOPILOT][COWORK] Fila ociosa — exportando {target} lote(s).")
     exportados = 0
     for i in range(target):
         try:
