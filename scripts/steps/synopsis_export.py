@@ -46,6 +46,7 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
             WHERE status_synopsis = 0
               AND status_review   = 1
               AND is_book         = 1
+              AND COALESCE(qa_quarantine, 0) = 0
               AND id IN ({placeholders})
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
@@ -57,6 +58,7 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
             WHERE status_synopsis = 0
               AND status_review   = 1
               AND is_book         = 1
+              AND COALESCE(qa_quarantine, 0) = 0
               AND idioma          = ?
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
