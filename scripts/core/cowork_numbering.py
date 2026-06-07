@@ -24,12 +24,18 @@ def next_batch_number(data_dir: str, prefix: str) -> str:
     Varrer as duas pastas é crítico para evitar reutilizar números de
     lotes já arquivados.
     """
-    processed_dir = os.path.join(data_dir, f"processed_{prefix}")
+    processed_dir  = os.path.join(data_dir, f"processed_{prefix}")
+    reclaimed_dir  = os.path.join(processed_dir, "reclaimed")
     patterns = [
         os.path.join(data_dir,      f"*_{prefix}_input.json"),
         os.path.join(data_dir,      f"*_{prefix}_output.json"),
         os.path.join(processed_dir, f"*_{prefix}_input.json"),
         os.path.join(processed_dir, f"*_{prefix}_output.json"),
+        # Lotes arquivados pelo reclaim ficam em reclaimed/ para não
+        # interferir na detecção de lotes em voo — mas os números devem
+        # ser respeitados para evitar reutilização de NNNs.
+        os.path.join(reclaimed_dir, f"*_{prefix}_input.json"),
+        os.path.join(reclaimed_dir, f"*_{prefix}_output.json"),
     ]
     max_num = 0
     for pattern in patterns:
