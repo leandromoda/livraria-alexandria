@@ -1008,10 +1008,20 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
 # ---------------------------------------------------------------------------
 
 def _next_sequence(log_dir: Path) -> int:
-    existing = sorted(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
-    if not existing:
+    """Retorna o próximo número de sequência, varrendo logs/ E processed_logs/.
+
+    Incluir processed_logs/ evita reutilizar NNNNs de relatórios já arquivados:
+    após todos os relatórios serem processados, logs/ fica vazia e sem este
+    check o próximo relatório começaria em 0001 de novo, sobrescrevendo o
+    arquivo homônimo em processed_logs/ ao ser arquivado.
+    """
+    processed_dir = log_dir.parent.parent / "log_analysis" / "processed_logs"
+    all_files = list(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
+    if processed_dir.exists():
+        all_files += list(processed_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
+    if not all_files:
         return 1
-    return int(existing[-1].name[:4]) + 1
+    return max(int(f.name[:4]) for f in all_files) + 1
 
 
 def save_report(data: dict) -> str:

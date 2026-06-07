@@ -122,8 +122,13 @@ dest = repo / 'scripts' / 'data' / 'log_analysis' / 'processed_logs'
 dest.mkdir(parents=True, exist_ok=True)
 if not src.exists():
     raise FileNotFoundError(f'relatorio nao encontrado: {src}')
-shutil.move(str(src), str(dest / src.name))
-print(f'Movido: {src.name} -> {dest}')
+dest_path = dest / src.name
+if dest_path.exists():
+    from datetime import datetime, timezone
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    dest_path = dest / f'{src.stem}__{stamp}{src.suffix}'
+shutil.move(str(src), str(dest_path))
+print(f'Movido: {src.name} -> {dest_path.name}')
 "
 ```
 
