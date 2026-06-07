@@ -132,9 +132,15 @@ def _process_file(filepath, conn, cur):
                 log(f"[SYNOPSIS_IMPORT][{i:03d}] AVISO: agente rejeitou sem motivo — status mantido → {titulo}")
                 sem_motivo += 1
                 continue
+            # Rejeição com motivo legítimo (descrição-fonte inaproveitável:
+            # idioma errado, incompatível com o título, insuficiente) é
+            # permanente — não há texto-base para gerar sinopse. Quarentena o
+            # livro para que ele saia da fila do Quality Gate em vez de ficar
+            # preso na cabeça da fila e reprovar a cada ciclo.
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo_str}) → {titulo}")
             cur.execute(
-                "UPDATE livros SET status_synopsis = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                "UPDATE livros SET status_synopsis = ?, qa_quarantine = 1, "
+                "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (_rejected_status, livro_id),
             )
             conn.commit()
