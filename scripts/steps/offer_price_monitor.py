@@ -307,6 +307,7 @@ def run(limit=50, dry_run=False):
         return
 
     counts = {"active": 0, "price_changed": 0, "unavailable": 0, "error": 0}
+    results = []
 
     for i, row in enumerate(rows, start=1):
         titulo = row["titulo"]
@@ -318,6 +319,13 @@ def run(limit=50, dry_run=False):
         except Exception as e:
             log(f"[MONITOR] Erro em '{titulo}': {e}")
             counts["error"] += 1
+            status = "error"
+
+        results.append({
+            "titulo": titulo,
+            "slug": (row["slug"] if "slug" in row.keys() else None),
+            "status": status,
+        })
 
         time.sleep(1)
 
@@ -334,3 +342,17 @@ def run(limit=50, dry_run=False):
 
     if dry_run:
         log("[MONITOR] dry-run ativo — nenhuma alteração foi salva.")
+
+    # Relatório padronizado para o /audit. Só lista os não-ativos (acionáveis):
+    # indisponíveis (despublicar/desativar oferta) e erros (revisar scraper).
+    from core.audit_report import save_audit_report
+    report = {
+        "mode": "prices",
+        "total": total,
+        "dry_run": dry_run,
+        "summary": counts,
+        "results": [r for r in results if r["status"] != "active"],
+    }
+    path = save_audit_report(report)
+    log(f"[MONITOR] Relatório salvo: {path}")
+    return report
