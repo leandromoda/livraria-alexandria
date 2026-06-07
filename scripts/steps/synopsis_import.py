@@ -137,11 +137,13 @@ def _process_file(filepath, conn, cur):
             # permanente — não há texto-base para gerar sinopse. Quarentena o
             # livro para que ele saia da fila do Quality Gate em vez de ficar
             # preso na cabeça da fila e reprovar a cada ciclo.
+            # status_synopsis=4 sempre: independente de is_publishable, não há
+            # como gerar sinopse para uma fonte inaproveitável.
             log(f"[SYNOPSIS_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo_str}) → {titulo}")
             cur.execute(
-                "UPDATE livros SET status_synopsis = ?, qa_quarantine = 1, "
+                "UPDATE livros SET status_synopsis = 4, qa_quarantine = 1, "
                 "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (_rejected_status, livro_id),
+                (livro_id,),
             )
             conn.commit()
             rejeitados += 1

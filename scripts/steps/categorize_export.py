@@ -54,6 +54,7 @@ def fetch_pending(conn, pacote, book_ids=None):
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
+              AND COALESCE(qa_quarantine, 0) = 0
               {id_filter}
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
@@ -64,6 +65,7 @@ def fetch_pending(conn, pacote, book_ids=None):
             FROM livros
             WHERE status_categorize = 0
               AND status_review     = 1
+              AND COALESCE(qa_quarantine, 0) = 0
               {id_filter}
             ORDER BY created_at ASC
             LIMIT ?
