@@ -144,7 +144,8 @@ print(f'Movido: {src.name} -> {dest_path.name}')
 - **Movimentação — ponto crítico:** o relatório JSON só sai de
   `scripts/data/logs/` **depois** que foi lido e as correções foram aplicadas
   (Etapa 2, passo 3). Destino: `scripts/data/log_analysis/processed_logs/`.
-  Mesmo nome de arquivo. Nunca o deixe em `logs/` após processar.
+  Mesmo nome; sufixo timestamp `__YYYYMMDDTHHMMSSz` adicionado automaticamente
+  se já existir um arquivo homônimo (colisão). Nunca o deixe em `logs/` após processar.
 - **Sem redundância:** o relatório de auditoria já é o dado estruturado — **não
   gere outro JSON de análise**. Apenas leia, corrija e mova.
 - **1 relatório por invocação.**

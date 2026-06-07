@@ -50,7 +50,8 @@ Siga **integralmente** as instruções de `agents/audit_cowork/prompt.md`:
   Etapa 2 = correção + arquivamento. Não misture.
 - **Movimentação — ponto crítico:** o JSON só sai de `scripts/data/logs/`
   **depois** das correções aplicadas. Destino:
-  `scripts/data/log_analysis/processed_logs/` (mesmo nome de arquivo).
+  `scripts/data/log_analysis/processed_logs/` (mesmo nome; sufixo timestamp
+  `__YYYYMMDDTHHMMSSz` adicionado automaticamente em caso de colisão).
 - **Sem redundância:** o relatório já é o dado estruturado — não gere outro JSON.
   Este comando apenas encadeia as duas etapas do prompt.
 
