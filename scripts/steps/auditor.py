@@ -124,13 +124,17 @@ def _supabase_headers(use_service_key: bool = False) -> dict:
     }
 
 
-def _http_get(url: str, allow_redirects: bool = True) -> tuple[int | None, int, str]:
+def _http_get(url: str, allow_redirects: bool = True,
+              headers: dict | None = None) -> tuple[int | None, int, str]:
     """Retorna (status_code, latency_ms, detail)."""
     try:
         t0 = time.monotonic()
+        req_headers = {"User-Agent": "AlexandriaAuditor/1.0"}
+        if headers:
+            req_headers.update(headers)
         r = requests.get(url, timeout=REQUEST_TIMEOUT,
                          allow_redirects=allow_redirects,
-                         headers={"User-Agent": "AlexandriaAuditor/1.0"})
+                         headers=req_headers)
         latency_ms = int((time.monotonic() - t0) * 1000)
         return r.status_code, latency_ms, ""
     except requests.exceptions.Timeout:
@@ -181,11 +185,12 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
 
     def check(label: str, check_type: str, url: str,
               method: str = "get", expected_status: int | list = 200,
-              allow_redirects: bool = True) -> dict:
+              allow_redirects: bool = True, headers: dict | None = None) -> dict:
         if method == "head":
             status, latency_ms, detail = _http_head(url)
         else:
-            status, latency_ms, detail = _http_get(url, allow_redirects=allow_redirects)
+            status, latency_ms, detail = _http_get(
+                url, allow_redirects=allow_redirects, headers=headers)
 
         if isinstance(expected_status, int):
             expected_status = [expected_status]
@@ -212,20 +217,24 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
     # 1. Supabase health
     log.info("--- Supabase ---")
     if SUPABASE_URL:
+        sb_headers = _supabase_headers()
         results.append(check(
             "Supabase: livros endpoint",
             "supabase_table",
             f"{SUPABASE_URL}/rest/v1/livros?limit=1",
+            headers=sb_headers,
         ))
         results.append(check(
             "Supabase: autores endpoint",
             "supabase_table",
             f"{SUPABASE_URL}/rest/v1/autores?limit=1",
+            headers=sb_headers,
         ))
         results.append(check(
             "Supabase: listas endpoint",
             "supabase_table",
             f"{SUPABASE_URL}/rest/v1/listas?limit=1",
+            headers=sb_headers,
         ))
     else:
         log.warning("  SUPABASE_URL não configurada — pulando checks Supabase")
