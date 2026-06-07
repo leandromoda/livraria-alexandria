@@ -83,6 +83,9 @@ escopo, apenas registrar).
 | `author_bio` | `slugs_sem_bio[]` | Gerar bios é **operacional** (step 13). **Mas se `without_bio == total_published` (100% sem bio)**, investigue bug real: `scripts/steps/publish_autores.py` (envia `bio`?) e geração de bio | operacional / código se 100% |
 | `title_verify` | `results[]` com títulos suspeitos | Corrigir título/blacklist do dado; ver `scripts/steps/auditor.py` (regras) e `apply_blacklist.py` | dado/operacional |
 | `list` | listas `needs_refresh`/0 membros | Re-gerar listas (step 16) é operacional; despublicação já é registrada | operacional |
+| `integrity` | `results[]` com `count>0` e `acao_recomendada` | Checks SQL de consistência do pipeline local. A `acao_recomendada` normalmente é "rodar step N" → **operacional**. Só vire correção de código se um check revelar bug (ex.: `status_cover=1` com `imagem_url` vazia em massa → lógica de `covers.py`/`publish.py`) | operacional / código se bug |
+| `consistency` | `livros_sem_oferta`, `ofertas_inativas`, `ofertas_sem_url_afiliada`, `sinopses_suspeitas` | `ofertas_sem_url_afiliada` → bug de tag/afiliado em `offer_resolver.py`/`publish_ofertas.py` (**código**). Demais: republicar/regenerar (**operacional**) | dado/código/operacional |
+| `prices` | `results[]` com `status` `unavailable`/`error` | `unavailable` → oferta morta: desativar/`reactivation_pending` (operacional). Padrão de `error` (muitos) → revisar `marketplace_scraper.py`/`offer_price_monitor.py` (**código**) | operacional / código se padrão |
 
 Ao final da Etapa 1, apresente um diagnóstico curto: o `mode`, nº de falhas, e a
 divisão **correções reais a aplicar** vs **lacunas operacionais** (dispensadas).
@@ -122,8 +125,13 @@ dest = repo / 'scripts' / 'data' / 'log_analysis' / 'processed_logs'
 dest.mkdir(parents=True, exist_ok=True)
 if not src.exists():
     raise FileNotFoundError(f'relatorio nao encontrado: {src}')
-shutil.move(str(src), str(dest / src.name))
-print(f'Movido: {src.name} -> {dest}')
+dest_path = dest / src.name
+if dest_path.exists():
+    from datetime import datetime, timezone
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    dest_path = dest / f'{src.stem}__{stamp}{src.suffix}'
+shutil.move(str(src), str(dest_path))
+print(f'Movido: {src.name} -> {dest_path.name}')
 "
 ```
 
@@ -136,7 +144,8 @@ print(f'Movido: {src.name} -> {dest}')
 - **Movimentação — ponto crítico:** o relatório JSON só sai de
   `scripts/data/logs/` **depois** que foi lido e as correções foram aplicadas
   (Etapa 2, passo 3). Destino: `scripts/data/log_analysis/processed_logs/`.
-  Mesmo nome de arquivo. Nunca o deixe em `logs/` após processar.
+  Mesmo nome; sufixo timestamp `__YYYYMMDDTHHMMSSz` adicionado automaticamente
+  se já existir um arquivo homônimo (colisão). Nunca o deixe em `logs/` após processar.
 - **Sem redundância:** o relatório de auditoria já é o dado estruturado — **não
   gere outro JSON de análise**. Apenas leia, corrija e mova.
 - **1 relatório por invocação.**

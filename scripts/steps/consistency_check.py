@@ -253,6 +253,15 @@ def run():
         json.dump(report, f, ensure_ascii=False, indent=2)
 
     log(f"[CONSISTENCY] Relatório salvo em: {out_path.name}")
+
+    # Relatório padronizado para o /audit (além do cowork/* lido pelo agente
+    # consistency_review). Mesmo payload + mode=consistency.
+    from core.audit_report import save_audit_report
+    audit_report = dict(report)
+    audit_report["mode"] = "consistency"
+    audit_path = save_audit_report(audit_report)
+    log(f"[CONSISTENCY] Relatório de auditoria: {audit_path}")
+
     log(
         f"[CONSISTENCY] Resumo → "
         f"sem oferta: {len(livros_sem_oferta)} | "

@@ -1007,23 +1007,13 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
 # Relatório JSON — numeração sequencial em data/logs/
 # ---------------------------------------------------------------------------
 
-def _next_sequence(log_dir: Path) -> int:
-    existing = sorted(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
-    if not existing:
-        return 1
-    return int(existing[-1].name[:4]) + 1
-
-
 def save_report(data: dict) -> str:
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
-    seq = _next_sequence(REPORT_DIR)
-    mode = data.get("mode", "audit")
-    filename = f"{seq:04d}_audit_{mode}.json"
-    path = REPORT_DIR / filename
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    # Delegado ao escritor unificado (core/audit_report) — fonte única do
+    # formato/numeração NNNN_audit_<mode>.json consumido pelo /audit.
+    from core.audit_report import save_audit_report
+    path = save_audit_report(data)
     log.info(f"\nRelatório salvo: {path}")
-    return str(path)
+    return path
 
 
 # ---------------------------------------------------------------------------
