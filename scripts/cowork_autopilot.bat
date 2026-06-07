@@ -1,25 +1,27 @@
 @echo off
 REM ============================================================
 REM Cowork Autopilot — Livraria Alexandria
-REM Ciclo: (export SOMENTE se a fila estiver vazia) -> Claude -> import
+REM Ciclo: (export SOMENTE se a fila estiver completamente ociosa) -> Claude -> import
 REM
-REM Regra de controle: so exporta novos lotes para data\cowork\ quando
-REM NAO houver mais arquivos de input pendentes para processar. Isso evita
-REM o acumulo descontrolado de lotes nao processados.
+REM Regra de controle (cowork_guard.py): exporta novos lotes apenas quando NAO houver:
+REM   - inputs pendentes em data\cowork\ (aguardando o agente)
+REM   - outputs pendentes em data\cowork\ (aguardando import)
+REM   - lotes em voo: input ja movido para processed_*\ pelo agente mas
+REM     output ainda nao gerado (janela de overlap entre ciclos do scheduler)
 REM ============================================================
 
 cd /d "C:\Users\Leandro Moda\livraria-alexandria\scripts"
 
 echo.
-echo === [1/3] EXPORT (somente se nao houver lotes pendentes) ===
+echo === [1/3] VERIFICAR FILA ===
 echo.
 
-REM Ha inputs pendentes em data\cowork\? errorlevel 1 = sim (pular export).
-python -c "import glob,sys; sys.exit(1 if (glob.glob('data/cowork/*_synopsis_input.json') or glob.glob('data/cowork/*_categorize_input.json')) else 0)"
+REM Guard completo: inputs + outputs + lotes em voo (ver cowork_guard.py)
+python cowork_guard.py
 if errorlevel 1 (
-    echo Ja existem lotes de input pendentes em data\cowork\ - export ignorado.
+    echo Export ignorado - aguardando ciclo anterior completar.
 ) else (
-    echo Fila vazia - exportando novos lotes.
+    echo Exportando novos lotes.
     python -c "from steps import synopsis_export, categorize_export; synopsis_export.run('PT', 25); categorize_export.run(25)"
 )
 
