@@ -619,6 +619,16 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
             log(f"QA — passe de remediação (dry_run={dry_run})…")
             qa.run(mode="remediate", dry_run=dry_run)
 
+        elif op == "54":
+            log("Auditando capas (sem LLM)…")
+            args = argparse.Namespace(mode="covers", dry_run=False)
+            auditor.run(args)
+
+        elif op == "55":
+            log("Auditando classificação (sem LLM)…")
+            args = argparse.Namespace(mode="classification", dry_run=False)
+            auditor.run(args)
+
         else:
             print("Opção inválida.\n")
             continue
