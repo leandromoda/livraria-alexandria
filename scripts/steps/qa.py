@@ -5,16 +5,23 @@
 # qa.py NÃO reimplementa checagens: ele ORQUESTRA os módulos já
 # validados em produção, fechando o ciclo de qualidade/remediação:
 #
-#   - consistency_check (51)  → relatório de consistência (não-LLM)
-#   - apply_blacklist   (45)  → despublica + persiste causa (não-LLM)
-#   - reprocess_blacklist     → recupera/quarentena por causa (não-LLM, WS5)
-#   - auditor content   (42)  → auditoria de conteúdo (LLM, opcional)
-#   - auditor title     (50)  → veracidade de títulos (LLM, opcional)
-#   - auditor list      (48)  → auditoria de listas SEO (não-LLM)
+#   - auditor connectivity (41) → conexões (não-LLM)
+#   - offer_price_monitor  (40) → preços/disponibilidade de ofertas (não-LLM)
+#   - auditor covers       (54) → qualidade/cobertura de capas (não-LLM)
+#   - auditor classification(55)→ qualidade/cobertura da classificação (não-LLM)
+#   - auditor list         (48) → auditoria de listas SEO (não-LLM)
+#   - autopilot_audit      (47) → integridade do pipeline (não-LLM)
+#   - consistency_check    (51) → consistência SQLite↔Supabase (não-LLM)
+#   - apply_blacklist      (45) → despublica + persiste causa (não-LLM)
+#   - reprocess_blacklist       → recupera/quarentena por causa (não-LLM, WS5)
+#   - auditor content      (42) → auditoria de conteúdo (LLM, opcional)
+#   - auditor title        (50) → veracidade de títulos (LLM, opcional)
 #
-# O "passe de remediação" (default) é 100% NÃO-LLM e seguro para rodar
-# como fase do orquestrador G (WS6) com cadência reduzida. Os modos LLM
-# são explícitos e respeitam a própria quota de sessão.
+# P3: `audit` é o PASSE ÚNICO de auditoria do site todo (todos os domínios
+# não-LLM acima emitem NNNN_audit_<mode>.json, consumível pelo /audit).
+# `full` = audit + remediação. O "passe de remediação" (default) e o `audit`
+# são 100% NÃO-LLM e seguros para o orquestrador G (WS6). Os modos LLM são
+# explícitos e respeitam a própria quota de sessão.
 # ============================================================
 
 import argparse
@@ -23,7 +30,8 @@ from core.logger import log
 
 # Modos que NÃO consomem a sessão LLM (seguros para o passe automático).
 NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
-                 "classification", "remediate", "full")
+                 "classification", "connectivity", "prices", "integrity",
+                 "audit", "remediate", "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -60,6 +68,39 @@ def _run_auditor(mode, limit, dry_run, scope="all"):
     auditor.run(ns)
 
 
+def _run_prices(dry_run, limit):
+    from steps import offer_price_monitor
+    # limite limitado: None varreria TODAS as ofertas (LIMIT NULL) — caro.
+    n = limit or 50
+    log(f"[QA] → preços/ofertas (limit={n})")
+    return offer_price_monitor.run(limit=n, dry_run=dry_run)
+
+
+def _run_integrity():
+    from steps import autopilot_audit
+    log("[QA] → integridade do pipeline")
+    return autopilot_audit.run()
+
+
+def site_audit(dry_run=False, limit=None):
+    """Passe ÚNICO de auditoria do site todo (100% NÃO-LLM).
+
+    Cada domínio emite seu relatório padronizado NNNN_audit_<mode>.json em
+    data/logs/, consumível pelo /audit. Não consome a sessão Claude PRO.
+    Domínios: conexões, preços/ofertas, capas, classificação, listas,
+    integridade do pipeline e consistência SQLite↔Supabase.
+    """
+    log(f"[QA] ===== PASSE DE AUDITORIA DO SITE (dry_run={dry_run}) =====")
+    _run_auditor("connectivity", limit, dry_run)
+    _run_prices(dry_run, limit)
+    _run_auditor("covers", limit, dry_run)
+    _run_auditor("classification", limit, dry_run)
+    _run_auditor("list", limit, dry_run)
+    _run_integrity()
+    _run_consistency()
+    log("[QA] ===== auditoria do site concluída =====")
+
+
 def remediate(dry_run=False, limit=None):
     """Passe de remediação NÃO-LLM: aplica a blacklist do agente e reprocessa
     os títulos recuperáveis (recupera ou quarentena por causa)."""
@@ -75,13 +116,19 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
 
     mode:
       remediate (default) → apply_blacklist + reprocess_blacklist (não-LLM)
-      full                → consistency + remediate (não-LLM)
+      audit               → PASSE ÚNICO de auditoria do site todo (não-LLM):
+                            conexões + preços + capas + classificação + listas
+                            + integridade + consistência → NNNN_audit_*.json
+      full                → audit + remediate (não-LLM)
       consistency         → só o relatório de consistência
       blacklist           → só apply_blacklist
       reprocess           → só reprocess_blacklist
       lists               → auditoria de listas SEO (não-LLM)
       covers              → qualidade/cobertura de capas (não-LLM)
       classification      → qualidade/cobertura da classificação (não-LLM)
+      connectivity        → conexões do site (não-LLM)
+      prices              → preços/disponibilidade de ofertas (não-LLM)
+      integrity           → integridade do pipeline (não-LLM)
       content             → auditoria de conteúdo (LLM)
       titles              → veracidade de títulos (LLM)
     """
@@ -92,8 +139,11 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
     if mode == "remediate":
         return remediate(dry_run=dry_run, limit=limit)
 
+    if mode == "audit":
+        return site_audit(dry_run=dry_run, limit=limit)
+
     if mode == "full":
-        _run_consistency()
+        site_audit(dry_run=dry_run, limit=limit)
         return remediate(dry_run=dry_run, limit=limit)
 
     if mode == "consistency":
@@ -113,6 +163,15 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
 
     if mode == "classification":
         return _run_auditor("classification", limit, dry_run)
+
+    if mode == "connectivity":
+        return _run_auditor("connectivity", limit, dry_run)
+
+    if mode == "prices":
+        return _run_prices(dry_run, limit)
+
+    if mode == "integrity":
+        return _run_integrity()
 
     if mode == "content":
         return _run_auditor("content", limit, dry_run)
