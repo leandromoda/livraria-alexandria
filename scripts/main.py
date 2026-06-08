@@ -448,6 +448,10 @@ def menu_auditoria(idioma):
 51 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
 52 → Reprocessar blacklist (recupera por causa / quarentena) [WS5]
 53 → QA — passe de remediação (aplica blacklist → reprocessa) [WS4]
+54 → Auditar capas (sem LLM) → data/logs/NNNN_audit_covers.json
+55 → Auditar classificação (sem LLM) → data/logs/NNNN_audit_classification.json
+56 → QA — Auditoria completa do site (sem LLM): conexões+preços+capas+classificação+listas+integridade+consistência
+57 → QA — Passe completo (auditoria do site + remediação)
 
 V  → Voltar
 """)
@@ -628,6 +632,16 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
             log("Auditando classificação (sem LLM)…")
             args = argparse.Namespace(mode="classification", dry_run=False)
             auditor.run(args)
+
+        elif op == "56":
+            log("QA — Auditoria completa do site (sem LLM)…")
+            qa.run(mode="audit", dry_run=False)
+
+        elif op == "57":
+            dry_op  = input_safe("Dry-run? (s/N): ").strip().lower()
+            dry_run = dry_op == "s"
+            log(f"QA — passe completo (auditoria + remediação, dry_run={dry_run})…")
+            qa.run(mode="full", dry_run=dry_run)
 
         else:
             print("Opção inválida.\n")
