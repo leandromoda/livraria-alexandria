@@ -2,6 +2,10 @@
 
 > Este arquivo é exclusivo do pipeline de ingestão (`/scripts`).
 > O CLAUDE.md da raiz cobre o site Next.js.
+>
+> **Alterações de código seguem o "Fluxo de trabalho Git" do CLAUDE.md da raiz**
+> (branch → validar → commit → push → PR → merge squash → pull main), via `git`/`gh`
+> CLI, com o GitHub Desktop fechado.
 
 ## Estado do projeto
 
