@@ -1004,6 +1004,158 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
 
 
 # ---------------------------------------------------------------------------
+# MODO: --covers  (sem LLM)  — qualidade/cobertura de capas
+# ---------------------------------------------------------------------------
+
+COVERS_SAMPLE_DEFAULT = 30        # capas vivas a checar via HEAD por run
+_LIST_CAP = 300                   # teto de itens listados por categoria de falha
+
+
+def run_covers_audit(conn: sqlite3.Connection, sample: int = COVERS_SAMPLE_DEFAULT,
+                     dry_run: bool = False) -> dict:
+    """Audita a qualidade/cobertura das capas dos livros publicados (sem LLM).
+
+    - publicados_sem_capa: status_publish=1 sem imagem_url (status_cover=2 = sem
+      capa disponível; demais = pendência real de capa).
+    - cover_inconsistente: status_cover=1 mas imagem_url vazia (bug de dado).
+    - capas_mortas: amostra de capas publicadas cujo HEAD não retorna 2xx/3xx.
+    """
+    log.info("=== COVERS AUDIT (sem LLM) ===")
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM livros WHERE status_publish = 1")
+    total_pub = cur.fetchone()[0]
+
+    cur.execute(
+        """SELECT slug, titulo, status_cover FROM livros
+           WHERE status_publish = 1 AND (imagem_url IS NULL OR imagem_url = '')
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,),
+    )
+    sem_capa = [{"slug": r["slug"], "titulo": r["titulo"],
+                 "status_cover": r["status_cover"]} for r in cur.fetchall()]
+
+    cur.execute(
+        """SELECT slug, titulo FROM livros
+           WHERE status_cover = 1 AND (imagem_url IS NULL OR imagem_url = '')
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,),
+    )
+    inconsistente = [{"slug": r["slug"], "titulo": r["titulo"]} for r in cur.fetchall()]
+
+    # Amostra de links vivos → HEAD para detectar capas mortas.
+    capas_mortas = []
+    verificadas = 0
+    if sample and sample > 0:
+        cur.execute(
+            """SELECT slug, imagem_url FROM livros
+               WHERE status_publish = 1 AND imagem_url IS NOT NULL AND imagem_url != ''
+               ORDER BY RANDOM() LIMIT ?""",
+            (sample,),
+        )
+        for r in cur.fetchall():
+            verificadas += 1
+            status, _lat, _det = _http_head(r["imagem_url"])
+            if status not in (200, 301, 302):
+                capas_mortas.append({"slug": r["slug"], "url": r["imagem_url"],
+                                     "status_code": status})
+
+    log.info(
+        f"Capas: sem capa={len(sem_capa)} | inconsistentes={len(inconsistente)} | "
+        f"mortas={len(capas_mortas)}/{verificadas} amostradas"
+    )
+
+    return {
+        "mode": "covers",
+        "total_published": total_pub,
+        "summary": {
+            "publicados_sem_capa": len(sem_capa),
+            "cover_inconsistente": len(inconsistente),
+            "amostras_verificadas": verificadas,
+            "capas_mortas": len(capas_mortas),
+        },
+        "publicados_sem_capa": sem_capa,
+        "cover_inconsistente": inconsistente,
+        "capas_mortas": capas_mortas,
+    }
+
+
+# ---------------------------------------------------------------------------
+# MODO: --classification  (sem LLM)  — qualidade/cobertura da classificação
+# ---------------------------------------------------------------------------
+
+def run_classification_audit(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
+    """Audita a qualidade/cobertura da classificação temática (sem LLM).
+
+    - publicados_sem_categoria: status_publish=1 sem nenhuma categoria temática.
+    - categorize_inconsistente: status_categorize=1 mas sem linhas em
+      livros_categorias_tematicas (marcado como feito, sem resultado).
+    - sem_categoria_primaria: categorizado mas sem nenhuma linha primary_cat=1.
+    """
+    log.info("=== CLASSIFICATION AUDIT (sem LLM) ===")
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM livros WHERE status_publish = 1")
+    total_pub = cur.fetchone()[0]
+
+    cur.execute(
+        """SELECT slug, titulo FROM livros l
+           WHERE l.status_publish = 1
+             AND NOT EXISTS (
+                 SELECT 1 FROM livros_categorias_tematicas t WHERE t.livro_id = l.id
+             )
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,),
+    )
+    sem_categoria = [{"slug": r["slug"], "titulo": r["titulo"]} for r in cur.fetchall()]
+
+    cur.execute(
+        """SELECT slug, titulo FROM livros l
+           WHERE l.status_categorize = 1
+             AND NOT EXISTS (
+                 SELECT 1 FROM livros_categorias_tematicas t WHERE t.livro_id = l.id
+             )
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,),
+    )
+    categorize_inconsistente = [{"slug": r["slug"], "titulo": r["titulo"]} for r in cur.fetchall()]
+
+    cur.execute(
+        """SELECT slug, titulo FROM livros l
+           WHERE l.status_publish = 1
+             AND EXISTS (
+                 SELECT 1 FROM livros_categorias_tematicas t WHERE t.livro_id = l.id
+             )
+             AND NOT EXISTS (
+                 SELECT 1 FROM livros_categorias_tematicas t
+                 WHERE t.livro_id = l.id AND t.primary_cat = 1
+             )
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,),
+    )
+    sem_primaria = [{"slug": r["slug"], "titulo": r["titulo"]} for r in cur.fetchall()]
+
+    log.info(
+        f"Classificação: sem categoria={len(sem_categoria)} | "
+        f"inconsistentes={len(categorize_inconsistente)} | "
+        f"sem primária={len(sem_primaria)}"
+    )
+
+    return {
+        "mode": "classification",
+        "total_published": total_pub,
+        "summary": {
+            "publicados_sem_categoria": len(sem_categoria),
+            "categorize_inconsistente": len(categorize_inconsistente),
+            "sem_categoria_primaria": len(sem_primaria),
+        },
+        "publicados_sem_categoria": sem_categoria,
+        "categorize_inconsistente": categorize_inconsistente,
+        "sem_categoria_primaria": sem_primaria,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Relatório JSON — numeração sequencial em data/logs/
 # ---------------------------------------------------------------------------
 
@@ -1046,6 +1198,13 @@ def run(args: argparse.Namespace) -> None:
         data = run_list_audit(conn, dry_run=dry_run)
     elif args.mode == "author-bios":
         data = check_author_bios(conn)
+    elif args.mode == "covers":
+        data = run_covers_audit(
+            conn, sample=getattr(args, "sample", COVERS_SAMPLE_DEFAULT),
+            dry_run=dry_run,
+        )
+    elif args.mode == "classification":
+        data = run_classification_audit(conn, dry_run=dry_run)
     elif args.mode == "title-verify":
         data = run_title_verify(
             conn,
@@ -1054,7 +1213,8 @@ def run(args: argparse.Namespace) -> None:
             dry_run=dry_run,
         )
     else:
-        log.error("Modo inválido. Use connectivity, content, list, author-bios ou title-verify")
+        log.error("Modo inválido. Use connectivity, content, list, "
+                  "author-bios, covers, classification ou title-verify")
         return
 
     data["generated_at"] = _now_iso()
@@ -1082,6 +1242,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Modo author-bios (sem LLM)
     sub.add_parser("author-bios", help="Verifica autores publicados sem bio (sem LLM)")
+
+    # Modo covers (sem LLM) — qualidade/cobertura de capas
+    covers_p = sub.add_parser("covers", help="Audita qualidade/cobertura de capas (sem LLM)")
+    covers_p.add_argument("--sample", type=int, default=COVERS_SAMPLE_DEFAULT,
+                          help=f"Capas vivas a checar via HEAD (default={COVERS_SAMPLE_DEFAULT})")
+
+    # Modo classification (sem LLM) — qualidade/cobertura da classificação
+    sub.add_parser("classification", help="Audita qualidade/cobertura da classificação (sem LLM)")
 
     # Modo title-verify (Google Books API + LLM)
     title_p = sub.add_parser(

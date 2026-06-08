@@ -22,7 +22,8 @@ import argparse
 from core.logger import log
 
 # Modos que NÃO consomem a sessão LLM (seguros para o passe automático).
-NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "remediate", "full")
+NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
+                 "classification", "remediate", "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -79,6 +80,8 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
       blacklist           → só apply_blacklist
       reprocess           → só reprocess_blacklist
       lists               → auditoria de listas SEO (não-LLM)
+      covers              → qualidade/cobertura de capas (não-LLM)
+      classification      → qualidade/cobertura da classificação (não-LLM)
       content             → auditoria de conteúdo (LLM)
       titles              → veracidade de títulos (LLM)
     """
@@ -104,6 +107,12 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
 
     if mode == "lists":
         return _run_auditor("list", limit, dry_run)
+
+    if mode == "covers":
+        return _run_auditor("covers", limit, dry_run)
+
+    if mode == "classification":
+        return _run_auditor("classification", limit, dry_run)
 
     if mode == "content":
         return _run_auditor("content", limit, dry_run)
