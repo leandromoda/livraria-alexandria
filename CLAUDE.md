@@ -84,6 +84,38 @@ Sequência padrão completa:
 
 ---
 
+## Fluxo de trabalho Git (obrigatório para alterações de código)
+
+**Toda alteração em arquivo do repositório** (código, docs, config) segue este
+ciclo, ponta a ponta, **sem usar o GitHub Desktop** — o assistente conduz tudo
+via `git` + `gh` CLI. O GitHub Desktop deve ficar **fechado** durante o trabalho
+(seu auto-commit/stash concorrente corrompe o working tree).
+
+1. **Sincronizar o main local** antes de começar:
+   `git checkout main && git pull --ff-only`.
+2. **Criar branch** descritivo: `git checkout -b <tipo>/<slug>`
+   (`feat/`, `fix/`, `docs/`, `refactor/`). **Nunca commitar direto no `main`.**
+3. **Implementar** a mudança.
+4. **Validar antes de commitar** (PR não pode quebrar o CI):
+   - Pipeline Python: `python -m py_compile <arquivos>` (+ teste rápido se aplicável).
+   - Site: `npm run lint` e `npm run build`.
+5. **Commitar** com mensagem convencional + trailer
+   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+6. **Push**: `git push -u origin <branch>`.
+7. **Abrir PR**: `gh pr create --base main --title … --body …`.
+8. **Revisar**: conferir `gh pr checks <n>` (CI verde) + diff antes de mergear.
+9. **Mergear**: `gh pr merge <n> --squash --delete-branch`
+   (squash + remove o branch remoto).
+10. **Atualizar o repo local** (assim o usuário não precisa abrir o GitHub Desktop):
+    `git checkout main && git pull --ff-only`.
+11. **Limpar** o branch local se sobrar: `git branch -d <branch>`.
+
+> Resumo: `main atualizado → branch → validar → commit → push → PR → revisar →
+> merge (squash, delete) → pull main`. Commit/PR só acontecem quando o usuário pede
+> a alteração; este fluxo é o **como**, não um gatilho automático.
+
+---
+
 ## Estrutura de arquivos (site)
 
 ```
