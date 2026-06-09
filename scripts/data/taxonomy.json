@@ -20,7 +20,7 @@
   {"id": "epica-grega", "slug": "epica-grega", "label": "Épica Grega", "group": "Literatura Clássica e Antiga", "description": "Poemas épicos gregos originais: Homero (Ilíada, Odisseia), Hesíodo (Teogonia). Apenas textos primários da epopeia grega antiga."},
   {"id": "tragedia-grega", "slug": "tragedia-grega", "label": "Tragédia Grega", "group": "Literatura Clássica e Antiga", "description": "Tragédias gregas originais: Sófocles, Ésquilo, Eurípides. Apenas textos primários do teatro trágico grego."},
   {"id": "comedia-grega", "slug": "comedia-grega", "label": "Comédia Grega", "group": "Literatura Clássica e Antiga", "description": "Comédias gregas originais: Aristófanes, Menandro. Apenas textos primários da comédia grega antiga."},
-  {"id": "filosofia-classica", "slug": "filosofia-classica", "label": "Filosofia Clássica", "group": "Literatura Clássica e Antiga", "description": "Textos filosóficos gregos e romanos originais: Platão, Aristóteles, Epicteto, Marco Aurélio, Sêneca, Lucrécio, Cícero. Para livros MODERNOS sobre estoicismo ou filosofia clássica, usar estoicismo-pratico ou filosofia-continental."},
+  {"id": "filosofia-classica", "slug": "filosofia-classica", "label": "Filosofia Clássica", "group": "Literatura Clássica e Antiga", "description": "EXCLUSIVO para filosofia primaria greco-romana da Antiguidade: Platao, Aristoteles, Seneca, Marco Aurelio, Epicteto, Cicero. NAO inclui filosofia moderna/contemporanea, financas (Clason), ateismo contemporaneo (Dawkins), macro-historia (Harari) nem romances alegoricos (Saramago, 'A Caverna')."},
   {"id": "mitologia-classica", "slug": "mitologia-classica", "label": "Mitologia Clássica", "group": "Literatura Clássica e Antiga", "description": "Textos e compilações de mitologia greco-romana: Ovídio (Metamorfoses), Hesíodo, Apolodoro. Inclui obras modernas de referência sobre mitos gregos e romanos."},
   {"id": "epica-latina", "slug": "epica-latina", "label": "Épica Latina", "group": "Literatura Clássica e Antiga", "description": "Obras latinas originais: Virgílio (Eneida), Ovídio, Horácio (incluindo Q. Horati Flacci Sermones e Odes), Cícero, Plínio, Juvenal, Marcial."},
   {"id": "historia-antiga", "slug": "historia-antiga", "label": "História Antiga", "group": "Literatura Clássica e Antiga", "description": "EXCLUSIVO para textos historiográficos primários da Antiguidade: Heródoto, Tucídides, Tito Lívio, Tácito, Políbio, Xenofonte, Suetônio, Plutarco. NÃO usar para livros modernos que abordam temas antigos, alegorias, filosofia ou ficção com cenário antigo."},
@@ -41,15 +41,15 @@
   {"id": "gotico-americano", "slug": "gotico-americano", "label": "Gótico Americano", "group": "Literatura Anglo-Saxônica"},
   {"id": "realismo-americano", "slug": "realismo-americano", "label": "Realismo Americano", "group": "Literatura Anglo-Saxônica"},
 
-  {"id": "romance-frances", "slug": "romance-frances", "label": "Romance Francês", "group": "Literatura Francesa"},
+  {"id": "romance-frances", "slug": "romance-frances", "label": "Romance Francês", "group": "Literatura Francesa", "description": "Romances e ficcao de autores franceses (Hugo, Balzac, Flaubert, Zola, Dumas, Verne, Proust, Camus-ficcao, Sartre-ficcao). Para filosofia/teoria francesa (Foucault, Deleuze, Derrida, Barthes), prefira categorias de filosofia/nao-ficcao."},
   {"id": "poesia-francesa", "slug": "poesia-francesa", "label": "Poesia Francesa", "group": "Literatura Francesa"},
-  {"id": "existencialismo-frances", "slug": "existencialismo-frances", "label": "Existencialismo Francês", "group": "Literatura Francesa"},
+  {"id": "existencialismo-frances", "slug": "existencialismo-frances", "label": "Existencialismo Francês", "group": "Literatura Francesa", "description": "EXCLUSIVO para existencialismo e absurdismo FRANCES: Sartre, Camus, Beauvoir, Merleau-Ponty, Genet, Beckett (escreveu em frances). NAO inclui existencialismo de outras nacionalidades (Heidegger=alemao, Dostoievski=russo, Kierkegaard=dinamarques), nem autoajuda/logoterapia (Frankl, Brene Brown), nem literatura brasileira (Clarice Lispector)."},
   {"id": "nouveau-roman", "slug": "nouveau-roman", "label": "Nouveau Roman", "group": "Literatura Francesa"},
   {"id": "iluminismo-frances", "slug": "iluminismo-frances", "label": "Iluminismo Francês", "group": "Literatura Francesa"},
   {"id": "simbolismo-frances", "slug": "simbolismo-frances", "label": "Simbolismo Francês", "group": "Literatura Francesa"},
   {"id": "naturalismo-frances", "slug": "naturalismo-frances", "label": "Naturalismo Francês", "group": "Literatura Francesa"},
 
-  {"id": "romance-alemao", "slug": "romance-alemao", "label": "Romance Alemão", "group": "Literatura Alemã e Austríaca"},
+  {"id": "romance-alemao", "slug": "romance-alemao", "label": "Romance Alemão", "group": "Literatura Alemã e Austríaca", "description": "Romances e novelas de FICCAO de autores de lingua alema (Thomas Mann, Hesse, Kafka, Goethe-ficcao, Zweig, Doblin, Fontane). NAO inclui filosofia ou teoria (Kant, Hegel, Marx, Wittgenstein, Adorno, Heidegger, Weber, Schopenhauer) -> filosofia-continental/analitica, historia-da-filosofia ou sociologia-e-antropologia."},
   {"id": "romantismo-alemao", "slug": "romantismo-alemao", "label": "Romantismo Alemão", "group": "Literatura Alemã e Austríaca"},
   {"id": "expressionismo-alemao", "slug": "expressionismo-alemao", "label": "Expressionismo Alemão", "group": "Literatura Alemã e Austríaca"},
   {"id": "kafka-e-o-absurdo", "slug": "kafka-e-o-absurdo", "label": "Kafka e o Absurdo", "group": "Literatura Alemã e Austríaca"},
@@ -57,7 +57,7 @@
 
   {"id": "romance-russo", "slug": "romance-russo", "label": "Romance Russo", "group": "Literatura Eslava e Russa"},
   {"id": "realismo-russo", "slug": "realismo-russo", "label": "Realismo Russo", "group": "Literatura Eslava e Russa"},
-  {"id": "dostoievski-e-o-existencialismo", "slug": "dostoievski-e-o-existencialismo", "label": "Dostoiévski e o Existencialismo", "group": "Literatura Eslava e Russa"},
+  {"id": "dostoievski-e-o-existencialismo", "slug": "dostoievski-e-o-existencialismo", "label": "Dostoiévski e o Existencialismo", "group": "Literatura Eslava e Russa", "description": "Obras de Dostoievski e leituras existencialistas de sua ficcao; precursores russos do existencialismo (Tolstoi, Nietzsche como leitura). NAO inclui autoajuda (Napoleon Hill, Brene Brown) nem existencialismo frances/alemao."},
   {"id": "tolstoi-e-o-realismo-epico", "slug": "tolstoi-e-o-realismo-epico", "label": "Tolstói e o Realismo Épico", "group": "Literatura Eslava e Russa"},
   {"id": "literatura-sovietica", "slug": "literatura-sovietica", "label": "Literatura Soviética", "group": "Literatura Eslava e Russa"},
   {"id": "literatura-polonesa", "slug": "literatura-polonesa", "label": "Literatura Polonesa", "group": "Literatura Eslava e Russa"},
@@ -93,7 +93,7 @@
   {"id": "policial-classico", "slug": "policial-classico", "label": "Policial Clássico", "group": "Gêneros Ficcionais"},
   {"id": "noir", "slug": "noir", "label": "Noir", "group": "Gêneros Ficcionais"},
   {"id": "romance-historico", "slug": "romance-historico", "label": "Romance Histórico", "group": "Gêneros Ficcionais", "description": "Ficção ambientada em períodos históricos: romances de época, narrativas ficcionais com cenário histórico. NÃO confundir com livros de história real (usar historia-medieval, historia-da-europa etc.) nem com textos primários da Antiguidade (usar historia-antiga)."},
-  {"id": "ficcao-literaria", "slug": "ficcao-literaria", "label": "Ficção Literária", "group": "Gêneros Ficcionais"},
+  {"id": "ficcao-literaria", "slug": "ficcao-literaria", "label": "Ficção Literária", "group": "Gêneros Ficcionais", "description": "Ficcao literaria (romances e contos de valor literario). EXCLUSIVO para FICCAO. NAO inclui nao-ficcao: filosofia, ciencia, historia, sociologia, autoajuda, biografia, ensaio."},
   {"id": "ficcao-experimental", "slug": "ficcao-experimental", "label": "Ficção Experimental", "group": "Gêneros Ficcionais"},
 
   {"id": "filosofia-continental", "slug": "filosofia-continental", "label": "Filosofia Continental", "group": "Não-Ficção Humanística"},
@@ -192,5 +192,6 @@
 
   {"id": "sociologia-e-antropologia", "slug": "sociologia-e-antropologia", "label": "Sociologia e Antropologia", "group": "Não-Ficção Humanística", "description": "Obras de sociologia, antropologia e macro-história humana. Inclui divulgação de macro-história como Sapiens (De Animais a Deuses, Yuval Noah Harari), Homo Deus, 21 Lições. Para Sapiens NÃO usar historia-antiga — o livro abrange toda a história humana como divulgação científica."},
   {"id": "economia-e-pensamento-economico", "slug": "economia-e-pensamento-economico", "label": "Economia e Pensamento Econômico", "group": "Não-Ficção Humanística"},
+
   {"id": "poesia-slam-e-marginal", "slug": "poesia-slam-e-marginal", "label": "Poesia Slam e Marginal", "group": "Literatura Brasileira"}
 ]
