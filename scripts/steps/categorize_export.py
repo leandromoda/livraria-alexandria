@@ -4,14 +4,14 @@
 #
 # Exporta livros pendentes de categorização para JSON numerado.
 # Output: scripts/data/NNN_categorize_input.json (lote de até 25)
-# Consumido por: agente Claude Cowork (agents/classify_cowork/)
+# Consumido por: agente Claude Batch (agents/classify_batch/)
 # ============================================================
 
 import json
 import os
 from datetime import datetime, timezone
 
-from core.cowork_numbering import next_batch_number
+from core.batch_numbering import next_batch_number
 from core.db import get_conn
 from core.logger import log
 
@@ -22,8 +22,8 @@ from core.logger import log
 
 BATCH_SIZE    = 25
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
-COWORK_DIR    = os.path.join(DATA_DIR, "cowork")
-PROCESSED_DIR = os.path.join(COWORK_DIR, "processed_categorize")
+BATCH_DIR    = os.path.join(DATA_DIR, "batch")
+PROCESSED_DIR = os.path.join(BATCH_DIR, "processed_categorize")
 
 MAX_TEXT_LEN = 800
 
@@ -84,7 +84,7 @@ def run(pacote, book_ids=None):
 
     log("[CATEGORIZE_EXPORT] Iniciando exportação")
 
-    os.makedirs(COWORK_DIR, exist_ok=True)
+    os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     conn = get_conn()
@@ -116,8 +116,8 @@ def run(pacote, book_ids=None):
             "sinopse":   sinopse[:MAX_TEXT_LEN],
         })
 
-    num = next_batch_number(COWORK_DIR, "categorize")
-    output_path = os.path.join(COWORK_DIR, f"{num}_categorize_input.json")
+    num = next_batch_number(BATCH_DIR, "categorize")
+    output_path = os.path.join(BATCH_DIR, f"{num}_categorize_input.json")
 
     payload = {
         "meta": {

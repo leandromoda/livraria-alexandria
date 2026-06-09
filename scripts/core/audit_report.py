@@ -7,12 +7,12 @@ offer_price_monitor, …) emitem o MESMO arquivo:
 
     scripts/data/logs/NNNN_audit_<mode>.json
 
-consumido pelo comando /audit (agents/audit_cowork/prompt.md), que lê, corrige e
+consumido pelo comando /audit (agents/audit_batch/prompt.md), que lê, corrige e
 arquiva em scripts/data/log_analysis/processed_logs/.
 
 Unificar a saída (WS — "P1") faz o /audit cobrir o site inteiro com um único
 consumidor, em vez de 5 formatos dispersos (logs soltos, audit_log,
-connectivity_log, offer_price_log, cowork/*_consistency.json).
+connectivity_log, offer_price_log, batch/*_consistency.json).
 """
 
 from pathlib import Path

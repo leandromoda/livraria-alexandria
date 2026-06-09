@@ -72,7 +72,7 @@ _AUDIT_STEPS = [
 _LLM_OUTPUT_STEPS = [
     ("Blacklist aplicada",  ["apply_blacklist"],   _DATA_DIR / "blacklist.json"),
     ("LLM Orchestrator",    ["llm_orchestrator"],  None),
-    ("Cowork Import",       ["cowork_import"],     None),
+    ("Batch Import",       ["batch_import"],     None),
     ("Offer List Importer", ["offer_list_importer"], None),
 ]
 

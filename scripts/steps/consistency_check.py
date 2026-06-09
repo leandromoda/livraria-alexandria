@@ -6,7 +6,7 @@
 # com inconsistências: livros sem ofertas, ofertas inativas,
 # URLs afiliadas ausentes, sinopses suspeitas.
 #
-# Saída: scripts/data/cowork/YYYYMMDDHHMMSS_consistency.json
+# Saída: scripts/data/batch/YYYYMMDDHHMMSS_consistency.json
 # ============================================================
 
 import json
@@ -33,7 +33,7 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "cowork"
+OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "batch"
 
 SINOPSE_MIN_CHARS = 80
 
@@ -254,7 +254,7 @@ def run():
 
     log(f"[CONSISTENCY] Relatório salvo em: {out_path.name}")
 
-    # Relatório padronizado para o /audit (além do cowork/* lido pelo agente
+    # Relatório padronizado para o /audit (além do batch/* lido pelo agente
     # consistency_review). Mesmo payload + mode=consistency.
     from core.audit_report import save_audit_report
     audit_report = dict(report)

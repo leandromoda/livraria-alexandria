@@ -3,9 +3,9 @@
 # Livraria Alexandria
 #
 # Gera sinopse editorial usando o ÚNICO motor de sinopse do
-# pipeline: o agente batch `synopsis_cowork` (Claude CLI).
+# pipeline: o agente batch `synopsis_batch` (Claude CLI).
 #
-# Fluxo: synopsis_export → run_agent(synopsis_cowork) → synopsis_import
+# Fluxo: synopsis_export → run_agent(synopsis_batch) → synopsis_import
 #
 # O motor FSM per-item (4 estágios via markdown_executor) foi
 # aposentado em favor do batch — ~50x menos chamadas na quota PRO
@@ -23,24 +23,24 @@ _LLM_LIMIT_MARKERS = ("CLAUDE_SESSION_LIMIT_REACHED", "limit", "usage limit")
 
 
 def run(idioma, pacote, book_ids=None):
-    """Gera sinopses via o motor batch (agente synopsis_cowork no Claude CLI).
+    """Gera sinopses via o motor batch (agente synopsis_batch no Claude CLI).
 
     Args:
         idioma:   idioma do filtro batch (ignorado quando book_ids é dado).
         pacote:   máximo de livros a exportar nesta invocação (cap em 25/lote).
         book_ids: lista opcional de IDs (modo per-livro da ingestão guiada).
     """
-    log("[SYNOPSIS] Iniciando geração (motor batch synopsis_cowork)")
+    log("[SYNOPSIS] Iniciando geração (motor batch synopsis_batch)")
 
     exported = synopsis_export.run(idioma, pacote, book_ids=book_ids)
     if not exported:
         log("[SYNOPSIS] Nada pendente.")
         return
 
-    log(f"[SYNOPSIS] {exported} livro(s) exportado(s) — invocando agente synopsis_cowork…")
+    log(f"[SYNOPSIS] {exported} livro(s) exportado(s) — invocando agente synopsis_batch…")
     # wait_on_limit=False: não bloquear 5h no menu/ingestão guiada — ao bater o
     # limite, retorna na hora com mensagem (o usuário re-roda após o reset).
-    success, output = run_agent(agent_prompt_path("synopsis_cowork"),
+    success, output = run_agent(agent_prompt_path("synopsis_batch"),
                                 timeout=AGENT_TIMEOUT, wait_on_limit=False)
 
     if not success:

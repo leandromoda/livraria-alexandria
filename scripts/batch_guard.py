@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Guard de fila para cowork.
+Guard de fila para batch.
 
 Expõe is_queue_busy() para uso programático (autopilot.py) e também
-funciona como script standalone chamado pelo cowork_autopilot.bat.
+funciona como script standalone chamado pelo batch_autopilot.bat.
 
 Detecta três estados de fila ocupada:
-  1. Inputs não processados em data/cowork/ (aguardando o agente)
-  2. Outputs aguardando import em data/cowork/
+  1. Inputs não processados em data/batch/ (aguardando o agente)
+  2. Outputs aguardando import em data/batch/
   3. Lotes em voo: input movido para processed_*/ pelo agente mas
      output ainda não gerado (o agente está processando ativamente).
 
@@ -20,7 +20,7 @@ import os
 import re
 import sys
 
-COWORK = os.path.join("data", "cowork")
+BATCH = os.path.join("data", "batch")
 NUM_PAT = re.compile(r"(\d{3})_")
 
 
@@ -34,8 +34,8 @@ def _get_nums(pattern: str) -> set:
     return nums
 
 
-def is_queue_busy(cowork_dir: str = COWORK) -> tuple[bool, str]:
-    """Verifica se há trabalho pendente em qualquer fase da fila cowork.
+def is_queue_busy(batch_dir: str = BATCH) -> tuple[bool, str]:
+    """Verifica se há trabalho pendente em qualquer fase da fila batch.
 
     Retorna (busy: bool, reason: str).
     busy=True se houver inputs pendentes, outputs aguardando import ou lotes
@@ -45,18 +45,18 @@ def is_queue_busy(cowork_dir: str = COWORK) -> tuple[bool, str]:
     (não subdirs como processed_*/reclaimed/), de forma que inputs
     arquivados pelo reclaim não geram falso positivo.
     """
-    C = cowork_dir
+    C = batch_dir
 
-    # 1. Inputs aguardando o agente (na raiz de cowork/)
+    # 1. Inputs aguardando o agente (na raiz de batch/)
     syn_inputs  = _get_nums(os.path.join(C, "*_synopsis_input.json"))
     cat_inputs  = _get_nums(os.path.join(C, "*_categorize_input.json"))
 
-    # 2. Outputs aguardando import (na raiz de cowork/)
+    # 2. Outputs aguardando import (na raiz de batch/)
     syn_outputs = _get_nums(os.path.join(C, "*_synopsis_output.json"))
     cat_outputs = _get_nums(os.path.join(C, "*_categorize_output.json"))
 
     # 3. Lotes em voo: input movido pelo AGENTE para processed_*/
-    #    mas output ainda não gerado (nem em cowork/ nem em processed_*/).
+    #    mas output ainda não gerado (nem em batch/ nem em processed_*/).
     #    Usa glob de filhos diretos — processed_*/reclaimed/ não é varrido.
     proc_syn = _get_nums(os.path.join(C, "processed_synopsis",   "*_synopsis_input.json"))
     proc_cat = _get_nums(os.path.join(C, "processed_categorize", "*_categorize_input.json"))

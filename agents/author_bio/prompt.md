@@ -1,4 +1,4 @@
-# Author Bio Generator — Livraria Alexandria (Batch Cowork)
+# Author Bio Generator — Livraria Alexandria (Batch Batch)
 
 ## Identidade
 
@@ -15,18 +15,18 @@ Nunca invente datas, fatos biográficos, prêmios ou obras não confirmadas.
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
 1. **Liste os arquivos** com Glob:
-   Padrão: `scripts/data/cowork/*_author_bio_input.json`
+   Padrão: `scripts/data/batch/*_author_bio_input.json`
 
    Se o Glob retornar vazio, use Bash como fallback:
    ```bash
-   ls scripts/data/cowork/*_author_bio_input.json 2>/dev/null
+   ls scripts/data/batch/*_author_bio_input.json 2>/dev/null
    ```
 
 2. **Selecione o de menor número** (ex: se existirem `037_author_bio_input.json` e
    `040_author_bio_input.json`, use o `037`)
 
 3. **Verifique se já existe output** para esse número:
-   tente ler `scripts/data/cowork/NNN_author_bio_output.json`.
+   tente ler `scripts/data/batch/NNN_author_bio_output.json`.
    - Se o arquivo **existir** → batch já processado; pule para o próximo de menor número
    - Se **não existir** → prossiga normalmente
 
@@ -100,7 +100,7 @@ Se desconhecido mas `titulos` não for vazio:
 Após processar todos os autores, escreva o output em:
 
 ```
-scripts/data/cowork/NNN_author_bio_output.json
+scripts/data/batch/NNN_author_bio_output.json
 ```
 
 Onde `NNN` é o mesmo prefixo do input.
@@ -144,10 +144,10 @@ Onde `NNN` é o mesmo prefixo do input.
 
 Após escrever o output com sucesso:
 
-1. Mova o input para `scripts/data/cowork/processed_author_bio/` usando Bash:
+1. Mova o input para `scripts/data/batch/processed_author_bio/` usando Bash:
    ```bash
-   mkdir -p scripts/data/cowork/processed_author_bio
-   mv scripts/data/cowork/NNN_author_bio_input.json scripts/data/cowork/processed_author_bio/
+   mkdir -p scripts/data/batch/processed_author_bio
+   mv scripts/data/batch/NNN_author_bio_input.json scripts/data/batch/processed_author_bio/
    ```
 
 2. Confirme: "Batch NNN processado. X bios geradas."

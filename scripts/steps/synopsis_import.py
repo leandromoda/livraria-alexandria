@@ -2,7 +2,7 @@
 # STEP 32 — SYNOPSIS IMPORT
 # Livraria Alexandria
 #
-# Importa sinopses geradas pelo agente Claude Cowork.
+# Importa sinopses geradas pelo agente Claude Batch.
 # Input: scripts/data/NNN_synopsis_output.json (todos disponíveis)
 # Grava em: sinopse + status_synopsis no SQLite
 # Move processados para: scripts/data/processed_synopsis/
@@ -23,8 +23,8 @@ from steps.quality_gate import check_synopsis_generic
 # =========================
 
 DATA_DIR       = os.path.join(os.path.dirname(__file__), "..", "data")
-COWORK_DIR     = os.path.join(DATA_DIR, "cowork")
-PROCESSED_DIR  = os.path.join(COWORK_DIR, "processed_synopsis")
+BATCH_DIR     = os.path.join(DATA_DIR, "batch")
+PROCESSED_DIR  = os.path.join(BATCH_DIR, "processed_synopsis")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
 OUTPUT_PAT     = re.compile(r"^(\d{3})_synopsis_output\.json$")
 
@@ -206,11 +206,11 @@ def run():
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-    output_files = find_output_files(COWORK_DIR)
+    output_files = find_output_files(BATCH_DIR)
 
     if not output_files:
         log("[SYNOPSIS_IMPORT] Nenhum *_synopsis_output.json encontrado.")
-        log("[SYNOPSIS_IMPORT] Rode a opção 31 (Export) e o agente Claude Cowork primeiro.")
+        log("[SYNOPSIS_IMPORT] Rode a opção 31 (Export) e o agente Claude Batch primeiro.")
         return
 
     log(f"[SYNOPSIS_IMPORT] {len(output_files)} arquivo(s) encontrado(s)")

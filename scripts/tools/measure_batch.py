@@ -37,7 +37,7 @@ from core.db import get_conn
 from core.logger import log
 
 DATA_DIR   = os.path.join(SCRIPTS_DIR, "data")
-COWORK_DIR = os.path.join(DATA_DIR, "cowork")
+BATCH_DIR = os.path.join(DATA_DIR, "batch")
 RESULTS    = os.path.join(DATA_DIR, "batch_measure_results.jsonl")
 AGENT_TIMEOUT = 1200
 
@@ -45,12 +45,12 @@ AGENT_TIMEOUT = 1200
 TASKS = {
     "synopsis": {
         "status_col": "status_synopsis",
-        "agent":      "synopsis_cowork",
+        "agent":      "synopsis_batch",
         "input_glob": "*_synopsis_input.json",
     },
     "classify": {
         "status_col": "status_categorize",
-        "agent":      "classify_cowork",
+        "agent":      "classify_batch",
         "input_glob": "*_categorize_input.json",
     },
 }
@@ -86,7 +86,7 @@ def _import(task):
 
 
 def _newest_input_ids(input_glob):
-    files = glob.glob(os.path.join(COWORK_DIR, input_glob))
+    files = glob.glob(os.path.join(BATCH_DIR, input_glob))
     if not files:
         return []
     newest = max(files, key=os.path.getmtime)

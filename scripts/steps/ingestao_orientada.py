@@ -427,7 +427,7 @@ def _migrate_to_autopilot(idioma: str) -> None:
     log("[INGEST_ORIENTADA] Limite LLM atingido → migrando para Autopilot (sem LLM)")
     log("[INGEST_ORIENTADA] ══════════════════════════════════════")
     try:
-        autopilot.run(idioma, PACOTE_BASE, manter_cowork=False)
+        autopilot.run(idioma, PACOTE_BASE, manter_batch=False)
     except KeyboardInterrupt:
         log("[INGEST_ORIENTADA] Autopilot interrompido pelo usuário.")
     except Exception as e:

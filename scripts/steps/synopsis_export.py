@@ -4,14 +4,14 @@
 #
 # Exporta livros pendentes de sinopse para JSON numerado.
 # Output: scripts/data/NNN_synopsis_input.json (lote de até 25)
-# Consumido por: agente Claude Cowork (agents/synopsis_cowork/)
+# Consumido por: agente Claude Batch (agents/synopsis_batch/)
 # ============================================================
 
 import json
 import os
 from datetime import datetime, timezone
 
-from core.cowork_numbering import next_batch_number
+from core.batch_numbering import next_batch_number
 from core.db import get_conn
 from core.logger import log
 
@@ -22,8 +22,8 @@ from core.logger import log
 
 BATCH_SIZE    = 25
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
-COWORK_DIR    = os.path.join(DATA_DIR, "cowork")
-PROCESSED_DIR = os.path.join(COWORK_DIR, "processed_synopsis")
+BATCH_DIR    = os.path.join(DATA_DIR, "batch")
+PROCESSED_DIR = os.path.join(BATCH_DIR, "processed_synopsis")
 
 
 # =========================
@@ -77,7 +77,7 @@ def run(idioma, pacote, book_ids=None):
 
     log("[SYNOPSIS_EXPORT] Iniciando exportação")
 
-    os.makedirs(COWORK_DIR, exist_ok=True)
+    os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
     conn = get_conn()
@@ -113,8 +113,8 @@ def run(idioma, pacote, book_ids=None):
         conn.close()
         return 0
 
-    num = next_batch_number(COWORK_DIR, "synopsis")
-    output_path = os.path.join(COWORK_DIR, f"{num}_synopsis_input.json")
+    num = next_batch_number(BATCH_DIR, "synopsis")
+    output_path = os.path.join(BATCH_DIR, f"{num}_synopsis_input.json")
 
     payload = {
         "meta": {

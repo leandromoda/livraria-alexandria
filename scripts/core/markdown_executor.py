@@ -316,7 +316,7 @@ def execute_agent(agent_name: str, context: dict):
 
     Usado por author_bio e offer_finder. O motor FSM de sinopse (MODE 2,
     pipeline de 4 estágios) foi aposentado — a geração de sinopse agora usa
-    exclusivamente o agente batch `synopsis_cowork` via claude_runner.run_agent.
+    exclusivamente o agente batch `synopsis_batch` via claude_runner.run_agent.
     """
 
     print(f"[agent] executing '{agent_name}'")

@@ -225,7 +225,7 @@ def upsert_book(payload):
 def mark_blacklisted(conn, local_id: str) -> None:
     """Marca livro bloqueado pela blacklist como não publicável.
     Impede que seja re-buscado em ciclos futuros do autopilot.
-    status_synopsis=4 e status_categorize=4 evitam re-exportação para o agente Cowork."""
+    status_synopsis=4 e status_categorize=4 evitam re-exportação para o agente Batch."""
     cur = conn.cursor()
     cur.execute("""
         UPDATE livros

@@ -66,17 +66,17 @@ scripts/data/batch_measure_run.log
 scripts/data/.fuse_hidden*
 # logs de runtime (pipeline_*.log + NNNN_audit_*.json) — consumidos pelo log_analysis e arquivados
 scripts/data/logs/
-# cowork: lotes transitórios de input/output são runtime (ignorar não afeta o glob do Python).
+# batch: lotes transitórios de input/output são runtime (ignorar não afeta o glob do Python).
 # Mantém rastreáveis os relatórios commitados pelo orquestrador (*_consistency*.json).
-scripts/data/cowork/*_synopsis_input.json
-scripts/data/cowork/*_synopsis_output.json
-scripts/data/cowork/*_categorize_input.json
-scripts/data/cowork/*_categorize_output.json
-scripts/data/cowork/*_author_bio_input.json
-scripts/data/cowork/*_author_bio_output.json
-scripts/data/cowork/processed_synopsis/
-scripts/data/cowork/processed_categorize/
-scripts/data/cowork/processed_author_bio/
+scripts/data/batch/*_synopsis_input.json
+scripts/data/batch/*_synopsis_output.json
+scripts/data/batch/*_categorize_input.json
+scripts/data/batch/*_categorize_output.json
+scripts/data/batch/*_author_bio_input.json
+scripts/data/batch/*_author_bio_output.json
+scripts/data/batch/processed_synopsis/
+scripts/data/batch/processed_categorize/
+scripts/data/batch/processed_author_bio/
 scripts/data/log_analysis/processed_logs/
 test.txt
 

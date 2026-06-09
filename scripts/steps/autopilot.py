@@ -16,8 +16,8 @@
 # sempre pulados. O pipeline para automaticamente quando a fila
 # trava aguardando esses steps manuais.
 #
-# Opção manter_cowork: ao final de cada ciclo exporta lotes de
-# input para o agente Cowork até atingir o target (padrão: 10).
+# Opção manter_batch: ao final de cada ciclo exporta lotes de
+# input para o agente Batch até atingir o target (padrão: 10).
 # ============================================================
 
 import glob as _glob
@@ -48,25 +48,25 @@ from steps import (
     publish_ofertas,
     list_composer,
     publish_listas,
-    cowork_export,
-    cowork_import,
+    batch_export,
+    batch_import,
 )
 
 
 # =========================
-# COWORK TOP-UP
+# BATCH TOP-UP
 # =========================
 
-_COWORK_DIR = _os.path.join("data", "cowork")
+_BATCH_DIR = _os.path.join("data", "batch")
 _NUM_PAT    = _re.compile(r"^(\d{3})_")
 
 
 def _count_input_batches() -> int:
-    """Conta lotes distintos de input pendentes em data/cowork/ (pelo NNN)."""
+    """Conta lotes distintos de input pendentes em data/batch/ (pelo NNN)."""
     nums: set = set()
     for fpath in (
-        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
-        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+        _glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_input.json")) +
+        _glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_input.json"))
     ):
         m = _NUM_PAT.match(_os.path.basename(fpath))
         if m:
@@ -74,21 +74,21 @@ def _count_input_batches() -> int:
     return len(nums)
 
 
-def _has_cowork_outputs() -> bool:
-    """Retorna True se houver outputs de Cowork prontos para importar."""
+def _has_batch_outputs() -> bool:
+    """Retorna True se houver outputs de Batch prontos para importar."""
     return bool(
-        _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")) +
-        _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json"))
+        _glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_output.json")) +
+        _glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_output.json"))
     )
 
 
-def _topup_cowork(idioma: str, target: int = 10):
-    """Exporta lotes de Cowork SOMENTE quando a fila está completamente ociosa.
+def _topup_batch(idioma: str, target: int = 10):
+    """Exporta lotes de Batch SOMENTE quando a fila está completamente ociosa.
 
-    Usa cowork_guard.is_queue_busy() — mesmo guard do cowork_autopilot.bat —
+    Usa batch_guard.is_queue_busy() — mesmo guard do batch_autopilot.bat —
     que cobre três casos de "fila ocupada":
-      1. Inputs não processados em data/cowork/ (aguardando o agente)
-      2. Outputs aguardando import em data/cowork/
+      1. Inputs não processados em data/batch/ (aguardando o agente)
+      2. Outputs aguardando import em data/batch/
       3. Lotes em voo: input movido pelo agente para processed_*/ mas output
          ainda não gerado.
 
@@ -96,28 +96,28 @@ def _topup_cowork(idioma: str, target: int = 10):
     guard — o reclaim usa subdir dedicado justamente para evitar falso positivo
     de "lote em voo" neste check."""
     try:
-        from cowork_guard import is_queue_busy
+        from batch_guard import is_queue_busy
         busy, reason = is_queue_busy()
     except ImportError:
-        # Fallback defensivo — usa contagem básica se cowork_guard indisponível
+        # Fallback defensivo — usa contagem básica se batch_guard indisponível
         busy   = _count_input_batches() > 0
         reason = f"{_count_input_batches()} lote(s) na fila"
 
     if busy:
-        log(f"[AUTOPILOT][COWORK] Fila ocupada ({reason}) — não exporta.")
+        log(f"[AUTOPILOT][BATCH] Fila ocupada ({reason}) — não exporta.")
         return
 
-    log(f"[AUTOPILOT][COWORK] Fila ociosa — exportando {target} lote(s).")
+    log(f"[AUTOPILOT][BATCH] Fila ociosa — exportando {target} lote(s).")
     exportados = 0
     for i in range(target):
         try:
-            with StepRun("cowork_export", idioma=idioma, pacote=25, invocado_por="autopilot"):
-                cowork_export.run(idioma, 25)
+            with StepRun("batch_export", idioma=idioma, pacote=25, invocado_por="autopilot"):
+                batch_export.run(idioma, 25)
             exportados += 1
         except Exception as e:
-            log(f"[AUTOPILOT][COWORK] Erro ao exportar lote {i + 1}: {e}")
+            log(f"[AUTOPILOT][BATCH] Erro ao exportar lote {i + 1}: {e}")
             break  # não tentar mais se falhou
-    log(f"[AUTOPILOT][COWORK] {exportados} lote(s) exportado(s). Total pendente: {_count_input_batches()}.")
+    log(f"[AUTOPILOT][BATCH] {exportados} lote(s) exportado(s). Total pendente: {_count_input_batches()}.")
 
 
 # =========================
@@ -394,7 +394,7 @@ def count_pending(conn) -> int:
 # RUN
 # =========================
 
-def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: int = 10):
+def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int = 10):
     """Loop automático: roda sequência não-LLM até não haver mais progresso.
 
     Para quando:
@@ -411,11 +411,11 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
       e sem progresso também encerram (evita loop infinito em falha permanente)
 
     Args:
-        manter_cowork: Se True, exporta lotes Cowork ao final de cada ciclo
-                       para manter `cowork_target` inputs disponíveis ao agente.
+        manter_batch: Se True, exporta lotes Batch ao final de cada ciclo
+                       para manter `batch_target` inputs disponíveis ao agente.
                        Padrão False para evitar side effects em callers que não
-                       gerenciam imports de Cowork (ex: ingestao_orientada).
-        cowork_target: Número de lotes a manter disponíveis (padrão: 10).
+                       gerenciam imports de Batch (ex: ingestao_orientada).
+        batch_target: Número de lotes a manter disponíveis (padrão: 10).
     """
     MAX_CICLOS_COM_ERRO = 3  # para após N ciclos consecutivos com erro sem progresso
     QG_BOTTLENECK_THRESHOLD = 8  # ciclos sem aprovação no QG indicam bottleneck de sinopse
@@ -447,9 +447,9 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
     except Exception as e:
         log(f"[AUTOPILOT] AVISO: fix_offer_status falhou: {e}. Continuando.")
 
-    # Top-up inicial de lotes Cowork (antes do primeiro ciclo)
-    if manter_cowork:
-        _topup_cowork(idioma, cowork_target)
+    # Top-up inicial de lotes Batch (antes do primeiro ciclo)
+    if manter_batch:
+        _topup_batch(idioma, batch_target)
 
     conn = get_conn()
     pending_anterior = count_pending(conn)
@@ -495,13 +495,13 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
             log(f"[AUTOPILOT] Pendente no inicio: {pending_anterior}")
             log("=" * 52)
 
-            # Importa outputs de Cowork pendentes (synopsis/categorize) antes dos steps
-            if _has_cowork_outputs():
-                log("[AUTOPILOT] Outputs de Cowork pendentes — importando antes do ciclo...")
+            # Importa outputs de Batch pendentes (synopsis/categorize) antes dos steps
+            if _has_batch_outputs():
+                log("[AUTOPILOT] Outputs de Batch pendentes — importando antes do ciclo...")
                 try:
-                    cowork_import.run()
+                    batch_import.run()
                 except Exception as e:
-                    log(f"[AUTOPILOT] AVISO: erro ao importar Cowork outputs: {e}")
+                    log(f"[AUTOPILOT] AVISO: erro ao importar Batch outputs: {e}")
 
             # Recalcula prioridades antes de processar os steps
             conn = get_conn()
@@ -550,9 +550,9 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
             log(f"[AUTOPILOT] Fim ciclo {ciclo} | Pendente: {pending_anterior} -> {pending_atual}"
                 + (f" | Erros no ciclo: {erros_no_ciclo}" if erros_no_ciclo else ""))
 
-            # Top-up de lotes Cowork (se habilitado)
-            if manter_cowork:
-                _topup_cowork(idioma, cowork_target)
+            # Top-up de lotes Batch (se habilitado)
+            if manter_batch:
+                _topup_batch(idioma, batch_target)
 
             if pending_atual == 0:
                 log("[AUTOPILOT] Pipeline exaurido. Nada mais a processar.")
@@ -621,7 +621,7 @@ def run(idioma: str, pacote: int, manter_cowork: bool = False, cowork_target: in
                         f"[AUTOPILOT][⚠️ LLM BOTTLENECK] {ciclos_sem_qg_avanco} ciclos consecutivos "
                         f"sem aprovação no Quality Gate. Pipeline aguardando sinopses (steps 10/11)."
                     )
-                    log("[AUTOPILOT] Rode 'C → Cowork' ou 'O → LLM Autopilot' para gerar sinopses pendentes.")
+                    log("[AUTOPILOT] Rode 'C → Batch' ou 'O → LLM Autopilot' para gerar sinopses pendentes.")
                     log("[AUTOPILOT] Iniciando auditoria de integridade...")
                     autopilot_audit.run()
                     break

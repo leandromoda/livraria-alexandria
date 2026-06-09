@@ -4,7 +4,7 @@
 #
 # Execuções interrompidas (timeout, Ctrl+C, reset de sessão) deixam
 # livros em status_*=3 (exportado-não-importado) e arquivos
-# *_input.json órfãos em data/cowork/. Esses livros ficam INVISÍVEIS
+# *_input.json órfãos em data/batch/. Esses livros ficam INVISÍVEIS
 # aos drains do orquestrador (que selecionam status=0), virando
 # backlog oculto.
 #
@@ -26,7 +26,7 @@ from core.db import get_conn
 from core.logger import log
 
 SCRIPTS_DIR = Path(__file__).parent.parent
-COWORK_DIR  = SCRIPTS_DIR / "data" / "cowork"
+BATCH_DIR  = SCRIPTS_DIR / "data" / "batch"
 
 # (kind, coluna de status com sentinel 3, pasta de arquivamento)
 _RECOVERABLE = [
@@ -45,22 +45,22 @@ _INPUT_KINDS = [
 def _has_pending() -> bool:
     """True se há qualquer artefato/estado preso a tratar."""
     for kind, processed in _INPUT_KINDS:
-        if glob.glob(str(COWORK_DIR / f"*_{kind}_input.json")):
+        if glob.glob(str(BATCH_DIR / f"*_{kind}_input.json")):
             return True
         # Inputs em processed_*/ sem output correspondente são stale:
         # bloqueiam is_queue_busy() mesmo após reclaim resetar o banco.
-        proc_dir = COWORK_DIR / processed
+        proc_dir = BATCH_DIR / processed
         if proc_dir.exists():
             for inp in proc_dir.glob(f"*_{kind}_input.json"):
                 nnn = inp.name.split("_")[0]
                 has_out = (
                     (proc_dir / f"{nnn}_{kind}_output.json").exists()
-                    or (COWORK_DIR / f"{nnn}_{kind}_output.json").exists()
+                    or (BATCH_DIR / f"{nnn}_{kind}_output.json").exists()
                 )
                 if not has_out:
                     return True
     for kind, _, _ in _RECOVERABLE:
-        if glob.glob(str(COWORK_DIR / f"*_{kind}_output.json")):
+        if glob.glob(str(BATCH_DIR / f"*_{kind}_output.json")):
             return True
     conn = get_conn()
     try:
@@ -73,11 +73,11 @@ def _has_pending() -> bool:
 def _import_pending_outputs() -> int:
     """Importa outputs prontos antes de qualquer reset (não perde trabalho feito)."""
     recovered = 0
-    if glob.glob(str(COWORK_DIR / "*_synopsis_output.json")):
+    if glob.glob(str(BATCH_DIR / "*_synopsis_output.json")):
         from steps.synopsis_import import run as synopsis_import_run
         synopsis_import_run()
         recovered += 1
-    if glob.glob(str(COWORK_DIR / "*_categorize_output.json")):
+    if glob.glob(str(BATCH_DIR / "*_categorize_output.json")):
         from steps.categorize_import import run as categorize_import_run
         categorize_import_run()
         recovered += 1
@@ -108,12 +108,12 @@ def _archive_stale_processed_inputs() -> int:
     e bloqueia toda exportação indefinidamente.
 
     Segurança: só arquiva inputs SEM output matching (em processed_*/ ou na
-    raiz de cowork/). Inputs com output correspondente não são tocados — o
+    raiz de batch/). Inputs com output correspondente não são tocados — o
     agente concluiu e o import ainda não rodou.
     """
     moved = 0
     for kind, processed in _INPUT_KINDS:
-        proc_dir = COWORK_DIR / processed
+        proc_dir = BATCH_DIR / processed
         if not proc_dir.exists():
             continue
         # Filhos diretos de processed_*/ (glob pathlib não é recursivo aqui)
@@ -124,7 +124,7 @@ def _archive_stale_processed_inputs() -> int:
         done_nums: set[str] = set()
         for p in proc_dir.glob(f"*_{kind}_output.json"):
             done_nums.add(p.name.split("_")[0])
-        for p in COWORK_DIR.glob(f"*_{kind}_output.json"):
+        for p in BATCH_DIR.glob(f"*_{kind}_output.json"):
             done_nums.add(p.name.split("_")[0])
         reclaimed_dir = proc_dir / "reclaimed"
         for inp_path in inputs:
@@ -147,17 +147,17 @@ def _archive_orphan_inputs() -> int:
     Usa subdiretório `reclaimed/` em vez de `processed_*/` diretamente para
     distinguir lotes abandonados de lotes em voo (agent move input para
     processed_*/ ENQUANTO processa; reclaim move para processed_*/reclaimed/
-    APÓS desistir). O guard de fila (cowork_guard.py) só verifica filhos
+    APÓS desistir). O guard de fila (batch_guard.py) só verifica filhos
     diretos de processed_*/, então reclaimed/ não gera falso positivo de
-    "lote em voo". cowork_numbering.py inclui reclaimed/ no scan de números
+    "lote em voo". batch_numbering.py inclui reclaimed/ no scan de números
     para evitar reutilização de NNNs.
     """
     moved = 0
     for kind, processed in _INPUT_KINDS:
-        orphans = glob.glob(str(COWORK_DIR / f"*_{kind}_input.json"))
+        orphans = glob.glob(str(BATCH_DIR / f"*_{kind}_input.json"))
         if not orphans:
             continue
-        dest_dir = COWORK_DIR / processed / "reclaimed"
+        dest_dir = BATCH_DIR / processed / "reclaimed"
         os.makedirs(dest_dir, exist_ok=True)
         for path in orphans:
             dest = dest_dir / os.path.basename(path)
@@ -175,7 +175,7 @@ def run() -> dict:
     Silencioso (sem log) quando não há nada preso.
     """
     empty = {"recovered_imports": 0, "reset": {}, "archived_inputs": 0}
-    if not COWORK_DIR.exists() or not _has_pending():
+    if not BATCH_DIR.exists() or not _has_pending():
         return empty
 
     log("[RECLAIM] Estados presos detectados — recuperando…")

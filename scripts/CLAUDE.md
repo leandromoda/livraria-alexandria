@@ -102,17 +102,17 @@ scripts/
 │   ├── books.db              # SQLite principal
 │   ├── taxonomy.json         # 100+ categorias temáticas
 │   ├── claude_usage.json     # Contadores da sessão Claude PRO (auto-gerado)
-│   ├── cowork/               # Lotes de input/output dos agentes batch (runtime)
+│   ├── batch/               # Lotes de input/output dos agentes batch (runtime)
 │   ├── seeds/                # NNN_offer_seeds.json aguardando ingestão
 │   └── seeds/ingested_seeds/ # Seeds já processados (movidos pelo step 1)
 └── agents/  (em ../agents/)  # Prompts markdown dos agentes
-    ├── synopsis_cowork/prompt.md   # Geração de sinopse em LOTE (motor único)
-    ├── classify_cowork/prompt.md   # Categorização em LOTE
+    ├── synopsis_batch/prompt.md   # Geração de sinopse em LOTE (motor único)
+    ├── classify_batch/prompt.md   # Categorização em LOTE
     └── author_bio/                 # Bio de autor (MODE 1: identity/rules/task)
 ```
 
 > **Motor LLM (WS2, 2026-05-30):** a geração usa o **claude CLI** (assinatura PRO)
-> via **agentes batch** (`*_cowork`). O antigo FSM de sinopse (`agents/synopsis/*`,
+> via **agentes batch** (`*_batch`). O antigo FSM de sinopse (`agents/synopsis/*`,
 > `markdown_executor` MODE 2) foi **removido**. `markdown_executor` mantém só o
 > MODE 1 (agente de estágio único, ex: `author_bio`).
 
@@ -239,7 +239,7 @@ o provider padrão é `claude`).
 
 | Caminho | Como funciona | Usado por |
 |---------|---------------|-----------|
-| **Batch** (canônico) | exporta lote JSON → `run_agent` sobre `agents/*_cowork/prompt.md` → importa | sinopse, categorização, bios (opção O, menu 10/11/13, ingestão guiada) |
+| **Batch** (canônico) | exporta lote JSON → `run_agent` sobre `agents/*_batch/prompt.md` → importa | sinopse, categorização, bios (opção O, menu 10/11/13, ingestão guiada) |
 | **MODE 1** (estágio único) | `execute_agent` sobre `agents/<n>/{identity,rules,task}.md` | author_bio, offer_finder |
 
 ### Controle de sessão (não tokens)
@@ -361,7 +361,7 @@ Campos obrigatórios: `titulo`, `lookup_query`.
 3. **Registrar no menu** em `main.py`: número na faixa do grupo (Geração 10-19,
    Publicação 20-30, Auditoria/QA 40-59 — ver "Menu — numeração por grupos")
 4. **Importar** no topo de `main.py`: `from steps import meu_step`
-5. Se usar LLM, prefira o **motor batch** (export → `run_agent(<agente>_cowork)` →
+5. Se usar LLM, prefira o **motor batch** (export → `run_agent(<agente>_batch)` →
    import), como `synopsis.py`/`categorize.py`. Evite o roteador legado `set_provider`.
 
 ### Template mínimo
