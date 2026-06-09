@@ -35,13 +35,17 @@ O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de açã
 | Pré-processamento | 5-9 | slugs, slugify autores, dedup autores, dedup, review |
 | Geração de Conteúdo | 10-19 | 10 categorizar, 10R reset, 11 sinopses, 12 capas, 13 bios |
 | Publicação | 20-30 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações |
-| Auditoria/QA | 40-51 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência |
+| Auditoria/QA | 40-57 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência, 52 reprocessar blacklist, 53 QA remediação, 54 capas, 55 classificação, 56 QA auditoria completa do site, 57 QA passe completo |
 | Exports | 91-94 | transcripts/estado |
 | Banco | 95-97 | backup, restore, recover |
 
 > A geração LLM (10/11/13) e a auditoria de conteúdo usam o **claude CLI**
-> (assinatura PRO) via agentes batch — Gemini foi aposentado. A faixa **40+**
-> está reservada para o futuro `qa.py` (WS4). Fonte de verdade: `scripts/main.py`.
+> (assinatura PRO) via agentes batch — Gemini foi aposentado. O orquestrador de QA
+> **`qa.py` já existe** (menu 53/56/57): `qa.run("audit")` é o passe único de
+> auditoria do site todo (não-LLM) e `qa.run("full")` = auditoria + remediação.
+> Todas as auditorias emitem `data/logs/NNNN_audit_<mode>.json` (escritor
+> `core/audit_report.py`), consumido pelo comando **`/audit`**. Fonte de verdade:
+> `scripts/main.py`.
 
 ### Atalhos de diagnóstico
 
@@ -135,8 +139,9 @@ scripts/
 | 15 | Publicar Ofertas | publish_ofertas.py | — | step 13 | status_publish_oferta=1 |
 | 16 | Listas SEO | list_composer.py | — | step 13 | tabelas listas/listas_livros |
 | 17 | Monitor Preços | offer_price_monitor.py | — | step 13 | offer_price_log |
-| 18 | Auditoria Conectiv | auditor.py | — | — | connectivity_log |
-| **19** | **Auditoria Conteúdo** | auditor.py | **Claude** | step 13 | audit_log |
+| 18 | Auditoria Conectiv | auditor.py | — | — | connectivity_log + NNNN_audit_connectivity.json |
+| **19** | **Auditoria Conteúdo** | auditor.py | **Claude** | step 13 | audit_log + NNNN_audit_content.json |
+| 40–57 | Auditoria/QA (suite) | auditor.py (modes) + qa.py | parcial | step 13 | data/logs/NNNN_audit_<mode>.json |
 | 91–94 | Exports | export_state_transcript.py | — | — | JSON/markdown |
 
 ### Fluxo recomendado para novos seeds

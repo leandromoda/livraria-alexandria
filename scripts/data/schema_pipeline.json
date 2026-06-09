@@ -82,28 +82,35 @@
     {"n": 17, "name": "Publicar Ofertas", "module": "publish_ofertas", "llm": false, "phase": "publish", "depends_on": ["14"], "target": "Supabase.ofertas", "in_autopilot": true},
     {"n": 18, "name": "Listas SEO", "module": "list_composer", "llm": false, "phase": "publish", "depends_on": ["14"], "produces": "listas, listas_livros", "in_autopilot": true, "rules": {"min_categoria": 6, "min_autor": 3, "max_por_lista": 12}},
     {"n": 19, "name": "Publicar Listas", "module": "publish_listas", "llm": false, "phase": "publish", "depends_on": ["18"], "target": "Supabase.listas", "in_autopilot": true},
-    {"n": 20, "name": "Monitor Preços", "module": "offer_price_monitor", "llm": false, "phase": "manutencao", "produces": "offer_price_log, reactivation_pending"},
-    {"n": 21, "name": "Auditoria Conectividade", "module": "auditor (mode=connectivity)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_connectivity.json + connectivity_log"},
-    {"n": 22, "name": "Auditoria Conteúdo", "module": "auditor (mode=content)", "llm": true, "llm_path": "markdown_executor", "phase": "auditoria", "depends_on": ["14"], "action": "despublica severity medium|high; salva em agent::synopsis::memory"},
-    {"n": 23, "name": "Reparar Publicações", "module": "repair", "llm": false, "phase": "auditoria"},
-    {"n": 24, "name": "Reparo Direcionado por Slug", "module": "targeted_repair", "llm": false, "phase": "auditoria", "reset_types": ["sinopse", "capa", "ambos"]},
-    {"n": 25, "name": "Aplicar Blacklist", "module": "apply_blacklist", "llm": false, "phase": "auditoria", "input": "blacklist.json (gerado por agente)", "action": "despublica severity medium|high"},
-    {"n": 26, "name": "Exportar p/ Auditoria", "module": "core/export_for_audit", "llm": false, "phase": "auditoria", "output": "audit_input.json"},
-    {"n": "28a", "name": "Auditoria Integridade", "module": "autopilot_audit", "llm": false, "phase": "auditoria", "note": "8 checks sem LLM; chamado automaticamente ao exaurir autopilot."},
-    {"n": "29a", "name": "Auditar Listas SEO", "module": "auditor (mode=list)", "llm": false, "phase": "auditoria"},
-    {"n": "30a", "name": "Verificar Autores sem Bio", "module": "auditor (mode=author-bios)", "llm": false, "phase": "auditoria"},
-    {"n": "31a", "name": "Verificar Veracidade de Títulos", "module": "auditor (mode=title-verify)", "llm": true, "phase": "auditoria"},
-    {"n": 32, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/cowork/*_consistency.json (lido por agente consistency_review)"},
-    {"n": "29b", "name": "Bios de Autores", "module": "author_bio", "llm": true, "phase": "conteudo", "produces": "autores.descricao"},
-    {"n": 30, "name": "Importar offer_list.json", "module": "offer_list_importer", "llm": false, "phase": "publish", "input": "offer_list.json (agente offer_finder)"},
+    {"n": 13, "name": "Bios de Autores", "module": "author_bio", "llm": true, "phase": "conteudo", "produces": "autores.descricao"},
     {"n": 27, "name": "Reparar Ofertas", "module": "publish_ofertas.run_repair", "llm": false, "phase": "publish"},
     {"n": 28, "name": "Fix Affiliate URLs", "module": "fix_affiliate_urls", "llm": false, "phase": "publish"},
+    {"n": 29, "name": "Importar offer_list.json", "module": "offer_list_importer", "llm": false, "phase": "publish", "input": "offer_list.json (agente offer_finder)"},
+    {"n": 40, "name": "Monitor Preços/Ofertas", "module": "offer_price_monitor", "llm": false, "phase": "auditoria", "produces": "offer_price_log, reactivation_pending", "output": "data/logs/NNNN_audit_prices.json (P1)"},
+    {"n": 41, "name": "Auditoria Conectividade", "module": "auditor (mode=connectivity)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_connectivity.json + connectivity_log"},
+    {"n": 42, "name": "Auditoria Conteúdo", "module": "auditor (mode=content)", "llm": true, "llm_path": "markdown_executor", "phase": "auditoria", "action": "despublica severity medium|high"},
+    {"n": 43, "name": "Reparar Publicações", "module": "repair", "llm": false, "phase": "auditoria"},
+    {"n": 44, "name": "Reparo Direcionado por Slug", "module": "targeted_repair", "llm": false, "phase": "auditoria", "reset_types": ["sinopse", "capa", "ambos"]},
+    {"n": 45, "name": "Aplicar Blacklist", "module": "apply_blacklist", "llm": false, "phase": "auditoria", "input": "blacklist.json (gerado por agente)", "action": "despublica severity medium|high"},
+    {"n": 46, "name": "Exportar p/ Auditoria", "module": "core/export_for_audit", "llm": false, "phase": "auditoria", "output": "audit_input.json"},
+    {"n": 47, "name": "Auditoria Integridade", "module": "autopilot_audit", "llm": false, "phase": "auditoria", "note": "8 checks SQL sem LLM", "output": "data/logs/NNNN_audit_integrity.json (P1)"},
+    {"n": 48, "name": "Auditar Listas SEO", "module": "auditor (mode=list)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_list.json"},
+    {"n": 49, "name": "Verificar Autores sem Bio", "module": "auditor (mode=author-bios)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_author_bio.json"},
+    {"n": 50, "name": "Verificar Veracidade de Títulos", "module": "auditor (mode=title-verify)", "llm": true, "phase": "auditoria"},
+    {"n": 51, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_consistency.json (P1) + data/cowork/*_consistency.json"},
+    {"n": 52, "name": "Reprocessar Blacklist", "module": "reprocess_blacklist", "llm": false, "phase": "auditoria", "note": "recupera/quarentena por causa (WS5)"},
+    {"n": 53, "name": "QA — Passe de Remediação", "module": "qa (mode=remediate)", "llm": false, "phase": "auditoria", "note": "apply_blacklist + reprocess_blacklist (WS4)"},
+    {"n": 54, "name": "Auditar Capas", "module": "auditor (mode=covers)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_covers.json (P2)"},
+    {"n": 55, "name": "Auditar Classificação", "module": "auditor (mode=classification)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_classification.json (P2)"},
+    {"n": 56, "name": "QA — Auditoria Completa do Site", "module": "qa (mode=audit)", "llm": false, "phase": "auditoria", "note": "P3: passe único não-LLM — connectivity+prices+covers+classification+list+integrity+consistency, cada um emitindo NNNN_audit_<mode>.json"},
+    {"n": 57, "name": "QA — Passe Completo", "module": "qa (mode=full)", "llm": false, "phase": "auditoria", "note": "P3: audit + remediação"},
     {"n": "91-94", "name": "Exports", "module": "export_state_transcript", "llm": false, "phase": "export"},
     {"n": "95-97", "name": "Banco (backup/restore/recover)", "module": "db_backup/db_restore/db_recover", "llm": false, "phase": "banco"}
   ],
 
   "menu_numbering_issues": {
-    "description": "O submenu de Auditoria reusa números 28/29/30/31 com significados diferentes do submenu de Publicação e do menu de Geração — fonte de confusão e bug latente.",
+    "status": "RESOLVIDO (WS9): Auditoria/QA renumerada para 40-57 (sem colisão). Mantido aqui como registro histórico.",
+    "description": "[HISTÓRICO] O submenu de Auditoria reusava números 28/29/30/31 com significados diferentes do submenu de Publicação e do menu de Geração — fonte de confusão e bug latente.",
     "collisions": [
       "29 = 'Bios de Autores' (Geração) E 'Auditar Listas SEO' (Auditoria)",
       "30 = 'Importar offer_list' (Publicação) E 'Verificar Autores sem Bio' (Auditoria)",
@@ -129,7 +136,8 @@
       "id": "P3_qualidade_baixa",
       "title": "Páginas de baixa qualidade publicadas sem correção sistemática",
       "root_cause": "QG é só heurístico (tamanho/idioma/flags). As verificações reais de qualidade (auditoria de conteúdo LLM step 22, title-verify 31, consistency 32, blacklist 25) estão fragmentadas em opções manuais separadas e não integradas ao fluxo de publicação nem ao loop automatizado. Não há um estágio padronizado de QA/revisão que rode sistematicamente e feche o ciclo (detectar → despublicar/corrigir → regenerar).",
-      "evidence": "Sinopses incorretas, categorização equivocada (opção 10R existe para reset manual), ofertas inválidas (HTTP 503 no scraper, offer_finder manual)."
+      "evidence": "Sinopses incorretas, categorização equivocada (opção 10R existe para reset manual), ofertas inválidas (HTTP 503 no scraper, offer_finder manual).",
+      "resolution": "PARCIAL (auditoria do site, 2026-06): P1 unificou a saída de TODAS as auditorias no formato data/logs/NNNN_audit_<mode>.json (escritor core/audit_report.py), consumido pelo comando /audit (agents/audit_cowork/) que lê → corrige → arquiva. P2 fechou as lacunas de cobertura (modos covers e classification no auditor.py). P3 criou o passe único qa.run('audit') (menu 56) que audita o site todo (conexões+preços+capas+classificação+listas+integridade+consistência) e qa.run('full') (menu 57) = audit + remediação. Detectar→relatar→corrigir agora é coeso. Pendente: integrar o passe ao loop automatizado (G/autopilot) com cadência."
     },
     {
       "id": "P4_fragmentacao",
@@ -146,7 +154,7 @@
     {"target": "Opção C (Cowork manual)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
     {"target": "Opção I (Ingestão Orientada)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso; convergir para G só com sign-off + teste.", "reason": "sobrepõe O+A."},
     {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
-    {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-51 (sem colisão); WS4 (2026-05-30) adicionou qa.py orquestrador (modos) + menu 52/53 (reprocessar blacklist / remediação). WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine.", "reason": "colisões de numeração e dispersão."}
+    {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-57 (sem colisão); WS4 adicionou qa.py orquestrador + menu 52/53; WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine. Auditoria do site (2026-06): P1 escritor unificado NNNN_audit_<mode>.json; P2 modos covers (54) + classification (55); P3 passe único qa audit (56) + full (57).", "reason": "colisões de numeração e dispersão."}
   ],
 
   "constraints": {
