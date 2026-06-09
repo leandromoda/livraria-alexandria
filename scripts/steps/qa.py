@@ -31,7 +31,7 @@ from core.logger import log
 # Modos que NÃO consomem a sessão LLM (seguros para o passe automático).
 NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
                  "classification", "connectivity", "prices", "integrity",
-                 "audit", "remediate", "full")
+                 "audit", "remediate", "remediate_covers", "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -116,6 +116,8 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
 
     mode:
       remediate (default) → apply_blacklist + reprocess_blacklist (não-LLM)
+      remediate_covers    → fecha o ciclo de CAPAS: reprocessa publicados sem
+                            capa com prioridade (covers+publish padrão, não-LLM)
       audit               → PASSE ÚNICO de auditoria do site todo (não-LLM):
                             conexões + preços + capas + classificação + listas
                             + integridade + consistência → NNNN_audit_*.json
@@ -138,6 +140,10 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
 
     if mode == "remediate":
         return remediate(dry_run=dry_run, limit=limit)
+
+    if mode == "remediate_covers":
+        from steps import qa_remediation
+        return qa_remediation.run_covers(limit=limit or 50)
 
     if mode == "audit":
         return site_audit(dry_run=dry_run, limit=limit)

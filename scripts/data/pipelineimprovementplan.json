@@ -296,6 +296,32 @@
         "Atualizar schema_pipeline.json com a nova numeração ao final."
       ],
       "files_touched": ["scripts/main.py", "scripts/CLAUDE.md", "scripts/data/schema_pipeline.json"]
+    },
+    {
+      "id": "WS10_qa_remediation_loop",
+      "title": "Loop de remediação — fechar o ciclo da auditoria do site (detectar → corrigir → republicar)",
+      "problem_refs": ["P3_qualidade_baixa"],
+      "priority": "alta",
+      "effort": "médio (incremental por fator)",
+      "status": "EM ANDAMENTO (2026-06): fatia CAPA implementada; sinopse/categoria/oferta pendentes",
+      "rationale": "A auditoria do site (P1-P3) detecta e relata, mas a correção do fator-causa ainda é manual/ad-hoc. Este WS fecha o ciclo: cada fator de defeito vira uma remediação priorizada que reprocessa o título (que já tem os demais requisitos de publicação) e o republica.",
+      "design": {
+        "decisao_central": "REUSAR os steps padrão via book_ids (alvo + prioridade), NÃO criar scripts paralelos — evita a duplicação/drift que P3/P4 eliminaram. Prioridade é seleção, não motor.",
+        "fila_sqlite": "Tabela qa_remediation(livro_id, factor, reason, status[pending|reprocessing|fixed|quarantined], attempts, detected_at, last_attempt_at, source_report) + índice parcial único (livro_id, factor) WHERE status aberto (impede duplicar).",
+        "gatilho_por_fator": "Resetar a flag-causa dispara o step padrão: capa→status_cover=0; sinopse→status_synopsis=0+limpa sinopse; categoria→status_categorize=0+limpa livros_categorias_tematicas; oferta→status_publish_oferta=0+limpa offer_url.",
+        "anti_thrash": "MAX_ATTEMPTS=3 → qa_quarantine=1 (reusa coluna existente). Essencial p/ fatores LLM (sinopse pode reproduzir o erro).",
+        "seo_fix_in_place": "Para fatores de melhoria (capa/categoria/sinopse fraca) NÃO despublicar: o site lê o Supabase; marcar status_publish=0 só reenfileira para o publish padrão re-fazer o upsert. Despublicar de fato só para conteúdo nocivo/ilegítimo (title-verify alucinação, blacklist).",
+        "integracao_G_A": "A (loop não-LLM): drena fatores não-LLM (capa, oferta) por ciclo, com prioridade. G (passe único): fase de remediação após o `qa audit`; fatores LLM (sinopse/categoria) reusam o motor da opção O dentro da janela de sessão."
+      },
+      "slice_implementada_capa": [
+        "core/db.py: tabela qa_remediation + índice parcial único.",
+        "covers.py + publish.py: parâmetro book_ids (publish: filtro de idioma opcional quando há book_ids — backward-compatible).",
+        "steps/qa_remediation.py: enqueue_covers + drain_covers + run_covers (fix-in-place, anti-thrash).",
+        "autopilot.py (A): fase 'QA Remediação (capas)' por ciclo, fora do accounting de progresso.",
+        "qa.py: modo remediate_covers; main.py: menu 58."
+      ],
+      "proximas_fatias": ["sinopse (LLM, despublicar se nociva)", "categoria (não-LLM, fix-in-place)", "oferta (não-LLM, regerar via offer_resolver/scraper)", "enfileirar a partir dos NNNN_audit_<mode>.json (ligar P1→fila)"],
+      "files_touched": ["scripts/core/db.py", "scripts/steps/covers.py", "scripts/steps/publish.py", "scripts/steps/qa_remediation.py", "scripts/steps/autopilot.py", "scripts/steps/qa.py", "scripts/main.py"]
     }
   ],
 

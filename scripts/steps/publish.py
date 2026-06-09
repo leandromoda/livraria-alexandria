@@ -75,6 +75,11 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
 
     if book_ids:
         placeholders = ",".join("?" * len(book_ids))
+        # Alvo explícito (ex.: remediação de QA): o filtro de idioma é opcional —
+        # os ids já são específicos. idioma=None ⇒ não restringe por idioma
+        # (mantém compatibilidade: chamadas com idioma seguem filtrando).
+        idioma_sql = "AND idioma = ?" if idioma else ""
+        params = (([idioma] if idioma else []) + list(book_ids) + [limit])
         cur.execute(f"""
             SELECT
                 id, titulo, slug, autor,
@@ -91,11 +96,11 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND sinopse IS NOT NULL
               AND trim(sinopse) != ''
               AND length(trim(sinopse)) >= 80
-              AND idioma          = ?
+              {idioma_sql}
               AND id IN ({placeholders})
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
-        """, (idioma, *book_ids, limit))
+        """, params)
     else:
         cur.execute("""
             SELECT

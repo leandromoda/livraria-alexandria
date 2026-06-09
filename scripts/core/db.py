@@ -307,4 +307,27 @@ def ensure_schema(conn):
     );
     """)
 
+    # Controle de remediação de QA (fecha o ciclo da auditoria do site):
+    # uma linha por (livro, fator) em aberto. O índice parcial único impede
+    # enfileiramento duplicado enquanto a remediação não fecha.
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS qa_remediation (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        livro_id        TEXT NOT NULL,
+        factor          TEXT NOT NULL,           -- 'capa'|'synopsis'|'categoria'|'oferta'
+        reason          TEXT,
+        status          TEXT    DEFAULT 'pending',-- pending|reprocessing|fixed|quarantined
+        attempts        INTEGER DEFAULT 0,
+        detected_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_attempt_at DATETIME,
+        source_report   TEXT
+    );
+    """)
+
+    cur.execute("""
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_qa_remediation_open
+        ON qa_remediation(livro_id, factor)
+        WHERE status IN ('pending', 'reprocessing');
+    """)
+
     conn.commit()

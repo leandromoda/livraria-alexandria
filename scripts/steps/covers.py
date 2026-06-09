@@ -129,8 +129,20 @@ def fetch_openlibrary_cover(isbn):
 # FETCH PENDING
 # =========================
 
-def fetch_pending(conn, idioma, limit):
+def fetch_pending(conn, idioma, limit, book_ids=None):
     cur = conn.cursor()
+    # Alvo explícito (remediação de QA): processa só os ids pedidos, sem filtrar
+    # por idioma. Reaproveita o MESMO motor de capas — não há script paralelo.
+    if book_ids:
+        placeholders = ",".join("?" * len(book_ids))
+        cur.execute(f"""
+            SELECT id, titulo, autor, isbn
+            FROM livros
+            WHERE status_cover = 0
+              AND id IN ({placeholders})
+            ORDER BY priority_score DESC, created_at ASC
+        """, tuple(book_ids))
+        return cur.fetchall()
     cur.execute("""
         SELECT id, titulo, autor, isbn
         FROM livros
@@ -162,13 +174,14 @@ def update_cover(conn, book_id, url, status):
 # RUN
 # =========================
 
-def run(idioma, pacote=10):
+def run(idioma, pacote=10, book_ids=None):
 
     conn = get_conn()
-    rows = fetch_pending(conn, idioma, pacote)
+    rows = fetch_pending(conn, idioma, pacote, book_ids=book_ids)
 
     if not rows:
-        log(f"Nada pendente para capas [{idioma}].")
+        alvo = f"{len(book_ids)} ids" if book_ids else f"[{idioma}]"
+        log(f"Nada pendente para capas ({alvo}).")
         conn.close()
         return
 
