@@ -452,6 +452,7 @@ def menu_auditoria(idioma):
 55 → Auditar classificação (sem LLM) → data/logs/NNNN_audit_classification.json
 56 → QA — Auditoria completa do site (sem LLM): conexões+preços+capas+classificação+listas+integridade+consistência
 57 → QA — Passe completo (auditoria do site + remediação)
+58 → QA — Remediação de capas (reprocessa publicados sem capa, com prioridade)
 
 V  → Voltar
 """)
@@ -642,6 +643,10 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
             dry_run = dry_op == "s"
             log(f"QA — passe completo (auditoria + remediação, dry_run={dry_run})…")
             qa.run(mode="full", dry_run=dry_run)
+
+        elif op == "58":
+            log("QA — remediação de capas (publicados sem capa, com prioridade)…")
+            qa.run(mode="remediate_covers")
 
         else:
             print("Opção inválida.\n")
