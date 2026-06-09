@@ -6,8 +6,8 @@
 # Roda de forma exaustiva até não restar trabalho pendente.
 #
 # Agentes:
-#   1. synopsis      — sinopses via synopsis_cowork
-#   2. classify      — categorias via classify_cowork
+#   1. synopsis      — sinopses via synopsis_batch
+#   2. classify      — categorias via classify_batch
 #   3. author_bio    — bios de autores via author_bio
 #   4. log_analysis  — relatório de logs (1x/N ciclos; só gera, não aplica)
 #   5. consistency   — relatório Supabase (1x/N ciclos; só gera, não aplica)
@@ -31,7 +31,7 @@ from pathlib import Path
 
 from core.claude_runner import agent_prompt_path, claude_available, run_agent
 from core.claude_usage_tracker import status as claude_usage_status, is_limit_error as _is_limit_error
-from core.cowork_numbering import next_batch_number
+from core.batch_numbering import next_batch_number
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
 from core.logger import log
@@ -44,7 +44,7 @@ from steps import autopilot
 
 SCRIPTS_DIR   = Path(__file__).parent.parent
 DATA_DIR      = SCRIPTS_DIR / "data"
-COWORK_DIR    = DATA_DIR / "cowork"
+BATCH_DIR    = DATA_DIR / "batch"
 LOGS_DIR      = DATA_DIR / "logs"
 AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 
@@ -131,8 +131,8 @@ def _count_pending_audit(conn) -> int:
 def _export_synopsis(conn, idioma: str) -> int:
     from steps.synopsis_export import fetch_pending
 
-    os.makedirs(COWORK_DIR, exist_ok=True)
-    os.makedirs(COWORK_DIR / "processed_synopsis", exist_ok=True)
+    os.makedirs(BATCH_DIR, exist_ok=True)
+    os.makedirs(BATCH_DIR / "processed_synopsis", exist_ok=True)
 
     rows = fetch_pending(conn, idioma, BATCH_SIZE_SYNOPSIS)
 
@@ -155,8 +155,8 @@ def _export_synopsis(conn, idioma: str) -> int:
     if not livros:
         return 0
 
-    num = next_batch_number(str(COWORK_DIR), "synopsis")
-    output_path = COWORK_DIR / f"{num}_synopsis_input.json"
+    num = next_batch_number(str(BATCH_DIR), "synopsis")
+    output_path = BATCH_DIR / f"{num}_synopsis_input.json"
 
     payload = {
         "meta": {
@@ -190,7 +190,7 @@ def _import_synopsis() -> int:
     from steps.synopsis_import import run as synopsis_import_run
     synopsis_import_run()
 
-    outputs = glob.glob(str(COWORK_DIR / "*_synopsis_output.json"))
+    outputs = glob.glob(str(BATCH_DIR / "*_synopsis_output.json"))
     return len(outputs)
 
 
@@ -199,8 +199,8 @@ def _import_synopsis() -> int:
 # =========================
 
 def _export_classify(conn) -> int:
-    os.makedirs(COWORK_DIR, exist_ok=True)
-    os.makedirs(COWORK_DIR / "processed_categorize", exist_ok=True)
+    os.makedirs(BATCH_DIR, exist_ok=True)
+    os.makedirs(BATCH_DIR / "processed_categorize", exist_ok=True)
 
     cur = conn.cursor()
     try:
@@ -238,8 +238,8 @@ def _export_classify(conn) -> int:
             "sinopse":   (row["sinopse"] or "")[:MAX_TEXT_LEN],
         })
 
-    num = next_batch_number(str(COWORK_DIR), "categorize")
-    output_path = COWORK_DIR / f"{num}_categorize_input.json"
+    num = next_batch_number(str(BATCH_DIR), "categorize")
+    output_path = BATCH_DIR / f"{num}_categorize_input.json"
 
     payload = {
         "meta": {
@@ -272,7 +272,7 @@ def _import_classify() -> int:
     from steps.categorize_import import run as categorize_import_run
     categorize_import_run()
 
-    outputs = glob.glob(str(COWORK_DIR / "*_categorize_output.json"))
+    outputs = glob.glob(str(BATCH_DIR / "*_categorize_output.json"))
     return len(outputs)
 
 
@@ -281,8 +281,8 @@ def _import_classify() -> int:
 # =========================
 
 def _export_author_bio(conn) -> int:
-    processed_dir = COWORK_DIR / "processed_author_bio"
-    os.makedirs(COWORK_DIR, exist_ok=True)
+    processed_dir = BATCH_DIR / "processed_author_bio"
+    os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(processed_dir, exist_ok=True)
 
     cur = conn.cursor()
@@ -315,8 +315,8 @@ def _export_author_bio(conn) -> int:
             "idioma":        "PT",
         })
 
-    num = next_batch_number(str(COWORK_DIR), "author_bio")
-    output_path = COWORK_DIR / f"{num}_author_bio_input.json"
+    num = next_batch_number(str(BATCH_DIR), "author_bio")
+    output_path = BATCH_DIR / f"{num}_author_bio_input.json"
 
     payload = {
         "meta": {
@@ -340,12 +340,12 @@ def _export_author_bio(conn) -> int:
 
 def _import_author_bio() -> int:
     output_pat = re.compile(r"^(\d{3})_author_bio_output\.json$")
-    processed_dir = COWORK_DIR / "processed_author_bio"
+    processed_dir = BATCH_DIR / "processed_author_bio"
     os.makedirs(processed_dir, exist_ok=True)
 
     output_files = sorted(
-        [(int(m.group(1)), COWORK_DIR / fname)
-         for fname in os.listdir(COWORK_DIR)
+        [(int(m.group(1)), BATCH_DIR / fname)
+         for fname in os.listdir(BATCH_DIR)
          if (m := output_pat.match(fname))],
         key=lambda x: x[0]
     )
@@ -426,7 +426,7 @@ def _import_consistency_actions(conn) -> int:
 
     Retorna o número de registros alterados no SQLite.
     """
-    pattern = str(COWORK_DIR / "*_consistency_actions.json")
+    pattern = str(BATCH_DIR / "*_consistency_actions.json")
     files = sorted(glob.glob(pattern))
     if not files:
         return 0
@@ -645,7 +645,7 @@ def _run_log_analysis() -> tuple[bool, bool]:
 
     # Invocar agente
     ok, limit_persists = _run_agent_step(
-        "log_analysis", "log_analysis_cowork", timeout=TIMEOUT_MAINTENANCE
+        "log_analysis", "log_analysis_batch", timeout=TIMEOUT_MAINTENANCE
     )
 
     if limit_persists:
@@ -713,18 +713,18 @@ def _drain_synopsis(idioma: str) -> tuple[int, bool]:
         conn.close()
         if exported <= 0:
             break
-        ok, limit_persists = _run_agent_step("synopsis", "synopsis_cowork", timeout=900)
+        ok, limit_persists = _run_agent_step("synopsis", "synopsis_batch", timeout=900)
         if limit_persists:
             return done, True
         if ok:
             _import_synopsis()
             done += exported
         else:
-            orphans = glob.glob(str(COWORK_DIR / "*_synopsis_input.json"))
+            orphans = glob.glob(str(BATCH_DIR / "*_synopsis_input.json"))
             if orphans:
                 log(
                     f"[LLM_ORCH] ⚠ synopsis timeout/erro — {len(orphans)} arquivo(s) "
-                    f"input pendente(s) em cowork/. Livros ficam em status_synopsis=3 "
+                    f"input pendente(s) em batch/. Livros ficam em status_synopsis=3 "
                     f"até o próximo ciclo processar o arquivo."
                 )
             break  # não há como progredir nesta janela
@@ -745,7 +745,7 @@ def _drain_classify() -> tuple[int, bool]:
         conn.close()
         if exported <= 0:
             break
-        ok, limit_persists = _run_agent_step("classify", "classify_cowork", timeout=900)
+        ok, limit_persists = _run_agent_step("classify", "classify_batch", timeout=900)
         if limit_persists:
             return done, True
         if ok:
@@ -871,7 +871,7 @@ def run(idioma: str, wait_for_reset: bool = True):
         # output mas não foi importado por timeout). Conta ANTES de importar para
         # incrementar cycle_done — sem isso, o autopilot não-LLM não roda e os
         # livros importados ficam sem passar pelo Quality Gate / Publicação.
-        _startup_outputs = glob.glob(str(COWORK_DIR / "*_synopsis_output.json"))
+        _startup_outputs = glob.glob(str(BATCH_DIR / "*_synopsis_output.json"))
         if _startup_outputs:
             log(f"[LLM_ORCH] synopsis: {len(_startup_outputs)} output(s) pendente(s) de ciclo(s) anterior(es) — importando…")
             _import_synopsis()
@@ -934,8 +934,8 @@ def run(idioma: str, wait_for_reset: bool = True):
                 elif ok:
                     _git_commit_reports(
                         [
-                            "scripts/data/cowork/*_consistency.json",
-                            "scripts/data/cowork/*_consistency_actions.json",
+                            "scripts/data/batch/*_consistency.json",
+                            "scripts/data/batch/*_consistency_actions.json",
                         ],
                         "consistency_review",
                     )
@@ -984,10 +984,10 @@ def run(idioma: str, wait_for_reset: bool = True):
         if cycle_done > 0 and not cycle_limit_hit:
             log("[LLM_ORCH] Executando autopilot não-LLM para processar resultados importados...")
             try:
-                # manter_cowork=False: o orquestrador já gera os inputs LLM no
-                # drain; o top-up de cowork aqui só criaria status_synopsis=3 preso
+                # manter_batch=False: o orquestrador já gera os inputs LLM no
+                # drain; o top-up de batch aqui só criaria status_synopsis=3 preso
                 # (sem consumidor externo no fluxo automático O/G).
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_batch=False)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 
@@ -1000,10 +1000,10 @@ def run(idioma: str, wait_for_reset: bool = True):
             # foi gerado nesta janela + ataca o backlog não-LLM) ANTES de aguardar.
             log("[LLM_ORCH] Limite de sessão — fallback Autopilot não-LLM (publica + drena backlog não-LLM)…")
             try:
-                # manter_cowork=False: evita o churn de cowork (status=3 preso)
+                # manter_batch=False: evita o churn de batch (status=3 preso)
                 # observado no log pipeline_2026-06-02 — o drain do orquestrador
                 # gera os inputs; não há consumidor externo no fluxo automático.
-                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_cowork=False)
+                autopilot.run(idioma, PACOTE_AUTOPILOT, manter_batch=False)
             except Exception as e:
                 log(f"[LLM_ORCH] AVISO: autopilot retornou com exceção: {e}")
 

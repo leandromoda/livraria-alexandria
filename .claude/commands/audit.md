@@ -11,14 +11,14 @@ relatório de auditoria do `auditor.py` (`scripts/data/logs/NNNN_audit_MODE.json
 > processado. Rode `/audit` de novo para o próximo.
 
 Toda a lógica (seleção do relatório, mapeamento por modo, regras de correção e
-movimentação) vive **apenas** em `agents/audit_cowork/prompt.md` — este comando só
+movimentação) vive **apenas** em `agents/audit_batch/prompt.md` — este comando só
 orquestra as duas etapas, sem duplicar aquela lógica.
 
 ---
 
 ## Etapa 1 — Diagnóstico (apenas leitura; NÃO edita código)
 
-Siga **integralmente** as instruções de `agents/audit_cowork/prompt.md`:
+Siga **integralmente** as instruções de `agents/audit_batch/prompt.md`:
 
 1. Detecte a raiz do repo e liste `scripts/data/logs/NNNN_audit_*.json`.
 2. Se não houver relatórios → responda "Nenhum relatório de auditoria para

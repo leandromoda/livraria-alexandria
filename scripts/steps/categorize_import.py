@@ -2,7 +2,7 @@
 # STEP 34 — CATEGORIZE IMPORT
 # Livraria Alexandria
 #
-# Importa categorias geradas pelo agente Claude Cowork.
+# Importa categorias geradas pelo agente Claude Batch.
 # Input: scripts/data/NNN_categorize_output.json (todos disponíveis)
 # Grava em: livros_categorias_tematicas + status_categorize
 # Move processados para: scripts/data/processed_categorize/
@@ -22,8 +22,8 @@ from core.logger import log
 # =========================
 
 DATA_DIR       = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-COWORK_DIR     = os.path.join(DATA_DIR, "cowork")
-PROCESSED_DIR  = os.path.join(COWORK_DIR, "processed_categorize")
+BATCH_DIR     = os.path.join(DATA_DIR, "batch")
+PROCESSED_DIR  = os.path.join(BATCH_DIR, "processed_categorize")
 TAXONOMY_PATH  = os.path.join(DATA_DIR, "taxonomy.json")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
 OUTPUT_PAT     = re.compile(r"^(\d{3})_categorize_output\.json$")
@@ -197,11 +197,11 @@ def run():
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-    output_files = find_output_files(COWORK_DIR)
+    output_files = find_output_files(BATCH_DIR)
 
     if not output_files:
         log("[CATEGORIZE_IMPORT] Nenhum *_categorize_output.json encontrado.")
-        log("[CATEGORIZE_IMPORT] Rode a opção 33 (Export) e o agente Claude Cowork primeiro.")
+        log("[CATEGORIZE_IMPORT] Rode a opção 33 (Export) e o agente Claude Batch primeiro.")
         return
 
     log(f"[CATEGORIZE_IMPORT] {len(output_files)} arquivo(s) encontrado(s)")

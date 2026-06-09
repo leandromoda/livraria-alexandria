@@ -6,20 +6,20 @@ description: Analisa UM log do pipeline e aplica as correções sugeridas — fl
 
 Executa **integralmente no Claude Code** o ciclo completo de diagnóstico e correção
 de **um** log do pipeline. Substitui o fluxo antigo que rodava parcialmente via
-Claude Cowork — agora as duas etapas acontecem aqui, em sequência.
+Claude Batch — agora as duas etapas acontecem aqui, em sequência.
 
 > **1 log por invocação.** Sempre o mais antigo ainda não processado.
 > Rode `/analise-logs` de novo para o próximo log.
 
 A lógica de parsing e o schema do relatório vivem **apenas** em
-`agents/log_analysis_cowork/prompt.md` — este comando só orquestra as duas etapas
+`agents/log_analysis_batch/prompt.md` — este comando só orquestra as duas etapas
 (sem duplicar aquela lógica).
 
 ---
 
 ## Etapa 1 — Diagnóstico (apenas análise; NÃO edita código)
 
-Siga **integralmente** as instruções de `agents/log_analysis_cowork/prompt.md`:
+Siga **integralmente** as instruções de `agents/log_analysis_batch/prompt.md`:
 
 1. Detecte a raiz do repo e liste `scripts/data/logs/pipeline_*.log`.
 2. Se não houver logs → responda "Nenhum log para processar." e **pare**

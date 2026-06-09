@@ -40,8 +40,8 @@ from steps import synopsis_export
 from steps import synopsis_import
 from steps import categorize_export
 from steps import categorize_import
-from steps import cowork_export
-from steps import cowork_import
+from steps import batch_export
+from steps import batch_import
 from steps import consistency_check
 from steps import reprocess_blacklist
 from steps import qa
@@ -286,7 +286,7 @@ V  → Voltar
             reset = input_safe("Resetar livros com falha anterior? [s/N] ").strip().lower()
             if reset == "s":
                 categorize.reset_failed()
-            # Motor único: agente batch classify_cowork via Claude CLI (sem escolha de provider).
+            # Motor único: agente batch classify_batch via Claude CLI (sem escolha de provider).
             log("Classificando categorias temáticas…")
             with StepRun("categorize", idioma=idioma, pacote=pacote):
                 categorize.run(idioma, pacote)
@@ -312,7 +312,7 @@ V  → Voltar
 
         elif op == "11":
             pacote = escolher_pacote()
-            # Motor único: agente batch synopsis_cowork via Claude CLI (sem escolha de provider).
+            # Motor único: agente batch synopsis_batch via Claude CLI (sem escolha de provider).
             with StepRun("synopsis", idioma=idioma, pacote=pacote):
                 synopsis.run(idioma, pacote)
 
@@ -445,7 +445,7 @@ def menu_auditoria(idioma):
 48 → Auditar listas SEO (sem LLM) → data/logs/NNNN_audit_list.json
 49 → Verificar autores sem bio (sem LLM) → data/logs/NNNN_audit_author_bio.json
 50 → Verificar veracidade de títulos (Google Books + LLM) → audit_log mode=title_verify
-51 → Gerar relatório de consistência (Supabase) → data/cowork/YYYYMMDDHHMMSS_consistency.json
+51 → Gerar relatório de consistência (Supabase) → data/batch/YYYYMMDDHHMMSS_consistency.json
 52 → Reprocessar blacklist (recupera por causa / quarentena) [WS5]
 53 → QA — passe de remediação (aplica blacklist → reprocessa) [WS4]
 54 → Auditar capas (sem LLM) → data/logs/NNNN_audit_covers.json
@@ -900,9 +900,9 @@ def _run_gargalo(idioma: str):
     # ── Autopilot A até exaustão (publica downstream) ─────────
     log("[G] Todos os steps de auditoria/manutenção concluídos.")
     log("[G] Iniciando Autopilot A até exaustão…")
-    # manter_cowork=False: G já faz a fase LLM via orquestrador; o top-up de
-    # cowork aqui só geraria status=3 preso (sem consumidor externo).
-    autopilot.run(idioma, 100, manter_cowork=False)
+    # manter_batch=False: G já faz a fase LLM via orquestrador; o top-up de
+    # batch aqui só geraria status=3 preso (sem consumidor externo).
+    autopilot.run(idioma, 100, manter_batch=False)
 
     # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
     _print_gargalo_report(idioma)
@@ -1004,7 +1004,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
 I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
 M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
-C  → Cowork Autopilot (sinopse + categorias via Claude)
+C  → Batch Autopilot (sinopse + categorias via Claude)
 E  → Exports
 
 --- SUBMENUS ---
@@ -1031,7 +1031,7 @@ E  → Exports
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
-            autopilot.run(idioma, 100, manter_cowork=True)
+            autopilot.run(idioma, 100, manter_batch=True)
 
         elif op.upper() == "I":
             log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=claude)…")
@@ -1042,7 +1042,7 @@ E  → Exports
             if not claude_available():
                 log("[LLM_ORCH] ERRO: claude CLI não encontrado no PATH.")
                 log("[LLM_ORCH] Instale o Claude Code CLI e tente novamente.")
-                log("[LLM_ORCH] Alternativa: use C (Cowork manual).")
+                log("[LLM_ORCH] Alternativa: use C (Batch manual).")
             else:
                 log(f"Iniciando LLM Autopilot (1 livro/chamada, idioma={idioma})…")
                 llm_orchestrator.run(idioma)
@@ -1063,21 +1063,21 @@ E  → Exports
             import os as _os
             import re as _re
 
-            _COWORK_DIR = _os.path.join("data", "cowork")
+            _BATCH_DIR = _os.path.join("data", "batch")
             _NUM_PAT    = _re.compile(r"^(\d{3})_")
 
             def _count_outputs():
                 return (
-                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json"))) +
-                    len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
+                    len(_glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_output.json"))) +
+                    len(_glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_output.json")))
                 )
 
             def _count_input_batches():
                 """Conta lotes distintos de input pendentes (pelo número NNN)."""
                 nums = set()
                 for fpath in (
-                    _glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")) +
-                    _glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json"))
+                    _glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_input.json")) +
+                    _glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_input.json"))
                 ):
                     m = _NUM_PAT.match(_os.path.basename(fpath))
                     if m:
@@ -1088,14 +1088,14 @@ E  → Exports
                 """Exporta até N lotes. Interrompe se não houver mais pendentes."""
                 exportados = 0
                 for _ in range(n):
-                    with StepRun("cowork_export", idioma=idioma, pacote=25):
-                        cowork_export.run(idioma, 25)
+                    with StepRun("batch_export", idioma=idioma, pacote=25):
+                        batch_export.run(idioma, 25)
                     exportados += 1
-                log(f"[COWORK] {exportados} lote(s) exportado(s).")
+                log(f"[BATCH] {exportados} lote(s) exportado(s).")
 
             def _print_next_step_instructions():
-                has_syn = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_input.json")))
-                has_cls = bool(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_input.json")))
+                has_syn = bool(_glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_input.json")))
+                has_cls = bool(_glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_input.json")))
                 n_lotes = _count_input_batches()
                 lines = [
                     "",
@@ -1107,13 +1107,13 @@ E  → Exports
                 if has_syn:
                     lines += [
                         "  SINOPSES:",
-                        "    Leia agents/synopsis_cowork/prompt.md e execute todas as instruções.",
+                        "    Leia agents/synopsis_batch/prompt.md e execute todas as instruções.",
                         "",
                     ]
                 if has_cls:
                     lines += [
                         "  CATEGORIAS:",
-                        "    Leia agents/classify_cowork/prompt.md e execute todas as instruções.",
+                        "    Leia agents/classify_batch/prompt.md e execute todas as instruções.",
                         "",
                     ]
                 lines += [
@@ -1127,11 +1127,11 @@ E  → Exports
             # ── Status atual ──────────────────────────────────────────────
             n_outputs     = _count_outputs()
             n_input_lotes = _count_input_batches()
-            n_syn_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_synopsis_output.json")))
-            n_cat_out = len(_glob.glob(_os.path.join(_COWORK_DIR, "*_categorize_output.json")))
+            n_syn_out = len(_glob.glob(_os.path.join(_BATCH_DIR, "*_synopsis_output.json")))
+            n_cat_out = len(_glob.glob(_os.path.join(_BATCH_DIR, "*_categorize_output.json")))
 
             print(f"""
-=== COWORK ===
+=== BATCH ===
 
   Lotes de input pendentes : {n_input_lotes}
   Outputs prontos p/ import: {n_syn_out} sinopse(s), {n_cat_out} categoria(s)
@@ -1140,7 +1140,7 @@ E  → Exports
     {"(nenhum output disponível)" if n_outputs == 0 else f"({n_syn_out} sinopses + {n_cat_out} categorias)"}
 2 → Exportar 1 lote
 3 → Exportar 10 lotes simultâneos
-4 → Ver instruções para o agente Cowork
+4 → Ver instruções para o agente Batch
 """)
             sub = input_safe("Opção: ")
 
@@ -1148,17 +1148,17 @@ E  → Exports
                 if n_outputs == 0:
                     print("Nenhum output disponível para importar.\n")
                 else:
-                    log("Importando resultados do Cowork…")
-                    with StepRun("cowork_import", idioma=idioma):
-                        cowork_import.run()
+                    log("Importando resultados do Batch…")
+                    with StepRun("batch_import", idioma=idioma):
+                        batch_import.run()
 
             elif sub == "2":
-                log("Exportando 1 lote para Cowork…")
+                log("Exportando 1 lote para Batch…")
                 _export_n_batches(1)
                 _print_next_step_instructions()
 
             elif sub == "3":
-                log("Exportando 10 lotes para Cowork…")
+                log("Exportando 10 lotes para Batch…")
                 _export_n_batches(10)
                 _print_next_step_instructions()
 

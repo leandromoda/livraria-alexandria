@@ -83,7 +83,7 @@ def detect_foreign_lang(isbn, titulo):
     IMPORTANTE: título em inglês ≠ livro em inglês. Editoras brasileiras mantêm
     títulos originais (ex.: "Mindset", "Sapiens"). Por isso NÃO relabelamos por
     palavras do título — isso derrubava livros PT de título inglês sem ISBN BR.
-    O idioma do CONTEÚDO (descrição) é checado depois, no GATE do synopsis_cowork
+    O idioma do CONTEÚDO (descrição) é checado depois, no GATE do synopsis_batch
     (descrição em idioma errado → rejeita). Aqui só usamos a edição (ISBN).
 
     Ordem de decisão:

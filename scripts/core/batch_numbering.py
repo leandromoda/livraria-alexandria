@@ -1,9 +1,9 @@
 # ============================================================
-# COWORK NUMBERING
+# BATCH NUMBERING
 # Livraria Alexandria
 #
 # Utilitário para calcular o próximo número de lote disponível
-# para os arquivos de cowork (synopsis e categorize).
+# para os arquivos de batch (synopsis e categorize).
 # ============================================================
 
 import glob

@@ -33,22 +33,22 @@
       "synopsis_fsm": "REMOVIDO em WS2 (2026-05-29). agents/synopsis/* e MODE 2 (PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer) deletados. Sinopse agora é 100% batch (ver path_b + synopsis.py wrapper).",
       "agent_format": "MODE 1: identity.md/rules.md/task.md em agents/<agente>/ (author_bio, offer_finder)"
     },
-    "path_b_batch_cli_cowork": {
-      "id": "claude_cli_cowork",
+    "path_b_batch_cli_batch": {
+      "id": "claude_cli_batch",
       "modules": [
         "scripts/steps/llm_orchestrator.py (opção O)",
-        "scripts/steps/cowork_export.py + cowork_import.py (opção C)",
+        "scripts/steps/batch_export.py + batch_import.py (opção C)",
         "scripts/core/claude_runner.py",
         "scripts/core/claude_usage_tracker.py"
       ],
       "mode": "exporta lote JSON → invoca claude --print sobre prompt.md → importa output JSON",
       "backend": "claude CLI (assinatura Pro/Max) — limite de SESSÃO rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300)",
-      "agent_format": "prompt.md único em agents/<agente>_cowork/ ou agents/<agente>/",
+      "agent_format": "prompt.md único em agents/<agente>_batch/ ou agents/<agente>/",
       "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25},
-      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_cowork) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis.",
-      "categorize_entrypoints": "WS2: scripts/steps/categorize.py virou wrapper fino (categorize_export → run_agent(classify_cowork) → categorize_import). Menu 10 e ingestão guiada (book_ids) usam-no; opção O usa _drain_classify (mesmo motor). Funções reset_failed/reset_wrong_category preservadas para o menu."
+      "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_batch) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis.",
+      "categorize_entrypoints": "WS2: scripts/steps/categorize.py virou wrapper fino (categorize_export → run_agent(classify_batch) → categorize_import). Menu 10 e ingestão guiada (book_ids) usam-no; opção O usa _drain_classify (mesmo motor). Funções reset_failed/reset_wrong_category preservadas para o menu."
     },
-    "conflict": "WS2 CONCLUÍDO: motor único = batch para sinopse (synopsis_cowork) E categorização (classify_cowork). FSM de sinopse e per-item de categorize removidos. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
+    "conflict": "WS2 CONCLUÍDO: motor único = batch para sinopse (synopsis_batch) E categorização (classify_batch). FSM de sinopse e per-item de categorize removidos. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
   },
 
   "automation_options": [
@@ -58,7 +58,7 @@
     {"key": "I", "label": "Ingestão Orientada", "module": "ingestao_orientada.run", "llm": true, "desc": "Pipeline full incluindo steps LLM inline (categorize+synopsis). Sobrepõe O+A."},
     {"key": "O", "label": "LLM Autopilot", "module": "llm_orchestrator.run", "llm": true, "backend": "claude CLI", "desc": "Ciclo exaustivo de 7 agentes: synopsis, classify, author_bio, log_analysis(1/5), consistency(1/5), offer_finder, title_auditor. Fallback para Autopilot A ao bater limite de sessão."},
     {"key": "M", "label": "Manutenção", "module": "autopilot_manutencao.run", "llm": false, "desc": "Preços + conectividade + listas + bios (report). Sobrepõe parte de G/A."},
-    {"key": "C", "label": "Cowork", "module": "cowork_export/cowork_import", "llm": "manual", "desc": "Export/import manual de lotes para agente Claude Code. Amplamente superado pelo O (automático)."},
+    {"key": "C", "label": "Batch", "module": "batch_export/batch_import", "llm": "manual", "desc": "Export/import manual de lotes para agente Claude Code. Amplamente superado pelo O (automático)."},
     {"key": "E", "label": "Exports", "module": "menu_exports", "llm": false}
   ],
 
@@ -97,7 +97,7 @@
     {"n": 48, "name": "Auditar Listas SEO", "module": "auditor (mode=list)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_list.json"},
     {"n": 49, "name": "Verificar Autores sem Bio", "module": "auditor (mode=author-bios)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_author_bio.json"},
     {"n": 50, "name": "Verificar Veracidade de Títulos", "module": "auditor (mode=title-verify)", "llm": true, "phase": "auditoria"},
-    {"n": 51, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_consistency.json (P1) + data/cowork/*_consistency.json"},
+    {"n": 51, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_consistency.json (P1) + data/batch/*_consistency.json"},
     {"n": 52, "name": "Reprocessar Blacklist", "module": "reprocess_blacklist", "llm": false, "phase": "auditoria", "note": "recupera/quarentena por causa (WS5)"},
     {"n": 53, "name": "QA — Passe de Remediação", "module": "qa (mode=remediate)", "llm": false, "phase": "auditoria", "note": "apply_blacklist + reprocess_blacklist (WS4)"},
     {"n": 54, "name": "Auditar Capas", "module": "auditor (mode=covers)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_covers.json (P2)"},
@@ -137,7 +137,7 @@
       "title": "Páginas de baixa qualidade publicadas sem correção sistemática",
       "root_cause": "QG é só heurístico (tamanho/idioma/flags). As verificações reais de qualidade (auditoria de conteúdo LLM step 22, title-verify 31, consistency 32, blacklist 25) estão fragmentadas em opções manuais separadas e não integradas ao fluxo de publicação nem ao loop automatizado. Não há um estágio padronizado de QA/revisão que rode sistematicamente e feche o ciclo (detectar → despublicar/corrigir → regenerar).",
       "evidence": "Sinopses incorretas, categorização equivocada (opção 10R existe para reset manual), ofertas inválidas (HTTP 503 no scraper, offer_finder manual).",
-      "resolution": "PARCIAL (auditoria do site, 2026-06): P1 unificou a saída de TODAS as auditorias no formato data/logs/NNNN_audit_<mode>.json (escritor core/audit_report.py), consumido pelo comando /audit (agents/audit_cowork/) que lê → corrige → arquiva. P2 fechou as lacunas de cobertura (modos covers e classification no auditor.py). P3 criou o passe único qa.run('audit') (menu 56) que audita o site todo (conexões+preços+capas+classificação+listas+integridade+consistência) e qa.run('full') (menu 57) = audit + remediação. Detectar→relatar→corrigir agora é coeso. Pendente: integrar o passe ao loop automatizado (G/autopilot) com cadência."
+      "resolution": "PARCIAL (auditoria do site, 2026-06): P1 unificou a saída de TODAS as auditorias no formato data/logs/NNNN_audit_<mode>.json (escritor core/audit_report.py), consumido pelo comando /audit (agents/audit_batch/) que lê → corrige → arquiva. P2 fechou as lacunas de cobertura (modos covers e classification no auditor.py). P3 criou o passe único qa.run('audit') (menu 56) que audita o site todo (conexões+preços+capas+classificação+listas+integridade+consistência) e qa.run('full') (menu 57) = audit + remediação. Detectar→relatar→corrigir agora é coeso. Pendente: integrar o passe ao loop automatizado (G/autopilot) com cadência."
     },
     {
       "id": "P4_fragmentacao",
@@ -149,9 +149,9 @@
 
   "obsolete_or_unify_candidates": [
     {"target": "enrich_descricao (step 2)", "action": "FEITO (fase 5, 2026-05-31): rótulo do menu marca 'fallback manual'; já era soft_deprecated/fora do autopilot.", "reason": "soft_deprecated; coberto pelo scraper."},
-    {"target": "Sinopse: FSM markdown_executor vs synopsis_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_cowork; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
-    {"target": "Categorização: categorize.py (markdown_executor) vs classify_cowork prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_cowork; per-item removido.", "reason": "duplicação."},
-    {"target": "Opção C (Cowork manual)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
+    {"target": "Sinopse: FSM markdown_executor vs synopsis_batch prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_batch; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
+    {"target": "Categorização: categorize.py (markdown_executor) vs classify_batch prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_batch; per-item removido.", "reason": "duplicação."},
+    {"target": "Opção C (Batch manual)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
     {"target": "Opção I (Ingestão Orientada)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso; convergir para G só com sign-off + teste.", "reason": "sobrepõe O+A."},
     {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
     {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-57 (sem colisão); WS4 adicionou qa.py orquestrador + menu 52/53; WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine. Auditoria do site (2026-06): P1 escritor unificado NNNN_audit_<mode>.json; P2 modos covers (54) + classification (55); P3 passe único qa audit (56) + full (57).", "reason": "colisões de numeração e dispersão."}

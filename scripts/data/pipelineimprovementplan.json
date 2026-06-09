@@ -59,7 +59,7 @@
       "Há DOIS motores LLM: per-item (synopsis.py → execute_agent → markdown_executor._call_claude → run_prompt CLI) e batch (llm_orchestrator → claude_runner.run_agent sobre agents/<n>/prompt.md). Ambos no CLI, mas separados — fonte de duplicação (sinopse e categorização têm 2 implementações).",
       "A FSM de sinopse faz 2 chamadas LLM por livro (fact_extractor + synopsis_writer); abstract_structurer e synopsis_validator são Python puro. Projeções de throughput devem usar 2 chamadas/sinopse.",
       "Agentes de O rodam com --allowedTools Bash,Read,Write,WebSearch,WebFetch (e git commit). offer_finder/title_auditor dependem de WebSearch — relevante ao decidir o que rodar dentro da janela de sessão.",
-      "Estados presos: status_synopsis=3 (exportado-não-importado) e órfãos cowork/*_input.json precisam de reclamação.",
+      "Estados presos: status_synopsis=3 (exportado-não-importado) e órfãos batch/*_input.json precisam de reclamação.",
       "Loop de remediação de QA precisa de max-retry + quarentena para não oscilar.",
       "Congelar renumeração de menu ANTES de refatorar QA/orquestração (evita retrabalho)."
     ]
@@ -89,17 +89,17 @@
       "priority": "P1",
       "effort": "L",
       "status": "implementado_e_validado_2026-05-29 (sinopse + categorização)",
-      "rationale": "Sinopse e categorização têm DUAS implementações (FSM em markdown_executor + prompt.md em *_cowork). Mantê-las divergentes dobra a manutenção e dispersa o tuning de quota. Unificar num único caminho CLI canônico por tarefa.",
-      "decision_resolved": "DECISÃO (2026-05-29): motor canônico = BATCH (synopsis_cowork / classify_cowork), invertendo o lean original do plano. Razões: (1) o drain do gargalo já roda no batch (opção O); (2) o batch já tem validação determinística no IMPORT (synopsis_import.validate_synopsis → check_synopsis_generic + comprimento + meta + markdown), então o argumento 'FSM=qualidade' era em grande parte nulo; (3) batch usa ~50x menos chamadas no backlog (≈520 vs ≈26.000 p/ 13k livros) — decisivo sob a premissa de quota PRO. O FSM per-item só era usado pelo menu e ingestão guiada.",
+      "rationale": "Sinopse e categorização têm DUAS implementações (FSM em markdown_executor + prompt.md em *_batch). Mantê-las divergentes dobra a manutenção e dispersa o tuning de quota. Unificar num único caminho CLI canônico por tarefa.",
+      "decision_resolved": "DECISÃO (2026-05-29): motor canônico = BATCH (synopsis_batch / classify_batch), invertendo o lean original do plano. Razões: (1) o drain do gargalo já roda no batch (opção O); (2) o batch já tem validação determinística no IMPORT (synopsis_import.validate_synopsis → check_synopsis_generic + comprimento + meta + markdown), então o argumento 'FSM=qualidade' era em grande parte nulo; (3) batch usa ~50x menos chamadas no backlog (≈520 vs ≈26.000 p/ 13k livros) — decisivo sob a premissa de quota PRO. O FSM per-item só era usado pelo menu e ingestão guiada.",
       "implemented": {
         "date": "2026-05-29",
         "what": [
-          "synopsis.py reescrito como wrapper fino do batch: synopsis_export → run_agent(synopsis_cowork) → synopsis_import. Assinatura run(idioma, pacote, book_ids) preservada (menu 11 + ingestão guiada seguem funcionando).",
+          "synopsis.py reescrito como wrapper fino do batch: synopsis_export → run_agent(synopsis_batch) → synopsis_import. Assinatura run(idioma, pacote, book_ids) preservada (menu 11 + ingestão guiada seguem funcionando).",
           "synopsis_export.fetch_pending/run ganharam book_ids (modo per-livro da ingestão guiada) e retornam contagem exportada.",
           "markdown_executor.py: removido MODE 2 (pipeline 4 estágios), PIPELINE_STAGES, _execute_stage, _run_abstract_structurer, _run_synopsis_validator (R1-R8), _validate_fact_schema, helpers _tmp_*/_read_md/_detect_language e import load_memory. MODE 1 (_execute_single_agent) preservado para author_bio/offer_finder.",
           "Removidos agents/synopsis/* (4 estágios) e os 4 testes do FSM (test_fact_extractor, test_abstract_structurer, test_synopsis_writer, test_synopsis_pipeline).",
           "main.py opção 11: removido set_provider(escolher_provider()) — batch sempre usa o claude CLI.",
-          "CATEGORIZAÇÃO (2ª etapa, mesmo padrão): categorize.py reescrito como wrapper batch (categorize_export → run_agent(classify_cowork) → categorize_import). Removidos os helpers per-item mortos (SYSTEM_PROMPT, build_prompt, parse_response, save_categories, load_taxonomy, _call_llm). Preservados reset_failed/reset_wrong_category (menu 10/10R). categorize_export.py ganhou book_ids + retorno de contagem. main.py opção 10: removido set_provider."
+          "CATEGORIZAÇÃO (2ª etapa, mesmo padrão): categorize.py reescrito como wrapper batch (categorize_export → run_agent(classify_batch) → categorize_import). Removidos os helpers per-item mortos (SYSTEM_PROMPT, build_prompt, parse_response, save_categories, load_taxonomy, _call_llm). Preservados reset_failed/reset_wrong_category (menu 10/10R). categorize_export.py ganhou book_ids + retorno de contagem. main.py opção 10: removido set_provider."
         ],
         "validation": "py_compile OK em markdown_executor/synopsis/synopsis_export/categorize/categorize_export/author_bio/main; smoke-test de imports OK (incl. ingestao_orientada); confirmado que PIPELINE_STAGES, _run_synopsis_validator e categorize.build_prompt não existem mais; nenhuma referência viva aos símbolos removidos (só relatórios históricos em data/log_analysis).",
         "remaining": "Nenhum. WS2 completo: sinopse e categorização agora têm motor único = batch. (categorize_import.py mantém suas próprias load_taxonomy/save_categories — não há duplicação com categorize.py, que não as tem mais.)"
@@ -120,7 +120,7 @@
         "what": [
           "BATCH_SIZE_* tornado configurável via env (BATCH_SIZE_SYNOPSIS/CLASSIFY/AUTHOR_BIO) em llm_orchestrator.py.",
           "Calibração EMPÍRICA via tools/measure_batch.py (sweep real no motor batch pós-WS2, timeout × throughput). Defaults calibrados: BATCH_SIZE_SYNOPSIS 5→15, BATCH_SIZE_CLASSIFY 10→25.",
-          "Prompt-slimming do classify: JÁ RESOLVIDO pela migração WS2 — classify_cowork lê taxonomy.json via file tool (cacheado na sessão) em vez de reenviar ~26KB por item (que era o custo do antigo categorize.py per-item, agora removido).",
+          "Prompt-slimming do classify: JÁ RESOLVIDO pela migração WS2 — classify_batch lê taxonomy.json via file tool (cacheado na sessão) em vez de reenviar ~26KB por item (que era o custo do antigo categorize.py per-item, agora removido).",
           "Idempotência: JÁ COBERTA por sentinelas status=3 (export) + reclaim.run (no início de cada ação) — itens em voo não são reexportados nem reprocessados."
         ],
         "measurements": {
@@ -228,7 +228,7 @@
         "4. Se nada avança e a sessão PRO ainda está em cooldown → aguardar reset e RETOMAR do passo 1; se realmente nada resta → relatório de gargalos e encerrar."
       ],
       "changes": [
-        "Reescrever _run_gargalo (G) para: build_gargalo_plan → reclaim de presos (status_synopsis=3, órfãos cowork) → fase LLM priorizada (WS1) → QA/reprocess (WS4/WS5) → fallback A dirigido → aguardar reset e retomar.",
+        "Reescrever _run_gargalo (G) para: build_gargalo_plan → reclaim de presos (status_synopsis=3, órfãos batch) → fase LLM priorizada (WS1) → QA/reprocess (WS4/WS5) → fallback A dirigido → aguardar reset e retomar.",
         "Corrigir loop vazio do Autopilot: detectar backlog puramente LLM-bound e NÃO reavaliar QG infinitamente — aguardar reset da sessão ou encerrar com report.",
         "Reduzir ruído de log: QG agrega contagem de 'Sinopse pendente' em vez de logar 1000 linhas/ciclo.",
         "Convergir I (ingestão orientada) e parte de M (manutenção) para dentro de G; manter atalhos, um caminho canônico."
@@ -279,7 +279,7 @@
           "scripts/CLAUDE.md reescrito: motor Claude batch + janela de sessão PRO (substitui toda a seção Gemini/RPM-RPD); tabela de steps LLM=Claude; arquitetura/.env/atalhos atualizados; Estado Atual aponta para o painel S + project_state.json.",
           "enrich_descricao (menu 2) marcado como 'fallback manual' no rótulo do menu (já era soft_deprecated/fora do autopilot)."
         ],
-        "deferido_com_motivo": "Consolidação de código (absorver opção C/Cowork e opção I/Ingestão Orientada no orquestrador G; mesclar as duas implementações de export sinopse — synopsis_export.run standalone vs llm_orchestrator._export_synopsis inline) NÃO executada. Motivo: risco > valor. São módulos em produção (opção O depende do _export_synopsis; C/I são opções de menu em uso); o ganho é puramente cosmético (dedup), e a fase 5 é explicitamente baixa prioridade. Mexer arriscaria regressão num código recém-deployado. Recomendação: só consolidar com sign-off explícito e teste dedicado, se/quando houver necessidade real."
+        "deferido_com_motivo": "Consolidação de código (absorver opção C/Batch e opção I/Ingestão Orientada no orquestrador G; mesclar as duas implementações de export sinopse — synopsis_export.run standalone vs llm_orchestrator._export_synopsis inline) NÃO executada. Motivo: risco > valor. São módulos em produção (opção O depende do _export_synopsis; C/I são opções de menu em uso); o ganho é puramente cosmético (dedup), e a fase 5 é explicitamente baixa prioridade. Mexer arriscaria regressão num código recém-deployado. Recomendação: só consolidar com sign-off explícito e teste dedicado, se/quando houver necessidade real."
       },
       "implemented_numbering": {
         "date": "2026-05-30",
@@ -326,7 +326,7 @@
   ],
 
   "open_questions": [
-    "WS2 (CONCLUÍDO 2026-05-29): motor canônico = batch para ambos. Sinopse (FSM aposentado) e categorização (per-item aposentado) migradas para classify_cowork/synopsis_cowork.",
+    "WS2 (CONCLUÍDO 2026-05-29): motor canônico = batch para ambos. Sinopse (FSM aposentado) e categorização (per-item aposentado) migradas para classify_batch/synopsis_batch.",
     "Reprocessamento de blacklist deve competir com o backlog virgem pela janela ou rodar só com sobra de sessão?",
     "Auditoria de conteúdo pós-publicação: amostragem contínua (X%/dia dentro da quota) ou varredura quando houver sessão ociosa?"
   ],
@@ -336,7 +336,7 @@
     "2026-05-29: Gemini APOSENTADO — não é fallback de geração LLM.",
     "2026-05-29: Implementação faseada — fase 1 (WS1 prioritização + WS7 monitoramento) primeiro, validar, depois fases 2-5.",
     "2026-05-29: Reprocessamento de títulos despublicados por blacklist incluído como WS5.",
-    "2026-05-29 (WS2): motor LLM canônico = BATCH (synopsis_cowork/classify_cowork), invertendo o lean original do plano (que sugeria sinopse=FSM). Justificativa: drain do gargalo já é batch; batch já valida no import; ~50x menos chamadas no backlog. FSM de sinopse (markdown_executor MODE 2 + agents/synopsis/*) APOSENTADO. markdown_executor MODE 1 preservado para author_bio/offer_finder."
+    "2026-05-29 (WS2): motor LLM canônico = BATCH (synopsis_batch/classify_batch), invertendo o lean original do plano (que sugeria sinopse=FSM). Justificativa: drain do gargalo já é batch; batch já valida no import; ~50x menos chamadas no backlog. FSM de sinopse (markdown_executor MODE 2 + agents/synopsis/*) APOSENTADO. markdown_executor MODE 1 preservado para author_bio/offer_finder."
   ],
 
   "out_of_scope": [

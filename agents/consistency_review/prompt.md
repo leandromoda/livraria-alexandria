@@ -15,12 +15,12 @@ diretas sobre os dados publicados no Supabase.
 Liste os arquivos disponíveis:
 
 ```
-Glob: scripts/data/cowork/*_consistency.json
+Glob: scripts/data/batch/*_consistency.json
 ```
 
 Fallback (Bash):
 ```bash
-ls scripts/data/cowork/*_consistency.json 2>/dev/null
+ls scripts/data/batch/*_consistency.json 2>/dev/null
 ```
 
 Selecione o arquivo com **maior timestamp** no nome (formato `YYYYMMDDHHMMSS_consistency.json`).
@@ -147,7 +147,7 @@ Para sinopses com `problema = "padrao_suspeito:*"`:
 Após processar todos os issues, grave o resultado em:
 
 ```
-scripts/data/cowork/YYYYMMDDHHMMSS_consistency_actions.json
+scripts/data/batch/YYYYMMDDHHMMSS_consistency_actions.json
 ```
 
 Use o mesmo timestamp do arquivo de input (ex: se o input foi `20260509_143022_consistency.json`,
@@ -199,7 +199,7 @@ Relatório salvo em : YYYYMMDDHHMMSS_consistency_actions.json
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/cowork/*_consistency.json
+Glob scripts/data/batch/*_consistency.json
   → Selecionar o de maior timestamp
   → Ler o arquivo
   → Se total_issues = 0: encerrar com mensagem

@@ -1,4 +1,4 @@
-# Synopsis Generator — Livraria Alexandria (Claude Cowork)
+# Synopsis Generator — Livraria Alexandria (Claude Batch)
 
 ## Identidade
 
@@ -12,15 +12,15 @@ Sua tarefa é gerar sinopses concisas, neutras e informativas para um lote de li
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
 1. **Liste os arquivos** com Glob:
-   Padrão: `scripts/data/cowork/*_synopsis_input.json`
+   Padrão: `scripts/data/batch/*_synopsis_input.json`
 
    Se o Glob retornar vazio, use Bash como fallback:
    ```bash
-   ls scripts/data/cowork/*_synopsis_input.json 2>/dev/null
+   ls scripts/data/batch/*_synopsis_input.json 2>/dev/null
    ```
 2. **Selecione o de menor número** (ex: se existirem `037_synopsis_input.json` e
    `040_synopsis_input.json`, use o `037`)
-3. **Verifique se já existe output** para esse número: tente ler `scripts/data/cowork/NNN_synopsis_output.json`.
+3. **Verifique se já existe output** para esse número: tente ler `scripts/data/batch/NNN_synopsis_output.json`.
    - Se o arquivo **existir** → esse batch já foi processado (mv falhou anteriormente); pule para o próximo input de menor número
    - Se **não existir** → prossiga normalmente
 4. **Leia o arquivo input** com a ferramenta Read
@@ -172,16 +172,16 @@ Regras:
 
 Após ler o arquivo de input:
 
-1. **Mova o arquivo de input imediatamente** para `scripts/data/cowork/processed_synopsis/` usando o Bash tool:
+1. **Mova o arquivo de input imediatamente** para `scripts/data/batch/processed_synopsis/` usando o Bash tool:
    ```bash
-   mkdir -p scripts/data/cowork/processed_synopsis
-   mv scripts/data/cowork/NNN_synopsis_input.json scripts/data/cowork/processed_synopsis/NNN_synopsis_input.json
+   mkdir -p scripts/data/batch/processed_synopsis
+   mv scripts/data/batch/NNN_synopsis_input.json scripts/data/batch/processed_synopsis/NNN_synopsis_input.json
    ```
    (substitua `NNN` pelo prefixo real do arquivo lido)
 
 2. **Gere as sinopses** para todos os livros do array (veja regras acima).
 
-3. **Grave o resultado** em `scripts/data/cowork/NNN_synopsis_output.json` onde `NNN` é o mesmo
+3. **Grave o resultado** em `scripts/data/batch/NNN_synopsis_output.json` onde `NNN` é o mesmo
    prefixo numérico do input (ex: input era `002_synopsis_input.json` → grave em
    `002_synopsis_output.json`). Adicione `"batch": "NNN"` em `meta`.
 
@@ -235,15 +235,15 @@ Após ler o arquivo de input:
 ## Resumo do fluxo
 
 ```
-Glob scripts/data/cowork/*_synopsis_input.json (Bash ls como fallback)
+Glob scripts/data/batch/*_synopsis_input.json (Bash ls como fallback)
   → Selecionar o de menor número (ex: 002_synopsis_input.json)
   → Ler o arquivo + anotar prefixo NNN
-  → mv NNN_synopsis_input.json → scripts/data/cowork/processed_synopsis/   ← mover imediatamente
+  → mv NNN_synopsis_input.json → scripts/data/batch/processed_synopsis/   ← mover imediatamente
   → Para cada livro:
       extrair fatos da descricao (sem inferência)
       → gerar sinopse 90-160 palavras no idioma correto
       → auto-validar (marcadores, tom, comprimento, idioma)
       → incluir no array de resultados
       → se problema grave detectado, incluir no array blacklist
-  → Gravar NNN_synopsis_output.json em scripts/data/cowork/
+  → Gravar NNN_synopsis_output.json em scripts/data/batch/
 ```

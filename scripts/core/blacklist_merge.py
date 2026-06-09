@@ -41,7 +41,7 @@ def merge_blacklist(new_entries, blacklist_path):
 
         data["entries"].append({
             "slug":     slug,
-            "reason":   entry.get("reason", "cowork-agent"),
+            "reason":   entry.get("reason", "batch-agent"),
             "severity": entry.get("severity", "medium"),
             "details":  entry.get("details", ""),
         })

@@ -1,5 +1,5 @@
 # ============================================================
-# STEP 36 — COWORK IMPORT (unificado)
+# STEP 36 — BATCH IMPORT (unificado)
 # Livraria Alexandria
 #
 # Roda synopsis_import + categorize_import + apply_blacklist em uma
@@ -16,18 +16,18 @@ from steps import apply_blacklist
 
 def run():
 
-    log("[COWORK_IMPORT] Iniciando importação unificada")
+    log("[BATCH_IMPORT] Iniciando importação unificada")
 
-    log("[COWORK_IMPORT] --- Synopsis Import ---")
+    log("[BATCH_IMPORT] --- Synopsis Import ---")
     synopsis_import.run()
 
-    log("[COWORK_IMPORT] --- Categorize Import ---")
+    log("[BATCH_IMPORT] --- Categorize Import ---")
     categorize_import.run()
 
-    log("[COWORK_IMPORT] --- Apply Blacklist ---")
+    log("[BATCH_IMPORT] --- Apply Blacklist ---")
     try:
         apply_blacklist.run(dry_run=False)
     except (SystemExit, FileNotFoundError):
-        log("[COWORK_IMPORT] Blacklist: arquivo não encontrado (ok, será criado quando necessário)")
+        log("[BATCH_IMPORT] Blacklist: arquivo não encontrado (ok, será criado quando necessário)")
 
-    log("[COWORK_IMPORT] Importação unificada concluída")
+    log("[BATCH_IMPORT] Importação unificada concluída")

@@ -3,7 +3,7 @@
 # Livraria Alexandria
 #
 # Gera bio editorial (80–160 palavras) para autores sem descricao,
-# usando o agente Cowork em agents/author_bio/ (Gemini via
+# usando o agente Batch em agents/author_bio/ (Gemini via
 # markdown_executor.execute_agent).
 #
 # Cobertura da bio: quem é o autor → escola/movimento → principais obras.
