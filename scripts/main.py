@@ -1,6 +1,16 @@
 import argparse
+import sys
 import time
 import threading
+
+# Console do Windows costuma usar cp1252; força UTF-8 no stdout/stderr para os
+# painéis e box-chars (─, █, →, ↓) não quebrarem com UnicodeEncodeError.
+# Idempotente e seguro (reconfigure existe em Python 3.7+).
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 from steps import pipeline_status
 from steps import offer_seed
