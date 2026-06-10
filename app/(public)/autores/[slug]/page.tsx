@@ -13,16 +13,19 @@ export async function generateMetadata({
 
   const { data: autor } = await supabase
     .from("autores")
-    .select("nome, nacionalidade")
+    .select("nome, nacionalidade, livros_autores(livro_id)")
     .eq("slug", slug)
     .single();
 
   if (!autor) return {};
 
+  const temLivros = (autor.livros_autores?.length ?? 0) > 0;
+
   return {
     title: autor.nome,
     description: `Livros de ${autor.nome}${autor.nacionalidade ? `, escritor(a) ${autor.nacionalidade}` : ""} disponíveis na Livraria Alexandria.`,
     alternates: { canonical: `/autores/${slug}` },
+    ...(!temLivros ? { robots: { index: false } } : {}),
   };
 }
 

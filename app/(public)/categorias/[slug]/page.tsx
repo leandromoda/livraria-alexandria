@@ -13,16 +13,19 @@ export async function generateMetadata({
 
   const { data: categoria } = await supabase
     .from("categorias")
-    .select("nome")
+    .select("nome, livros_categorias(livro_id)")
     .eq("slug", slug)
     .single();
 
   if (!categoria) return {};
 
+  const temLivros = (categoria.livros_categorias?.length ?? 0) > 0;
+
   return {
     title: categoria.nome,
     description: `Explore livros de ${categoria.nome} com sinopses e as melhores ofertas.`,
     alternates: { canonical: `/categorias/${slug}` },
+    ...(!temLivros ? { robots: { index: false } } : {}),
   };
 }
 
