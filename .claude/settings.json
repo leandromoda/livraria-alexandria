@@ -43,7 +43,30 @@
       "Glob(scripts/data/batch/*_consistency_actions.json)",
       "Write(scripts/data/batch/*_consistency_actions.json)",
       "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/ofertas*)",
-      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/livros*)"
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/livros*)",
+
+      "Read(agents/curador/identity.md)",
+      "Read(agents/curador/rules.md)",
+      "Read(agents/curador/task.md)",
+      "Read(agents/curador/memory.md)",
+      "Read(agents/curador/prompt.md)",
+      "Read(scripts/.env)",
+      "Read(scripts/data/curador/*.json)",
+      "Read(scripts/data/seeds/*.json)",
+      "Read(scripts/data/seeds/ingested_seeds/*.json)",
+      "Edit(agents/curador/memory.md)",
+      "Edit(scripts/data/taxonomy.json)",
+      "Write(agents/curador/memory.md)",
+      "Write(scripts/data/curador/*.json)",
+      "Glob(scripts/data/curador/**)",
+      "Glob(agents/curador/**)",
+      "Bash(mkdir -p scripts/data/curador)",
+      "Bash(ls scripts/data/curador/*)",
+      "Bash(python -c \"import json; json.load(open('scripts/data/taxonomy.json', encoding='utf-8'))*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/categorias*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/autores*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/listas*)",
+      "PowerShell(*Invoke-RestMethod*ncnexkuiiuzwujqurtsa.supabase.co/rest/v1/livros_categorias_tematicas*)"
     ]
   }
 }
