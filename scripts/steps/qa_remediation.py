@@ -85,39 +85,72 @@ def drain_covers(conn, limit: int = 50) -> dict:
     # Reuso dos STEPS PADRÃO, targeted nos ids (prioridade). idioma=None: o
     # alvo é explícito (book_ids), sem filtrar por idioma.
     covers.run(None, len(book_ids), book_ids=book_ids)
-    # Propaga ao Supabase via o step de publicação padrão (upsert). Marca
-    # status_publish=0 para o publish re-selecionar — o site permanece no ar
-    # (lê o Supabase) até o upsert atualizar a capa.
-    fixed_local = [lid for (_rid, lid) in fila
-                   if (cur.execute("SELECT imagem_url FROM livros WHERE id=?", (lid,)).fetchone() or [None])[0]]
-    if fixed_local:
-        fm = ",".join("?" * len(fixed_local))
-        cur.execute(f"UPDATE livros SET status_publish = 0 WHERE id IN ({fm}) AND status_publish = 1",
-                    tuple(fixed_local))
-        conn.commit()
-        publish.run(None, len(fixed_local), book_ids=fixed_local)
 
-    # Avalia o resultado final (capa presente + republicado).
-    corrigidos = quarentena = 0
+    # Classifica cada livro após a geração de capa:
+    #   - sem capa            → nenhuma fonte achou (retry → quarentena por tentativas)
+    #   - capa + passa o gate → republicável (propaga ao Supabase via publish)
+    #   - capa + falha o gate → bloqueado: defeito mais profundo (is_publishable /
+    #     status_synopsis). NÃO mexe em status_publish (evita estrandar) e vai p/
+    #     quarentena COM MOTIVO — é caso da próxima fatia (sinopse).
+    publicaveis, bloqueados, sem_capa = [], [], []
     for rem_id, lid in fila:
         row = cur.execute(
-            "SELECT imagem_url, status_publish FROM livros WHERE id=?", (lid,)
+            """SELECT imagem_url, is_publishable, status_synopsis,
+                      length(COALESCE(sinopse, ''))
+               FROM livros WHERE id=?""", (lid,)
         ).fetchone()
-        tem_capa = bool(row and row[0])
-        publicado = bool(row and row[1] == 1)
-        if tem_capa and publicado:
+        if not (row and row[0]):
+            sem_capa.append((rem_id, lid))
+        elif row[1] == 1 and row[2] == 1 and (row[3] or 0) >= 80:
+            publicaveis.append((rem_id, lid))
+        else:
+            bloqueados.append((rem_id, lid))
+
+    # Propaga ao Supabase SÓ os republicáveis. status_publish=0 reenfileira para o
+    # publish padrão (upsert) — o site permanece no ar (lê o Supabase). Restaura
+    # pub=1 para qualquer um que o publish não tenha levado (robustez: nunca estranda).
+    if publicaveis:
+        ids = [lid for _, lid in publicaveis]
+        ph = ",".join("?" * len(ids))
+        cur.execute(f"UPDATE livros SET status_publish=0 WHERE id IN ({ph}) AND status_publish=1", tuple(ids))
+        conn.commit()
+        publish.run(None, len(ids), book_ids=ids)
+        cur.execute(f"UPDATE livros SET status_publish=1 WHERE id IN ({ph}) AND status_publish=0", tuple(ids))
+        conn.commit()
+
+    corrigidos = bloqueados_n = quarentena = 0
+
+    for rem_id, lid in publicaveis:
+        row = cur.execute("SELECT imagem_url, status_publish FROM livros WHERE id=?", (lid,)).fetchone()
+        if row and row[0] and row[1] == 1:
             cur.execute("UPDATE qa_remediation SET status='fixed' WHERE id=?", (rem_id,))
             corrigidos += 1
         else:
-            att = cur.execute("SELECT attempts FROM qa_remediation WHERE id=?", (rem_id,)).fetchone()[0]
-            if att >= MAX_ATTEMPTS:
-                cur.execute("UPDATE qa_remediation SET status='quarantined' WHERE id=?", (rem_id,))
-                cur.execute("UPDATE livros SET qa_quarantine = 1 WHERE id=?", (lid,))
-                quarentena += 1
-            else:
-                cur.execute("UPDATE qa_remediation SET status='pending' WHERE id=?", (rem_id,))
+            cur.execute("UPDATE qa_remediation SET status='pending' WHERE id=?", (rem_id,))
+
+    for rem_id, lid in bloqueados:
+        cur.execute(
+            "UPDATE qa_remediation SET status='quarantined', reason=? WHERE id=?",
+            ("capa obtida; publish bloqueado (is_publishable/status_synopsis pendente) — fatia sinopse", rem_id),
+        )
+        cur.execute("UPDATE livros SET qa_quarantine=1 WHERE id=?", (lid,))
+        bloqueados_n += 1
+
+    for rem_id, lid in sem_capa:
+        att = cur.execute("SELECT attempts FROM qa_remediation WHERE id=?", (rem_id,)).fetchone()[0]
+        if att >= MAX_ATTEMPTS:
+            cur.execute(
+                "UPDATE qa_remediation SET status='quarantined', reason=? WHERE id=?",
+                ("sem fonte de capa após múltiplas tentativas", rem_id),
+            )
+            cur.execute("UPDATE livros SET qa_quarantine=1 WHERE id=?", (lid,))
+            quarentena += 1
+        else:
+            cur.execute("UPDATE qa_remediation SET status='pending' WHERE id=?", (rem_id,))
+
     conn.commit()
-    return {"processados": len(fila), "corrigidos": corrigidos, "quarentena": quarentena}
+    return {"processados": len(fila), "corrigidos": corrigidos,
+            "bloqueados": bloqueados_n, "quarentena": quarentena}
 
 
 def run_covers(limit: int = 50) -> dict:
@@ -128,7 +161,8 @@ def run_covers(limit: int = 50) -> dict:
         log(f"[QA-REMEDIA][capa] enfileirados: {novos} (de {total} publicados sem capa)")
         res = drain_covers(conn, limit=limit)
         log(f"[QA-REMEDIA][capa] processados={res['processados']} "
-            f"corrigidos={res['corrigidos']} quarentena={res['quarentena']}")
+            f"corrigidos={res['corrigidos']} bloqueados={res.get('bloqueados', 0)} "
+            f"quarentena={res['quarentena']}")
         return res
     finally:
         conn.close()
