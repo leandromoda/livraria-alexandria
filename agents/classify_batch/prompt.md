@@ -115,8 +115,55 @@ Regras:
 - Livros de não-ficção devem ser classificados pelo tema, não pela nacionalidade do autor
 - Use o campo `description` da taxonomia para desambiguar categorias similares
 
+### Regras de tradição nacional e gênero (CRÍTICO — erros mais graves)
+
+Antes de atribuir uma categoria, **três eixos têm de bater**. Casar só pelo
+*tema* — ignorando nacionalidade e gênero — é o erro mais comum e mais grave.
+
+1. **Tradição nacional.** Categorias dos grupos "Literatura X" (ex: "Literatura
+   Francesa", "Literatura Alemã e Austríaca", "Literatura Brasileira") e
+   rótulos com nacionalidade (`existencialismo-frances`, `romance-alemao`,
+   `romance-russo`, `literatura-argentina`, `literatura-indiana`…) exigem que o
+   **autor pertença àquela tradição/nacionalidade**. Nunca classifique por tema
+   ignorando a nacionalidade.
+   - `existencialismo-frances` → SÓ existencialismo/absurdismo **francês**:
+     Sartre, Camus, Beauvoir, Merleau-Ponty, Genet, Beckett (escreveu em
+     francês). NÃO entram: Heidegger (alemão), Kafka (tcheco), Dostoiévski
+     (russo), Kierkegaard (dinamarquês), Clarice Lispector (brasileira),
+     Carmen Laforet (espanhola), Viktor Frankl (austríaco — logoterapia) nem
+     Brené Brown (autoajuda americana).
+   - `literatura-argentina` → autores argentinos (Borges, Cortázar, Bioy
+     Casares). Julián Fuks é **brasileiro** → `romance-brasileiro`.
+   - `literatura-indiana` → autores indianos; Thomas Mann (alemão) com enredo
+     na Índia continua `romance-alemao`.
+
+2. **Gênero ficcional.** Categorias de gênero (`romance-*`, `conto-*`,
+   `poesia-*`, `ficcao-literaria`, `realismo-magico`, `distopia`, `utopia`…)
+   exigem que a obra seja **daquele gênero**. Filosofia, ensaio, teoria,
+   sociologia, ciência e demais **não-ficção NÃO são "romance" nem
+   "ficção"**.
+   - Kant, Hegel, Marx, Wittgenstein, Adorno, Heidegger, Schopenhauer, Max
+     Weber → `filosofia-continental` / `filosofia-analitica` /
+     `historia-da-filosofia` / `sociologia-e-antropologia`, **nunca**
+     `romance-alemao` nem `ficcao-literaria`.
+   - Sapiens / De Animais a Deuses (Harari) → `sociologia-e-antropologia` +
+     `biologia-e-evolucao` + `historia-contemporanea`, **nunca** `distopia`
+     nem `utopia` (gêneros de ficção).
+   - O Gene Egoísta / Deus, um Delírio (Dawkins) → `biologia-e-evolucao` /
+     `filosofia-analitica` / `historia-das-religioes`, nunca romance ou
+     iluminismo francês.
+
+3. **`ficcao-literaria` é SÓ ficção.** Nunca aplique a não-ficção (filosofia,
+   ciência, história, autoajuda, biografia, ensaio).
+
+> Reforço ao critério "não-ficção classifica-se pelo tema": o tema escolhido
+> tem de ser uma categoria de **não-ficção** (filosofia, ciência, história,
+> sociologia…), nunca uma categoria de **gênero ficcional** nem de **tradição
+> literária nacional**.
+
 ### Desambiguações críticas (erros mais frequentes)
-- `historia-antiga` → APENAS textos historiográficos primários da Antiguidade (Heródoto, Tucídides, Tito Lívio, Tácito, Políbio). NUNCA para alegorias, livros de negócios, ficção ou divulgação científica com cenário antigo.
+- `historia-antiga` → APENAS textos historiográficos primários da Antiguidade (Heródoto, Tucídides, Tito Lívio, Tácito, Políbio). NUNCA para alegorias, livros de negócios, ficção ou divulgação científica com cenário antigo. Épica (Ilíada → `epica-grega`), sátira latina (Horácio → `epica-latina`) e filosofia estoica (Sêneca → `filosofia-classica`) NÃO são historiografia.
+- `filosofia-classica` → SÓ filosofia primária greco-romana antiga (Platão, Aristóteles, Sêneca, Marco Aurélio, Epicteto). NÃO inclui filosofia moderna, finanças (Clason), ateísmo contemporâneo (Dawkins), macro-história (Harari) nem romances alegóricos (Saramago, "A Caverna").
 - Thrillers de Dan Brown (Anjos e Demônios, O Código Da Vinci) → `thriller` + `suspense-psicologico`, não categorias históricas.
 - Livros modernos sobre estoicismo (Ryan Holiday, William Irvine) → `estoicismo-pratico`. Sêneca, Marco Aurélio, Epicteto (textos originais) → `filosofia-classica`.
 - Alegorias financeiras (O Homem Mais Rico da Babilônia) → `financas-pessoais`, não `historia-antiga`.
