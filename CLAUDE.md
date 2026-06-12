@@ -88,8 +88,33 @@ Sequência padrão completa:
 
 **Toda alteração em arquivo do repositório** (código, docs, config) segue este
 ciclo, ponta a ponta, **sem usar o GitHub Desktop** — o assistente conduz tudo
-via `git` + `gh` CLI. O GitHub Desktop deve ficar **fechado** durante o trabalho
-(seu auto-commit/stash concorrente corrompe o working tree).
+via `git` + `gh` CLI.
+
+> **⚠️ GitHub Desktop deve ficar FECHADO durante todo o trabalho.**
+> Seu auto-commit/stash concorrente já causou múltiplos incidentes: conflito de
+> stash, fragmentação de changeset e troca de branch sob os pés do assistente.
+> Com ele fechado, o fluxo via CLI é seguro e o repo local fica sempre atualizado.
+
+> **⚠️ Um PR por vez — sem trabalho paralelo em branches.**
+> Antes de criar um novo branch, **fechar o ciclo completo** do anterior:
+> merge + `git pull --ff-only` no main local. Trabalhar em duas seções
+> simultaneamente causa PRs com conteúdo misturado e conflitos de base.
+
+### Pré-condição obrigatória antes de criar qualquer branch
+
+```bash
+# 1. Verificar se há PRs abertos — não deve haver nenhum
+gh pr list --state open
+
+# 2. Verificar branch atual — deve estar em main, limpo
+git status
+git branch --show-current   # deve imprimir "main"
+```
+
+Se houver PR aberto: **fechar o ciclo dele primeiro** (merge + pull) antes de
+continuar.
+
+### Ciclo completo (10 passos)
 
 1. **Sincronizar o main local** antes de começar:
    `git checkout main && git pull --ff-only`.
@@ -106,13 +131,16 @@ via `git` + `gh` CLI. O GitHub Desktop deve ficar **fechado** durante o trabalho
 8. **Revisar**: conferir `gh pr checks <n>` (CI verde) + diff antes de mergear.
 9. **Mergear**: `gh pr merge <n> --squash --delete-branch`
    (squash + remove o branch remoto).
-10. **Atualizar o repo local** (assim o usuário não precisa abrir o GitHub Desktop):
-    `git checkout main && git pull --ff-only`.
-11. **Limpar** o branch local se sobrar: `git branch -d <branch>`.
+10. **Fechar o ciclo local**:
+    ```bash
+    git checkout main && git pull --ff-only
+    git branch -d <branch>   # apaga branch local se ainda existir
+    ```
 
-> Resumo: `main atualizado → branch → validar → commit → push → PR → revisar →
-> merge (squash, delete) → pull main`. Commit/PR só acontecem quando o usuário pede
-> a alteração; este fluxo é o **como**, não um gatilho automático.
+> Resumo: `verificar PRs abertos → main atualizado → branch → validar → commit →
+> push → PR → revisar → merge (squash, delete) → pull main → apagar branch local`.
+> Commit/PR só acontecem quando o usuário pede a alteração; este fluxo é o
+> **como**, não um gatilho automático.
 
 ---
 
