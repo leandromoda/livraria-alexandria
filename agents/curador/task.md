@@ -86,6 +86,9 @@ com a ação proposta para cada um.
    plano (alvo, de → para, evidência) e aguardar "ok"/ajuste.
 3. Após cada correção aplicada → **registrar** (Fase 3) imediatamente.
 4. Lacunas operacionais → **não** corrigir; reportar quais steps resolvem.
+5. **Correções em arquivos do repositório que o usuário queira commitar** →
+   verificar **R12** antes de criar qualquer branch: nenhum PR aberto,
+   branch local em `main` e limpo, GitHub Desktop fechado.
 
 ### Correções típicas e como aplicar
 
