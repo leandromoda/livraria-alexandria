@@ -4,7 +4,7 @@ scripts/steps/apply_blacklist.py
 Lê scripts/data/blacklist.json (gerado pelo agente auditor via Claude chat)
 e despublica os livros identificados:
   - SQLite: is_publishable=0, status_publish=0
-  - Supabase: PATCH is_publishable=false
+  - Supabase: PATCH is_publishable=false, status="blacklisted"
 
 Uso:
     python scripts/steps/apply_blacklist.py [--dry-run]
@@ -165,7 +165,7 @@ def _despublish_supabase(slug: str, supabase_url: str, key: str, dry_run: bool) 
         return False
 
     if dry_run:
-        log.info(f"  [DRY-RUN][Supabase] PATCH is_publishable=false para slug={slug}")
+        log.info(f"  [DRY-RUN][Supabase] PATCH is_publishable=false, status=blacklisted para slug={slug}")
         return True
 
     try:
@@ -178,7 +178,7 @@ def _despublish_supabase(slug: str, supabase_url: str, key: str, dry_run: bool) 
                 "Content-Type": "application/json",
                 "Prefer": "return=minimal",
             },
-            json={"is_publishable": False},
+            json={"is_publishable": False, "status": "blacklisted"},
             timeout=REQUEST_TIMEOUT,
         )
         ok = r.status_code in (200, 204)
