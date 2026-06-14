@@ -193,7 +193,7 @@ def run():
 
     # --- Buscar dados do Supabase ---
     log("[CONSISTENCY] Buscando livros publicados…")
-    livros = _get("livros", {"select": "id,slug,titulo,descricao", "status": "eq.publish"})
+    livros = _get("livros", {"select": "id,slug,titulo,descricao", "is_publishable": "eq.true"})
     log(f"[CONSISTENCY] {len(livros)} livros publicados encontrados")
 
     log("[CONSISTENCY] Buscando ofertas…")
