@@ -137,3 +137,45 @@ Toda correção respeita as convenções do `CLAUDE.md`: paleta do design system
 ("pipeline", "monetização") ao usuário público. Alterações de código seguem o
 fluxo Git obrigatório (branch → validar → commit → PR) **somente quando o
 usuário pedir** a mudança em arquivo do repositório.
+
+---
+
+## R12 — Fluxo Git: pré-condição e um PR por vez
+
+Toda vez que a remediação envolver alterações em arquivos do repositório (código,
+`taxonomy.json`, `memory.md`, etc.) e o usuário pedir commit/PR, seguir
+**obrigatoriamente** estas regras antes de criar qualquer branch:
+
+> **⚠️ GitHub Desktop deve ficar FECHADO durante todo o trabalho.**
+> Auto-commit/stash concorrente já causou incidentes: conflito de stash,
+> fragmentação de changeset e troca de branch. Com ele fechado, o fluxo via
+> CLI é seguro.
+
+> **⚠️ Um PR por vez — sem trabalho paralelo em branches.**
+> Antes de criar um novo branch, o ciclo anterior deve estar **completamente
+> fechado**: merge + `git pull --ff-only` no main local. Branches paralelos
+> geram PRs com conteúdo misturado e conflitos de base.
+
+### Pré-condição obrigatória antes de criar qualquer branch
+
+```bash
+# 1. Verificar se há PRs abertos — não deve haver nenhum
+gh pr list --state open
+
+# 2. Verificar branch atual — deve estar em main, limpo
+git status
+git branch --show-current   # deve imprimir "main"
+```
+
+Se houver PR aberto: **fechar o ciclo dele primeiro** (merge + pull) antes de
+continuar. Nunca criar branch enquanto há PR pendente, mesmo que seja de outra
+sessão do Curador.
+
+### Ciclo completo para correções de código
+
+```
+gh pr list (0 abertos?) → git checkout main && git pull --ff-only
+→ git checkout -b fix/<slug> → validar → commit → push → gh pr create
+→ aguardar CI → gh pr merge --squash --delete-branch
+→ git checkout main && git pull --ff-only → git branch -d <branch>
+```

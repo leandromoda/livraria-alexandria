@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   },
   description:
     "Descubra livros, listas editoriais e as melhores ofertas em literatura nacional e internacional.",
-  metadataBase: new URL("https://livrariaalexandria.com.br"),
+  metadataBase: new URL("https://www.livrariaalexandria.com.br"),
 };
 
 export default function RootLayout({
@@ -37,19 +37,19 @@ export default function RootLayout({
 
             <div className="flex flex-wrap justify-center gap-6 mb-8">
 
-              <Link href="/sobre" className="hover:text-[#8B1A1A] transition-colors">
+              <Link href="/sobre" className="hover:text-[#C9A84C] transition-colors">
                 Sobre
               </Link>
 
-              <Link href="/contato" className="hover:text-[#8B1A1A] transition-colors">
+              <Link href="/contato" className="hover:text-[#C9A84C] transition-colors">
                 Contato
               </Link>
 
-              <Link href="/privacidade" className="hover:text-[#8B1A1A] transition-colors">
+              <Link href="/privacidade" className="hover:text-[#C9A84C] transition-colors">
                 Política de Privacidade
               </Link>
 
-              <Link href="/termos" className="hover:text-[#8B1A1A] transition-colors">
+              <Link href="/termos" className="hover:text-[#C9A84C] transition-colors">
                 Termos de Uso
               </Link>
 

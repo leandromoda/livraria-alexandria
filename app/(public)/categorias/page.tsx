@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 
 export const metadata: Metadata = {
-  title: "Categorias | Livraria Alexandria",
+  title: "Categorias",
   description: "Explore livros por categoria literária na Livraria Alexandria.",
 };
 

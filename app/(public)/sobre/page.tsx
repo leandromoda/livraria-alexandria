@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Sobre | Livraria Alexandria",
+  title: "Sobre",
   description:
     "Conheça a Livraria Alexandria — plataforma digital para descoberta de livros, organização por temas e comparação de ofertas.",
 };
