@@ -16,6 +16,7 @@ export async function generateMetadata({
     .from("livros")
     .select("titulo, descricao, autor, imagem_url")
     .eq("slug", slug)
+    .eq("is_publishable", true)
     .single();
 
   if (!livro) return {};
@@ -70,6 +71,7 @@ export default async function LivroPage({ params }: PageProps) {
       )
     `)
     .eq("slug", slug)
+    .eq("is_publishable", true)
     .single();
 
   if (!livro) {

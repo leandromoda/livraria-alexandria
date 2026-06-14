@@ -56,10 +56,12 @@ export default async function CategoriaPage({ params }: PageProps) {
    */
   const { data: livrosPivot } = await supabase
     .from("livros_categorias")
-    .select("livros ( id, titulo, slug, imagem_url )")
+    .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
     .eq("categoria_id", categoria.id);
 
-  const livros = livrosPivot?.map((l: any) => l.livros) ?? [];
+  const livros = (livrosPivot ?? [])
+    .map((l: any) => l.livros)
+    .filter((l: any) => l?.is_publishable === true);
 
   /**
    * Listas automáticas

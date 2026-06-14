@@ -23,6 +23,7 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
   const { data: todos } = await supabase
     .from("livros")
     .select("titulo, slug, imagem_url, autor")
+    .eq("is_publishable", true)
     .order("titulo");
 
   const letrasComLivros = new Set(

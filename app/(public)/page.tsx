@@ -18,12 +18,13 @@ export default async function Home() {
   const { data: livros } = await supabase
     .from("livros")
     .select("titulo, slug, autor, imagem_url")
+    .eq("is_publishable", true)
     .limit(6);
 
   /**
    * Ofertas (monetização)
    */
-  const { data: ofertas } = await supabase
+  const { data: rawOfertas } = await supabase
     .from("ofertas")
     .select(`
       id,
@@ -31,11 +32,16 @@ export default async function Home() {
       marketplace,
       livros (
         titulo,
-        slug
+        slug,
+        is_publishable
       )
     `)
     .eq("ativa", true)
-    .limit(6);
+    .limit(12);
+
+  const ofertas = (rawOfertas ?? [])
+    .filter((o: any) => o.livros?.is_publishable === true)
+    .slice(0, 6);
 
   /**
    * Autores (discovery)

@@ -45,10 +45,12 @@ export default async function AutorPage({ params }: PageProps) {
    */
   const { data: livrosPivot } = await supabase
     .from("livros_autores")
-    .select("livros ( id, titulo, slug, imagem_url )")
+    .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
     .eq("autor_id", autor.id);
 
-  const livros = livrosPivot?.map((l: any) => l.livros) ?? [];
+  const livros = (livrosPivot ?? [])
+    .map((l: any) => l.livros)
+    .filter((l: any) => l?.is_publishable === true);
 
   return (
     <div className="space-y-10">
