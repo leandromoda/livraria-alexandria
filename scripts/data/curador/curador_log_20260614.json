@@ -1,0 +1,53 @@
+{
+  "data": "2026-06-14",
+  "entries": [
+    {
+      "timestamp": "2026-06-14T00:00:00Z",
+      "escopo": "varredura_geral",
+      "tipo": "correcao_seo",
+      "alvo": "app/(public)/sobre/page.tsx",
+      "de": "title: \"Sobre | Livraria Alexandria\"",
+      "para": "title: \"Sobre\"",
+      "risco": "baixo",
+      "confianca": "alta",
+      "evidencia": "layout.tsx usa template '%s | Livraria Alexandria'; sufixo duplicado renderizava 'Sobre | Livraria Alexandria | Livraria Alexandria'",
+      "aprovado_por": "autonomo"
+    },
+    {
+      "timestamp": "2026-06-14T00:00:00Z",
+      "escopo": "varredura_geral",
+      "tipo": "correcao_seo",
+      "alvo": "app/(public)/categorias/page.tsx",
+      "de": "title: \"Categorias | Livraria Alexandria\"",
+      "para": "title: \"Categorias\"",
+      "risco": "baixo",
+      "confianca": "alta",
+      "evidencia": "mesmo padrão de double-suffix que sobre/page.tsx",
+      "aprovado_por": "autonomo"
+    },
+    {
+      "timestamp": "2026-06-14T00:00:00Z",
+      "escopo": "varredura_geral",
+      "tipo": "correcao_design",
+      "alvo": "app/layout.tsx (footer — 4 ocorrências)",
+      "de": "hover:text-[#8B1A1A]",
+      "para": "hover:text-[#C9A84C]",
+      "risco": "baixo",
+      "confianca": "alta",
+      "evidencia": "#8B1A1A não consta na paleta do design system (CLAUDE.md); #C9A84C (brand-accent/gold) é o token correto para hover de links",
+      "aprovado_por": "autonomo"
+    },
+    {
+      "timestamp": "2026-06-14T00:00:00Z",
+      "escopo": "varredura_geral",
+      "tipo": "correcao_seo",
+      "alvo": "app/layout.tsx:14 (metadataBase)",
+      "de": "new URL(\"https://livrariaalexandria.com.br\")",
+      "para": "new URL(\"https://www.livrariaalexandria.com.br\")",
+      "risco": "medio",
+      "confianca": "alta",
+      "evidencia": "site real usa www (Vercel redireciona para www); metadataBase sem www gera URLs de OG/canonical inconsistentes",
+      "aprovado_por": "usuario"
+    }
+  ]
+}
