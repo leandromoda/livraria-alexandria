@@ -43,6 +43,7 @@ export default async function OfertasPage() {
     `)
     .eq("ativa", true);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ofertas = (rawOfertas ?? []).filter((o: any) => o.livros?.is_publishable === true);
 
   const baseUrl =
@@ -57,7 +58,9 @@ export default async function OfertasPage() {
     name: "Ofertas de livros",
     // Google requires price on every Offer — only include offers with valid price in schema
     itemListElement: (ofertas ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((o: any) => Number(o.preco) > 0)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((o: any, index: number) => ({
         "@type": "ListItem",
         position: index + 1,
@@ -116,6 +119,7 @@ export default async function OfertasPage() {
       ========================== */}
       <div className="space-y-4">
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {ofertas?.map((o: any) => (
           <div
             key={o.id}

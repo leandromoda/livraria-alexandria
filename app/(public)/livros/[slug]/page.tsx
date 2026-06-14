@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
+import Link from "next/link";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -95,6 +96,7 @@ export default async function LivroPage({ params }: PageProps) {
     .select("listas ( titulo, slug )")
     .eq("livro_id", livro.id);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listas = listasPivot?.map((l: any) => l.listas).filter(Boolean) ?? [];
 
   /**
@@ -124,10 +126,12 @@ export default async function LivroPage({ params }: PageProps) {
     ],
     offers: (() => {
       // Apenas ofertas com preço válido — Google exige price em todo Offer
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ofertasComPreco = (ofertas ?? []).filter((o: any) => Number(o.preco) > 0);
       if (!ofertasComPreco.length) return undefined;
 
       const pageUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const offerList = ofertasComPreco.map((o: any) => ({
         "@type": "Offer" as const,
         price: Number(o.preco),
@@ -139,6 +143,7 @@ export default async function LivroPage({ params }: PageProps) {
 
       if (offerList.length === 1) return offerList[0];
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prices = ofertasComPreco.map((o: any) => Number(o.preco));
       return {
         "@type": "AggregateOffer" as const,
@@ -177,9 +182,9 @@ export default async function LivroPage({ params }: PageProps) {
 
           {/* Breadcrumb */}
           <p className="text-xs text-[#7B5E3A] uppercase tracking-widest font-medium">
-            <a href="/livros" className="hover:text-[#C9A84C] transition-colors">
+            <Link href="/livros" className="hover:text-[#C9A84C] transition-colors">
               Livros
-            </a>
+            </Link>
             {" "}/ <span>{livro.titulo}</span>
           </p>
 
@@ -209,7 +214,9 @@ export default async function LivroPage({ params }: PageProps) {
             )}
 
             {livro.livros_categorias
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ?.filter((rel: any) => rel.categorias)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               .map((rel: any) => (
                 <a
                   key={rel.categorias.slug}
@@ -277,6 +284,7 @@ export default async function LivroPage({ params }: PageProps) {
 
         <div className="space-y-3">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {ofertas?.map((o: any) => {
             const price = formatPrice(o.preco);
             const label = MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace;
@@ -335,6 +343,7 @@ export default async function LivroPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {listas.map((lista: any) => (
             <a
               key={lista.slug}

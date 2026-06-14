@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Livros",
@@ -80,7 +81,7 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
         {!q && (
           <nav className="hidden lg:flex flex-col gap-0.5 flex-shrink-0 w-10 sticky top-6">
 
-            <a
+            <Link
               href="/livros"
               className={`text-xs font-semibold text-center py-1 rounded transition-colors ${
                 !letra
@@ -89,7 +90,7 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
               }`}
             >
               Todos
-            </a>
+            </Link>
 
             {ALPHABET.map((c) => {
               const disponivel = letrasComLivros.has(c);
@@ -124,13 +125,13 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
 
           {livros.length === 0 && q && (
             <p className="text-sm text-[#4A4A4A] py-4">
-              Nenhum livro encontrado para "{q}". Tente outros termos.
+              Nenhum livro encontrado para &ldquo;{q}&rdquo;. Tente outros termos.
             </p>
           )}
 
           {livros.length === 0 && letra && !q && (
             <p className="text-sm text-[#4A4A4A] py-4">
-              Nenhum livro encontrado com a letra "{letra}".
+              Nenhum livro encontrado com a letra &ldquo;{letra}&rdquo;.
             </p>
           )}
 

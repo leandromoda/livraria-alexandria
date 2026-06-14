@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 export default async function Home() {
 
@@ -40,6 +41,7 @@ export default async function Home() {
     .limit(12);
 
   const ofertas = (rawOfertas ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((o: any) => o.livros?.is_publishable === true)
     .slice(0, 6);
 
@@ -83,19 +85,19 @@ export default async function Home() {
 
           <div className="flex flex-wrap gap-3">
 
-            <a
+            <Link
               href="/listas"
               className="px-5 py-2.5 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
             >
               Ver listas
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/livros"
               className="px-5 py-2.5 border border-[#C8C0B4] text-[#F5F0E8] text-sm font-semibold rounded-lg hover:border-[#C9A84C] hover:text-[#C9A84C] transition-colors"
             >
               Explorar livros
-            </a>
+            </Link>
 
             <a
               href="/api/lucky"
@@ -126,9 +128,9 @@ export default async function Home() {
             Listas recomendadas
           </h2>
 
-          <a href="/listas" className="text-sm text-[#C9A84C] font-medium hover:underline">
+          <Link href="/listas" className="text-sm text-[#C9A84C] font-medium hover:underline">
             Ver todas →
-          </a>
+          </Link>
 
         </div>
 
@@ -164,9 +166,9 @@ export default async function Home() {
             Livros em destaque
           </h2>
 
-          <a href="/livros" className="text-sm text-[#C9A84C] font-medium hover:underline">
+          <Link href="/livros" className="text-sm text-[#C9A84C] font-medium hover:underline">
             Ver todos →
-          </a>
+          </Link>
 
         </div>
 
@@ -222,14 +224,15 @@ export default async function Home() {
             Autores
           </h2>
 
-          <a href="/autores" className="text-sm text-[#C9A84C] font-medium hover:underline">
+          <Link href="/autores" className="text-sm text-[#C9A84C] font-medium hover:underline">
             Ver todos →
-          </a>
+          </Link>
 
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {autores?.map((a: any) => {
             const count = a.livros_autores?.length ?? 0;
             return (
@@ -271,6 +274,7 @@ export default async function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {ofertas?.map((o: any) => (
             <a
               key={o.id}

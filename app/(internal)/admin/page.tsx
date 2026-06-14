@@ -45,6 +45,7 @@ async function getCatalogStats(): Promise<CatalogStats> {
   ]);
 
   const withOffer = new Set(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (offerRows ?? []).map((r: any) => r.livro_id)
   ).size;
 
@@ -63,6 +64,7 @@ async function getMarketplaceClicks(): Promise<SourceRow[]> {
     .select("ofertas(marketplace)");
 
   const counts: Record<string, number> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (data ?? []) as any[]) {
     const mkt = r.ofertas?.marketplace ?? "(sem marketplace)";
     counts[mkt] = (counts[mkt] ?? 0) + 1;
@@ -90,7 +92,9 @@ async function getTopLivros(): Promise<TopLivro[]> {
     .limit(5000);
 
   const seen = new Set<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const deduped: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (data ?? []) as any[]) {
     const bucket = Math.floor(new Date(r.created_at).getTime() / (30 * 60 * 1000));
     const key = `${r.ip_hash}:${r.oferta_id}:${bucket}`;
@@ -102,6 +106,7 @@ async function getTopLivros(): Promise<TopLivro[]> {
 
   const counts: Record<string, TopLivro> = {};
   for (const r of deduped) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const livro = (r.ofertas as any)?.livros;
     if (!livro || !r.livro_id) continue;
     if (!counts[r.livro_id]) {
@@ -123,7 +128,9 @@ async function getRecentClicks(): Promise<RecentClick[]> {
     .limit(500);
 
   const seen = new Set<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const deduped: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const r of (data ?? []) as any[]) {
     const bucket = Math.floor(new Date(r.created_at).getTime() / (30 * 60 * 1000));
     const key = `${r.ip_hash}:${r.oferta_id}:${bucket}`;
@@ -133,6 +140,7 @@ async function getRecentClicks(): Promise<RecentClick[]> {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return deduped.slice(0, 20).map((r: any) => ({
     id: r.id,
     titulo: r.ofertas?.livros?.titulo ?? "—",

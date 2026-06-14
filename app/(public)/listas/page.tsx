@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Listas editoriais",
@@ -25,12 +26,14 @@ export default async function ListasPage({ searchParams }: PageProps) {
     .from("listas")
     .select("id, titulo, slug, introducao")
     .order("titulo");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const todasListas: any[] = todasListasData ?? [];
 
   /* Macrocategorias disponíveis (campo opcional — degrade se ausente) */
   const macrocategorias = [
     ...new Set(
       todasListas
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((l: any) => l.macrocategoria as string | null)
         .filter((c): c is string => !!c)
     ),
@@ -39,6 +42,7 @@ export default async function ListasPage({ searchParams }: PageProps) {
   const temSidebar = macrocategorias.length > 0;
 
   const listas = categoriaAtiva
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ? todasListas.filter((l: any) => l.macrocategoria === categoriaAtiva)
     : todasListas;
 
@@ -73,7 +77,7 @@ export default async function ListasPage({ searchParams }: PageProps) {
         {temSidebar && (
           <nav className="hidden lg:flex flex-col gap-1 flex-shrink-0 w-44 sticky top-6">
 
-            <a
+            <Link
               href="/listas"
               className={`text-sm px-3 py-2 rounded-lg transition-colors ${
                 !categoriaAtiva
@@ -82,7 +86,7 @@ export default async function ListasPage({ searchParams }: PageProps) {
               }`}
             >
               Todas
-            </a>
+            </Link>
 
             {macrocategorias.map((cat) => (
               <a
@@ -105,6 +109,7 @@ export default async function ListasPage({ searchParams }: PageProps) {
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {listas.map((l: any) => (
 
               <a

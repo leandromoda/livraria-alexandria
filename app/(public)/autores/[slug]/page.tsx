@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -49,7 +50,9 @@ export default async function AutorPage({ params }: PageProps) {
     .eq("autor_id", autor.id);
 
   const livros = (livrosPivot ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((l: any) => l.livros)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((l: any) => l?.is_publishable === true);
 
   return (
@@ -70,7 +73,7 @@ export default async function AutorPage({ params }: PageProps) {
         <div>
 
           <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-1">
-            <a href="/autores" className="hover:opacity-80 transition-opacity">Autores</a>
+            <Link href="/autores" className="hover:opacity-80 transition-opacity">Autores</Link>
             {" "}/ {autor.nome}
           </p>
 
@@ -122,6 +125,7 @@ export default async function AutorPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {livros.map((livro: any) => (
             <a
               key={livro.slug}
