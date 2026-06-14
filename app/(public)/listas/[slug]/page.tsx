@@ -47,7 +47,7 @@ export default async function ListaPage({ params }: PageProps) {
   /**
    * Livros
    */
-  const { data: livros } = await supabase
+  const { data: rawListaLivros } = await supabase
     .from("lista_livros")
     .select(`
       posicao,
@@ -56,11 +56,14 @@ export default async function ListaPage({ params }: PageProps) {
         titulo,
         slug,
         autor,
-        imagem_url
+        imagem_url,
+        is_publishable
       )
     `)
     .eq("lista_id", lista.id)
     .order("posicao", { ascending: true });
+
+  const livros = (rawListaLivros ?? []).filter((item: any) => item.livros?.is_publishable === true);
 
   /**
    * Schema.org ItemList

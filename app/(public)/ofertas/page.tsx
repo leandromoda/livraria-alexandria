@@ -25,7 +25,7 @@ const MARKETPLACE_LABELS: Record<string, string> = {
 };
 
 export default async function OfertasPage() {
-  const { data: ofertas } = await supabase
+  const { data: rawOfertas } = await supabase
     .from("ofertas")
     .select(`
       id,
@@ -37,10 +37,13 @@ export default async function OfertasPage() {
         slug,
         autor,
         imagem_url,
-        isbn
+        isbn,
+        is_publishable
       )
     `)
     .eq("ativa", true);
+
+  const ofertas = (rawOfertas ?? []).filter((o: any) => o.livros?.is_publishable === true);
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://livrariaalexandria.com.br";
