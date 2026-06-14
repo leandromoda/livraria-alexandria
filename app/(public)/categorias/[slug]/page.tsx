@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -49,6 +50,7 @@ export default async function CategoriaPage({ params }: PageProps) {
     .eq("categoria_id", categoria.id)
     .order("weight", { ascending: false });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editoriais = listasEditorial?.map((l: any) => l.listas) ?? [];
 
   /**
@@ -60,13 +62,17 @@ export default async function CategoriaPage({ params }: PageProps) {
     .eq("categoria_id", categoria.id);
 
   const livros = (livrosPivot ?? [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((l: any) => l.livros)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((l: any) => l?.is_publishable === true);
 
   /**
    * Listas automáticas
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const livroIds = livros.map((l: any) => l.id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let automaticas: any[] = [];
 
   if (livroIds.length) {
@@ -76,6 +82,7 @@ export default async function CategoriaPage({ params }: PageProps) {
       .in("livro_id", livroIds)
       .limit(5);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     automaticas = listasAuto?.map((l: any) => l.listas) ?? [];
   }
 
@@ -101,7 +108,7 @@ export default async function CategoriaPage({ params }: PageProps) {
       <header className="bg-[#4A1628] rounded-2xl px-8 py-10 text-[#F5F0E8]">
 
         <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-3">
-          <a href="/categorias" className="hover:opacity-80 transition-opacity">Categorias</a>
+          <Link href="/categorias" className="hover:opacity-80 transition-opacity">Categorias</Link>
           {" "}/ {categoria.nome}
         </p>
 
@@ -132,6 +139,7 @@ export default async function CategoriaPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {listas.map((lista: any) => (
             <a
               key={lista.slug}
@@ -168,6 +176,7 @@ export default async function CategoriaPage({ params }: PageProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {livros.map((livro: any) => (
             <a
               key={livro.slug}

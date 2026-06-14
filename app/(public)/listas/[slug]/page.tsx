@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -63,6 +64,7 @@ export default async function ListaPage({ params }: PageProps) {
     .eq("lista_id", lista.id)
     .order("posicao", { ascending: true });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const livros = (rawListaLivros ?? []).filter((item: any) => item.livros?.is_publishable === true);
 
   /**
@@ -73,6 +75,7 @@ export default async function ListaPage({ params }: PageProps) {
     "@type": "ItemList",
     name: lista.titulo,
     description: lista.introducao,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     itemListElement: livros?.map((item: any, index: number) => ({
       "@type": "ListItem",
       position: index + 1,
@@ -103,7 +106,7 @@ export default async function ListaPage({ params }: PageProps) {
       <header className="bg-[#4A1628] rounded-2xl px-8 py-10 text-[#F5F0E8]">
 
         <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-3">
-          <a href="/listas" className="hover:opacity-80 transition-opacity">Listas</a>
+          <Link href="/listas" className="hover:opacity-80 transition-opacity">Listas</Link>
           {" "}/ Lista editorial
         </p>
 
@@ -128,6 +131,7 @@ export default async function ListaPage({ params }: PageProps) {
       ========================== */}
       <section className="space-y-4">
 
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
         {livros?.map((item: any) => (
           <article
             key={item.livros.id}

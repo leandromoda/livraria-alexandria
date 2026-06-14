@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Autores",
@@ -71,7 +72,7 @@ export default async function AutoresPage({ searchParams }: PageProps) {
         {/* Sidebar de letras */}
         <nav className="hidden lg:flex flex-col gap-0.5 flex-shrink-0 w-10 sticky top-6">
 
-          <a
+          <Link
             href="/autores"
             className={`text-xs font-semibold text-center py-1 rounded transition-colors ${
               !letra
@@ -80,7 +81,7 @@ export default async function AutoresPage({ searchParams }: PageProps) {
             }`}
           >
             Todos
-          </a>
+          </Link>
 
           {ALPHABET.map((c) => {
             const disponivel = letrasComAutores.has(c);
@@ -113,6 +114,7 @@ export default async function AutoresPage({ searchParams }: PageProps) {
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
 
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {autores.map((autor: any) => {
 
               const count = autor.livros_autores?.length ?? 0;
