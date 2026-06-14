@@ -344,6 +344,33 @@ Não adicionar auth a essa rota — precisa ser pública para os redirecionament
 
 ---
 
+## Vercel Plugin (instalado)
+
+O plugin Vercel está ativo e injeta contexto Next.js/Vercel automaticamente nas sessões deste projeto.
+
+### Comandos úteis
+
+- `/vercel-plugin:status` — visão geral do projeto e deployments recentes
+- `/vercel-plugin:env` — gerenciar variáveis de ambiente (listar, pull, diff)
+
+### Comandos NÃO usar neste projeto
+
+- `/vercel-plugin:deploy` e `vercel deploy --prod` — o deploy acontece **automaticamente** via merge no `main` (Vercel CI integrado ao GitHub). Usar o fluxo de PR obrigatório descrito acima.
+- `/vercel-plugin:bootstrap` — projeto já está configurado e vinculado ao Vercel.
+
+### Defaults do plugin que NÃO se aplicam aqui
+
+| Default do plugin | Convenção deste projeto |
+|---|---|
+| shadcn/ui + Geist como UI padrão | Design system próprio — Lora + Inter + paleta `brand-*` |
+| Dark mode para dashboards e AI UIs | Tema editorial **light** em todo o site, incluindo o admin |
+| Tokens zinc/slate/neutral | Paleta `brand-*` exclusiva — nenhuma cor Tailwind genérica |
+| Neon Postgres / Upstash Redis | **Supabase** (PostgreSQL) — não migrar |
+| `vercel deploy` CLI como fluxo de CI/CD | PR → squash merge → Vercel auto-deploys a partir do `main` |
+| `proxy.ts` (renomeado de `middleware.ts` no Next.js 16) | Não temos middleware — se necessário no futuro, usar `proxy.ts` |
+
+---
+
 ## O que NÃO fazer
 
 - Não criar `createClient(...)` inline nas páginas — usar `lib/supabase.ts`
@@ -353,3 +380,6 @@ Não adicionar auth a essa rota — precisa ser pública para os redirecionament
 - Não exibir termos internos ao usuário público (ex: "Monetização", "Pipeline")
 - Não formatar preços com `.toFixed(2)` — usar `toLocaleString("pt-BR", ...)`
 - Não usar `<a>` para navegação interna em componentes React — usar `<Link>`
+- Não usar `vercel deploy --prod` diretamente — o deploy é automático via merge no `main`
+- Não usar shadcn/ui, Geist, nem tokens zinc/slate — usar o design system da livraria
+- Não migrar banco para Neon/Upstash — o projeto usa Supabase
