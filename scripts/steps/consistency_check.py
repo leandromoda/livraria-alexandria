@@ -6,16 +6,14 @@
 # com inconsistências: livros sem ofertas, ofertas inativas,
 # URLs afiliadas ausentes, sinopses suspeitas.
 #
-# Saída: scripts/data/batch/YYYYMMDDHHMMSS_consistency.json
+# Saída: scripts/data/logs/NNNN_audit_consistency.json
 # ============================================================
 
-import json
 import os
 import re
 import requests
 
 from datetime import datetime
-from pathlib import Path
 
 from core.logger import log
 
@@ -32,8 +30,6 @@ HEADERS = {
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
 }
-
-OUTPUT_DIR = Path(__file__).resolve().parents[1] / "data" / "batch"
 
 SINOPSE_MIN_CHARS = 80
 
@@ -189,8 +185,6 @@ def _check_sinopses_suspeitas(livros: list) -> list:
 def run():
     log("[CONSISTENCY] Iniciando verificação de consistência…")
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
     # --- Buscar dados do Supabase ---
     log("[CONSISTENCY] Buscando livros publicados…")
     livros = _get("livros", {"select": "id,slug,titulo,descricao", "is_publishable": "eq.true"})
@@ -245,22 +239,11 @@ def run():
         "sinopses_suspeitas": sinopses_suspeitas,
     }
 
-    # --- Gravar arquivo ---
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    out_path = OUTPUT_DIR / f"{ts}_consistency.json"
-
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
-
-    log(f"[CONSISTENCY] Relatório salvo em: {out_path.name}")
-
-    # Relatório padronizado para o /audit (além do batch/* lido pelo agente
-    # consistency_review). Mesmo payload + mode=consistency.
     from core.audit_report import save_audit_report
     audit_report = dict(report)
     audit_report["mode"] = "consistency"
     audit_path = save_audit_report(audit_report)
-    log(f"[CONSISTENCY] Relatório de auditoria: {audit_path}")
+    log(f"[CONSISTENCY] Relatório salvo em: {audit_path}")
 
     log(
         f"[CONSISTENCY] Resumo → "
@@ -271,4 +254,4 @@ def run():
         f"total issues: {total_issues}"
     )
 
-    return out_path
+    return audit_path

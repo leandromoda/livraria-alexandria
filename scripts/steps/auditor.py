@@ -667,7 +667,7 @@ def check_author_bios(conn: sqlite3.Connection) -> dict:
     rows = conn.execute(
         """SELECT id, slug, nome FROM autores
            WHERE status_publish=1
-             AND (bio IS NULL OR TRIM(bio) = '')"""
+             AND (descricao IS NULL OR TRIM(descricao) = '')"""
     ).fetchall()
 
     total_published = conn.execute(

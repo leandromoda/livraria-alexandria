@@ -193,6 +193,10 @@ def _count_per_step(conn) -> dict:
         "16 Publicar Cats": _q("""
             SELECT COUNT(*) FROM livros
             WHERE status_publish = 1 AND status_publish_cat = 0
+            AND EXISTS (
+                SELECT 1 FROM livros_categorias_tematicas t
+                WHERE t.livro_id = livros.id
+            )
         """),
         "17 Publicar Ofertas": _q("""
             SELECT COUNT(*) FROM livros

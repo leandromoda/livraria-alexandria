@@ -18,6 +18,10 @@ Uma linha por alteração relevante aplicada (mais recentes no topo).
 
 | Data | Escopo | Alteração | Risco | Aprovação |
 |------|--------|-----------|-------|-----------|
+| 2026-06-15 | contos_de_fada | 5 contos de fada + Mensagem/Pessoa removidos de `mitologia-e-lendas` | alto | usuário |
+| 2026-06-15 | contos_de_fada | Cinderela, O Livro sem Figuras, A Seleção, Especiais removidos de `fantasia-juvenil` | alto | usuário |
+| 2026-06-15 | contos_de_fada | Bone, This One Summer, Honor Girl, João e Maria, A Pequena Sereia, O Gato de Botas removidos de `literatura-juvenil` | alto | usuário |
+| 2026-06-15 | contos_de_fada | Seed `461_offer_seeds.json` gerado — 25 títulos contos de fada/folclore PT | alto | usuário |
 | 2026-06-14 | varredura_geral | `sobre/page.tsx`: título double-suffix → `"Sobre"` | baixo | autônomo |
 | 2026-06-14 | varredura_geral | `categorias/page.tsx`: título double-suffix → `"Categorias"` | baixo | autônomo |
 | 2026-06-14 | varredura_geral | `layout.tsx` footer 4×: `hover:text-[#8B1A1A]` → `hover:text-[#C9A84C]` (paleta) | baixo | autônomo |
@@ -31,7 +35,9 @@ Lacunas observadas durante auditorias: categorias da taxonomia com poucos ou
 nenhum livro, nacionalidades/períodos sub-representados, temas que mereceriam
 nova categoria. Priorizar ao gerar seeds (R9).
 
-- _(vazio — nenhuma oportunidade mapeada ainda)_
+- **folclore-brasileiro** (não publicado, 3 livros): apenas Lobato + Ruth Rocha. Oportunidade: Câmara Cascudo, Sílvio Romero, Figueiredo Pimentel já no seed 461; ingerir e publicar a categoria. (2026-06-15)
+- **literatura-oral-e-popular** (não publicado, 3 livros): Andersen, La Fontaine, Cantar de Mio Cid. Fronteira ambígua com `contos-de-fada-e-fabulas`. Avaliar se merece ser publicada ou fundida.
+- **contos-de-fada-e-fabulas**: 14 livros publicados — categoria ativa e bem formada. Seed 461 vai ampliar com 19 títulos de conto de fada + 4 de folclore brasileiro + 2 de literatura infantil (Lobato).
 
 ---
 
@@ -42,7 +48,10 @@ para manter consistência. (Várias categorias já trazem `description` em
 `taxonomy.json` com esses critérios — registrar aqui apenas decisões adicionais
 tomadas durante a curadoria.)
 
-- _(vazio — nenhuma decisão adicional registrada ainda)_
+- **contos-de-fada vs mitologia-e-lendas**: contos de fada (Grimm, Andersen, Perrault) vão em `contos-de-fada-e-fabulas`, nunca em `mitologia-e-lendas`. Mitologia = textos mitológicos (Gaiman, Miller, Riordan) ou compilações de mitos/lendas. (2026-06-15)
+- **contos-de-fada vs fantasia-juvenil**: contos clássicos infantis (Cinderela, João e Maria, A Pequena Sereia) não são fantasia juvenil — `fantasia-juvenil` é para narrativas longas voltadas a adolescentes (Gaiman, C.S. Lewis, Riordan). (2026-06-15)
+- **HQs em literatura-juvenil**: graphic novels e HQs (Bone, This One Summer, Honor Girl) não vão em `literatura-juvenil` — usar `hq-e-graphic-novel` e/ou `quadrinho-autobiografico`. (2026-06-15)
+- **Mensagem (Pessoa) em mitologia**: poesia épica/simbolista portuguesa ≠ mitologia. Usar `poesia-portuguesa` + `modernismo-portugues`. (2026-06-15)
 
 ---
 
@@ -81,4 +90,4 @@ evitar duplicação e acompanhar o que ainda aguarda ingestão em
 
 | Arquivo | Tema / cluster | Idioma | Itens | Data | Ingerido? |
 |---------|----------------|--------|-------|------|-----------|
-| _(vazio)_ | | | | | |
+| `461_offer_seeds.json` | contos de fada / folclore / literatura infantil BR | PT | 25 | 2026-06-15 | Não |
