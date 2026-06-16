@@ -217,7 +217,7 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
     # 1. Supabase health
     log.info("--- Supabase ---")
     if SUPABASE_URL:
-        sb_headers = _supabase_headers()
+        sb_headers = _supabase_headers(use_service_key=not SUPABASE_ANON_KEY)
         results.append(check(
             "Supabase: livros endpoint",
             "supabase_table",
