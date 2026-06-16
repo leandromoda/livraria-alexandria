@@ -20,7 +20,7 @@ from core.logger import log
 # CONFIG
 # =========================
 
-BATCH_SIZE    = 25
+BATCH_SIZE    = int(os.environ.get("BATCH_SIZE_CLASSIFY", 25))
 DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
 BATCH_DIR    = os.path.join(DATA_DIR, "batch")
 PROCESSED_DIR = os.path.join(BATCH_DIR, "processed_categorize")
