@@ -168,9 +168,97 @@ def run_covers(limit: int = 50) -> dict:
         conn.close()
 
 
+# ============================================================
+# Fatia: SINOPSE — reconcile (NÃO-LLM)
+# ============================================================
+#
+# Caso comum revelado em produção: livro PUBLICADO com sinopse VÁLIDA mas
+# status_synopsis=0 (flag fora de sincronia com o conteúdo) → is_publishable=0.
+# É um defeito de DADO, não de conteúdo — não precisa de LLM. Aqui:
+#   sinopse passa validate_synopsis (mesma do pipeline) → status_synopsis=1 →
+#   quality_gate (recomputa is_publishable) → publish (upsert) — fix-in-place.
+# Sinopse inválida/ausente NÃO é tocada (é caso de regeneração LLM, fatia futura).
+
+FACTOR_SYNOPSIS = "synopsis"
+
+
+def reconcile_synopsis(conn, limit: int = 50) -> dict:
+    """Reconcilia a flag de sinopse dos publicados com status_synopsis=0 cujo
+    texto JÁ é válido. Reusa validate_synopsis + quality_gate + publish padrão."""
+    from steps.synopsis_import import validate_synopsis
+    from steps import quality_gate
+
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, idioma, sinopse FROM livros
+        WHERE status_publish = 1 AND status_synopsis = 0
+        ORDER BY updated_at DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall()
+
+    por_idioma: dict = {}
+    validos: list = []
+    invalidos = 0
+    for lid, idioma, sinopse in rows:
+        if validate_synopsis(sinopse or "")[0]:
+            por_idioma.setdefault((idioma or "PT"), []).append(lid)
+            validos.append(lid)
+        else:
+            invalidos += 1
+
+    reconciliados = 0
+    if validos:
+        ph = ",".join("?" * len(validos))
+        # Flag correta + limpa quarentena (estamos consertando) + toggle p/ QG/publish.
+        # COALESCE: alguns publicados com status_synopsis=0 também têm idioma=NULL
+        # (anomalia do review), o que bloquearia o gate. Default PT (catálogo é
+        # 99% PT e a sinopse é PT); a checagem de idioma do próprio QG é a rede de
+        # segurança — se não for PT, o gate reprova e nada é propagado com erro.
+        cur.execute(f"UPDATE livros SET status_synopsis=1, qa_quarantine=0, idioma=COALESCE(idioma,'PT') WHERE id IN ({ph})", tuple(validos))
+        cur.execute(f"UPDATE livros SET status_publish=0 WHERE id IN ({ph}) AND status_publish=1", tuple(validos))
+        conn.commit()
+
+        # QG por grupo de idioma → a checagem de idioma do gate fica correta.
+        for idioma, ids in por_idioma.items():
+            quality_gate.run(idioma_base=idioma, book_ids=ids)
+        # Propaga ao Supabase (upsert) os que o QG aprovou. publish já é idioma-opcional c/ book_ids.
+        publish.run(None, len(validos), book_ids=validos)
+        # Robustez: restaura pub=1 p/ quem o publish não levou (ex.: reprovado no QG) — nunca estranda.
+        cur.execute(f"UPDATE livros SET status_publish=1 WHERE id IN ({ph}) AND status_publish=0", tuple(validos))
+        conn.commit()
+
+        cur.execute(
+            f"""SELECT COUNT(*) FROM livros
+                WHERE id IN ({ph}) AND status_synopsis=1 AND is_publishable=1 AND status_publish=1""",
+            tuple(validos),
+        )
+        reconciliados = cur.fetchone()[0]
+
+    return {"candidatos": len(rows), "validos": len(validos),
+            "reconciliados": reconciliados, "invalidos_llm": invalidos}
+
+
+def run_synopsis_reconcile(limit: int = 50) -> dict:
+    """Passe de reconcile de SINOPSE (não-LLM)."""
+    conn = get_conn()
+    try:
+        res = reconcile_synopsis(conn, limit=limit)
+        log(f"[QA-REMEDIA][sinopse-reconcile] candidatos={res['candidatos']} "
+            f"válidos={res['validos']} reconciliados={res['reconciliados']} "
+            f"inválidos→LLM={res['invalidos_llm']}")
+        return res
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser(description="QA — remediação (fatia: capas)")
+    p = argparse.ArgumentParser(description="QA — remediação (capas + sinopse reconcile)")
+    p.add_argument("--mode", choices=["covers", "synopsis-reconcile"], default="covers")
     p.add_argument("--limit", type=int, default=50)
     a = p.parse_args()
-    run_covers(limit=a.limit)
+    if a.mode == "covers":
+        run_covers(limit=a.limit)
+    else:
+        run_synopsis_reconcile(limit=a.limit)

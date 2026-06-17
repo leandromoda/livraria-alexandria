@@ -463,6 +463,7 @@ def menu_auditoria(idioma):
 56 → QA — Auditoria completa do site (sem LLM): conexões+preços+capas+classificação+listas+integridade+consistência
 57 → QA — Passe completo (auditoria do site + remediação)
 58 → QA — Remediação de capas (reprocessa publicados sem capa, com prioridade)
+59 → QA — Reconcile de sinopse (status_synopsis=0 c/ texto válido → flag + QG + publish, sem LLM)
 
 V  → Voltar
 """)
@@ -657,6 +658,10 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
         elif op == "58":
             log("QA — remediação de capas (publicados sem capa, com prioridade)…")
             qa.run(mode="remediate_covers")
+
+        elif op == "59":
+            log("QA — reconcile de sinopse (flag desync, sem LLM)…")
+            qa.run(mode="reconcile_synopsis")
 
         else:
             print("Opção inválida.\n")
