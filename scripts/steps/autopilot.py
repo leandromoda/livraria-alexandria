@@ -549,13 +549,18 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     step_sem_progresso[nome] = 0  # reset ao produzir progresso
 
             # Fase de remediação não-LLM (QA): corrige, com prioridade, fatores
-            # mecânicos dos publicados com defeito (fatia atual: capas). Fora do
-            # accounting de progresso do loop — é manutenção, não drena backlog.
+            # mecânicos dos publicados com defeito (capas + reconcile de sinopse).
+            # Fora do accounting de progresso do loop — é manutenção, não drena backlog.
             try:
                 with StepRun("QA Remediação (capas)", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
                     qa_remediation.run_covers(limit=pacote)
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: remediação de capas falhou: {e}")
+            try:
+                with StepRun("QA Reconcile (sinopse)", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                    qa_remediation.run_synopsis_reconcile(limit=pacote)
+            except Exception as e:
+                log(f"[AUTOPILOT] AVISO: reconcile de sinopse falhou: {e}")
 
             conn = get_conn()
             pending_atual = count_pending(conn)
