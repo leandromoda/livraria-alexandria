@@ -844,28 +844,22 @@ def _run_gargalo(idioma: str):
           f"{len(auto_steps)} auditoria(s) → Autopilot A")
     print()
 
-    confirma = input_safe("Executar plano agora? [S/n]: ").strip().lower()
-    if confirma == "n":
-        input_safe("Pressione Enter para voltar ao menu…")
-        return
+    # Execução automática — sem confirmações: plano e fase LLM assumidos como SIM.
+    log("[G] Executando o plano automaticamente (sem confirmação).")
 
-    # ── FASE LLM priorizada (WS1) — opcional, consome a sessão PRO ──
+    # ── FASE LLM priorizada (WS1) — consome a sessão PRO ──
     from core.claude_runner import claude_available
     if claude_available():
-        incl = input_safe(
-            "Incluir fase de geração LLM (drena o gargalo; consome a sessão PRO)? [S/n]: "
-        ).strip().lower()
-        if incl != "n":
-            log("[G] ── Fase LLM priorizada (orquestrador) ──")
-            try:
-                # Passe único: ao esgotar a sessão, o orquestrador roda o
-                # Autopilot A (fallback) e DEVOLVE o controle ao G (não aguarda
-                # o reset). O G então faz QA + Autopilot A + relatório.
-                llm_orchestrator.run(idioma, wait_for_reset=False)
-            except KeyboardInterrupt:
-                log("[G] Fase LLM interrompida pelo usuário.")
-            except Exception as e_llm:
-                log(f"[G] AVISO: fase LLM retornou com exceção: {e_llm}")
+        log("[G] ── Fase LLM priorizada (orquestrador) ──")
+        try:
+            # Passe único: ao esgotar a sessão, o orquestrador roda o
+            # Autopilot A (fallback) e DEVOLVE o controle ao G (não aguarda
+            # o reset). O G então faz QA + Autopilot A + relatório.
+            llm_orchestrator.run(idioma, wait_for_reset=False)
+        except KeyboardInterrupt:
+            log("[G] Fase LLM interrompida pelo usuário.")
+        except Exception as e_llm:
+            log(f"[G] AVISO: fase LLM retornou com exceção: {e_llm}")
     else:
         log("[G] claude CLI não encontrado — pulando fase LLM (segue só não-LLM).")
 
@@ -936,6 +930,38 @@ def _run_gargalo(idioma: str):
     _print_gargalo_report(idioma)
 
     log(f"[G] Passe concluído. v{get_version()}")
+
+
+def _run_wait_then_gargalo(idioma: str):
+    """Opção W: aguarda o reset da janela de sessão Claude PRO (se em cooldown)
+    e então roda o G automaticamente. Se a sessão já está disponível, roda já."""
+    from core.claude_usage_tracker import session_window
+
+    w = session_window()
+    if not w.get("in_cooldown"):
+        log("[W] Sessão Claude disponível (sem cooldown) — iniciando G imediatamente.")
+        _run_gargalo(idioma)
+        return
+
+    reset_at = w.get("reset_at") or "?"
+    log(f"[W] Sessão Claude em cooldown — aguardando o reset (previsto {reset_at}). "
+        f"Use Ctrl+C para cancelar.")
+    try:
+        while True:
+            w = session_window()
+            if not w.get("in_cooldown"):
+                break
+            secs = max(0, int(w.get("seconds_until_reset", 0)))
+            if secs <= 0:
+                break
+            log(f"[W] Faltam ~{secs // 60} min para o reset da sessão…")
+            time.sleep(min(secs, 300))  # acorda a cada ≤5 min para re-checar
+    except KeyboardInterrupt:
+        log("[W] Espera cancelada pelo usuário — não rodou o G.")
+        return
+
+    log("[W] Sessão reiniciada — iniciando G.")
+    _run_gargalo(idioma)
 
 
 def _print_gargalo_report(idioma: str):
@@ -1027,7 +1053,8 @@ def main():
 === LIVRARIA ALEXANDRIA — INGEST PIPELINE ===
 
 S  → Status do pipeline (atualizar)
-G  → Atacar gargalos — propõe sequência e executa → Autopilot A
+G  → Atacar gargalos — executa o plano automaticamente (sem confirmação) → Autopilot A
+W  → Esperar reset da sessão Claude PRO e então rodar o G automaticamente
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
 I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
@@ -1056,6 +1083,9 @@ E  → Exports
 
         elif op.upper() == "G":
             _run_gargalo(idioma)
+
+        elif op.upper() == "W":
+            _run_wait_then_gargalo(idioma)
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
