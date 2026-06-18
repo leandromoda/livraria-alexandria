@@ -65,10 +65,12 @@ Para cada livro no array:
       claramente de **outro livro** (autor diferente, trama incompatível,
       catálogo/estudo acadêmico sobre o livro em vez do livro em si, ou outra
       edição/sequência) → `REJECTED` + blacklist `synopsis-title-mismatch`.
-   b. **Idioma da descrição** — a `descricao` está no mesmo idioma do campo
-      `idioma`? Se a descrição estiver em **outro idioma** (ex: idioma=PT mas a
-      descrição está em inglês/espanhol/holandês/francês) → `REJECTED` + blacklist
-      `descricao_idioma_errado`. **NÃO traduza** a descrição para gerar a sinopse.
+   b. **Idioma da descrição** — se a `descricao` estiver em idioma diferente do
+      campo `idioma` (ex: idioma=PT mas descrição em inglês), **não rejeite por
+      isso**. Se o conteúdo for compatível com o título/autor (check 0a passou),
+      gere a sinopse **normalmente no idioma-alvo** (campo `idioma`), adaptando
+      e sintetizando o conteúdo da descrição. Só rejeite quando houver
+      incompatibilidade de conteúdo com o título — use `synopsis-title-mismatch`.
    c. **Conteúdo aproveitável** — a `descricao` tem informação real sobre a obra
       (não é nota de catálogo genérica, lista enciclopédica, gibberish ou < ~15
       palavras úteis)? Se não → `REJECTED` + blacklist `descricao_insuficiente`.
@@ -154,7 +156,6 @@ Enquanto processa cada livro, avalie se há problemas graves que justifiquem des
   (autor/enredo/gênero incompatíveis; descrição de outra edição/sequência; texto
   de catálogo ou estudo acadêmico *sobre* o livro em vez do livro). **Causa mais
   comum** — seja rigoroso aqui.
-- **descricao_idioma_errado** — a `descricao` está em idioma diferente do campo `idioma`
 - **descricao_insuficiente** — descrição é nota de catálogo genérica, lista
   enciclopédica, ou tem informação real insuficiente (< ~15 palavras úteis)
 - **synopsis-incoherent** — `descricao` é texto sem sentido, gibberish, ou completamente incoerente
