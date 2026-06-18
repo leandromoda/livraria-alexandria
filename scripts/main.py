@@ -876,6 +876,14 @@ def _run_gargalo(idioma: str):
     except Exception as e_qa:
         log(f"[G] AVISO: QA/remediação falhou: {e_qa}")
 
+    # Remediação mecânica não-LLM dos fatores de qualidade (capas + reconcile
+    # de sinopse) — deixa o dado limpo antes das auditorias e da publicação.
+    log("[G] ── QA / remediação mecânica (capas + reconcile sinopse) ──")
+    try:
+        qa.run(mode="remediate_mechanical", dry_run=False)
+    except Exception as e_qm:
+        log(f"[G] AVISO: remediação mecânica falhou: {e_qm}")
+
     # ── Executa steps auto-executáveis ────────────────────────
     for step in auto_steps:
         key = step["key"]

@@ -32,7 +32,7 @@ from core.logger import log
 NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
                  "classification", "connectivity", "prices", "integrity",
                  "audit", "remediate", "remediate_covers", "reconcile_synopsis",
-                 "full")
+                 "remediate_mechanical", "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -112,6 +112,17 @@ def remediate(dry_run=False, limit=None):
     return counts
 
 
+def remediate_mechanical(dry_run=False, limit=None):
+    """Remediação MECÂNICA não-LLM dos fatores de qualidade: capas + reconcile
+    de sinopse. Reusa os steps padrão via book_ids. Seguro para A e G."""
+    from steps import qa_remediation
+    n = limit or 50
+    log("[QA] ===== REMEDIAÇÃO MECÂNICA (capas + reconcile sinopse) =====")
+    qa_remediation.run_covers(limit=n)
+    qa_remediation.run_synopsis_reconcile(limit=n)
+    log("[QA] ===== remediação mecânica concluída =====")
+
+
 def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str = "all"):
     """Orquestra o estágio de QA.
 
@@ -122,6 +133,8 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
       reconcile_synopsis  → reconcilia flag de SINOPSE: publicados com
                             status_synopsis=0 e texto válido → flag + QG + publish
                             (não-LLM; sinopse inválida fica p/ regeneração LLM)
+      remediate_mechanical→ capas + reconcile de sinopse num passe (não-LLM).
+                            Usado pelos ciclos de A (autopilot) e G (gargalos).
       audit               → PASSE ÚNICO de auditoria do site todo (não-LLM):
                             conexões + preços + capas + classificação + listas
                             + integridade + consistência → NNNN_audit_*.json
@@ -152,6 +165,9 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
     if mode == "reconcile_synopsis":
         from steps import qa_remediation
         return qa_remediation.run_synopsis_reconcile(limit=limit or 50)
+
+    if mode == "remediate_mechanical":
+        return remediate_mechanical(dry_run=dry_run, limit=limit)
 
     if mode == "audit":
         return site_audit(dry_run=dry_run, limit=limit)
