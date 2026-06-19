@@ -32,7 +32,7 @@ from core.logger import log
 NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
                  "classification", "connectivity", "prices", "integrity",
                  "audit", "remediate", "remediate_covers", "reconcile_synopsis",
-                 "remediate_mechanical", "full")
+                 "flag_synopsis_regen", "remediate_mechanical", "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -133,6 +133,10 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
       reconcile_synopsis  → reconcilia flag de SINOPSE: publicados com
                             status_synopsis=0 e texto válido → flag + QG + publish
                             (não-LLM; sinopse inválida fica p/ regeneração LLM)
+      flag_synopsis_regen → marca sinopses concluídas mas inválidas
+                            (status_synopsis=1 + texto ruim) → status_synopsis=0
+                            p/ o motor LLM (O/G) regenerar. Gatilho não-LLM;
+                            usar no G antes da fase LLM. Anti-thrash via quarentena
       remediate_mechanical→ capas + reconcile de sinopse num passe (não-LLM).
                             Usado pelos ciclos de A (autopilot) e G (gargalos).
       audit               → PASSE ÚNICO de auditoria do site todo (não-LLM):
@@ -165,6 +169,10 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
     if mode == "reconcile_synopsis":
         from steps import qa_remediation
         return qa_remediation.run_synopsis_reconcile(limit=limit or 50)
+
+    if mode == "flag_synopsis_regen":
+        from steps import qa_remediation
+        return qa_remediation.run_synopsis_regen(limit=limit or 500)
 
     if mode == "remediate_mechanical":
         return remediate_mechanical(dry_run=dry_run, limit=limit)

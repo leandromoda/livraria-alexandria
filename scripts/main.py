@@ -464,6 +464,7 @@ def menu_auditoria(idioma):
 57 → QA — Passe completo (auditoria do site + remediação)
 58 → QA — Remediação de capas (reprocessa publicados sem capa, com prioridade)
 59 → QA — Reconcile de sinopse (status_synopsis=0 c/ texto válido → flag + QG + publish, sem LLM)
+60 → QA — Marcar sinopses inválidas p/ regeneração (status_synopsis=1 ruim → 0; o O/G regenera)
 
 V  → Voltar
 """)
@@ -663,6 +664,10 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
             log("QA — reconcile de sinopse (flag desync, sem LLM)…")
             qa.run(mode="reconcile_synopsis")
 
+        elif op == "60":
+            log("QA — marcar sinopses inválidas p/ regeneração (gatilho não-LLM)…")
+            qa.run(mode="flag_synopsis_regen")
+
         else:
             print("Opção inválida.\n")
             continue
@@ -846,6 +851,15 @@ def _run_gargalo(idioma: str):
 
     # Execução automática — sem confirmações: plano e fase LLM assumidos como SIM.
     log("[G] Executando o plano automaticamente (sem confirmação).")
+
+    # Gatilho não-LLM: marca sinopses concluídas mas inválidas (placeholder/
+    # heading/curta) como status_synopsis=0 ANTES da fase LLM, para o
+    # orquestrador as regenerar neste mesmo passe.
+    log("[G] ── Gatilho: marcar sinopses inválidas p/ regeneração ──")
+    try:
+        qa.run(mode="flag_synopsis_regen", dry_run=False)
+    except Exception as e_sr:
+        log(f"[G] AVISO: gatilho de regeneração de sinopse falhou: {e_sr}")
 
     # ── FASE LLM priorizada (WS1) — consome a sessão PRO ──
     from core.claude_runner import claude_available
