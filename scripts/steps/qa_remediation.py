@@ -339,15 +339,115 @@ def run_synopsis_regen(limit: int = 500) -> dict:
         conn.close()
 
 
+# ============================================================
+# P1 → FILA: ingestão dos relatórios de auditoria → qa_remediation
+# ============================================================
+#
+# Liga os relatórios NNNN_audit_<mode>.json (P1) à fila de remediação: cada
+# achado per-livro vira uma linha qa_remediation(livro_id, factor, source_report,
+# pending). Generaliza o ENQUEUE para todos os fatores — os drains específicos
+# (capa, sinopse, e os futuros categoria/oferta/bio) consomem a fila.
+#
+# Idempotente: pula relatórios já ingeridos (source_report presente) e o índice
+# parcial único impede duplicar remediação aberta. NÃO move os arquivos —
+# o comando /audit segue responsável por arquivar (correções de código).
+
+# mode → [(chave_lista_no_relatório, factor)]  — só listas de LIVRO baseadas em
+# SLUG (a fila é keyed por livro_id). author_bio fica de fora: é remediação de
+# AUTOR (tabela autores), fatia separada — não cabe aqui.
+_REPORT_FACTORS = {
+    "covers":         [("publicados_sem_capa", "capa"), ("capas_mortas", "capa")],
+    "classification": [("publicados_sem_categoria", "categoria"),
+                       ("sem_categoria_primaria", "categoria")],
+    "content":        [("results", "synopsis_regen")],          # filtra severity medium|high
+    "consistency":    [("livros_sem_oferta", "oferta"),
+                       ("sinopses_suspeitas", "synopsis_regen")],
+    "prices":         [("results", "oferta")],                  # filtra status != active
+}
+
+
+def ingest_audit_reports(conn, logs_dir: str = None) -> dict:
+    """Enfileira remediações a partir dos relatórios NNNN_audit_<mode>.json."""
+    import glob
+    import os
+    import json
+    from core.audit_report import REPORT_DIR
+
+    logs_dir = logs_dir or str(REPORT_DIR)
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT source_report FROM qa_remediation WHERE source_report IS NOT NULL")
+    ingeridos = {r[0] for r in cur.fetchall()}
+
+    relatorios = enfileiradas = 0
+    for path in sorted(glob.glob(os.path.join(logs_dir, "[0-9][0-9][0-9][0-9]_audit_*.json"))):
+        fname = os.path.basename(path)
+        if fname in ingeridos:
+            continue
+        try:
+            d = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            continue
+        specs = _REPORT_FACTORS.get(d.get("mode"))
+        if not specs:
+            continue  # integrity/connectivity/list/title_verify: sem mapeamento per-livro
+
+        algum = False
+        for key, factor in specs:
+            for it in (d.get(key) or []):
+                if isinstance(it, dict):
+                    slug = it.get("slug")
+                    if d.get("mode") == "prices" and it.get("status") == "active":
+                        continue
+                    if d.get("mode") == "content" and it.get("severity") not in ("medium", "high"):
+                        continue
+                else:
+                    slug = it  # author_bio: lista de slugs (strings)
+                if not slug:
+                    continue
+                row = cur.execute("SELECT id FROM livros WHERE slug=?", (slug,)).fetchone()
+                if not row:
+                    continue
+                try:
+                    cur.execute(
+                        """INSERT INTO qa_remediation (livro_id, factor, reason, status, source_report)
+                           VALUES (?, ?, ?, 'pending', ?)""",
+                        (row[0], factor, f"auditoria {d.get('mode')}/{key}", fname),
+                    )
+                    enfileiradas += 1
+                    algum = True
+                except Exception:
+                    pass  # já há remediação aberta p/ (livro, factor)
+        if algum or specs:
+            relatorios += 1
+    conn.commit()
+    return {"relatorios": relatorios, "enfileiradas": enfileiradas}
+
+
+def run_ingest_audit() -> dict:
+    """P1 → fila: ingere os relatórios de auditoria na fila de remediação."""
+    conn = get_conn()
+    try:
+        res = ingest_audit_reports(conn)
+        log(f"[QA-REMEDIA][ingest] relatórios={res['relatorios']} "
+            f"remediações enfileiradas={res['enfileiradas']}")
+        return res
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser(description="QA — remediação (capas / sinopse reconcile / sinopse regen)")
-    p.add_argument("--mode", choices=["covers", "synopsis-reconcile", "synopsis-regen"], default="covers")
+    p = argparse.ArgumentParser(description="QA — remediação (capas / sinopse / ingest)")
+    p.add_argument("--mode",
+                   choices=["covers", "synopsis-reconcile", "synopsis-regen", "ingest"],
+                   default="covers")
     p.add_argument("--limit", type=int, default=50)
     a = p.parse_args()
     if a.mode == "covers":
         run_covers(limit=a.limit)
     elif a.mode == "synopsis-reconcile":
         run_synopsis_reconcile(limit=a.limit)
-    else:
+    elif a.mode == "synopsis-regen":
         run_synopsis_regen(limit=a.limit)
+    else:
+        run_ingest_audit()
