@@ -897,6 +897,16 @@ def _run_gargalo(idioma: str):
     except Exception as e_qm:
         log(f"[G] AVISO: remediação mecânica falhou: {e_qm}")
 
+    # Reparo de ofertas (reusa steps existentes 27/28, não-LLM): corrige URLs
+    # afiliadas no SQLite (idempotente, local) e força republicação idempotente
+    # das ofertas no Supabase. Fecha o fator OFERTA do loop sem código novo.
+    log("[G] ── Reparo de ofertas (URLs afiliadas + republicar) ──")
+    try:
+        fix_affiliate_urls.run()
+        publish_ofertas.run_repair()
+    except Exception as e_of:
+        log(f"[G] AVISO: reparo de ofertas falhou: {e_of}")
+
     # ── Executa steps auto-executáveis ────────────────────────
     for step in auto_steps:
         key = step["key"]
