@@ -252,13 +252,102 @@ def run_synopsis_reconcile(limit: int = 50) -> dict:
         conn.close()
 
 
+# ============================================================
+# Fatia: SINOPSE — regeneração (GATILHO não-LLM)
+# ============================================================
+#
+# Caso: publicado com status_synopsis=1 (o pipeline considera "pronto") mas o
+# TEXTO falha validate_synopsis (placeholder/marcador genérico/heading markdown/
+# muito curta). É "concluído mas ruim". Aqui só DETECTAMOS e RESETAMOS
+# status_synopsis=0 — a GERAÇÃO em si é feita pelo motor LLM padrão (O/G),
+# que reprocessa os status_synopsis=0. Anti-thrash: após MAX_ATTEMPTS
+# regenerações sem ficar válido → quarentena (para o loop).
+#
+# Roda no G (que tem a fase LLM logo a seguir), NÃO no A (não-LLM: marcar
+# pendências sem regenerar só inflaria o count_pending do autopilot).
+
+FACTOR_SYNOPSIS_REGEN = "synopsis_regen"
+
+
+def flag_synopsis_for_regen(conn, limit: int = 500) -> dict:
+    """Marca (status_synopsis=0) publicados cuja sinopse está concluída mas
+    inválida, para o motor LLM padrão regenerar. Anti-thrash via quarentena."""
+    from steps.synopsis_import import validate_synopsis
+    cur = conn.cursor()
+
+    # 1. Fecha pendências já resolvidas (regeneração produziu sinopse válida).
+    cur.execute(
+        "SELECT id, livro_id FROM qa_remediation WHERE factor=? AND status IN ('pending','reprocessing')",
+        (FACTOR_SYNOPSIS_REGEN,),
+    )
+    for rid, lid in cur.fetchall():
+        r = cur.execute("SELECT status_synopsis, sinopse FROM livros WHERE id=?", (lid,)).fetchone()
+        if r and r[0] == 1 and validate_synopsis(r[1] or "")[0]:
+            cur.execute("UPDATE qa_remediation SET status='fixed' WHERE id=?", (rid,))
+    conn.commit()
+
+    # 2. Detecta "concluído mas inválido" → reseta p/ regeneração.
+    cur.execute("""
+        SELECT id, sinopse FROM livros
+        WHERE status_publish=1 AND status_synopsis=1 AND COALESCE(qa_quarantine,0)=0
+        LIMIT ?
+    """, (limit,))
+    flagged = quarentena = 0
+    for lid, sin in cur.fetchall():
+        ok, motivo = validate_synopsis(sin or "")
+        if ok:
+            continue
+        rowq = cur.execute(
+            "SELECT id, attempts FROM qa_remediation WHERE livro_id=? AND factor=? AND status IN ('pending','reprocessing')",
+            (lid, FACTOR_SYNOPSIS_REGEN),
+        ).fetchone()
+        if rowq:
+            rid, att = rowq[0], rowq[1] + 1
+            if att > MAX_ATTEMPTS:
+                cur.execute(
+                    "UPDATE qa_remediation SET status='quarantined', attempts=?, reason=? WHERE id=?",
+                    (att, f"sinopse inválida após {att} regenerações: {motivo}", rid),
+                )
+                cur.execute("UPDATE livros SET qa_quarantine=1 WHERE id=?", (lid,))
+                quarentena += 1
+                continue
+            cur.execute(
+                "UPDATE qa_remediation SET attempts=?, last_attempt_at=CURRENT_TIMESTAMP WHERE id=?",
+                (att, rid),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO qa_remediation (livro_id, factor, reason, status, attempts) VALUES (?, ?, ?, 'pending', 1)",
+                (lid, FACTOR_SYNOPSIS_REGEN, motivo),
+            )
+        cur.execute("UPDATE livros SET status_synopsis=0 WHERE id=?", (lid,))  # → regeneração LLM
+        flagged += 1
+    conn.commit()
+    return {"flagged": flagged, "quarentena": quarentena}
+
+
+def run_synopsis_regen(limit: int = 500) -> dict:
+    """Gatilho de regeneração de SINOPSE (não-LLM): marca as ruins p/ o motor
+    LLM padrão (O/G) regenerar. Pensado p/ rodar no G, antes da fase LLM."""
+    conn = get_conn()
+    try:
+        res = flag_synopsis_for_regen(conn, limit=limit)
+        log(f"[QA-REMEDIA][sinopse-regen] marcadas p/ regeneração={res['flagged']} "
+            f"quarentena={res['quarentena']}")
+        return res
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser(description="QA — remediação (capas + sinopse reconcile)")
-    p.add_argument("--mode", choices=["covers", "synopsis-reconcile"], default="covers")
+    p = argparse.ArgumentParser(description="QA — remediação (capas / sinopse reconcile / sinopse regen)")
+    p.add_argument("--mode", choices=["covers", "synopsis-reconcile", "synopsis-regen"], default="covers")
     p.add_argument("--limit", type=int, default=50)
     a = p.parse_args()
     if a.mode == "covers":
         run_covers(limit=a.limit)
-    else:
+    elif a.mode == "synopsis-reconcile":
         run_synopsis_reconcile(limit=a.limit)
+    else:
+        run_synopsis_regen(limit=a.limit)
