@@ -465,6 +465,7 @@ def menu_auditoria(idioma):
 58 → QA — Remediação de capas (reprocessa publicados sem capa, com prioridade)
 59 → QA — Reconcile de sinopse (status_synopsis=0 c/ texto válido → flag + QG + publish, sem LLM)
 60 → QA — Marcar sinopses inválidas p/ regeneração (status_synopsis=1 ruim → 0; o O/G regenera)
+61 → QA — Ingerir relatórios de auditoria na fila de remediação (P1 → fila; sem LLM)
 
 V  → Voltar
 """)
@@ -667,6 +668,10 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
         elif op == "60":
             log("QA — marcar sinopses inválidas p/ regeneração (gatilho não-LLM)…")
             qa.run(mode="flag_synopsis_regen")
+
+        elif op == "61":
+            log("QA — ingerir relatórios de auditoria na fila de remediação (P1 → fila)…")
+            qa.run(mode="ingest_audit")
 
         else:
             print("Opção inválida.\n")

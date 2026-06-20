@@ -32,7 +32,8 @@ from core.logger import log
 NON_LLM_MODES = ("consistency", "blacklist", "reprocess", "lists", "covers",
                  "classification", "connectivity", "prices", "integrity",
                  "audit", "remediate", "remediate_covers", "reconcile_synopsis",
-                 "flag_synopsis_regen", "remediate_mechanical", "full")
+                 "flag_synopsis_regen", "ingest_audit", "remediate_mechanical",
+                 "full")
 # Modos que consomem a sessão Claude PRO.
 LLM_MODES = ("content", "titles")
 ALL_MODES = NON_LLM_MODES + LLM_MODES
@@ -113,11 +114,13 @@ def remediate(dry_run=False, limit=None):
 
 
 def remediate_mechanical(dry_run=False, limit=None):
-    """Remediação MECÂNICA não-LLM dos fatores de qualidade: capas + reconcile
-    de sinopse. Reusa os steps padrão via book_ids. Seguro para A e G."""
+    """Remediação MECÂNICA não-LLM dos fatores de qualidade: ingere os relatórios
+    de auditoria na fila (P1→fila) e remedia capas + reconcile de sinopse. Reusa
+    os steps padrão via book_ids. Seguro para A e G."""
     from steps import qa_remediation
     n = limit or 50
-    log("[QA] ===== REMEDIAÇÃO MECÂNICA (capas + reconcile sinopse) =====")
+    log("[QA] ===== REMEDIAÇÃO MECÂNICA (ingest + capas + reconcile sinopse) =====")
+    qa_remediation.run_ingest_audit()
     qa_remediation.run_covers(limit=n)
     qa_remediation.run_synopsis_reconcile(limit=n)
     log("[QA] ===== remediação mecânica concluída =====")
@@ -137,8 +140,10 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
                             (status_synopsis=1 + texto ruim) → status_synopsis=0
                             p/ o motor LLM (O/G) regenerar. Gatilho não-LLM;
                             usar no G antes da fase LLM. Anti-thrash via quarentena
-      remediate_mechanical→ capas + reconcile de sinopse num passe (não-LLM).
-                            Usado pelos ciclos de A (autopilot) e G (gargalos).
+      ingest_audit        → P1→fila: ingere os relatórios NNNN_audit_<mode>.json
+                            na fila qa_remediation (idempotente, não move arquivos)
+      remediate_mechanical→ ingest_audit + capas + reconcile de sinopse num passe
+                            (não-LLM). Usado pelos ciclos de A e G.
       audit               → PASSE ÚNICO de auditoria do site todo (não-LLM):
                             conexões + preços + capas + classificação + listas
                             + integridade + consistência → NNNN_audit_*.json
@@ -173,6 +178,10 @@ def run(mode: str = "remediate", dry_run: bool = False, limit=None, scope: str =
     if mode == "flag_synopsis_regen":
         from steps import qa_remediation
         return qa_remediation.run_synopsis_regen(limit=limit or 500)
+
+    if mode == "ingest_audit":
+        from steps import qa_remediation
+        return qa_remediation.run_ingest_audit()
 
     if mode == "remediate_mechanical":
         return remediate_mechanical(dry_run=dry_run, limit=limit)
