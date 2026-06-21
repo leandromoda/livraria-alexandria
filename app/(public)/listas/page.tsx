@@ -18,21 +18,27 @@ export default async function ListasPage({ searchParams }: PageProps) {
   const { categoria: rawCategoria } = await searchParams;
   const categoriaAtiva = rawCategoria?.trim() ?? "";
 
-  // `macrocategoria` não existe no schema do Supabase (a tabela `listas` tem
-  // `tema`/`tipo`, ambos não populados pelo pipeline). Busca direta sem o campo
-  // para evitar um request 400 desnecessário; o agrupamento por macrocategoria
-  // fica inativo (sidebar não renderiza) até existir um campo real para isso.
   const { data: todasListasData } = await supabase
     .from("listas")
-    .select("id, titulo, slug, introducao")
+    .select("id, titulo, slug, introducao, lista_livros (livro_id)")
+    .eq("status_publish", true)
     .order("titulo");
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const todasListas: any[] = todasListasData ?? [];
+  const todasListas: any[] = (todasListasData ?? []).map((l: any) => ({
+    ...l,
+    livro_count: l.lista_livros?.length ?? 0,
+    macrocategoria: (l.macrocategoria as string | null) ?? null,
+  }));
+
+  // Apenas listas com livros (válidas)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const listasValidas = todasListas.filter((l: any) => l.livro_count > 0);
 
   /* Macrocategorias disponíveis (campo opcional — degrade se ausente) */
   const macrocategorias = [
     ...new Set(
-      todasListas
+      listasValidas
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((l: any) => l.macrocategoria as string | null)
         .filter((c): c is string => !!c)
@@ -43,8 +49,8 @@ export default async function ListasPage({ searchParams }: PageProps) {
 
   const listas = categoriaAtiva
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? todasListas.filter((l: any) => l.macrocategoria === categoriaAtiva)
-    : todasListas;
+    ? listasValidas.filter((l: any) => l.macrocategoria === categoriaAtiva)
+    : listasValidas;
 
   return (
     <div className="space-y-8">
@@ -107,36 +113,49 @@ export default async function ListasPage({ searchParams }: PageProps) {
 
         {/* Grid de listas */}
         <div className="flex-1 min-w-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {listas.map((l: any) => (
+          {!listas.length ? (
+            <p className="text-sm text-[#4A4A4A]">
+              Nenhuma lista disponível no momento.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-              <a
-                key={l.slug}
-                href={`/listas/${l.slug}`}
-                className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all"
-              >
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {listas.map((l: any) => (
 
-                <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider mb-2 block">
-                  {l.macrocategoria ?? "Lista editorial"}
-                </span>
+                <a
+                  key={l.slug}
+                  href={`/listas/${l.slug}`}
+                  className="group block bg-white border border-[#E6DED3] rounded-xl px-5 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all"
+                >
 
-                <span className="block text-[#0D1B2A] font-serif font-semibold text-base leading-snug group-hover:text-[#4A1628] transition-colors mb-2">
-                  {l.titulo}
-                </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[#C9A84C] text-xs font-semibold uppercase tracking-wider">
+                      {l.macrocategoria ?? "Lista editorial"}
+                    </span>
+                    <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] px-2 py-0.5 rounded-full border border-[#E6DED3] flex-shrink-0 ml-2">
+                      {l.livro_count} {l.livro_count === 1 ? "livro" : "livros"}
+                    </span>
+                  </div>
 
-                {l.introducao && (
-                  <span className="block text-[#4A4A4A] text-xs leading-relaxed line-clamp-2">
-                    {l.introducao}
+                  <span className="block text-[#0D1B2A] font-serif font-semibold text-base leading-snug group-hover:text-[#4A1628] transition-colors mb-2">
+                    {l.titulo}
                   </span>
-                )}
 
-              </a>
+                  {l.introducao && (
+                    <span className="block text-[#4A4A4A] text-xs leading-relaxed line-clamp-2">
+                      {l.introducao}
+                    </span>
+                  )}
 
-            ))}
+                </a>
 
-          </div>
+              ))}
+
+            </div>
+          )}
+
         </div>
 
       </div>
