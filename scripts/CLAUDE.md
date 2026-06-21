@@ -24,10 +24,10 @@ O menu interativo pede idioma e tamanho do pacote. A geração LLM usa o **claud
 (sem escolha de provider); só steps legados (author_bio, auditoria de conteúdo)
 ainda exibem o menu de provider.
 
-### Menu — numeração por grupos (WS9, 2026-05-30)
+### Menu — numeração por grupos (WS9+WS10, 2026-06)
 
 O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de ação
-(S/G/A/I/O/M/C/E). Dentro de cada submenu, as opções têm faixas sem colisão:
+(S/G/A/I/O/M/C/E/**W**). Dentro de cada submenu, as opções têm faixas sem colisão:
 
 | Submenu | Faixa | Itens |
 |---|---|---|
@@ -35,17 +35,27 @@ O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de açã
 | Pré-processamento | 5-9 | slugs, slugify autores, dedup autores, dedup, review |
 | Geração de Conteúdo | 10-19 | 10 categorizar, 10R reset, 11 sinopses, 12 capas, 13 bios |
 | Publicação | 20-30 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações |
-| Auditoria/QA | 40-57 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência, 52 reprocessar blacklist, 53 QA remediação, 54 capas, 55 classificação, 56 QA auditoria completa do site, 57 QA passe completo |
+| Auditoria/QA | 40-61 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência, 52 reprocessar blacklist, 53 QA remediação, 54 capas, 55 classificação, 56 QA auditoria completa do site, 57 QA passe completo, **58 remediação de capas, 59 reconcile sinopse, 60 marcar sinopses p/ regen, 61 ingerir relatórios de auditoria** |
 | Exports | 91-94 | transcripts/estado |
 | Banco | 95-97 | backup, restore, recover |
 
+**Opção W** (topo, letra): aguarda o reset da sessão Claude PRO (cooldown) e roda o G
+automaticamente ao reiniciar. Útil para deixar a máquina trabalhar sem supervisão.
+
+**Opção G sem confirmações**: G assume plano e LLM como SIM — não pede confirmação
+interativa. Inclui: regen sinopse (antes da fase LLM) → remediação mecânica
+(ingest+capas+reconcile) → reparo de ofertas (fix_affiliate_urls + publish_ofertas.run_repair).
+
 > A geração LLM (10/11/13) e a auditoria de conteúdo usam o **claude CLI**
 > (assinatura PRO) via agentes batch — Gemini foi aposentado. O orquestrador de QA
-> **`qa.py` já existe** (menu 53/56/57): `qa.run("audit")` é o passe único de
+> **`qa.py` já existe** (menu 53-61): `qa.run("audit")` é o passe único de
 > auditoria do site todo (não-LLM) e `qa.run("full")` = auditoria + remediação.
-> Todas as auditorias emitem `data/logs/NNNN_audit_<mode>.json` (escritor
-> `core/audit_report.py`), consumido pelo comando **`/audit`**. Fonte de verdade:
-> `scripts/main.py`.
+> Modos disponíveis: `covers`, `classification`, `connectivity`, `prices`,
+> `integrity`, `consistency`, `lists`, `audit`, `remediate`, `remediate_covers`,
+> `reconcile_synopsis`, `flag_synopsis_regen`, `ingest_audit`, `remediate_mechanical`,
+> `full`, `content`, `titles`. Todas as auditorias emitem
+> `data/logs/NNNN_audit_<mode>.json` (escritor `core/audit_report.py`), consumido
+> pelo comando **`/audit`**. Fonte de verdade: `scripts/main.py`.
 
 ### Atalhos de diagnóstico
 

@@ -84,3 +84,5 @@ test.txt
 state/*
 !state/project_state.json
 agents/Claude Init.txt
+# logs runtime do agente Curador (gerados pelo skill /curador)
+scripts/data/curador/*.json

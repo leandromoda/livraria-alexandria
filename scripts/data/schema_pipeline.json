@@ -15,7 +15,6 @@
       "CLAUDE.md"
     ]
   },
-
   "llm_execution_paths": {
     "description": "WS2 (2026-05-29, CONCLUÍDO): sinopse E categorização foram unificadas no caminho BATCH (path_b). O FSM multi-estágio de sinopse (MODE 2) e o caminho per-item de categorize.py foram REMOVIDOS. path_a (markdown_executor) agora só executa agentes de estágio único (MODE 1: author_bio, offer_finder).",
     "path_a_per_item_api": {
@@ -29,7 +28,11 @@
         "ollama": "_call_ollama() — local, inviável (CPU ~2 tok/s)",
         "auto": "gemini → ollama fallback (legado, não usado)"
       },
-      "used_by_menu": ["22 audit content", "29 author_bio (MODE 1)", "31 title-verify"],
+      "used_by_menu": [
+        "22 audit content",
+        "29 author_bio (MODE 1)",
+        "31 title-verify"
+      ],
       "synopsis_fsm": "REMOVIDO em WS2 (2026-05-29). agents/synopsis/* e MODE 2 (PIPELINE_STAGES, _run_synopsis_validator R1-R8, _run_abstract_structurer) deletados. Sinopse agora é 100% batch (ver path_b + synopsis.py wrapper).",
       "agent_format": "MODE 1: identity.md/rules.md/task.md em agents/<agente>/ (author_bio, offer_finder)"
     },
@@ -44,72 +47,547 @@
       "mode": "exporta lote JSON → invoca claude --print sobre prompt.md → importa output JSON",
       "backend": "claude CLI (assinatura Pro/Max) — limite de SESSÃO rotativo de 5h (CLAUDE_SESSION_RESET_MINUTES=300)",
       "agent_format": "prompt.md único em agents/<agente>_batch/ ou agents/<agente>/",
-      "batch_sizes": {"synopsis": 5, "classify": 10, "author_bio": 25},
+      "batch_sizes": {
+        "synopsis": 5,
+        "classify": 10,
+        "author_bio": 25
+      },
       "synopsis_entrypoints": "WS2: scripts/steps/synopsis.py virou wrapper fino deste caminho (synopsis_export → run_agent(synopsis_batch) → synopsis_import). Menu 11 e ingestão guiada (book_ids) usam-no; opção O usa _drain_synopsis (mesmo motor). Validação determinística no import: synopsis_import.validate_synopsis.",
       "categorize_entrypoints": "WS2: scripts/steps/categorize.py virou wrapper fino (categorize_export → run_agent(classify_batch) → categorize_import). Menu 10 e ingestão guiada (book_ids) usam-no; opção O usa _drain_classify (mesmo motor). Funções reset_failed/reset_wrong_category preservadas para o menu."
     },
     "conflict": "WS2 CONCLUÍDO: motor único = batch para sinopse (synopsis_batch) E categorização (classify_batch). FSM de sinopse e per-item de categorize removidos. Nenhum caminho usa a API Anthropic — 'claude' cai sempre no CLI da assinatura (teto de sessão 5h)."
   },
-
   "automation_options": [
-    {"key": "S", "label": "Status", "module": "pipeline_status.run", "llm": false, "desc": "Painel de status do pipeline."},
-    {"key": "G", "label": "Atacar Gargalos", "module": "main._run_gargalo + pipeline_status.build_gargalo_plan", "llm": false, "desc": "Gera plano priorizado (gargalo_plan.json), roda auditorias auto-executáveis e finaliza com Autopilot A. NÃO inclui geração de conteúdo LLM.", "note": "Candidata a virar o orquestrador unificado com fallbacks (ver plano)."},
-    {"key": "A", "label": "Autopilot", "module": "autopilot.run", "llm": false, "desc": "Loop de todos os steps não-LLM até exaurir progresso. Guardrails: FAILURE_THRESHOLD=3, MAX_CICLOS_COM_ERRO=3, QG_BOTTLENECK_THRESHOLD=8. Fase de fallback (enrich/resolver/gargalos lote 1000)."},
-    {"key": "I", "label": "Ingestão Orientada", "module": "ingestao_orientada.run", "llm": true, "desc": "Pipeline full incluindo steps LLM inline (categorize+synopsis). Sobrepõe O+A."},
-    {"key": "O", "label": "LLM Autopilot", "module": "llm_orchestrator.run", "llm": true, "backend": "claude CLI", "desc": "Ciclo exaustivo de 7 agentes: synopsis, classify, author_bio, log_analysis(1/5), consistency(1/5), offer_finder, title_auditor. Fallback para Autopilot A ao bater limite de sessão."},
-    {"key": "M", "label": "Manutenção", "module": "autopilot_manutencao.run", "llm": false, "desc": "Preços + conectividade + listas + bios (report). Sobrepõe parte de G/A."},
-    {"key": "C", "label": "Batch", "module": "batch_export/batch_import", "llm": "manual", "desc": "Export/import manual de lotes para agente Claude Code. Amplamente superado pelo O (automático)."},
-    {"key": "E", "label": "Exports", "module": "menu_exports", "llm": false}
+    {
+      "key": "S",
+      "label": "Status",
+      "module": "pipeline_status.run",
+      "llm": false,
+      "desc": "Painel de status do pipeline."
+    },
+    {
+      "key": "G",
+      "label": "Atacar Gargalos",
+      "module": "main._run_gargalo + pipeline_status.build_gargalo_plan",
+      "llm": false,
+      "desc": "Gera plano priorizado (gargalo_plan.json), roda auditorias auto-executáveis e finaliza com Autopilot A. NÃO inclui geração de conteúdo LLM.",
+      "note": "Candidata a virar o orquestrador unificado com fallbacks (ver plano).",
+      "note_ws10": "WS10: G roda sem confirmacoes (plano e LLM assumidos como SIM). Fases: regen sinopse (flag_synopsis_regen) -> remediate_mechanical (ingest_audit+remediate_covers+reconcile_synopsis) -> reparo de ofertas (fix_affiliate_urls + publish_ofertas.run_repair) -> auditorias -> Autopilot A."
+    },
+    {
+      "key": "A",
+      "label": "Autopilot",
+      "module": "autopilot.run",
+      "llm": false,
+      "desc": "Loop de todos os steps não-LLM até exaurir progresso. Guardrails: FAILURE_THRESHOLD=3, MAX_CICLOS_COM_ERRO=3, QG_BOTTLENECK_THRESHOLD=8. Fase de fallback (enrich/resolver/gargalos lote 1000)."
+    },
+    {
+      "key": "I",
+      "label": "Ingestão Orientada",
+      "module": "ingestao_orientada.run",
+      "llm": true,
+      "desc": "Pipeline full incluindo steps LLM inline (categorize+synopsis). Sobrepõe O+A."
+    },
+    {
+      "key": "O",
+      "label": "LLM Autopilot",
+      "module": "llm_orchestrator.run",
+      "llm": true,
+      "backend": "claude CLI",
+      "desc": "Ciclo exaustivo de 7 agentes: synopsis, classify, author_bio, log_analysis(1/5), consistency(1/5), offer_finder, title_auditor. Fallback para Autopilot A ao bater limite de sessão."
+    },
+    {
+      "key": "M",
+      "label": "Manutenção",
+      "module": "autopilot_manutencao.run",
+      "llm": false,
+      "desc": "Preços + conectividade + listas + bios (report). Sobrepõe parte de G/A."
+    },
+    {
+      "key": "C",
+      "label": "Batch",
+      "module": "batch_export/batch_import",
+      "llm": "manual",
+      "desc": "Export/import manual de lotes para agente Claude Code. Amplamente superado pelo O (automático)."
+    },
+    {
+      "key": "E",
+      "label": "Exports",
+      "module": "menu_exports",
+      "llm": false
+    }
   ],
-
   "steps": [
-    {"n": 1, "name": "Offer Seed", "module": "offer_seed", "llm": false, "phase": "ingestao", "depends_on": ["seeds/*.json"], "produces": "livros (created)", "in_autopilot": true},
-    {"n": 2, "name": "Enrich Descrição", "module": "enrich_descricao", "llm": false, "phase": "ingestao", "produces": "descricao", "status": "soft_deprecated", "note": "Coberto pelo step 4 (scraper). Removido do autopilot; só fallback/manual."},
-    {"n": 3, "name": "Resolver Ofertas", "module": "offer_resolver", "llm": false, "phase": "ingestao", "depends_on": ["lookup_query"], "produces": "offer_url, tag afiliado", "in_autopilot": true},
-    {"n": 4, "name": "Marketplace Scraper", "module": "marketplace_scraper", "llm": false, "phase": "ingestao", "depends_on": ["offer_url"], "produces": "imagem_url, descricao, preco", "in_autopilot": true, "note": "Circuit breaker p/ OpenLibrary; HTTP 503 frequente na Amazon nos logs."},
-    {"n": 5, "name": "Slugify", "module": "slugify", "llm": false, "phase": "preprocess", "produces": "status_slug=1", "in_autopilot": true},
-    {"n": 6, "name": "Slugify Autores", "module": "slugify_autores", "llm": false, "phase": "preprocess", "produces": "autores.slug", "in_autopilot": true},
-    {"n": 7, "name": "Dedup Autores", "module": "dedup_autores", "llm": false, "phase": "preprocess", "in_autopilot": true},
-    {"n": 8, "name": "Deduplicar", "module": "dedup", "llm": false, "phase": "preprocess", "depends_on": ["status_slug=1"], "produces": "status_dedup=1", "in_autopilot": true},
-    {"n": 9, "name": "Review (editorial+idioma)", "module": "review", "llm": false, "phase": "preprocess", "depends_on": ["status_dedup=1"], "produces": "status_review=1, is_book, editorial_score", "in_autopilot": true, "note": "project_state marca review como LLM em alguns trechos; código atual roda sem LLM."},
-    {"n": 10, "name": "Categorizar (temática)", "module": "categorize", "llm": true, "llm_path": "markdown_executor", "phase": "conteudo", "depends_on": ["status_review=1"], "produces": "livros_categorias_tematicas (max 5)", "in_autopilot": false, "backlog_ref": "~11.4k pendentes (gargalo_plan)"},
-    {"n": 11, "name": "Gerar Sinopses", "module": "synopsis", "llm": true, "llm_path": "markdown_executor (FSM)", "phase": "conteudo", "depends_on": ["status_review=1", "is_book=1"], "produces": "sinopse, status_synopsis=1", "in_autopilot": false, "backlog_ref": "~12.6k pendentes (log 2026-05-28) — MAIOR GARGALO"},
-    {"n": 12, "name": "Gerar Capas", "module": "covers", "llm": false, "phase": "conteudo", "produces": "status_cover=1/2", "in_autopilot": true, "sources": ["amazon isbn", "google_books", "openlibrary"]},
-    {"n": 13, "name": "Quality Gate", "module": "quality_gate", "llm": false, "phase": "publish", "depends_on": ["5", "9", "11", "12"], "produces": "is_publishable", "in_autopilot": true, "hard_blocks": ["sinopse<400 chars", "idioma UNKNOWN/divergente", "is_book=0", "editorial_score<0"], "note": "Reprova em massa por 'Sinopse pendente' — loga 1000 livros sem sinopse a cada ciclo (ruído nos logs)."},
-    {"n": 14, "name": "Publicar Livros", "module": "publish", "llm": false, "phase": "publish", "depends_on": ["is_publishable=1"], "target": "Supabase.livros", "in_autopilot": true, "filter": "lê blacklist.json e pula slugs listados"},
-    {"n": 15, "name": "Publicar Autores", "module": "publish_autores", "llm": false, "phase": "publish", "depends_on": ["14"], "target": "Supabase.autores + livros_autores", "in_autopilot": true},
-    {"n": 16, "name": "Publicar Categorias", "module": "publish_categorias", "llm": false, "phase": "publish", "depends_on": ["10"], "target": "Supabase.livros_categorias", "in_autopilot": true},
-    {"n": 17, "name": "Publicar Ofertas", "module": "publish_ofertas", "llm": false, "phase": "publish", "depends_on": ["14"], "target": "Supabase.ofertas", "in_autopilot": true},
-    {"n": 18, "name": "Listas SEO", "module": "list_composer", "llm": false, "phase": "publish", "depends_on": ["14"], "produces": "listas, listas_livros", "in_autopilot": true, "rules": {"min_categoria": 6, "min_autor": 3, "max_por_lista": 12}},
-    {"n": 19, "name": "Publicar Listas", "module": "publish_listas", "llm": false, "phase": "publish", "depends_on": ["18"], "target": "Supabase.listas", "in_autopilot": true},
-    {"n": 13, "name": "Bios de Autores", "module": "author_bio", "llm": true, "phase": "conteudo", "produces": "autores.descricao"},
-    {"n": 27, "name": "Reparar Ofertas", "module": "publish_ofertas.run_repair", "llm": false, "phase": "publish"},
-    {"n": 28, "name": "Fix Affiliate URLs", "module": "fix_affiliate_urls", "llm": false, "phase": "publish"},
-    {"n": 29, "name": "Importar offer_list.json", "module": "offer_list_importer", "llm": false, "phase": "publish", "input": "offer_list.json (agente offer_finder)"},
-    {"n": 40, "name": "Monitor Preços/Ofertas", "module": "offer_price_monitor", "llm": false, "phase": "auditoria", "produces": "offer_price_log, reactivation_pending", "output": "data/logs/NNNN_audit_prices.json (P1)"},
-    {"n": 41, "name": "Auditoria Conectividade", "module": "auditor (mode=connectivity)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_connectivity.json + connectivity_log"},
-    {"n": 42, "name": "Auditoria Conteúdo", "module": "auditor (mode=content)", "llm": true, "llm_path": "markdown_executor", "phase": "auditoria", "action": "despublica severity medium|high"},
-    {"n": 43, "name": "Reparar Publicações", "module": "repair", "llm": false, "phase": "auditoria"},
-    {"n": 44, "name": "Reparo Direcionado por Slug", "module": "targeted_repair", "llm": false, "phase": "auditoria", "reset_types": ["sinopse", "capa", "ambos"]},
-    {"n": 45, "name": "Aplicar Blacklist", "module": "apply_blacklist", "llm": false, "phase": "auditoria", "input": "blacklist.json (gerado por agente)", "action": "despublica severity medium|high"},
-    {"n": 46, "name": "Exportar p/ Auditoria", "module": "core/export_for_audit", "llm": false, "phase": "auditoria", "output": "audit_input.json"},
-    {"n": 47, "name": "Auditoria Integridade", "module": "autopilot_audit", "llm": false, "phase": "auditoria", "note": "8 checks SQL sem LLM", "output": "data/logs/NNNN_audit_integrity.json (P1)"},
-    {"n": 48, "name": "Auditar Listas SEO", "module": "auditor (mode=list)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_list.json"},
-    {"n": 49, "name": "Verificar Autores sem Bio", "module": "auditor (mode=author-bios)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_author_bio.json"},
-    {"n": 50, "name": "Verificar Veracidade de Títulos", "module": "auditor (mode=title-verify)", "llm": true, "phase": "auditoria"},
-    {"n": 51, "name": "Relatório de Consistência", "module": "consistency_check", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_consistency.json (P1) + data/batch/*_consistency.json"},
-    {"n": 52, "name": "Reprocessar Blacklist", "module": "reprocess_blacklist", "llm": false, "phase": "auditoria", "note": "recupera/quarentena por causa (WS5)"},
-    {"n": 53, "name": "QA — Passe de Remediação", "module": "qa (mode=remediate)", "llm": false, "phase": "auditoria", "note": "apply_blacklist + reprocess_blacklist (WS4)"},
-    {"n": 54, "name": "Auditar Capas", "module": "auditor (mode=covers)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_covers.json (P2)"},
-    {"n": 55, "name": "Auditar Classificação", "module": "auditor (mode=classification)", "llm": false, "phase": "auditoria", "output": "data/logs/NNNN_audit_classification.json (P2)"},
-    {"n": 56, "name": "QA — Auditoria Completa do Site", "module": "qa (mode=audit)", "llm": false, "phase": "auditoria", "note": "P3: passe único não-LLM — connectivity+prices+covers+classification+list+integrity+consistency, cada um emitindo NNNN_audit_<mode>.json"},
-    {"n": 57, "name": "QA — Passe Completo", "module": "qa (mode=full)", "llm": false, "phase": "auditoria", "note": "P3: audit + remediação"},
-    {"n": "91-94", "name": "Exports", "module": "export_state_transcript", "llm": false, "phase": "export"},
-    {"n": "95-97", "name": "Banco (backup/restore/recover)", "module": "db_backup/db_restore/db_recover", "llm": false, "phase": "banco"}
+    {
+      "n": 1,
+      "name": "Offer Seed",
+      "module": "offer_seed",
+      "llm": false,
+      "phase": "ingestao",
+      "depends_on": [
+        "seeds/*.json"
+      ],
+      "produces": "livros (created)",
+      "in_autopilot": true
+    },
+    {
+      "n": 2,
+      "name": "Enrich Descrição",
+      "module": "enrich_descricao",
+      "llm": false,
+      "phase": "ingestao",
+      "produces": "descricao",
+      "status": "soft_deprecated",
+      "note": "Coberto pelo step 4 (scraper). Removido do autopilot; só fallback/manual."
+    },
+    {
+      "n": 3,
+      "name": "Resolver Ofertas",
+      "module": "offer_resolver",
+      "llm": false,
+      "phase": "ingestao",
+      "depends_on": [
+        "lookup_query"
+      ],
+      "produces": "offer_url, tag afiliado",
+      "in_autopilot": true
+    },
+    {
+      "n": 4,
+      "name": "Marketplace Scraper",
+      "module": "marketplace_scraper",
+      "llm": false,
+      "phase": "ingestao",
+      "depends_on": [
+        "offer_url"
+      ],
+      "produces": "imagem_url, descricao, preco",
+      "in_autopilot": true,
+      "note": "Circuit breaker p/ OpenLibrary; HTTP 503 frequente na Amazon nos logs."
+    },
+    {
+      "n": 5,
+      "name": "Slugify",
+      "module": "slugify",
+      "llm": false,
+      "phase": "preprocess",
+      "produces": "status_slug=1",
+      "in_autopilot": true
+    },
+    {
+      "n": 6,
+      "name": "Slugify Autores",
+      "module": "slugify_autores",
+      "llm": false,
+      "phase": "preprocess",
+      "produces": "autores.slug",
+      "in_autopilot": true
+    },
+    {
+      "n": 7,
+      "name": "Dedup Autores",
+      "module": "dedup_autores",
+      "llm": false,
+      "phase": "preprocess",
+      "in_autopilot": true
+    },
+    {
+      "n": 8,
+      "name": "Deduplicar",
+      "module": "dedup",
+      "llm": false,
+      "phase": "preprocess",
+      "depends_on": [
+        "status_slug=1"
+      ],
+      "produces": "status_dedup=1",
+      "in_autopilot": true
+    },
+    {
+      "n": 9,
+      "name": "Review (editorial+idioma)",
+      "module": "review",
+      "llm": false,
+      "phase": "preprocess",
+      "depends_on": [
+        "status_dedup=1"
+      ],
+      "produces": "status_review=1, is_book, editorial_score",
+      "in_autopilot": true,
+      "note": "project_state marca review como LLM em alguns trechos; código atual roda sem LLM."
+    },
+    {
+      "n": 10,
+      "name": "Categorizar (temática)",
+      "module": "categorize",
+      "llm": true,
+      "llm_path": "markdown_executor",
+      "phase": "conteudo",
+      "depends_on": [
+        "status_review=1"
+      ],
+      "produces": "livros_categorias_tematicas (max 5)",
+      "in_autopilot": false,
+      "backlog_ref": "~11.4k pendentes (gargalo_plan)"
+    },
+    {
+      "n": 11,
+      "name": "Gerar Sinopses",
+      "module": "synopsis",
+      "llm": true,
+      "llm_path": "markdown_executor (FSM)",
+      "phase": "conteudo",
+      "depends_on": [
+        "status_review=1",
+        "is_book=1"
+      ],
+      "produces": "sinopse, status_synopsis=1",
+      "in_autopilot": false,
+      "backlog_ref": "~12.6k pendentes (log 2026-05-28) — MAIOR GARGALO"
+    },
+    {
+      "n": 12,
+      "name": "Gerar Capas",
+      "module": "covers",
+      "llm": false,
+      "phase": "conteudo",
+      "produces": "status_cover=1/2",
+      "in_autopilot": true,
+      "sources": [
+        "amazon isbn",
+        "google_books",
+        "openlibrary"
+      ]
+    },
+    {
+      "n": 13,
+      "name": "Quality Gate",
+      "module": "quality_gate",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "5",
+        "9",
+        "11",
+        "12"
+      ],
+      "produces": "is_publishable",
+      "in_autopilot": true,
+      "hard_blocks": [
+        "sinopse<400 chars",
+        "idioma UNKNOWN/divergente",
+        "is_book=0",
+        "editorial_score<0"
+      ],
+      "note": "Reprova em massa por 'Sinopse pendente' — loga 1000 livros sem sinopse a cada ciclo (ruído nos logs)."
+    },
+    {
+      "n": 14,
+      "name": "Publicar Livros",
+      "module": "publish",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "is_publishable=1"
+      ],
+      "target": "Supabase.livros",
+      "in_autopilot": true,
+      "filter": "lê blacklist.json e pula slugs listados"
+    },
+    {
+      "n": 15,
+      "name": "Publicar Autores",
+      "module": "publish_autores",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "14"
+      ],
+      "target": "Supabase.autores + livros_autores",
+      "in_autopilot": true
+    },
+    {
+      "n": 16,
+      "name": "Publicar Categorias",
+      "module": "publish_categorias",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "10"
+      ],
+      "target": "Supabase.livros_categorias",
+      "in_autopilot": true
+    },
+    {
+      "n": 17,
+      "name": "Publicar Ofertas",
+      "module": "publish_ofertas",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "14"
+      ],
+      "target": "Supabase.ofertas",
+      "in_autopilot": true
+    },
+    {
+      "n": 18,
+      "name": "Listas SEO",
+      "module": "list_composer",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "14"
+      ],
+      "produces": "listas, listas_livros",
+      "in_autopilot": true,
+      "rules": {
+        "min_categoria": 6,
+        "min_autor": 3,
+        "max_por_lista": 12
+      }
+    },
+    {
+      "n": 19,
+      "name": "Publicar Listas",
+      "module": "publish_listas",
+      "llm": false,
+      "phase": "publish",
+      "depends_on": [
+        "18"
+      ],
+      "target": "Supabase.listas",
+      "in_autopilot": true
+    },
+    {
+      "n": 13,
+      "name": "Bios de Autores",
+      "module": "author_bio",
+      "llm": true,
+      "phase": "conteudo",
+      "produces": "autores.descricao"
+    },
+    {
+      "n": 27,
+      "name": "Reparar Ofertas",
+      "module": "publish_ofertas.run_repair",
+      "llm": false,
+      "phase": "publish"
+    },
+    {
+      "n": 28,
+      "name": "Fix Affiliate URLs",
+      "module": "fix_affiliate_urls",
+      "llm": false,
+      "phase": "publish"
+    },
+    {
+      "n": 29,
+      "name": "Importar offer_list.json",
+      "module": "offer_list_importer",
+      "llm": false,
+      "phase": "publish",
+      "input": "offer_list.json (agente offer_finder)"
+    },
+    {
+      "n": 40,
+      "name": "Monitor Preços/Ofertas",
+      "module": "offer_price_monitor",
+      "llm": false,
+      "phase": "auditoria",
+      "produces": "offer_price_log, reactivation_pending",
+      "output": "data/logs/NNNN_audit_prices.json (P1)"
+    },
+    {
+      "n": 41,
+      "name": "Auditoria Conectividade",
+      "module": "auditor (mode=connectivity)",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_connectivity.json + connectivity_log"
+    },
+    {
+      "n": 42,
+      "name": "Auditoria Conteúdo",
+      "module": "auditor (mode=content)",
+      "llm": true,
+      "llm_path": "markdown_executor",
+      "phase": "auditoria",
+      "action": "despublica severity medium|high"
+    },
+    {
+      "n": 43,
+      "name": "Reparar Publicações",
+      "module": "repair",
+      "llm": false,
+      "phase": "auditoria"
+    },
+    {
+      "n": 44,
+      "name": "Reparo Direcionado por Slug",
+      "module": "targeted_repair",
+      "llm": false,
+      "phase": "auditoria",
+      "reset_types": [
+        "sinopse",
+        "capa",
+        "ambos"
+      ]
+    },
+    {
+      "n": 45,
+      "name": "Aplicar Blacklist",
+      "module": "apply_blacklist",
+      "llm": false,
+      "phase": "auditoria",
+      "input": "blacklist.json (gerado por agente)",
+      "action": "despublica severity medium|high"
+    },
+    {
+      "n": 46,
+      "name": "Exportar p/ Auditoria",
+      "module": "core/export_for_audit",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "audit_input.json"
+    },
+    {
+      "n": 47,
+      "name": "Auditoria Integridade",
+      "module": "autopilot_audit",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "8 checks SQL sem LLM",
+      "output": "data/logs/NNNN_audit_integrity.json (P1)"
+    },
+    {
+      "n": 48,
+      "name": "Auditar Listas SEO",
+      "module": "auditor (mode=list)",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_list.json"
+    },
+    {
+      "n": 49,
+      "name": "Verificar Autores sem Bio",
+      "module": "auditor (mode=author-bios)",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_author_bio.json"
+    },
+    {
+      "n": 50,
+      "name": "Verificar Veracidade de Títulos",
+      "module": "auditor (mode=title-verify)",
+      "llm": true,
+      "phase": "auditoria"
+    },
+    {
+      "n": 51,
+      "name": "Relatório de Consistência",
+      "module": "consistency_check",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_consistency.json (P1) + data/batch/*_consistency.json"
+    },
+    {
+      "n": 52,
+      "name": "Reprocessar Blacklist",
+      "module": "reprocess_blacklist",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "recupera/quarentena por causa (WS5)"
+    },
+    {
+      "n": 53,
+      "name": "QA — Passe de Remediação",
+      "module": "qa (mode=remediate)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "apply_blacklist + reprocess_blacklist (WS4)"
+    },
+    {
+      "n": 54,
+      "name": "Auditar Capas",
+      "module": "auditor (mode=covers)",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_covers.json (P2)"
+    },
+    {
+      "n": 55,
+      "name": "Auditar Classificação",
+      "module": "auditor (mode=classification)",
+      "llm": false,
+      "phase": "auditoria",
+      "output": "data/logs/NNNN_audit_classification.json (P2)"
+    },
+    {
+      "n": 56,
+      "name": "QA — Auditoria Completa do Site",
+      "module": "qa (mode=audit)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "P3: passe único não-LLM — connectivity+prices+covers+classification+list+integrity+consistency, cada um emitindo NNNN_audit_<mode>.json"
+    },
+    {
+      "n": 57,
+      "name": "QA — Passe Completo",
+      "module": "qa (mode=full)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "P3: audit + remediação"
+    },
+    {
+      "n": 58,
+      "name": "QA — Remediação de Capas",
+      "module": "qa (mode=remediate_covers)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "WS10: drena qa_remediation factor=capa; fix-in-place; anti-thrash MAX_ATTEMPTS=3; roda por ciclo no A"
+    },
+    {
+      "n": 59,
+      "name": "QA — Reconcile de Sinopse",
+      "module": "qa (mode=reconcile_synopsis)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "WS10: status_synopsis=0 c/ sinopse valida -> flag status_publish=0 + QG + publish sem LLM; sem regen"
+    },
+    {
+      "n": 60,
+      "name": "QA — Marcar Sinopses p/ Regeneracao",
+      "module": "qa (mode=flag_synopsis_regen)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "WS10: status_synopsis=1 invalido -> reset 0 para o O/G regenerar na proxima rodada"
+    },
+    {
+      "n": 61,
+      "name": "QA — Ingerir Relatorios de Auditoria",
+      "module": "qa (mode=ingest_audit)",
+      "llm": false,
+      "phase": "auditoria",
+      "note": "WS10: le NNNN_audit_*.json e enfileira achados em qa_remediation (P1->fila); sem LLM"
+    },
+    {
+      "n": "91-94",
+      "name": "Exports",
+      "module": "export_state_transcript",
+      "llm": false,
+      "phase": "export"
+    },
+    {
+      "n": "95-97",
+      "name": "Banco (backup/restore/recover)",
+      "module": "db_backup/db_restore/db_recover",
+      "llm": false,
+      "phase": "banco"
+    }
   ],
-
   "menu_numbering_issues": {
-    "status": "RESOLVIDO (WS9): Auditoria/QA renumerada para 40-57 (sem colisão). Mantido aqui como registro histórico.",
+    "status": "RESOLVIDO (WS9+WS10): Auditoria/QA renumerada para 40-61 (sem colisao; 58-61 adicionados pelo loop de remediacao WS10). Mantido aqui como registro historico.",
     "description": "[HISTÓRICO] O submenu de Auditoria reusava números 28/29/30/31 com significados diferentes do submenu de Publicação e do menu de Geração — fonte de confusão e bug latente.",
     "collisions": [
       "29 = 'Bios de Autores' (Geração) E 'Auditar Listas SEO' (Auditoria)",
@@ -118,7 +596,6 @@
       "28 = 'Fix Affiliate URLs' (Publicação) E 'Auditoria Integridade' (Auditoria)"
     ]
   },
-
   "identified_problems": [
     {
       "id": "P1_progressao_lenta",
@@ -146,17 +623,43 @@
       "evidence": "menu_numbering_issues + automation_options."
     }
   ],
-
   "obsolete_or_unify_candidates": [
-    {"target": "enrich_descricao (step 2)", "action": "FEITO (fase 5, 2026-05-31): rótulo do menu marca 'fallback manual'; já era soft_deprecated/fora do autopilot.", "reason": "soft_deprecated; coberto pelo scraper."},
-    {"target": "Sinopse: FSM markdown_executor vs synopsis_batch prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_batch; FSM removido.", "reason": "duas implementações divergentes do mesmo conteúdo."},
-    {"target": "Categorização: categorize.py (markdown_executor) vs classify_batch prompt.md", "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_batch; per-item removido.", "reason": "duplicação."},
-    {"target": "Opção C (Batch manual)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.", "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."},
-    {"target": "Opção I (Ingestão Orientada)", "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso; convergir para G só com sign-off + teste.", "reason": "sobrepõe O+A."},
-    {"target": "Opções A, G, M", "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).", "reason": "sobreposição de responsabilidades não-LLM."},
-    {"target": "Submenu auditoria (números 28-32 + colisões)", "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-57 (sem colisão); WS4 adicionou qa.py orquestrador + menu 52/53; WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine. Auditoria do site (2026-06): P1 escritor unificado NNNN_audit_<mode>.json; P2 modos covers (54) + classification (55); P3 passe único qa audit (56) + full (57).", "reason": "colisões de numeração e dispersão."}
+    {
+      "target": "enrich_descricao (step 2)",
+      "action": "FEITO (fase 5, 2026-05-31): rótulo do menu marca 'fallback manual'; já era soft_deprecated/fora do autopilot.",
+      "reason": "soft_deprecated; coberto pelo scraper."
+    },
+    {
+      "target": "Sinopse: FSM markdown_executor vs synopsis_batch prompt.md",
+      "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch synopsis_batch; FSM removido.",
+      "reason": "duas implementações divergentes do mesmo conteúdo."
+    },
+    {
+      "target": "Categorização: categorize.py (markdown_executor) vs classify_batch prompt.md",
+      "action": "RESOLVIDO (WS2, 2026-05-29): unificado no batch classify_batch; per-item removido.",
+      "reason": "duplicação."
+    },
+    {
+      "target": "Opção C (Batch manual)",
+      "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso para reprocessamento manual; ganho só cosmético. Manter até haver necessidade real + teste dedicado.",
+      "reason": "superada pelo O; manter export/import só para reprocessamento manual pontual."
+    },
+    {
+      "target": "Opção I (Ingestão Orientada)",
+      "action": "DEFERIDO (fase 5, 2026-05-31): risco>valor — opção em uso; convergir para G só com sign-off + teste.",
+      "reason": "sobrepõe O+A."
+    },
+    {
+      "target": "Opções A, G, M",
+      "action": "PARCIAL (WS6, 2026-05-30): G virou orquestrador único de passe único — reclaim → fase LLM priorizada (reusa O) → QA/remediação → audits → Autopilot A → relatório de sessão+backlog. A e M mantidos como atalhos. Auto-aguardar-reset NÃO implementado por decisão (passe único).",
+      "reason": "sobreposição de responsabilidades não-LLM."
+    },
+    {
+      "target": "Submenu auditoria (números 28-32 + colisões)",
+      "action": "RESOLVIDO: WS9 (2026-05-30) renumerou Auditoria/QA para 40-57 (sem colisão); WS4 adicionou qa.py orquestrador + menu 52/53; WS5 adicionou reprocess_blacklist.py + colunas blacklist_reason/severity/qa_retry/qa_quarantine. Auditoria do site (2026-06): P1 escritor unificado NNNN_audit_<mode>.json; P2 modos covers (54) + classification (55); P3 passe único qa audit (56) + full (57).",
+      "reason": "colisões de numeração e dispersão."
+    }
   ],
-
   "constraints": {
     "hardware": "GPU GT 720M sem CUDA — Ollama inviável (~2 tok/s).",
     "gemini_free_tier": "12 RPM / 1400 RPD (gemini_limiter).",
