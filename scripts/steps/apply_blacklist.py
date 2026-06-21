@@ -151,7 +151,6 @@ def _despublish_sqlite(
          datetime.now(timezone.utc).isoformat(), local_id)
     )
     conn.commit()
-    log.info(f"  [SQLite] Despublicado: {slug} (causa={reason or '—'})")
     return local_id
 
 
@@ -182,9 +181,7 @@ def _despublish_supabase(slug: str, supabase_url: str, key: str, dry_run: bool) 
             timeout=REQUEST_TIMEOUT,
         )
         ok = r.status_code in (200, 204)
-        if ok:
-            log.info(f"  [Supabase] PATCH OK: {slug}")
-        else:
+        if not ok:
             log.warning(f"  [Supabase] PATCH {r.status_code}: {slug} — {r.text[:120]}")
         return ok
     except Exception as e:
@@ -213,15 +210,11 @@ def run(dry_run: bool = False) -> None:
 
     log.info(f"=== APPLY BLACKLIST (total={total}, dry_run={dry_run}) ===")
 
+    PROGRESS_INTERVAL = 25
     for i, entry in enumerate(entries, 1):
         slug     = entry["slug"]
         reason   = entry.get("reason", "—")
         severity = entry.get("severity", "—")
-        details  = entry.get("details", "")
-
-        log.info(f"\n[{i}/{total}] {slug} | {severity} | {reason}")
-        if details:
-            log.info(f"  Motivo: {details}")
 
         local_id = _despublish_sqlite(conn, slug, dry_run, reason=reason, severity=severity)
         if local_id:
@@ -233,6 +226,9 @@ def run(dry_run: bool = False) -> None:
         sup_ok = _despublish_supabase(slug, supabase_url, key, dry_run)
         if sup_ok:
             ok_supabase += 1
+
+        if i % PROGRESS_INTERVAL == 0 or i == total:
+            log.info(f"[BLACKLIST] {i}/{total} processados | OK={ok_sqlite} falhas={falhas}")
 
     conn.close()
 
