@@ -31,6 +31,30 @@ from pathlib import Path
 
 from core.claude_runner import agent_prompt_path, claude_available, run_agent
 from core.claude_usage_tracker import status as claude_usage_status, is_limit_error as _is_limit_error
+
+
+class ClaudeAuthError(RuntimeError):
+    """Raised when Claude CLI returns 401 / authentication failure.
+
+    Distinct from session-limit errors: waiting for reset won't help.
+    The user must run 'claude' in a terminal and log in again.
+    """
+    pass
+
+
+_AUTH_PATTERNS = [
+    "401",
+    "invalid authentication",
+    "authentication credentials",
+    "unauthenticated",
+]
+
+
+def _is_auth_error(output: str) -> bool:
+    lower = output.lower()
+    return any(p in lower for p in _AUTH_PATTERNS)
+
+
 from core.batch_numbering import next_batch_number
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
@@ -604,7 +628,14 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
         log(f"[LLM_ORCH] ✓ {label} concluído")
         return True, False
 
-    # Falha — verificar se é erro de limite de sessão
+    # Falha — distinguir auth (401), limite de sessão e outros erros
+    if _is_auth_error(output):
+        log(f"[LLM_ORCH] 🔑 {label} — ERRO DE AUTENTICAÇÃO (401). "
+            f"A sessão do Claude CLI está inativa.")
+        log(f"[LLM_ORCH]    Solução: abra um terminal, execute 'claude' e faça login, "
+            f"depois reabra o pipeline.")
+        raise ClaudeAuthError(f"agente '{label}' retornou 401 — sessão Claude CLI inativa")
+
     limit_persists = _is_limit_error(output)
     if limit_persists:
         log(f"[LLM_ORCH] ⛔ {label} — limite de uso persistente após retry. Ciclo será interrompido.")
@@ -880,22 +911,29 @@ def run(idioma: str, wait_for_reset: bool = True):
         # ── FASE A — CONTEÚDO (prioridade): esvaziar o gargalo ───
         # Sinopse primeiro (maior gargalo, hard-block do Quality Gate), depois
         # categorização, depois bios — cada um drenado em vários lotes.
-        syn_done, cycle_limit_hit = _drain_synopsis(idioma)
-        cycle_done += syn_done
-        if syn_done == 0 and not cycle_limit_hit:
-            log("[LLM_ORCH] synopsis: nenhum pendente — skip")
+        # ClaudeAuthError aborta imediatamente: sessão inativa, aguardar não ajuda.
+        try:
+            syn_done, cycle_limit_hit = _drain_synopsis(idioma)
+            cycle_done += syn_done
+            if syn_done == 0 and not cycle_limit_hit:
+                log("[LLM_ORCH] synopsis: nenhum pendente — skip")
 
-        if not cycle_limit_hit:
-            cls_done, cycle_limit_hit = _drain_classify()
-            cycle_done += cls_done
-            if cls_done == 0 and not cycle_limit_hit:
-                log("[LLM_ORCH] classify: nenhum pendente — skip")
+            if not cycle_limit_hit:
+                cls_done, cycle_limit_hit = _drain_classify()
+                cycle_done += cls_done
+                if cls_done == 0 and not cycle_limit_hit:
+                    log("[LLM_ORCH] classify: nenhum pendente — skip")
 
-        if not cycle_limit_hit:
-            bio_done, cycle_limit_hit = _drain_author_bio()
-            cycle_done += bio_done
-            if bio_done == 0 and not cycle_limit_hit:
-                log("[LLM_ORCH] author_bio: nenhum pendente — skip")
+            if not cycle_limit_hit:
+                bio_done, cycle_limit_hit = _drain_author_bio()
+                cycle_done += bio_done
+                if bio_done == 0 and not cycle_limit_hit:
+                    log("[LLM_ORCH] author_bio: nenhum pendente — skip")
+
+        except ClaudeAuthError as e:
+            log(f"[LLM_ORCH] ⛔ Orquestrador encerrado por erro de autenticação: {e}")
+            log("[LLM_ORCH]    Abra um terminal, execute 'claude' e faça login antes de rodar novamente.")
+            break
 
         # ── FASE B — NÃO-CRÍTICOS ────────────────────────────
         # Só rodam quando o backlog de CONTEÚDO está zerado e ainda há sessão.
