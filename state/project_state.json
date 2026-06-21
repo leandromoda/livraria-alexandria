@@ -1125,7 +1125,13 @@
       "qualidade_e_batch_2026-06-04": "Melhorias pós-análise da blacklist (~85% das 551 entradas eram mismatch título↔descrição = dado de origem errado, não geração ruim): (1) synopsis_batch/prompt.md ganhou um GATE de coerência+idioma ANTES de gerar — rejeita (REJECTED+blacklist) quando título×descrição descrevem obras diferentes (synopsis-title-mismatch), descrição em idioma errado (descricao_idioma_errado) ou insuficiente — quota-neutra (mesma chamada); evita publicar→auditar→despublicar. (2) autopilot._topup_batch: exporta lotes de batch SOMENTE com a fila vazia (antes top-up até 10 acumulava lotes nunca processados → status=3 preso). (3) pipeline_status.build_gargalo_plan: rótulo dos steps LLM (10/11) atualizado — não são mais 'manual', o G os cobre na fase LLM (pós-WS6). RECOMENDAÇÃO aberta: títulos em outros idiomas vêm do seeder externo (ChatGPT) + review que rotula tudo PT — ajustar o prompt do seeder p/ só PT e/ou reforçar a detecção de idioma no review.py.",
       "ws4_ws5_qa": "WS4/WS5 (fase 3, 2026-05-30): estágio de QA + reprocessamento de blacklist. db.py: novas colunas blacklist_reason, blacklist_severity, qa_retry, qa_quarantine. apply_blacklist passa a persistir a causa ao despublicar. Novo reprocess_blacklist.py: classifica por causa (synopsis/categorize→reset+regenera; offer→revisão manual; hard/desconhecida→quarentena; MAX_QA_RETRY=2). Novo qa.py: ORQUESTRADOR (não reimplementa) com modos remediate(default, não-LLM)/full/consistency/blacklist/reprocess/lists/content/titles. Menu: 52 (reprocessar blacklist), 53 (QA remediação). Loop evitado via status_*=4 + qa_quarantine + qa_retry.",
       "ws9_menu_renumber": "WS9 (fase 0, 2026-05-30): menu renumerado por grupos sem colisão (resolve 28/29/30/31 com 2 significados). Faixas: Ingestão 1-4, Pré-proc 5-9, Geração 10-19 (bios 29→13), Publicação 20-30 (QG 13→20, Publicar 14→21, Autores 15→22, Categorias 16→23, Ofertas 17→24, Listas SEO 18→25, Publicar Listas 19→26, 27/28 mantidos, offer_list 30→29, relações 31→30), Auditoria/QA 40-51 (20→40 … 32→51), Exports 91-94, Banco 95-97. Faixa 40+ livre para o qa.py (WS4). Fonte de verdade = scripts/main.py.",
-      "commits": ["6edbb37 (reclaim+autopilot)", "c7f1083 (.gitignore)", "5a6250d (WS2 sinopse)", "26b8a3a (WS2 categorização)", "442c639 (WS3 calibração)"],
+      "commits": [
+        "6edbb37 (reclaim+autopilot)",
+        "c7f1083 (.gitignore)",
+        "5a6250d (WS2 sinopse)",
+        "26b8a3a (WS2 categorização)",
+        "442c639 (WS3 calibração)"
+      ],
       "files": [
         "scripts/steps/llm_orchestrator.py",
         "scripts/steps/reclaim.py",
@@ -1141,7 +1147,10 @@
         "scripts/main.py"
       ],
       "remaining": "TODAS as fases (0-5) concluídas. Fase 5 (2026-05-31): scripts/CLAUDE.md reescrito p/ motor Claude batch (Gemini aposentado) + enrich marcado fallback-only. Consolidação de código da fase 5 (absorver opções C/I no G; mesclar exports duplicados) DEFERIDA por risco>valor — código em produção, ganho cosmético; só com sign-off + teste. Ver scripts/data/pipelineimprovementplan.json (WS9.fase5_2026-05-31).",
-      "docs": ["scripts/data/pipelineimprovementplan.json", "scripts/data/schema_pipeline.json"]
+      "docs": [
+        "scripts/data/pipelineimprovementplan.json",
+        "scripts/data/schema_pipeline.json"
+      ]
     },
     {
       "id": "TASK-PIPE-018",
@@ -1155,7 +1164,10 @@
         "scripts/main.py",
         "scripts/data/gargalo_plan.json"
       ],
-      "prs": ["#125", "#126"]
+      "prs": [
+        "#125",
+        "#126"
+      ]
     },
     {
       "id": "TASK-PIPE-017",
@@ -1688,5 +1700,30 @@
       "resolution": "Deletados diretamente do Supabase (REST DELETE) e do SQLite local. Nao ha validacao de formato no pipeline de autores — considerar adicionar filtro de pattern no step de publicacao de autores.",
       "files": []
     }
-  ]
+  ],
+  "qa_remediation_loop": {
+    "status": "operational",
+    "implemented": "2026-06-21 (WS10)",
+    "description": "Loop audit->remediacao: detectar (auditoria) -> enfileirar (qa_remediation) -> remediar (drain por fator) -> republicar. Fecha o ciclo da suite de QA sem intervencao manual.",
+    "fila_sqlite": "tabela qa_remediation(livro_id, factor, reason, status[pending|reprocessing|fixed|quarantined], attempts, source_report) + indice parcial unico (livro_id, factor) WHERE status aberto",
+    "fatores_operacionais": {
+      "capa": "drain_covers — fix-in-place, anti-thrash, A por ciclo (menu 58)",
+      "sinopse_reconcile": "reconcile_synopsis — sinopse valida nao publicada -> QG + publish (menu 59)",
+      "sinopse_regen": "flag_synopsis_regen — sinopse invalida -> reset para O/G regenerar (menu 60)",
+      "ingest_audit": "ingest_audit — NNNN_audit_*.json -> fila qa_remediation (menu 61)",
+      "oferta": "fix_affiliate_urls + publish_ofertas.run_repair no G (massa; 2332 reparadas na validacao)"
+    },
+    "wiring": {
+      "A_autopilot": "run_covers + run_synopsis_reconcile por ciclo (nao-LLM)",
+      "G_gargalo": "flag_synopsis_regen -> remediate_mechanical (ingest+capas+reconcile) -> reparo ofertas -> auditorias -> A. G sem confirmacoes.",
+      "W_opcao": "aguarda reset da sessao Claude PRO e roda G automaticamente"
+    },
+    "menu": "58-61 (Auditoria/QA)",
+    "evidencia_validacao": "qa_remediation: capa 2 fixed/4 quarantined; synopsis_regen 10 fixed/5 pending; fix_affiliate_urls marcou 2332 ofertas com status_publish_oferta=0",
+    "pendentes_futuros": [
+      "R7: bio de autor (fila author-level)",
+      "R8: padronizar offer_status",
+      "R9: drain oferta targeted por book_ids"
+    ]
+  }
 }

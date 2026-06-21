@@ -18,6 +18,7 @@ Uma linha por alteração relevante aplicada (mais recentes no topo).
 
 | Data | Escopo | Alteração | Risco | Aprovação |
 |------|--------|-----------|-------|-----------|
+| 2026-06-21 | pipeline_sinopse | `synopsis_batch/prompt.md` — 3 correções: GATE 0c eleva threshold; passo 2 remove fallback genérico → REJECTED; passo 3 adiciona verificação coerência título-protagonista | médio | usuário |
 | 2026-06-15 | contos_de_fada | 5 contos de fada + Mensagem/Pessoa removidos de `mitologia-e-lendas` | alto | usuário |
 | 2026-06-15 | contos_de_fada | Cinderela, O Livro sem Figuras, A Seleção, Especiais removidos de `fantasia-juvenil` | alto | usuário |
 | 2026-06-15 | contos_de_fada | Bone, This One Summer, Honor Girl, João e Maria, A Pequena Sereia, O Gato de Botas removidos de `literatura-juvenil` | alto | usuário |
@@ -61,6 +62,16 @@ Problemas que aparecem com frequência e como tratá-los, para acelerar auditori
 futuras (ex.: encoding quebrado em sinopses de certa origem, sinopses
 placeholder de um período de geração, ofertas de um marketplace que expiram
 rápido).
+
+### Sinopses vagas / protagonista trocado (2026-06-21)
+
+Causas raiz identificadas na auditoria de qualidade do lote de 2026-06-20 (Hugo + Zola + Balzac):
+
+1. **Descricao scraped vaga** → GATE 0c era permissivo (threshold 15 palavras). Agora exige personagem nomeado OU situação narrativa específica. Livros afetados: La Terre, Ursule Mirouët, Albert Savarus.
+2. **Fallback "manter genérica"** → prompt explicitamente autorizava sinopse vaga quando descrição era fraca. Removido. Agora REJECTED + `descricao_insuficiente`.
+3. **Protagonista trocado** → LLM seguiu descricao scraped focada em personagem secundário. Não havia verificação de coerência com o título. Adicionado no passo 3. Livros afetados: Gobseck (Anastasie > Gobseck), Séraphîta (só Wilfrid, sem Minna).
+
+Esses livros ainda têm sinopses incorretas no Supabase (publicadas antes da correção do prompt). Candidatos a regeneração via pipeline: `gobseck`, `seraphita`, `la-terre`, `ursule-mirouet`, `albert-savarus`.
 
 ### Estratégia de auditoria do site (2026-06-14)
 

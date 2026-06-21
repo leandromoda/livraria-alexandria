@@ -71,9 +71,12 @@ Para cada livro no array:
       gere a sinopse **normalmente no idioma-alvo** (campo `idioma`), adaptando
       e sintetizando o conteúdo da descrição. Só rejeite quando houver
       incompatibilidade de conteúdo com o título — use `synopsis-title-mismatch`.
-   c. **Conteúdo aproveitável** — a `descricao` tem informação real sobre a obra
-      (não é nota de catálogo genérica, lista enciclopédica, gibberish ou < ~15
-      palavras úteis)? Se não → `REJECTED` + blacklist `descricao_insuficiente`.
+   c. **Conteúdo aproveitável** — a `descricao` contém pelo menos **um nome
+      próprio de personagem** OU **uma situação narrativa específica** (evento,
+      conflito, desafio concreto) referente à obra? Comprimento longo com frases
+      genéricas sobre "ciclo da vida", "condição humana" ou "temas universais"
+      **não** satisfaz este critério. Se não → `REJECTED` + blacklist
+      `descricao_insuficiente`.
 
    Só prossiga para os passos 1-3 se o livro passar no GATE.
 
@@ -90,7 +93,10 @@ Para cada livro no array:
    - Tom: neutro, informacional, orientado ao leitor
    - Extensão: **90–160 palavras** (OBRIGATÓRIO)
    - Idioma: DEVE corresponder ao campo `idioma` do livro (PT/EN/ES/IT)
-   - Se dados insuficientes: manter a sinopse genérica com o que houver disponível
+   - Se a `descricao` não contém nome próprio de personagem NEM situação narrativa
+     específica (mesmo que longa): **REJECTED + motivo `descricao_insuficiente`**.
+     Não gerar sinopse genérica — livros com descrição vaga devem retornar à fila
+     para re-scraping ou enriquecimento manual.
    - Se `descricao` vazia ou nula: marcar como REJECTED
 
 3. **Auto-validar** — antes de incluir no output, verificar:
@@ -100,6 +106,11 @@ Para cada livro no array:
    - Sem linguagem promocional
    - Idioma correto
    - Nenhum marcador genérico proibido presente
+   - **Coerência título-protagonista**: se o `titulo` é um nome próprio (ex:
+     "Gobseck", "Ursule Mirouët", "Albert Savarus", "Séraphîta"), o nome deve
+     aparecer na sinopse ou a sinopse deve identificar claramente quem é o
+     protagonista central. Se a sinopse centra-se num personagem diferente sem
+     mencionar o personagem-título: REJECTED + `synopsis-title-mismatch`.
 
 ---
 

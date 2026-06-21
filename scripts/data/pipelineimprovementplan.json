@@ -5,16 +5,21 @@
     "generated_at": "2026-05-29",
     "generated_by": "revisão arquitetural do pipeline (sessão de auditoria)",
     "purpose": "Plano de ação permanente e commitável para refatorar o pipeline de ingestão (scripts/). Endereça os 4 problemas de schema_pipeline.json (P1 progressão lenta, P2 quota, P3 qualidade, P4 fragmentação) + reprocessamento de títulos despublicados por blacklist. Consultar com schema_pipeline.json (arquitetura) e state/project_state.json (estado).",
-    "companion_files": ["scripts/data/schema_pipeline.json", "state/project_state.json"],
+    "companion_files": [
+      "scripts/data/schema_pipeline.json",
+      "state/project_state.json"
+    ],
     "status": "TODAS as fases concluídas (0-5). Fase 5: docs+numeração+enrich feitos; consolidação de código DEFERIDA por risco>valor (ver WS9.fase5_2026-05-31).",
     "implementation_branch": "refactor/pipeline-pro-orquestracao"
   },
-
   "implementation_progress": {
     "phase_1_fundacao": {
       "status": "implementado_e_validado",
       "implemented_at": "2026-05-29",
-      "workstreams": ["WS1_session_prioritization", "WS7_session_monitoring"],
+      "workstreams": [
+        "WS1_session_prioritization",
+        "WS7_session_monitoring"
+      ],
       "branch": "refactor/pipeline-pro-orquestracao",
       "what_was_done": [
         "WS1: ciclo do orquestrador (opção O) reordenado — drena sinopse → categorização → bios (cada um lote a lote via helpers _drain_synopsis/_drain_classify/_drain_author_bio) ANTES de qualquer agente não-crítico. Não-críticos (log_analysis, consistency, offer_finder, title_auditor) só rodam quando _content_backlog==0 e ainda há sessão (gate run_non_critical); senão são adiados com log.",
@@ -27,7 +32,6 @@
       ]
     }
   },
-
   "premise_correction": {
     "version_change": "1.0.0 → 2.0.0",
     "what_changed": "CORREÇÃO CRÍTICA do autor (2026-05-29): 'padronizar via API' NÃO significa a API Anthropic paga por token. Significa otimizar o uso do plano Claude PRO (assinatura, via claude CLI), operando DENTRO da quota diária / janela de sessão rotativa de 5h. Custo-alvo = ZERO além da assinatura PRO já paga.",
@@ -40,7 +44,6 @@
     ],
     "context_from_pr_history": "PRs #120 (1 livro/chamada p/ evitar timeout), #121 (BATCH_SIZE=10, equilíbrio timeout × uso do plano), #122 (simplificar opção O p/ relatórios), #115 (title_auditor automático no O) — confirmam iteração prévia para caber na quota do PRO."
   },
-
   "guiding_principles": [
     "Custo zero além da assinatura PRO: nunca introduzir API paga por token.",
     "Preservar e OTIMIZAR as opções de automação (S/G/A/O...) — foram o maior salto de eficiência.",
@@ -50,7 +53,6 @@
     "Mudanças incrementais e reversíveis; cada workstream testável isoladamente; nada de big-bang.",
     "Respeitar CLAUDE.md e as skills/prompts dos agentes em agents/."
   ],
-
   "subagent_review": {
     "reviewed_at": "2026-05-29",
     "verdict": "approve-with-changes (revisado SOB a premissa antiga de API paga)",
@@ -64,13 +66,15 @@
       "Congelar renumeração de menu ANTES de refatorar QA/orquestração (evita retrabalho)."
     ]
   },
-
   "workstreams": [
     {
       "id": "WS1_session_prioritization",
       "title": "Priorização e scheduling dentro da janela de sessão PRO",
       "status": "implementado_e_validado_2026-05-29",
-      "problem_refs": ["P1_progressao_lenta", "P2_quota_tokens"],
+      "problem_refs": [
+        "P1_progressao_lenta",
+        "P2_quota_tokens"
+      ],
       "priority": "P0",
       "effort": "M",
       "rationale": "A quota do PRO é fixa (sessão rotativa de 5h). Hoje a opção O gasta a sessão em 7 agentes sequenciais, atingindo o limite no title_auditor/offer_finder ANTES de avançar a sinopse (o gargalo real, ~12.6k). É preciso alocar a janela ao que destrava publicação.",
@@ -80,12 +84,18 @@
         "Rodar ininterrupto através dos resets: ao bater o limite, aguardar reset (wait_for_reset já existe) e RETOMAR pelo gargalo — sem encerrar o processo.",
         "Garantir que cada janela de 5h seja usada ao máximo no gargalo antes de tocar em QA/auditoria."
       ],
-      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/core/claude_usage_tracker.py"]
+      "files_touched": [
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/core/claude_usage_tracker.py"
+      ]
     },
     {
       "id": "WS2_unify_cli_paths",
       "title": "Unificar os dois motores LLM (per-item FSM vs batch prompt.md), ambos no CLI",
-      "problem_refs": ["P4_fragmentacao", "P2_quota_tokens"],
+      "problem_refs": [
+        "P4_fragmentacao",
+        "P2_quota_tokens"
+      ],
       "priority": "P1",
       "effort": "L",
       "status": "implementado_e_validado_2026-05-29 (sinopse + categorização)",
@@ -105,12 +115,22 @@
         "remaining": "Nenhum. WS2 completo: sinopse e categorização agora têm motor único = batch. (categorize_import.py mantém suas próprias load_taxonomy/save_categories — não há duplicação com categorize.py, que não as tem mais.)"
       },
       "tool_dependency_note": "Antes de unificar offer_finder/title_auditor: eles dependem de WebSearch via --allowedTools; manter no claude_runner (CLI) que provê tools. Não tentar movê-los para um caminho sem tools.",
-      "files_touched": ["scripts/core/markdown_executor.py", "scripts/steps/synopsis.py", "scripts/steps/synopsis_export.py", "scripts/steps/categorize.py", "scripts/steps/categorize_export.py", "scripts/main.py", "agents/synopsis/*"]
+      "files_touched": [
+        "scripts/core/markdown_executor.py",
+        "scripts/steps/synopsis.py",
+        "scripts/steps/synopsis_export.py",
+        "scripts/steps/categorize.py",
+        "scripts/steps/categorize_export.py",
+        "scripts/main.py",
+        "agents/synopsis/*"
+      ]
     },
     {
       "id": "WS3_token_efficiency",
       "title": "Eficiência por chamada dentro da sessão (batch tuning + prompts enxutos)",
-      "problem_refs": ["P2_quota_tokens"],
+      "problem_refs": [
+        "P2_quota_tokens"
+      ],
       "priority": "P1",
       "effort": "M",
       "status": "implementado_e_validado_2026-05-30",
@@ -126,7 +146,7 @@
         "measurements": {
           "harness": "scripts/tools/measure_batch.py (resultados em data/batch_measure_results.jsonl — gitignored)",
           "synopsis": "size5=64.8s/item(324s wall, overhead não amortizado); size10=26.5s/item(265s); size15=25.7s/item(385s). 100% done, 0 timeouts (limite 900s). 15 → ~2.5x throughput vs 5.",
-          "classify":  "size10=11.7s/item(117s); size20=5.9s/item(118s); size25=6.5s/item(161s). 100% done, 0 timeouts. 25 → ~2x throughput vs 10 (cap do export=25).",
+          "classify": "size10=11.7s/item(117s); size20=5.9s/item(118s); size25=6.5s/item(161s). 100% done, 0 timeouts. 25 → ~2x throughput vs 10 (cap do export=25).",
           "conclusion": "Defaults antigos eram excessivamente conservadores (medo de timeout do era-FSM, 2 chamadas/livro). No motor batch o timeout fica muito distante; lotes maiores amortizam o overhead fixo. Recomendações fixadas DENTRO das faixas testadas (sem extrapolar)."
         },
         "followups": "Para subir além de 25 (classify) é preciso elevar o cap BATCH_SIZE=25 em categorize_export.py/synopsis_export.py. classify tem folga enorme (161s p/ 25, limite 900s) — candidato a 40+ se medido. Não feito por ora (manter recomendações empíricas)."
@@ -137,12 +157,18 @@
         "Idempotência por status (JÁ COBERTA por status=3 + reclaim).",
         "NÃO depender de prompt caching de API (não aplicável)."
       ],
-      "files_touched": ["scripts/steps/llm_orchestrator.py", "scripts/tools/measure_batch.py", ".gitignore"]
+      "files_touched": [
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/tools/measure_batch.py",
+        ".gitignore"
+      ]
     },
     {
       "id": "WS4_qa_stage",
       "title": "Estágio de QA/auditoria/consistência padronizado e integrado",
-      "problem_refs": ["P3_qualidade_baixa"],
+      "problem_refs": [
+        "P3_qualidade_baixa"
+      ],
       "priority": "P1",
       "effort": "L",
       "status": "implementado_e_validado_2026-05-30 (orquestrador; G consumirá na fase 4/WS6)",
@@ -164,15 +190,25 @@
         "Registrar achados em agent::*::memory (infra markdown_memory já existe).",
         "QA roda como fase do orquestrador G com cadência reduzida (só após o gargalo de conteúdo andar na janela)."
       ],
-      "files_touched": ["scripts/steps/qa.py (novo)", "scripts/steps/auditor.py", "scripts/steps/consistency_check.py", "scripts/steps/apply_blacklist.py"]
+      "files_touched": [
+        "scripts/steps/qa.py (novo)",
+        "scripts/steps/auditor.py",
+        "scripts/steps/consistency_check.py",
+        "scripts/steps/apply_blacklist.py"
+      ]
     },
     {
       "id": "WS5_blacklist_reprocessing",
       "title": "Reprocessar títulos despublicados pela blacklist",
-      "problem_refs": ["P3_qualidade_baixa", "P1_progressao_lenta"],
+      "problem_refs": [
+        "P3_qualidade_baixa",
+        "P1_progressao_lenta"
+      ],
       "priority": "P1",
       "effort": "M",
-      "depends_on": ["WS4_qa_stage"],
+      "depends_on": [
+        "WS4_qa_stage"
+      ],
       "status": "implementado_e_validado_2026-05-30",
       "implemented": {
         "date": "2026-05-30",
@@ -198,15 +234,27 @@
         "Integrar como fase opcional do orquestrador G (depois do backlog principal).",
         "Estado de quarentena compartilhado com WS4 (mesma flag/tabela)."
       ],
-      "files_touched": ["scripts/steps/apply_blacklist.py", "scripts/steps/reprocess_blacklist.py (novo)", "scripts/steps/qa.py", "scripts/main.py"]
+      "files_touched": [
+        "scripts/steps/apply_blacklist.py",
+        "scripts/steps/reprocess_blacklist.py (novo)",
+        "scripts/steps/qa.py",
+        "scripts/main.py"
+      ]
     },
     {
       "id": "WS6_unified_orchestration",
       "title": "Opção G como orquestrador único com fallbacks de custo zero",
-      "problem_refs": ["P1_progressao_lenta", "P4_fragmentacao"],
+      "problem_refs": [
+        "P1_progressao_lenta",
+        "P4_fragmentacao"
+      ],
       "priority": "P1",
       "effort": "L",
-      "depends_on": ["WS1_session_prioritization", "WS4_qa_stage", "WS5_blacklist_reprocessing"],
+      "depends_on": [
+        "WS1_session_prioritization",
+        "WS4_qa_stage",
+        "WS5_blacklist_reprocessing"
+      ],
       "status": "implementado_e_validado_2026-05-30 (passe único)",
       "decision_resolved": "DECISÃO (2026-05-30): passe ÚNICO + relatório (escolha do autor), NÃO auto-aguardar-reset. Ao esgotar a sessão PRO, G reporta o backlog restante + tempo até o reset e encerra; usuário re-roda após reset. Previsível, não bloqueia o terminal por horas.",
       "implemented": {
@@ -233,13 +281,21 @@
         "Reduzir ruído de log: QG agrega contagem de 'Sinopse pendente' em vez de logar 1000 linhas/ciclo.",
         "Convergir I (ingestão orientada) e parte de M (manutenção) para dentro de G; manter atalhos, um caminho canônico."
       ],
-      "files_touched": ["scripts/main.py", "scripts/steps/autopilot.py", "scripts/steps/llm_orchestrator.py", "scripts/steps/pipeline_status.py"]
+      "files_touched": [
+        "scripts/main.py",
+        "scripts/steps/autopilot.py",
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/steps/pipeline_status.py"
+      ]
     },
     {
       "id": "WS7_session_monitoring",
       "title": "Monitorar a janela de sessão PRO (não tokens)",
       "status": "implementado_e_validado_2026-05-29 (orquestrador G ainda consumirá os dados na fase 4 / WS6)",
-      "problem_refs": ["P2_quota_tokens", "P1_progressao_lenta"],
+      "problem_refs": [
+        "P2_quota_tokens",
+        "P1_progressao_lenta"
+      ],
       "priority": "P1",
       "effort": "S",
       "rationale": "Decisões de prioridade/fallback dependem de saber onde estamos na janela de 5h. Já existe claude_usage_tracker (SESSION_RESET_MINUTES=300, wait_for_reset). Falta expor e usar isso para orquestrar.",
@@ -248,15 +304,23 @@
         "Expor no painel de Status (opção S): janela atual, itens/sessão, próximo reset, backlog do gargalo.",
         "O orquestrador G consome esses dados para decidir quando passar do gargalo para QA/fallback."
       ],
-      "files_touched": ["scripts/core/claude_usage_tracker.py", "scripts/steps/pipeline_status.py"]
+      "files_touched": [
+        "scripts/core/claude_usage_tracker.py",
+        "scripts/steps/pipeline_status.py"
+      ]
     },
     {
       "id": "WS8_seo_authors_automation",
       "title": "Integrar Listas SEO e páginas de Autores às opções automatizadas",
-      "problem_refs": ["P1_progressao_lenta", "P4_fragmentacao"],
+      "problem_refs": [
+        "P1_progressao_lenta",
+        "P4_fragmentacao"
+      ],
       "priority": "P2",
       "effort": "S",
-      "depends_on": ["WS6_unified_orchestration"],
+      "depends_on": [
+        "WS6_unified_orchestration"
+      ],
       "status": "coberto_por_WS6_2026-05-30 (sem código novo)",
       "covered_note": "Já satisfeito pela integração do WS6 + módulos existentes: author_bio é drenado na FASE LLM (llm_orchestrator._drain_author_bio); publish_autores (15), list_composer (18) e publish_listas (19) já estão na lista de steps do Autopilot A (chamado por G); auditoria de listas/autores já está nos audit auto-steps do plano de gargalos do G. Nenhum código adicional necessário.",
       "rationale": "Ponto de atenção do autor: listas SEO (18/19) e bios/páginas de autores (15, 29b) devem ser parte do fluxo automatizado.",
@@ -265,12 +329,18 @@
         "author_bio (29b) entra na fase LLM de G (prioridade abaixo de sinopse/categoria — não competir pela janela), seguido de publish_autores (15).",
         "Auditoria de listas (29a) e autores sem bio (30a) entram no QA (WS4)."
       ],
-      "files_touched": ["scripts/main.py", "scripts/steps/list_composer.py", "scripts/steps/author_bio.py"]
+      "files_touched": [
+        "scripts/main.py",
+        "scripts/steps/list_composer.py",
+        "scripts/steps/author_bio.py"
+      ]
     },
     {
       "id": "WS9_defragment_menu",
       "title": "Desfragmentar steps e corrigir colisões de numeração",
-      "problem_refs": ["P4_fragmentacao"],
+      "problem_refs": [
+        "P4_fragmentacao"
+      ],
       "priority": "P1",
       "effort": "M",
       "status": "concluido_2026-05-31 (numeração + docs + enrich fallback-only; consolidação de código DEFERIDA por risco>valor)",
@@ -284,7 +354,11 @@
       "implemented_numbering": {
         "date": "2026-05-30",
         "scheme": "Renumeração completa por grupos (escolha do autor) — sem colisão. Ingestão 1-4, Pré-proc 5-9, Geração 10-19 (bios 29→13), Publicação 20-30 (13-19→20-26, 30→29, 31→30), Auditoria/QA 40-51 (20-26→40-46, 28→47, 29→48, 30→49, 31→50, 32→51), Exports 91-94, Banco 95-97. Faixa 40+ reservada para qa.py (WS4).",
-        "files": ["scripts/main.py (renumerado + cross-refs)", "state/project_state.json (menu_option + task)", "scripts/CLAUDE.md (nota de grupos)"],
+        "files": [
+          "scripts/main.py (renumerado + cross-refs)",
+          "state/project_state.json (menu_option + task)",
+          "scripts/CLAUDE.md (nota de grupos)"
+        ],
         "note": "Roteamento de submenu no topo continua 1-6 (navegação). Colisões 28/29/30/31 (2 significados) resolvidas."
       },
       "note_ordering": "Congelar a renumeração ANTES de WS4/WS5/WS6/WS8 (que referenciam números de menu). Por isso a parte de numeração vai para a fase 0.",
@@ -295,15 +369,21 @@
         "Atualizar scripts/CLAUDE.md (numeração e default de provider desatualizados).",
         "Atualizar schema_pipeline.json com a nova numeração ao final."
       ],
-      "files_touched": ["scripts/main.py", "scripts/CLAUDE.md", "scripts/data/schema_pipeline.json"]
+      "files_touched": [
+        "scripts/main.py",
+        "scripts/CLAUDE.md",
+        "scripts/data/schema_pipeline.json"
+      ]
     },
     {
       "id": "WS10_qa_remediation_loop",
       "title": "Loop de remediação — fechar o ciclo da auditoria do site (detectar → corrigir → republicar)",
-      "problem_refs": ["P3_qualidade_baixa"],
+      "problem_refs": [
+        "P3_qualidade_baixa"
+      ],
       "priority": "alta",
       "effort": "médio (incremental por fator)",
-      "status": "EM ANDAMENTO (2026-06): fatia CAPA implementada; sinopse/categoria/oferta pendentes",
+      "status": "concluido_2026-06-21 (capa + reconcile_sinopse + regen_sinopse + oferta (fix_affiliate_urls + run_repair) + ingest_audit; fila qa_remediation; menu 58-61; wiring A + G sem confirmacoes)",
       "rationale": "A auditoria do site (P1-P3) detecta e relata, mas a correção do fator-causa ainda é manual/ad-hoc. Este WS fecha o ciclo: cada fator de defeito vira uma remediação priorizada que reprocessa o título (que já tem os demais requisitos de publicação) e o republica.",
       "design": {
         "decisao_central": "REUSAR os steps padrão via book_ids (alvo + prioridade), NÃO criar scripts paralelos — evita a duplicação/drift que P3/P4 eliminaram. Prioridade é seleção, não motor.",
@@ -320,21 +400,57 @@
         "autopilot.py (A): fase 'QA Remediação (capas)' por ciclo, fora do accounting de progresso.",
         "qa.py: modo remediate_covers; main.py: menu 58."
       ],
-      "proximas_fatias": ["sinopse (LLM, despublicar se nociva)", "categoria (não-LLM, fix-in-place)", "oferta (não-LLM, regerar via offer_resolver/scraper)", "enfileirar a partir dos NNNN_audit_<mode>.json (ligar P1→fila)"],
-      "files_touched": ["scripts/core/db.py", "scripts/steps/covers.py", "scripts/steps/publish.py", "scripts/steps/qa_remediation.py", "scripts/steps/autopilot.py", "scripts/steps/qa.py", "scripts/main.py"]
+      "proximas_fatias": [
+        "bio de autor: fila author-level (R7 — tabela qa_remediation_autor ou coluna em autores)",
+        "drain oferta targeted por book_ids (R9 — depende de R8 offer_status)",
+        "R8: padronizar offer_status (texto vs inteiro, causa confusao no painel)"
+      ],
+      "files_touched": [
+        "scripts/core/db.py",
+        "scripts/steps/covers.py",
+        "scripts/steps/publish.py",
+        "scripts/steps/qa_remediation.py",
+        "scripts/steps/autopilot.py",
+        "scripts/steps/qa.py",
+        "scripts/main.py",
+        "scripts/steps/fix_affiliate_urls.py",
+        "scripts/steps/publish_ofertas.py"
+      ],
+      "fatias_entregues": [
+        "capa: status_cover=0 reset + drain_covers (anti-thrash, A por ciclo, menu 58)",
+        "reconcile_sinopse: status_synopsis=0 c/ texto valido -> flag + QG + publish sem LLM (menu 59)",
+        "regen_sinopse: status_synopsis=1 invalido -> 0 para regeneracao pelo O/G (menu 60)",
+        "ingest_audit: NNNN_audit_*.json -> qa_remediation (fila, P1->fila, menu 61)",
+        "oferta: fix_affiliate_urls + publish_ofertas.run_repair no G (reparou 2332 pendentes)",
+        "ingestao_relatorios_P1: relatorios de auditoria -> fila qa_remediation (wiring G)"
+      ]
     }
   ],
-
   "sequencing": {
-    "phase_0_freeze_numeracao": ["WS9_defragment_menu (congelar/renumerar números de menu)"],
-    "phase_1_fundacao": ["WS1_session_prioritization", "WS7_session_monitoring"],
-    "phase_2_motor": ["WS2_unify_cli_paths", "WS3_token_efficiency"],
-    "phase_3_qualidade": ["WS4_qa_stage", "WS5_blacklist_reprocessing"],
-    "phase_4_orquestracao": ["WS6_unified_orchestration", "WS8_seo_authors_automation"],
-    "phase_5_limpeza": ["WS9_defragment_menu (consolidação restante de steps)"],
+    "phase_0_freeze_numeracao": [
+      "WS9_defragment_menu (congelar/renumerar números de menu)"
+    ],
+    "phase_1_fundacao": [
+      "WS1_session_prioritization",
+      "WS7_session_monitoring"
+    ],
+    "phase_2_motor": [
+      "WS2_unify_cli_paths",
+      "WS3_token_efficiency"
+    ],
+    "phase_3_qualidade": [
+      "WS4_qa_stage",
+      "WS5_blacklist_reprocessing"
+    ],
+    "phase_4_orquestracao": [
+      "WS6_unified_orchestration",
+      "WS8_seo_authors_automation"
+    ],
+    "phase_5_limpeza": [
+      "WS9_defragment_menu (consolidação restante de steps)"
+    ],
     "note": "Cada fase mergeável e testável isoladamente. Ao fim da fase 1, validar que uma janela de sessão é gasta no gargalo (sinopse) e que o status mostra a janela corretamente, antes de prosseguir."
   },
-
   "success_metrics": [
     "Cada janela de 5h é gasta primeiro no gargalo (sinopse) — backlog de ~12.6k cai monotonicamente entre janelas.",
     "Sessão PRO deixa de ser consumida por agentes não-críticos antes do conteúdo crítico.",
@@ -343,20 +459,29 @@
     "Títulos despublicados por blacklist são reprocessados e republicados (ou quarentenados), não esquecidos.",
     "Um único caminho canônico (G) cobre geração → QA → reprocessamento → publicação → listas/autores, com fallbacks de custo zero e retomada automática após reset."
   ],
-
   "risks": [
-    {"risk": "Quota PRO insuficiente para 24k+ itens em tempo hábil", "mitigation": "Priorização rígida do gargalo + execução ininterrupta através dos resets. Gemini foi aposentado — não há complemento LLM. É limite estrutural do PRO — gerenciar expectativa de ritmo, não eliminar."},
-    {"risk": "Reprocessamento de blacklist entrar em loop ou ressuscitar lixo (não-livros)", "mitigation": "Classificar causa; blacklist 'hard' nunca reentra; max-retry + quarentena definitiva."},
-    {"risk": "Unificar motores LLM introduzir regressão de qualidade", "mitigation": "Motor batch mantém validação determinística no import (synopsis_import.validate_synopsis: check_synopsis_generic + comprimento + meta + markdown). Se faltar cobertura do antigo R1-R8 (word count 90-160, idioma, tom promocional), portar essas regras para validate_synopsis."},
-    {"risk": "Quebrar automações existentes durante a refatoração", "mitigation": "Branch dedicado, fases mergeáveis, manter opções antigas até a fase de orquestração."}
+    {
+      "risk": "Quota PRO insuficiente para 24k+ itens em tempo hábil",
+      "mitigation": "Priorização rígida do gargalo + execução ininterrupta através dos resets. Gemini foi aposentado — não há complemento LLM. É limite estrutural do PRO — gerenciar expectativa de ritmo, não eliminar."
+    },
+    {
+      "risk": "Reprocessamento de blacklist entrar em loop ou ressuscitar lixo (não-livros)",
+      "mitigation": "Classificar causa; blacklist 'hard' nunca reentra; max-retry + quarentena definitiva."
+    },
+    {
+      "risk": "Unificar motores LLM introduzir regressão de qualidade",
+      "mitigation": "Motor batch mantém validação determinística no import (synopsis_import.validate_synopsis: check_synopsis_generic + comprimento + meta + markdown). Se faltar cobertura do antigo R1-R8 (word count 90-160, idioma, tom promocional), portar essas regras para validate_synopsis."
+    },
+    {
+      "risk": "Quebrar automações existentes durante a refatoração",
+      "mitigation": "Branch dedicado, fases mergeáveis, manter opções antigas até a fase de orquestração."
+    }
   ],
-
   "open_questions": [
     "WS2 (CONCLUÍDO 2026-05-29): motor canônico = batch para ambos. Sinopse (FSM aposentado) e categorização (per-item aposentado) migradas para classify_batch/synopsis_batch.",
     "Reprocessamento de blacklist deve competir com o backlog virgem pela janela ou rodar só com sobra de sessão?",
     "Auditoria de conteúdo pós-publicação: amostragem contínua (X%/dia dentro da quota) ou varredura quando houver sessão ociosa?"
   ],
-
   "resolved_decisions": [
     "2026-05-29: Premissa = só quota do plano Claude PRO (CLI), NUNCA API paga por token.",
     "2026-05-29: Gemini APOSENTADO — não é fallback de geração LLM.",
@@ -364,7 +489,6 @@
     "2026-05-29: Reprocessamento de títulos despublicados por blacklist incluído como WS5.",
     "2026-05-29 (WS2): motor LLM canônico = BATCH (synopsis_batch/classify_batch), invertendo o lean original do plano (que sugeria sinopse=FSM). Justificativa: drain do gargalo já é batch; batch já valida no import; ~50x menos chamadas no backlog. FSM de sinopse (markdown_executor MODE 2 + agents/synopsis/*) APOSENTADO. markdown_executor MODE 1 preservado para author_bio/offer_finder."
   ],
-
   "out_of_scope": [
     "Qualquer uso da API Anthropic paga por token.",
     "Mudanças no frontend Next.js.",
