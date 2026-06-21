@@ -30,7 +30,9 @@ export default async function AutoresPage({ searchParams }: PageProps) {
         livro_id
       )
     `)
-    .order("nome");
+    .eq("status_publish", true)
+    .order("nome")
+    .range(0, 4999);
 
   const todosAutores = todos ?? [];
 
