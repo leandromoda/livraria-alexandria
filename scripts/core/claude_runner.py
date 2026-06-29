@@ -5,7 +5,7 @@ Usado pelo llm_orchestrator (opção O) — sem custo de API extra (plano Pro).
 Integra com claude_usage_tracker para:
   - Contabilizar chamadas por dia / total
   - Detectar erros de limite de sessão no output
-  - Aguardar o reset de sessão e repetir automaticamente (1 retry)
+  - Aguardar o reset de sessão, confirmar via probe, e repetir (até MAX_QUOTA_PROBES ciclos)
 
 Configuração do executável (em ordem de prioridade):
   1. CLAUDE_BIN em scripts/.env  →  caminho explícito para o executável
@@ -31,6 +31,11 @@ AGENTS_DIR = REPO_ROOT / "agents"
 
 ALLOWED_TOOLS = "Bash,Read,Write,Glob,WebSearch,WebFetch"
 DEFAULT_TIMEOUT = 600  # 10 min por agente
+
+# Prompt mínimo usado para confirmar que a quota foi restaurada antes do retry real.
+_PROBE_PROMPT = "Responda apenas com: ok"
+_PROBE_TIMEOUT = 45   # segundos — suficiente para uma resposta trivial
+MAX_QUOTA_PROBES = 5  # ciclos máximos de wait+probe antes de desistir
 
 # Globs de fallback para localizar o claude.exe quando não está no PATH.
 # Testados com Python glob (Windows native API).
@@ -117,6 +122,42 @@ def _invoke(prompt_text: str, timeout: int, env: dict) -> tuple[bool, str]:
         return False, str(exc)
 
 
+def _wait_and_probe(limit_output: str, env: dict) -> bool:
+    """Aguarda o reset de quota e confirma via probe antes do retry real.
+
+    Loop até MAX_QUOTA_PROBES ciclos:
+      1. Dorme até o fim do cooldown estimado (claude_usage_tracker).
+      2. Faz uma chamada mínima (_PROBE_PROMPT) para verificar a restauração real.
+      3. Se a probe passar → retorna True (pronto para o retry do payload real).
+      4. Se a probe também bater no limite → registra o novo hit e repete.
+
+    Retorna False se todos os ciclos de probe falharem (payload real não deve ser tentado).
+    """
+    output = limit_output
+    for attempt in range(1, MAX_QUOTA_PROBES + 1):
+        _tracker.wait_for_reset(output, log_fn=_log)
+
+        _log(f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES}: verificando restauração de quota…")
+        probe_ok, probe_out = _invoke(_PROBE_PROMPT, _PROBE_TIMEOUT, env)
+        probe_limit = _tracker.record_call(probe_ok, probe_out)
+
+        if not probe_limit:
+            _log(f"[CLAUDE_RUNNER] Probe OK — quota restaurada. Retomando chamada real.")
+            return True
+
+        _log(
+            f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES} ainda retornou limite. "
+            f"Aguardando novo ciclo de reset…"
+        )
+        output = probe_out  # passa a saída da probe para extrair novo tempo de espera
+
+    _log(
+        f"[CLAUDE_RUNNER] Quota não restaurada após {MAX_QUOTA_PROBES} tentativas. "
+        f"Abortando retry — pipeline deve aguardar intervenção ou próximo ciclo."
+    )
+    return False
+
+
 def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
               wait_on_limit: bool = True) -> tuple[bool, str]:
     """
@@ -145,11 +186,12 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
     limit_hit = _tracker.record_call(success, output)
 
     if limit_hit and wait_on_limit:
-        # Aguarda reset de sessão e tenta novamente uma única vez.
-        # Usa _log em vez de print para persistir a mensagem no pipeline.log.
-        _tracker.wait_for_reset(output, log_fn=_log)
-        success, output = _invoke(prompt_text, timeout, env)
-        _tracker.record_call(success, output)
+        if _wait_and_probe(output, env):
+            success, output = _invoke(prompt_text, timeout, env)
+            _tracker.record_call(success, output)
+        else:
+            # Probe falhou em todos os ciclos — mantém a saída de limite como resultado.
+            success = False
 
     return success, output
 
@@ -169,9 +211,11 @@ def run_prompt(prompt_text: str, timeout: int = 120,
     limit_hit = _tracker.record_call(success, output)
 
     if limit_hit and wait_on_limit:
-        _tracker.wait_for_reset(output, log_fn=_log)
-        success, output = _invoke(prompt_text, timeout, env)
-        _tracker.record_call(success, output)
+        if _wait_and_probe(output, env):
+            success, output = _invoke(prompt_text, timeout, env)
+            _tracker.record_call(success, output)
+        else:
+            success = False
 
     return success, output
 
