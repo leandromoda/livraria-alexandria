@@ -69,6 +69,12 @@ export default async function LivroPage({ params }: PageProps) {
           nome,
           slug
         )
+      ),
+      livros_autores (
+        autores (
+          nome,
+          slug
+        )
       )
     `)
     .eq("slug", slug)
@@ -192,11 +198,25 @@ export default async function LivroPage({ params }: PageProps) {
             {livro.titulo}
           </h1>
 
-          {livro.autor && (
-            <p className="text-base text-[#4A4A4A]">
-              por <span className="font-medium text-[#0D1B2A]">{livro.autor}</span>
-            </p>
-          )}
+          {livro.autor && (() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const autorEntry = livro.livros_autores?.[0]?.autores as any;
+            return (
+              <p className="text-base text-[#4A4A4A]">
+                por{" "}
+                {autorEntry?.slug ? (
+                  <Link
+                    href={`/autores/${autorEntry.slug}`}
+                    className="font-medium text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
+                  >
+                    {livro.autor}
+                  </Link>
+                ) : (
+                  <span className="font-medium text-[#0D1B2A]">{livro.autor}</span>
+                )}
+              </p>
+            );
+          })()}
 
           {/* Metadados */}
           <div className="flex flex-wrap gap-2 pt-1">
