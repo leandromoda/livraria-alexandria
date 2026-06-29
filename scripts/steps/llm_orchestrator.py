@@ -825,20 +825,37 @@ def _content_backlog(idioma: str) -> int:
 # =========================
 
 def _wait_for_session_reset():
-    """Aguarda até o reset da janela de sessão PRO, usando o cooldown REAL do
-    tracker (session_window), o que DESCONTA o tempo já gasto no Autopilot A.
-    Loga progresso a cada ~5 min. Retorna quando a janela está disponível."""
+    """Aguarda o reset da sessão PRO confirmado via probe real (não por timer).
+
+    Usa o mesmo mecanismo de _wait_and_probe do claude_runner: sonda a cada
+    _PROBE_INTERVAL min em vez de depender do SESSION_RESET_MINUTES, evitando
+    o dessincronismo onde a janela real é menor que o timer estimado.
+    """
     import time as _time
-    from core.claude_usage_tracker import session_window
-    while True:
-        win = session_window()
-        if not win.get("in_cooldown"):
+    import os as _os
+    from core.claude_runner import (
+        _invoke, _PROBE_PROMPT, _PROBE_TIMEOUT,
+        _PROBE_INITIAL_WAIT, _PROBE_INTERVAL, MAX_QUOTA_PROBES,
+    )
+    from core import claude_usage_tracker as _tracker
+
+    env = {**_os.environ}
+    log(f"[LLM_ORCH] Aguardando reset de sessão — primeira probe em {_PROBE_INITIAL_WAIT} min, "
+        f"intervalo {_PROBE_INTERVAL} min.")
+    _time.sleep(_PROBE_INITIAL_WAIT * 60)
+
+    for attempt in range(1, MAX_QUOTA_PROBES + 1):
+        log(f"[LLM_ORCH] Probe {attempt}/{MAX_QUOTA_PROBES}: verificando restauração de quota…")
+        probe_ok, probe_out = _invoke(_PROBE_PROMPT, _PROBE_TIMEOUT, env)
+        probe_limit = _tracker.record_call(probe_ok, probe_out)
+        if not probe_limit:
             log("[LLM_ORCH] Sessão resetada — retomando fase LLM.")
             return
-        secs = win.get("seconds_until_reset", 0)
-        log(f"[LLM_ORCH] Aguardando reset de sessão… {secs // 60} min restantes "
-            f"(reset às {win.get('reset_at')}).")
-        _time.sleep(min(300, max(1, secs)))
+        if attempt < MAX_QUOTA_PROBES:
+            log(f"[LLM_ORCH] Ainda limitada. Nova probe em {_PROBE_INTERVAL} min…")
+            _time.sleep(_PROBE_INTERVAL * 60)
+
+    log("[LLM_ORCH] AVISO: quota não restaurada após todas as probes. Retomando mesmo assim.")
 
 
 # =========================
