@@ -34,8 +34,10 @@ DEFAULT_TIMEOUT = 600  # 10 min por agente
 
 # Prompt mínimo usado para confirmar que a quota foi restaurada antes do retry real.
 _PROBE_PROMPT = "Responda apenas com: ok"
-_PROBE_TIMEOUT = 45   # segundos — suficiente para uma resposta trivial
-MAX_QUOTA_PROBES = 5  # ciclos máximos de wait+probe antes de desistir
+_PROBE_TIMEOUT = 45    # segundos — suficiente para uma resposta trivial
+_PROBE_INITIAL_WAIT = 10   # minutos antes da primeira probe (espera mínima)
+_PROBE_INTERVAL    = 5    # minutos entre probes subsequentes
+MAX_QUOTA_PROBES   = 72   # cobre até 6h de espera (10 + 71×5 min)
 
 # Globs de fallback para localizar o claude.exe quando não está no PATH.
 # Testados com Python glob (Windows native API).
@@ -125,35 +127,49 @@ def _invoke(prompt_text: str, timeout: int, env: dict) -> tuple[bool, str]:
 def _wait_and_probe(limit_output: str, env: dict) -> bool:
     """Aguarda o reset de quota e confirma via probe antes do retry real.
 
-    Loop até MAX_QUOTA_PROBES ciclos:
-      1. Dorme até o fim do cooldown estimado (claude_usage_tracker).
-      2. Faz uma chamada mínima (_PROBE_PROMPT) para verificar a restauração real.
-      3. Se a probe passar → retorna True (pronto para o retry do payload real).
-      4. Se a probe também bater no limite → registra o novo hit e repete.
+    Não depende do SESSION_RESET_MINUTES para definir quando começar a sondar —
+    isso resolvia o dessincronismo onde a janela real (ex: 38 min) era muito
+    menor que o timer estimado (5h a partir do hit).
 
-    Retorna False se todos os ciclos de probe falharem (payload real não deve ser tentado).
+    Estratégia:
+      1. Dorme _PROBE_INITIAL_WAIT min (espera mínima obrigatória).
+      2. Faz probe mínima para verificar restauração real.
+      3. Se OK → retorna True.
+      4. Se ainda limitado → dorme _PROBE_INTERVAL min e repete.
+      5. Após MAX_QUOTA_PROBES probes sem sucesso → retorna False.
     """
-    output = limit_output
-    for attempt in range(1, MAX_QUOTA_PROBES + 1):
-        _tracker.wait_for_reset(output, log_fn=_log)
+    import time as _time
 
+    # Tenta extrair espera explícita da mensagem de erro; senão usa o mínimo.
+    parsed = _tracker._parse_wait_minutes(limit_output)
+    initial_wait = max(_PROBE_INITIAL_WAIT, (parsed + 1) if parsed else _PROBE_INITIAL_WAIT)
+
+    _log(
+        f"[CLAUDE_RUNNER] Limite de quota detectado. "
+        f"Primeira probe em {initial_wait} min — sondando a cada {_PROBE_INTERVAL} min."
+    )
+    _time.sleep(initial_wait * 60)
+
+    for attempt in range(1, MAX_QUOTA_PROBES + 1):
         _log(f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES}: verificando restauração de quota…")
         probe_ok, probe_out = _invoke(_PROBE_PROMPT, _PROBE_TIMEOUT, env)
         probe_limit = _tracker.record_call(probe_ok, probe_out)
 
         if not probe_limit:
-            _log(f"[CLAUDE_RUNNER] Probe OK — quota restaurada. Retomando chamada real.")
+            _log("[CLAUDE_RUNNER] Probe OK — quota restaurada. Retomando chamada real.")
             return True
 
-        _log(
-            f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES} ainda retornou limite. "
-            f"Aguardando novo ciclo de reset…"
-        )
-        output = probe_out  # passa a saída da probe para extrair novo tempo de espera
+        if attempt < MAX_QUOTA_PROBES:
+            _log(
+                f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES} ainda limitada. "
+                f"Nova tentativa em {_PROBE_INTERVAL} min…"
+            )
+            _time.sleep(_PROBE_INTERVAL * 60)
 
     _log(
-        f"[CLAUDE_RUNNER] Quota não restaurada após {MAX_QUOTA_PROBES} tentativas. "
-        f"Abortando retry — pipeline deve aguardar intervenção ou próximo ciclo."
+        f"[CLAUDE_RUNNER] Quota não restaurada após {MAX_QUOTA_PROBES} probes "
+        f"({initial_wait + (MAX_QUOTA_PROBES - 1) * _PROBE_INTERVAL} min total). "
+        f"Abortando retry."
     )
     return False
 
