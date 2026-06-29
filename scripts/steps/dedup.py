@@ -7,6 +7,7 @@
 # ============================================================
 
 import os
+import re
 import sqlite3
 import unicodedata
 from datetime import datetime
@@ -58,6 +59,73 @@ def _norm(s):
 
 def similar(a, b):
     return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
+
+
+# Sufixos genealógicos/ordinais que não identificam a pessoa.
+_AUTHOR_SUFFIXES = {
+    "jr", "junior", "sr", "senior", "filho", "neto", "sobrinho",
+    "ii", "iii", "iv", "v",
+}
+
+
+def _autor_tokens(s):
+    """Tokeniza nome de autor para comparação de identidade.
+
+    - Inverte ordem "Sobrenome, Nome" → "Nome Sobrenome"
+    - Remove acentos (NFKD → ASCII) e passa a minúsculas
+    - Pontuação vira espaço (trata 'J.K.' como 'j k')
+    - Descarta sufixos genealógicos/ordinais (Jr, Filho, III…)
+
+    Mantém as iniciais do meio como tokens de 1 letra — a compatibilidade
+    é decidida em same_author (inicial casa com nome por extenso).
+    """
+    if not s:
+        return []
+    # "Sobrenome, Nome" → "Nome Sobrenome"
+    if "," in s:
+        partes = [p.strip() for p in s.split(",", 1)]
+        if len(partes) == 2 and partes[0] and partes[1]:
+            s = f"{partes[1]} {partes[0]}"
+    # NFKD → ASCII → minúsculas
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
+    # pontuação vira espaço
+    s = re.sub(r"[.,\-_]", " ", s)
+    tokens = [t for t in s.split() if t and t not in _AUTHOR_SUFFIXES]
+    return tokens
+
+
+def _nome_compat(a, b):
+    """True se dois tokens de nome são compatíveis: iguais, ou um é a inicial
+    (prefixo) do outro. Ex: 'mark' ~ 'm', 'garcia' ~ 'g'."""
+    if a == b:
+        return True
+    if len(a) == 1 and b.startswith(a):
+        return True
+    if len(b) == 1 and a.startswith(b):
+        return True
+    return False
+
+
+def same_author(a, b):
+    """Compara dois autores por identidade, tolerante a variações de grafia.
+
+    Estratégia: o miolo (nomes do meio) é a parte ruidosa — varia entre
+    abreviado/por extenso/omitido. Decide por **sobrenome igual + primeiro
+    nome compatível** (igual ou inicial), ignorando o miolo. Como same_author
+    só é consultado quando o título já bate ≥ SIMILARITY_THRESHOLD, esta
+    permissividade no miolo não funde livros distintos.
+
+    Retorna True (mesma pessoa), False (distintos) ou None (algum nome
+    ausente — indecidível, não deve bloquear o match por título).
+    """
+    ta, tb = _autor_tokens(a), _autor_tokens(b)
+    if not ta or not tb:
+        return None
+    # Sobrenome (último token) tem de bater exatamente.
+    if ta[-1] != tb[-1]:
+        return False
+    # Primeiro nome: igual ou inicial-compatível.
+    return _nome_compat(ta[0], tb[0])
 
 
 def accent_score(s):
@@ -116,7 +184,11 @@ def find_duplicates(conn, book, idioma):
             continue
 
         if similar(book["titulo"], r[1]) >= SIMILARITY_THRESHOLD:
-            duplicates.append(r)
+            # Guarda de autor: títulos parecidos só mesclam se os autores
+            # batem (após normalização) OU se algum autor está ausente.
+            # Evita fundir obras homônimas de autores distintos.
+            if same_author(book.get("autor"), r[7]) is not False:
+                duplicates.append(r)
 
     return duplicates
 
