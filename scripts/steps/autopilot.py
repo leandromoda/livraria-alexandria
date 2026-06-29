@@ -51,6 +51,7 @@ from steps import (
     batch_export,
     batch_import,
     qa_remediation,
+    qa,
 )
 
 
@@ -319,6 +320,27 @@ def _run_fallbacks(idioma: str) -> int:
     else:
         log("[AUTOPILOT][FALLBACK] [3/3] Nenhum gargalo acionável detectado.")
 
+    # --- Fallback 4: Marcar sinopses inconsistentes para regeneração ---
+    # Roda após os gargalos mecânicos — gera trabalho para o step 11 (sinopses).
+    log("[AUTOPILOT][FALLBACK] [4/4] Marcando sinopses invalidas para regeneracao (flag_synopsis_regen)...")
+    conn = get_conn()
+    pre_synopsis = _count_per_step(conn).get("11 Sinopses", 0)
+    conn.close()
+    try:
+        with StepRun("60 Flag Synopsis Regen (fallback)", idioma=idioma, pacote=FALLBACK_PACOTE, invocado_por="autopilot_fallback"):
+            qa.run(mode="flag_synopsis_regen", dry_run=False)
+    except Exception as e:
+        log(f"[AUTOPILOT][FALLBACK] [4/4] Erro: {e}")
+    conn = get_conn()
+    pos_synopsis = _count_per_step(conn).get("11 Sinopses", 0)
+    conn.close()
+    ganho_synopsis = max(0, pos_synopsis - pre_synopsis)
+    if ganho_synopsis > 0:
+        progresso_total += ganho_synopsis
+        log(f"[AUTOPILOT][FALLBACK] [4/4] {ganho_synopsis} sinopse(s) marcada(s) para regeneracao.")
+    else:
+        log("[AUTOPILOT][FALLBACK] [4/4] Nenhuma sinopse invalida encontrada.")
+
     log(f"[AUTOPILOT][FALLBACK] Fase concluída. Progresso total: {progresso_total}")
     return progresso_total
 
@@ -561,6 +583,11 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     qa_remediation.run_synopsis_reconcile(limit=pacote)
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: reconcile de sinopse falhou: {e}")
+            try:
+                with StepRun("30 Reparar Relacoes Autores", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                    publish_autores.run_repair_relacoes()
+            except Exception as e:
+                log(f"[AUTOPILOT] AVISO: repair_relacoes falhou: {e}")
 
             conn = get_conn()
             pending_atual = count_pending(conn)
