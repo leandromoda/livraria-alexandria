@@ -7,6 +7,7 @@
 # ============================================================
 
 import os
+import re
 import sqlite3
 import unicodedata
 from datetime import datetime
@@ -58,6 +59,37 @@ def _norm(s):
 
 def similar(a, b):
     return SequenceMatcher(None, _norm(a), _norm(b)).ratio()
+
+
+def _norm_autor(s):
+    """Normaliza nome de autor para comparação de identidade.
+
+    Remove acentos, pontuação e iniciais isoladas do meio (ex: o "B." de
+    'Marshall B. Rosenberg'), colapsa espaços e passa a minúsculas. Assim
+    'Brené Brown' == 'Brene Brown' e 'Peter F. Drucker' == 'Peter Drucker'.
+    """
+    if not s:
+        return ""
+    # NFKD → ASCII (remove acentos) → minúsculas
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
+    # pontuação vira espaço
+    s = re.sub(r"[.,\-_]", " ", s)
+    # descarta tokens de 1 letra (iniciais do meio)
+    tokens = [t for t in s.split() if len(t) > 1]
+    return " ".join(tokens)
+
+
+def same_author(a, b):
+    """Compara dois autores após normalização.
+
+    Retorna True se equivalentes, False se distintos, ou None quando algum
+    dos nomes está ausente (indecidível — não deve bloquear o match por título,
+    preservando o comportamento anterior).
+    """
+    na, nb = _norm_autor(a), _norm_autor(b)
+    if not na or not nb:
+        return None
+    return na == nb
 
 
 def accent_score(s):
@@ -116,7 +148,11 @@ def find_duplicates(conn, book, idioma):
             continue
 
         if similar(book["titulo"], r[1]) >= SIMILARITY_THRESHOLD:
-            duplicates.append(r)
+            # Guarda de autor: títulos parecidos só mesclam se os autores
+            # batem (após normalização) OU se algum autor está ausente.
+            # Evita fundir obras homônimas de autores distintos.
+            if same_author(book.get("autor"), r[7]) is not False:
+                duplicates.append(r)
 
     return duplicates
 
