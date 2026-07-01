@@ -20,6 +20,7 @@ from datetime import datetime
 
 from core.db import get_conn
 from core.logger import log
+from core import interrupt as _interrupt
 
 
 # =========================
@@ -462,6 +463,10 @@ def run(idioma=None, pacote=50):
 
     try:
         for i, row in enumerate(rows, start=1):
+
+            if _interrupt.requested():
+                log("[SCRAPER] Interrupção solicitada — encerrando após o último livro salvo.")
+                break
 
             livro_id      = row["id"]
             titulo        = row["titulo"]

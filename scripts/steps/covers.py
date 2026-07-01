@@ -21,6 +21,8 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv
 
+from core import interrupt as _interrupt
+
 
 # =========================
 # CONFIG
@@ -194,6 +196,10 @@ def run(idioma, pacote=10, book_ids=None):
 
     try:
         for i, (book_id, titulo, autor, isbn) in enumerate(rows, start=1):
+
+            if _interrupt.requested():
+                log("[CAPA] Interrupção solicitada — encerrando após o último livro salvo.")
+                break
 
             log(f"[CAPA][{i:03d}/{total:03d}] → {titulo}")
 
