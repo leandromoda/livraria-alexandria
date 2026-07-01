@@ -27,6 +27,7 @@ import re as _re
 from core.db import get_conn
 from core.logger import log
 from core.run_logger import StepRun
+from core import interrupt as _interrupt
 
 from steps import (
     offer_seed,
@@ -258,6 +259,10 @@ def _run_fallbacks(idioma: str) -> int:
     else:
         log(f"[AUTOPILOT][FALLBACK] [1/3] Enriquecer Descrições — sem pendentes. Pulando.")
 
+    if _interrupt.requested():
+        log("[AUTOPILOT][FALLBACK] Interrupção solicitada — encerrando fallback antecipadamente.")
+        return progresso_total
+
     # --- Fallback 2: Resolver Ofertas (lote grande) ---
     log(f"[AUTOPILOT][FALLBACK] [2/3] Resolver Ofertas — lote {FALLBACK_PACOTE}")
     conn = get_conn()
@@ -274,6 +279,10 @@ def _run_fallbacks(idioma: str) -> int:
     ganho = max(0, pre - pos)
     progresso_total += ganho
     log(f"[AUTOPILOT][FALLBACK] [2/3] Progresso: {ganho}")
+
+    if _interrupt.requested():
+        log("[AUTOPILOT][FALLBACK] Interrupção solicitada — encerrando fallback antecipadamente.")
+        return progresso_total
 
     # --- Fallback 3: Gargalos ---
     conn = get_conn()
@@ -302,6 +311,9 @@ def _run_fallbacks(idioma: str) -> int:
     if gargalos_acionados:
         log(f"[AUTOPILOT][FALLBACK] [3/3] Gargalos detectados: {len(gargalos_acionados)} step(s) com pendentes")
         for nome, cnt in gargalos_acionados:
+            if _interrupt.requested():
+                log("[AUTOPILOT][FALLBACK] Interrupção solicitada — encerrando fallback antecipadamente.")
+                return progresso_total
             log(f"[AUTOPILOT][FALLBACK] [3/3] Gargalo: '{nome}' — {cnt} pendentes | lote {FALLBACK_PACOTE}")
             conn = get_conn()
             pre = count_pending(conn)
@@ -319,6 +331,10 @@ def _run_fallbacks(idioma: str) -> int:
             log(f"[AUTOPILOT][FALLBACK] [3/3] '{nome}' — Progresso: {ganho}")
     else:
         log("[AUTOPILOT][FALLBACK] [3/3] Nenhum gargalo acionável detectado.")
+
+    if _interrupt.requested():
+        log("[AUTOPILOT][FALLBACK] Interrupção solicitada — encerrando fallback antecipadamente.")
+        return progresso_total
 
     # --- Fallback 4: Marcar sinopses inconsistentes para regeneração ---
     # Roda após os gargalos mecânicos — gera trabalho para o step 11 (sinopses).
@@ -418,6 +434,86 @@ def count_pending(conn) -> int:
 
 
 # =========================
+# RESUMO DE PROGRESSO (fim de execução)
+# =========================
+
+def _snapshot_publicados(conn) -> dict:
+    """Captura os IDs atualmente publicados/ativos — base para o diff de
+    'publicados/despublicados nesta seção' no resumo final."""
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM livros WHERE status_publish = 1")
+    livros_ids = {r[0] for r in cur.fetchall()}
+
+    cur.execute("SELECT id FROM autores WHERE status_publish = 1")
+    autores_ids = {r[0] for r in cur.fetchall()}
+
+    cur.execute("SELECT id FROM listas WHERE status_publish = 1")
+    listas_ids = {r[0] for r in cur.fetchall()}
+
+    return {"livros": livros_ids, "autores": autores_ids, "listas": listas_ids}
+
+
+def _print_progress_summary(snapshot_inicial: dict) -> None:
+    """Resumo de progresso ao final da execução do Autopilot.
+
+    Reporta o que mudou NESTA seção (comparando com o snapshot capturado
+    no início do run) e os totais atuais ativos no site — livros, autores,
+    listas, páginas e ofertas.
+    """
+    conn = get_conn()
+    snapshot_final = _snapshot_publicados(conn)
+
+    livros_publicados_secao    = len(snapshot_final["livros"]  - snapshot_inicial["livros"])
+    livros_despublicados_secao = len(snapshot_inicial["livros"] - snapshot_final["livros"])
+    autores_publicados_secao   = len(snapshot_final["autores"] - snapshot_inicial["autores"])
+    listas_publicadas_secao    = len(snapshot_final["listas"]  - snapshot_inicial["listas"])
+
+    cur = conn.cursor()
+
+    def _q(sql):
+        cur.execute(sql)
+        return cur.fetchone()[0]
+
+    total_livros_publicados  = _q("SELECT COUNT(*) FROM livros WHERE status_publish = 1")
+    total_autores_publicados = _q("SELECT COUNT(*) FROM autores WHERE status_publish = 1")
+    total_listas_publicadas  = _q("SELECT COUNT(*) FROM listas WHERE status_publish = 1")
+    total_categorias_publicadas = _q("SELECT COUNT(*) FROM categorias WHERE status_publish = 1")
+    total_ofertas_ativas = _q("""
+        SELECT COUNT(*) FROM livros
+        WHERE status_publish_oferta = 1
+          AND COALESCE(offer_status, 'active') != 'unavailable'
+    """)
+
+    conn.close()
+
+    total_paginas_ativas = (
+        total_livros_publicados
+        + total_autores_publicados
+        + total_listas_publicadas
+        + total_categorias_publicadas
+    )
+
+    sep = "─" * 52
+    log("=" * 52)
+    log("[AUTOPILOT] RESUMO DE PROGRESSO")
+    log(sep)
+    log(f"[AUTOPILOT] Títulos publicados nesta seção:      {livros_publicados_secao}")
+    log(f"[AUTOPILOT] Total de títulos publicados (ativos): {total_livros_publicados}")
+    log(f"[AUTOPILOT] Títulos despublicados nesta seção:    {livros_despublicados_secao}")
+    log(sep)
+    log(f"[AUTOPILOT] Autores publicados nesta seção:       {autores_publicados_secao}")
+    log(f"[AUTOPILOT] Total de autores publicados (ativos): {total_autores_publicados}")
+    log(sep)
+    log(f"[AUTOPILOT] Listas publicadas nesta seção:        {listas_publicadas_secao}")
+    log(f"[AUTOPILOT] Total de listas publicadas (ativas):  {total_listas_publicadas}")
+    log(sep)
+    log(f"[AUTOPILOT] Total de páginas ativas do site:      {total_paginas_ativas}")
+    log(f"[AUTOPILOT] Total de ofertas ativas do site:      {total_ofertas_ativas}")
+    log("=" * 52)
+
+
+# =========================
 # RUN
 # =========================
 
@@ -480,7 +576,15 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
 
     conn = get_conn()
     pending_anterior = count_pending(conn)
+    snapshot_inicial = _snapshot_publicados(conn)
     conn.close()
+
+    # Ctrl+C cooperativo: primeiro pedido de interrupção só sinaliza (checado
+    # entre steps/itens); segundo pedido força saída imediata (comportamento
+    # padrão). Sempre desinstalado no finally, restaurando o Ctrl+C padrão
+    # para o menu ao término desta função.
+    _interrupt.install()
+    interrompido_pelo_usuario = False
 
     STEPS = [
         ("1  Seeds",             lambda p: offer_seed.run()),
@@ -570,6 +674,14 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                 else:
                     step_sem_progresso[nome] = 0  # reset ao produzir progresso
 
+                if _interrupt.requested():
+                    log(f"[AUTOPILOT] Interrupção solicitada — encerrando após o step '{nome}'.")
+                    interrompido_pelo_usuario = True
+                    break
+
+            if interrompido_pelo_usuario:
+                break
+
             # Fase de remediação não-LLM (QA): corrige, com prioridade, fatores
             # mecânicos dos publicados com defeito (capas + reconcile de sinopse).
             # Fora do accounting de progresso do loop — é manutenção, não drena backlog.
@@ -578,16 +690,33 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     qa_remediation.run_covers(limit=pacote)
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: remediação de capas falhou: {e}")
+
+            if _interrupt.requested():
+                log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reconcile de sinopse.")
+                interrompido_pelo_usuario = True
+                break
+
             try:
                 with StepRun("QA Reconcile (sinopse)", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
                     qa_remediation.run_synopsis_reconcile(limit=pacote)
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: reconcile de sinopse falhou: {e}")
+
+            if _interrupt.requested():
+                log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reparo de relações de autores.")
+                interrompido_pelo_usuario = True
+                break
+
             try:
                 with StepRun("30 Reparar Relacoes Autores", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
                     publish_autores.run_repair_relacoes()
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: repair_relacoes falhou: {e}")
+
+            if _interrupt.requested():
+                log("[AUTOPILOT] Interrupção solicitada — encerrando ao fim do ciclo.")
+                interrompido_pelo_usuario = True
+                break
 
             conn = get_conn()
             pending_atual = count_pending(conn)
@@ -632,6 +761,11 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
 
                     fallback_progress = _run_fallbacks(idioma)
 
+                    if _interrupt.requested():
+                        log("[AUTOPILOT] Interrupção solicitada — encerrando após a fase de fallback.")
+                        interrompido_pelo_usuario = True
+                        break
+
                     if fallback_progress > 0:
                         conn = get_conn()
                         pending_anterior = count_pending(conn)
@@ -675,6 +809,14 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                 ciclos_sem_qg_avanco = 0  # reset quando QG aprova livros
 
     except KeyboardInterrupt:
-        log(f"[AUTOPILOT] Interrompido apos ciclo {ciclo}.")
+        # Segundo Ctrl+C (força saída) ou SIGINT fora do handler cooperativo.
+        interrompido_pelo_usuario = True
+        log(f"[AUTOPILOT] Interrompido pelo usuário (Ctrl+C) apos ciclo {ciclo}.")
+    finally:
+        _interrupt.uninstall()
+
+    if interrompido_pelo_usuario:
+        log("[AUTOPILOT] Execução interrompida pelo usuário.")
 
     log(f"[AUTOPILOT] Total de ciclos: {ciclo}")
+    _print_progress_summary(snapshot_inicial)

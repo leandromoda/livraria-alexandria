@@ -1288,4 +1288,10 @@ E  → Exports
 # =========================
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Rede de segurança final: qualquer Ctrl+C não tratado por um submenu
+        # específico cai aqui — encerra sem traceback bruto.
+        print("\n[PIPELINE] Encerrado pelo usuário (Ctrl+C).")
+        sys.exit(0)
