@@ -901,6 +901,7 @@ def run(idioma: str, wait_for_reset: bool = True):
     reclaim.run()
 
     cycle = 0
+    ended_on_limit = False   # True se o passe único (G) encerrou por limite de sessão
 
     while True:
         cycle += 1
@@ -1065,6 +1066,7 @@ def run(idioma: str, wait_for_reset: bool = True):
             if not wait_for_reset:
                 log("[LLM_ORCH] Passe único: fase LLM encerrada (limite de sessão). "
                     "Controle devolvido ao orquestrador (QA + relatório).")
+                ended_on_limit = True
                 break
 
             # Opção O: aguarda o reset (descontando o tempo já gasto no Autopilot A)
@@ -1081,3 +1083,9 @@ def run(idioma: str, wait_for_reset: bool = True):
     log(f"[LLM_ORCH] ══════════════════════════════════════")
     log(f"[LLM_ORCH] Total de ciclos: {cycle}")
     log(f"[LLM_ORCH] ══════════════════════════════════════")
+
+    # ended_on_limit=True só no passe único (G) que parou por limite de sessão —
+    # sinaliza ao orquestrador G que vale tentar um retry após o fallback longo
+    # (quando a janela de 5h provavelmente já resetou). No modo O (wait_for_reset)
+    # o loop só sai por trabalho exaurido/auth, então retorna False.
+    return ended_on_limit
