@@ -71,6 +71,13 @@ GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 TITLE_VERIFY_API_DELAY = 0.35             # segundos entre chamadas Google Books API
 
+# Janela de manutenção: um livro auditado há menos de N dias é pulado na próxima
+# passada — evita re-auditar páginas recém-verificadas e faz a auditoria rotacionar
+# pelo catálogo (~cada página 1×/janela). Aplicada aos modos de auditoria que
+# revisitam páginas publicadas (content, title_verify). Ver também
+# steps/qa_remediation.py, que mantém o mesmo valor para o cool-down de regen.
+MAINTENANCE_WINDOW_DAYS = 30
+
 # ---------------------------------------------------------------------------
 # Tabela audit_log — criada automaticamente se não existir
 # ---------------------------------------------------------------------------
@@ -447,13 +454,27 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
     """
     log.info(f"=== CONTENT AUDIT (limit={limit}, dry_run={dry_run}) ===")
 
+    # Defensivo: o filtro abaixo lê audit_log — garante a tabela mesmo se este
+    # for chamado fora do fluxo run() (idempotente: CREATE IF NOT EXISTS).
+    ensure_audit_tables(conn)
+
+    # Exclui livros já auditados neste modo nos últimos MAINTENANCE_WINDOW_DAYS
+    # dias (mesma lógica do title_verify): a página só é revisitada após a janela,
+    # o que rotaciona a auditoria pelo catálogo e poupa quota LLM.
     rows = conn.execute(
-        """SELECT id, slug, titulo, autor, ano_publicacao, sinopse, descricao
-           FROM livros
-           WHERE status_publish=1 AND is_publishable=1
-             AND sinopse IS NOT NULL AND sinopse != ''
-           ORDER BY RANDOM()
-           LIMIT ?""",
+        f"""SELECT l.id, l.slug, l.titulo, l.autor, l.ano_publicacao,
+                   l.sinopse, l.descricao
+            FROM livros l
+            WHERE l.status_publish=1 AND l.is_publishable=1
+              AND l.sinopse IS NOT NULL AND l.sinopse != ''
+              AND NOT EXISTS (
+                  SELECT 1 FROM audit_log al
+                  WHERE al.livro_id = l.id
+                    AND al.mode = 'content'
+                    AND al.audited_at >= datetime('now', '-{MAINTENANCE_WINDOW_DAYS} days')
+              )
+            ORDER BY RANDOM()
+            LIMIT ?""",
         (limit,)
     ).fetchall()
 
@@ -849,7 +870,8 @@ def _fetch_books_for_title_verify(conn: sqlite3.Connection,
     else:  # all
         where = ""
 
-    # Exclui livros já verificados recentemente (audit_log mode=title_verify, last 30 dias)
+    # Exclui livros já verificados recentemente (audit_log mode=title_verify,
+    # últimos MAINTENANCE_WINDOW_DAYS dias)
     query = f"""
         SELECT l.id, l.slug, l.titulo, l.autor, l.descricao,
                l.status_publish, l.is_publishable
@@ -860,7 +882,7 @@ def _fetch_books_for_title_verify(conn: sqlite3.Connection,
               SELECT 1 FROM audit_log al
               WHERE al.livro_id = l.id
                 AND al.mode = 'title_verify'
-                AND al.audited_at >= datetime('now', '-30 days')
+                AND al.audited_at >= datetime('now', '-{MAINTENANCE_WINDOW_DAYS} days')
           )
         ORDER BY RANDOM()
         LIMIT ?

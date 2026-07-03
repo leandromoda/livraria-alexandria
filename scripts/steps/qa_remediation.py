@@ -23,6 +23,13 @@ from steps import covers, publish
 FACTOR_CAPA = "capa"
 MAX_ATTEMPTS = 3
 
+# Cool-down de manutenção: um título cuja regeneração de sinopse foi concluída
+# (status='fixed') há menos de N dias não é re-avaliado — evita re-processar
+# páginas recém-reparadas. Deve casar com MAINTENANCE_WINDOW_DAYS em
+# steps/auditor.py (mantido local para não acoplar este hot-path ao auditor,
+# que importa requests/bs4).
+MAINTENANCE_WINDOW_DAYS = 30
+
 
 def enqueue_covers(conn, source_report=None) -> tuple[int, int]:
     """Enfileira (status=pending) livros publicados sem capa.
@@ -283,19 +290,39 @@ def flag_synopsis_for_regen(conn, limit: int = 500) -> dict:
     for rid, lid in cur.fetchall():
         r = cur.execute("SELECT status_synopsis, sinopse FROM livros WHERE id=?", (lid,)).fetchone()
         if r and r[0] == 1 and validate_synopsis(r[1] or "")[0]:
-            cur.execute("UPDATE qa_remediation SET status='fixed' WHERE id=?", (rid,))
+            # Carimba last_attempt_at ao confirmar o fix → relógio do cool-down
+            # (passo 2) fica sempre correto, mesmo p/ quem foi corrigido de 1ª.
+            cur.execute(
+                "UPDATE qa_remediation SET status='fixed', last_attempt_at=CURRENT_TIMESTAMP WHERE id=?",
+                (rid,),
+            )
     conn.commit()
 
     # 2. Detecta "concluído mas inválido" → reseta p/ regeneração.
+    #    ORDER BY RANDOM(): sem ordem fixa a mesma janela LIMIT era re-varrida a
+    #    cada passe (rowid), nunca alcançando o resto do catálogo. RANDOM faz a
+    #    varredura rotacionar e, ao longo de vários passes, cobrir todos os livros.
     cur.execute("""
         SELECT id, sinopse FROM livros
         WHERE status_publish=1 AND status_synopsis=1 AND COALESCE(qa_quarantine,0)=0
+        ORDER BY RANDOM()
         LIMIT ?
     """, (limit,))
     flagged = quarentena = 0
     for lid, sin in cur.fetchall():
         ok, motivo = validate_synopsis(sin or "")
         if ok:
+            continue
+
+        # Cool-down: pula quem teve regeneração concluída (fixed) há menos de
+        # MAINTENANCE_WINDOW_DAYS — não re-processa títulos recém-reparados.
+        recente = cur.execute(
+            """SELECT 1 FROM qa_remediation
+               WHERE livro_id=? AND factor=? AND status='fixed'
+                 AND last_attempt_at >= datetime('now', ?)""",
+            (lid, FACTOR_SYNOPSIS_REGEN, f"-{MAINTENANCE_WINDOW_DAYS} days"),
+        ).fetchone()
+        if recente:
             continue
         rowq = cur.execute(
             "SELECT id, attempts FROM qa_remediation WHERE livro_id=? AND factor=? AND status IN ('pending','reprocessing')",
