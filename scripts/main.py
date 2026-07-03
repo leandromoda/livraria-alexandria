@@ -767,11 +767,14 @@ def _run_gargalo(idioma: str):
       3. Fase LLM priorizada (WS1) — opcional, consome a sessão PRO
       4. QA / remediação (WS4/WS5): aplica blacklist + reprocessa recuperáveis
       5. Steps de auditoria auto-executáveis
-      6. Autopilot A (publica downstream até exaurir)
+      6. Autopilot A — se a fase LLM parou por limite de sessão, roda até
+         RESTAURAR a quota (drena/publica não-LLM enquanto aguarda o reset) e
+         então faz UM retry da fase LLM; caso contrário, apenas exaure o não-LLM.
       7. Relatório: janela de sessão PRO (WS7) + backlog restante
 
-    Passe ÚNICO: ao esgotar a sessão PRO, NÃO aguarda o reset — reporta o
-    que falta e encerra (re-rodar após o reset).
+    A fase LLM em si é passe único (não aguarda reset dentro do orquestrador).
+    O retry pós-fallback aproveita que o trabalho não-LLM costuma cobrir o
+    cooldown de ~5h — a espera vira trabalho útil e a quota tende a voltar.
     """
     log("[G] Analisando gargalos e construindo plano de ataque…")
 
@@ -868,13 +871,14 @@ def _run_gargalo(idioma: str):
 
     # ── FASE LLM priorizada (WS1) — consome a sessão PRO ──
     from core.claude_runner import claude_available
+    llm_limited = False   # True se a fase LLM parou por limite de sessão (habilita retry pós-fallback)
     if claude_available():
         log("[G] ── Fase LLM priorizada (orquestrador) ──")
         try:
             # Passe único: ao esgotar a sessão, o orquestrador roda o
             # Autopilot A (fallback) e DEVOLVE o controle ao G (não aguarda
             # o reset). O G então faz QA + Autopilot A + relatório.
-            llm_orchestrator.run(idioma, wait_for_reset=False)
+            llm_limited = bool(llm_orchestrator.run(idioma, wait_for_reset=False))
         except KeyboardInterrupt:
             log("[G] Fase LLM interrompida pelo usuário.")
         except Exception as e_llm:
@@ -948,12 +952,56 @@ def _run_gargalo(idioma: str):
         except Exception as e_g:
             log(f"[G] ERRO em {step['label']}: {e_g}")
 
-    # ── Autopilot A até exaustão (publica downstream) ─────────
-    log("[G] Todos os steps de auditoria/manutenção concluídos.")
-    log("[G] Iniciando Autopilot A até exaustão…")
+    # ── Autopilot A + retry LLM oportunista ───────────────────
     # manter_batch=False: G já faz a fase LLM via orquestrador; o top-up de
     # batch aqui só geraria status=3 preso (sem consumidor externo).
-    autopilot.run(idioma, 100, manter_batch=False)
+    log("[G] Todos os steps de auditoria/manutenção concluídos.")
+
+    if llm_limited and claude_available():
+        # Autopilot A ATÉ RESTAURAR A QUOTA LLM: em vez de exaurir uma única vez
+        # e parar, o não-LLM segue drenando/publicando enquanto a sessão PRO
+        # está em cooldown; assim que a quota reseta, dispara o retry da fase
+        # LLM. A espera de até ~5h vira trabalho útil e o retry fica garantido
+        # (não depende de o fallback ter, por acaso, durado mais que o cooldown).
+        from core.claude_usage_tracker import session_window
+        import time as _time
+        log("[G] Iniciando Autopilot A até restaurar a quota LLM…")
+        try:
+            while True:
+                autopilot.run(idioma, 100, manter_batch=False)   # exaure o não-LLM
+                w = session_window()
+                if not w.get("in_cooldown"):
+                    break                                        # quota restaurada
+                secs = max(0, int(w.get("seconds_until_reset", 0)))
+                nap = min(300, secs)                             # re-checa a cada ≤5 min
+                if nap <= 0:
+                    break
+                log(f"[G] Backlog não-LLM drenado; aguardando reset da sessão "
+                    f"(~{secs // 60} min restantes)…")
+                _time.sleep(nap)
+        except KeyboardInterrupt:
+            log("[G] Espera produtiva (Autopilot até restaurar quota) interrompida pelo usuário.")
+
+        if not session_window().get("in_cooldown"):
+            log("[G] ── Retry da fase LLM (quota restaurada) ──")
+            try:
+                llm_orchestrator.run(idioma, wait_for_reset=False)
+            except KeyboardInterrupt:
+                log("[G] Retry da fase LLM interrompido pelo usuário.")
+            except Exception as e_retry:
+                log(f"[G] AVISO: retry da fase LLM retornou com exceção: {e_retry}")
+            # Publica o que o retry desbloqueou (idempotente; barato se nada pendente).
+            try:
+                autopilot.run(idioma, 100, manter_batch=False)
+            except Exception as e_ap2:
+                log(f"[G] AVISO: autopilot pós-retry falhou: {e_ap2}")
+        else:
+            log("[G] Retry da fase LLM pulado — quota ainda em cooldown (espera interrompida).")
+    else:
+        # LLM concluiu todo o trabalho (ou claude indisponível): só exaure o
+        # não-LLM uma vez — não há quota a aguardar.
+        log("[G] Iniciando Autopilot A até exaustão…")
+        autopilot.run(idioma, 100, manter_batch=False)
 
     # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
     _print_gargalo_report(idioma)
