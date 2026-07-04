@@ -197,9 +197,13 @@ V  → Voltar
 
         elif op == "2":
             pacote = escolher_pacote()
+            retry = input_safe(
+                "Reprocessar também os que falharam antes (status=2)? "
+                "Recupera livros via autor + descrição multi-idioma. [s/N] "
+            ).strip().lower() == "s"
             log("Enriquecendo descrições via Google Books…")
             with StepRun("enrich_descricao", idioma=idioma, pacote=pacote):
-                enrich_descricao.run(pacote)
+                enrich_descricao.run(pacote, retry_failed=retry)
 
         elif op == "3":
             pacote = escolher_pacote()
