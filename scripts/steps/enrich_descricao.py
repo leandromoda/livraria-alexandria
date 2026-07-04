@@ -78,6 +78,30 @@ def _title_matches(expected: str, returned: str) -> bool:
     return ratio >= TITLE_SIMILARITY_THRESHOLD
 
 
+def _author_matches(expected: str, returned_authors) -> bool:
+    """
+    Retorna True se algum autor retornado pelo Google Books casa com o autor
+    buscado. Usado como fallback quando o título não bate: obra estrangeira
+    catalogada com título PT ("O Advogado") cuja edição EN tem descrição, mas
+    título divergente. O autor é o discriminador language-agnostic.
+
+    Critérios (qualquer um): containment de nome normalizado ou sobrenome igual.
+    """
+    n_expected = _normalize_title(expected)
+    if not n_expected:
+        return False
+    for a in (returned_authors or []):
+        n_a = _normalize_title(a)
+        if not n_a:
+            continue
+        if n_a in n_expected or n_expected in n_a:
+            return True
+        exp_parts, a_parts = n_expected.split(), n_a.split()
+        if exp_parts and a_parts and exp_parts[-1] == a_parts[-1]:
+            return True
+    return False
+
+
 # =========================
 # LOGGER
 # =========================
@@ -106,14 +130,20 @@ def get_conn():
 # FETCH PENDING
 # =========================
 
-def fetch_pending(conn, limit):
+def fetch_pending(conn, limit, retry_failed=False):
 
     cur = conn.cursor()
 
-    cur.execute("""
+    # retry_failed=True reinclui os que falharam antes (status_descricao=2):
+    # a rodada original pode ter desistido por rate limit / falta de API key,
+    # e o matching por autor + fallback multi-idioma recupera boa parte deles.
+    status_filter = "status_descricao IN (0, 2)" if retry_failed else "status_descricao = 0"
+
+    cur.execute(f"""
         SELECT id, titulo, autor
         FROM livros
-        WHERE status_descricao = 0
+        WHERE {status_filter}
+          AND (descricao IS NULL OR TRIM(descricao) = '')
         LIMIT ?
     """, (limit,))
 
@@ -123,6 +153,43 @@ def fetch_pending(conn, limit):
 # =========================
 # GOOGLE BOOKS LOOKUP
 # =========================
+
+def _pick_descricao(candidatos, titulo, autor):
+    """
+    Escolhe a melhor descrição entre os candidatos do Google Books em camadas,
+    preferindo português e caindo para qualquer idioma (a sinopse final é sempre
+    gerada em PT pelo agente, que aceita descrição-fonte em outro idioma).
+
+    Ordem de prioridade:
+      1. título casa + idioma PT      2. título casa (qualquer idioma)
+      3. autor casa  + idioma PT      4. autor casa (qualquer idioma)
+      5. PT (top-relevância)          6. qualquer (top-relevância — mais fraco)
+
+    A camada 5/6 (sem casar título nem autor) é segura porque o agente de sinopse
+    tem gate de coerência título×descrição: se pegar o livro errado, a sinopse é
+    rejeitada (synopsis-title-mismatch), não publicada.
+
+    Retorna (descricao, camada, idioma) ou (None, None, None).
+    """
+    tmatch = [c for c in candidatos if _title_matches(titulo, c["titulo"])]
+    amatch = [c for c in candidatos if _author_matches(autor, c["autores"])]
+
+    def pt(pool):
+        return [c for c in pool if (c["idioma"] or "").lower().startswith("pt")]
+
+    for pool, camada in (
+        (pt(tmatch), "titulo/pt"),
+        (tmatch,     "titulo"),
+        (pt(amatch), "autor/pt"),
+        (amatch,     "autor"),
+        (pt(candidatos), "top-rel/pt"),
+        (candidatos, "top-rel"),
+    ):
+        if pool:
+            c = pool[0]
+            return c["descricao"], camada, (c["idioma"] or "?")
+    return None, None, None
+
 
 def fetch_descricao(titulo, autor):
 
@@ -149,17 +216,27 @@ def fetch_descricao(titulo, autor):
 
             items = res.json().get("items", [])
 
+            # Reúne candidatos com descrição usável; a escolha (título/autor/
+            # idioma) é feita em camadas por _pick_descricao.
+            candidatos = []
             for item in items:
                 info = item.get("volumeInfo", {})
-                returned_title = info.get("title", "")
-
-                # Rejeita resultado cujo título não corresponde ao livro buscado
-                if not _title_matches(titulo, returned_title):
-                    continue
-
                 descricao = info.get("description")
                 if descricao and len(descricao.strip()) >= MIN_DESC_LENGTH:
-                    return descricao.strip()
+                    candidatos.append({
+                        "titulo":    info.get("title", ""),
+                        "autores":   info.get("authors", []),
+                        "idioma":    info.get("language", ""),
+                        "descricao": descricao.strip(),
+                    })
+
+            descricao, camada, idioma = _pick_descricao(candidatos, titulo, autor)
+            if descricao:
+                if camada.startswith("top-rel"):
+                    log(f"[ENRICH] match fraco ({camada}/{idioma}) -> {titulo}")
+                elif not camada.endswith("/pt") and idioma:
+                    log(f"[ENRICH] descricao {idioma} ({camada}) -> {titulo}")
+                return descricao
 
             return None  # sem resultado compatível — não adianta retry
 
@@ -198,7 +275,7 @@ def update_descricao(conn, livro_id, descricao, status_descricao):
 # RUN
 # =========================
 
-def run(pacote=500):
+def run(pacote=500, retry_failed=False):
 
     log("Iniciando Description Enrichment...")
 
@@ -206,6 +283,8 @@ def run(pacote=500):
         log("[ENRICH] Usando Google Books API Key")
     else:
         log("[ENRICH] AVISO: sem API key — rate limit reduzido")
+    if retry_failed:
+        log("[ENRICH] retry_failed=True — reprocessando também os status_descricao=2")
 
     if not os.path.exists(DB_PATH):
         log("Banco não encontrado. Execute o step 1 primeiro.")
@@ -213,7 +292,7 @@ def run(pacote=500):
 
     conn = get_conn()
 
-    rows = fetch_pending(conn, pacote)
+    rows = fetch_pending(conn, pacote, retry_failed=retry_failed)
 
     if not rows:
         log("Nenhum livro pendente de enriquecimento.")
