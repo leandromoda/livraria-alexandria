@@ -383,3 +383,7 @@ O plugin Vercel está ativo e injeta contexto Next.js/Vercel automaticamente nas
 - Não usar `vercel deploy --prod` diretamente — o deploy é automático via merge no `main`
 - Não usar shadcn/ui, Geist, nem tokens zinc/slate — usar o design system da livraria
 - Não migrar banco para Neon/Upstash — o projeto usa Supabase
+- Não sugerir ao usuário "rodar o step X" / "rodar a opção N" para resolver
+  gargalos do pipeline — o uso é, por padrão, **autopilot (opção G)**. Step não
+  coberto deve ser **incorporado** ao autopilot, não delegado ao usuário. Ver
+  "Gargalo de publicação" em [scripts/CLAUDE.md](scripts/CLAUDE.md).
