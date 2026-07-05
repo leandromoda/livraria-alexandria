@@ -119,10 +119,11 @@ def remediate_mechanical(dry_run=False, limit=None):
     os steps padrão via book_ids. Seguro para A e G."""
     from steps import qa_remediation
     n = limit or 50
-    log("[QA] ===== REMEDIAÇÃO MECÂNICA (ingest + capas + reconcile sinopse) =====")
+    log("[QA] ===== REMEDIAÇÃO MECÂNICA (ingest + capas + reconcile sinopse + título) =====")
     qa_remediation.run_ingest_audit()
     qa_remediation.run_covers(limit=n)
     qa_remediation.run_synopsis_reconcile(limit=n)
+    qa_remediation.run_demote_untitled()
     log("[QA] ===== remediação mecânica concluída =====")
 
 

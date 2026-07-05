@@ -134,6 +134,17 @@ def run(idioma: str = None, pacote: int = None):
         "rodar step 11 (Sinopses) novamente para regenerar ou usar length_enforcer",
     ))
 
+    # ── 9. Publicados com título vazio (auto-remediados pelo QA) ──────────────
+    results.append(_check(
+        conn,
+        "livros publicados com título vazio",
+        """SELECT COUNT(*) FROM livros
+           WHERE status_publish = 1
+             AND (titulo IS NULL OR TRIM(titulo) = '')""",
+        "despublicação automática na remediação mecânica do QA "
+        "(qa_remediation.run_demote_untitled) — sem ação manual",
+    ))
+
     conn.close()
 
     checks_com_problema = sum(1 for r in results if not r["ok"])
