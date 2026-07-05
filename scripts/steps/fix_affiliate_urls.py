@@ -21,6 +21,11 @@ def run():
     conn = get_conn()
     cur = conn.cursor()
 
+    # IDs cujas offer_url foram efetivamente alteradas — só estes precisam
+    # ser marcados para republicação. Resetar ofertas inalteradas desativaria
+    # as afiliadas no site sem motivo (e forçaria republicação total à toa).
+    changed_ids = []
+
     # --- Mercado Livre ---
     cur.execute("""
         SELECT id, offer_url FROM livros
@@ -37,6 +42,7 @@ def run():
                 "UPDATE livros SET offer_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (new_url, book_id),
             )
+            changed_ids.append(book_id)
             ml_fixed += 1
 
     conn.commit()
@@ -58,23 +64,35 @@ def run():
                 "UPDATE livros SET offer_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (new_url, book_id),
             )
+            changed_ids.append(book_id)
             amz_fixed += 1
 
     conn.commit()
     log(f"[AMZ] {amz_fixed} URLs corrigidas (de {len(amz_rows)} sem tag)")
 
-    # --- Reset publish flag para re-publicação ---
-    cur.execute("""
-        UPDATE livros
-        SET status_publish_oferta = 0,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE status_publish = 1
-          AND offer_url IS NOT NULL
-          AND supabase_id IS NOT NULL
-          AND status_publish_oferta = 1
-    """)
+    # --- Reset publish flag SOMENTE para as ofertas cujas URLs mudaram ---
+    # Se nada foi corrigido (changed_ids vazio), este passo é no-op: não
+    # desativa nenhuma oferta já publicada no Supabase.
+    resetados = 0
+    CHUNK = 500  # respeita o limite de variáveis por query do SQLite
+    for i in range(0, len(changed_ids), CHUNK):
+        chunk = changed_ids[i:i + CHUNK]
+        placeholders = ",".join("?" * len(chunk))
+        cur.execute(
+            f"""
+            UPDATE livros
+            SET status_publish_oferta = 0,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})
+              AND status_publish = 1
+              AND offer_url IS NOT NULL
+              AND supabase_id IS NOT NULL
+              AND status_publish_oferta = 1
+            """,
+            chunk,
+        )
+        resetados += cur.rowcount
     conn.commit()
-    resetados = cur.rowcount
 
     conn.close()
 
