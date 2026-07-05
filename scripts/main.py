@@ -771,14 +771,17 @@ def _run_gargalo(idioma: str):
       3. Fase LLM priorizada (WS1) — opcional, consome a sessão PRO
       4. QA / remediação (WS4/WS5): aplica blacklist + reprocessa recuperáveis
       5. Steps de auditoria auto-executáveis
-      6. Autopilot A — se a fase LLM parou por limite de sessão, roda até
-         RESTAURAR a quota (drena/publica não-LLM enquanto aguarda o reset) e
-         então faz UM retry da fase LLM; caso contrário, apenas exaure o não-LLM.
+      6. Autopilot A — se a fase LLM parou por limite de sessão, entra em LOOP
+         MULTIJANELA: drena/publica o não-LLM, aguarda o reset da sessão e
+         retoma a fase LLM, janela após janela, até o backlog de conteúdo
+         (sinopse+categoria) zerar, uma janela não progredir ou o usuário
+         interromper. Caso contrário, apenas exaure o não-LLM uma vez.
       7. Relatório: janela de sessão PRO (WS7) + backlog restante
 
-    A fase LLM em si é passe único (não aguarda reset dentro do orquestrador).
-    O retry pós-fallback aproveita que o trabalho não-LLM costuma cobrir o
-    cooldown de ~5h — a espera vira trabalho útil e a quota tende a voltar.
+    A fase LLM de cada janela é passe único (não aguarda reset dentro do
+    orquestrador); é o loop multijanela do G que atravessa os cooldowns de ~5h,
+    transformando a espera em trabalho útil e mantendo as publicações crescendo
+    ao longo de seções longas — sem re-execução manual.
     """
     log("[G] Analisando gargalos e construindo plano de ataque…")
 
@@ -962,45 +965,65 @@ def _run_gargalo(idioma: str):
     log("[G] Todos os steps de auditoria/manutenção concluídos.")
 
     if llm_limited and claude_available():
-        # Autopilot A ATÉ RESTAURAR A QUOTA LLM: em vez de exaurir uma única vez
-        # e parar, o não-LLM segue drenando/publicando enquanto a sessão PRO
-        # está em cooldown; assim que a quota reseta, dispara o retry da fase
-        # LLM. A espera de até ~5h vira trabalho útil e o retry fica garantido
-        # (não depende de o fallback ter, por acaso, durado mais que o cooldown).
+        # LOOP MULTIJANELA (correção estrutural do gargalo de publicação):
+        # a fase LLM sozinha gera ~1 janela de sinopses por passe. Sem loop, uma
+        # "seção" longa (rodando a noite toda) não aumenta as publicações depois
+        # da 1ª janela — o resto do tempo é gasto em trabalho não-LLM que NÃO
+        # destrava publicação (o Quality Gate exige sinopse, que só o LLM gera).
+        #
+        # Aqui o G repete, por conta própria e sem re-execução manual, o ciclo:
+        #   drenar/publicar não-LLM → aguardar o reset da sessão PRO →
+        #   retomar a fase LLM (mais uma janela de sinopses) → publicar
+        # até uma de três condições: o BACKLOG DE CONTEÚDO (sinopse+categoria)
+        # zerar; uma janela não reduzir o backlog (guard anti-giro); ou o usuário
+        # interromper (Ctrl+C). Assim, quanto maior a seção, mais publicações —
+        # o autopilot atravessa quantas janelas de 5h forem necessárias.
         from core.claude_usage_tracker import session_window
         import time as _time
-        log("[G] Iniciando Autopilot A até restaurar a quota LLM…")
+        log("[G] Fase LLM esgotou a sessão — entrando em loop multijanela "
+            "(drena não-LLM → aguarda reset → retoma LLM) até drenar o conteúdo.")
         try:
             while True:
-                autopilot.run(idioma, 100, manter_batch=False)   # exaure o não-LLM
-                w = session_window()
-                if not w.get("in_cooldown"):
-                    break                                        # quota restaurada
-                secs = max(0, int(w.get("seconds_until_reset", 0)))
-                nap = min(300, secs)                             # re-checa a cada ≤5 min
-                if nap <= 0:
-                    break
-                log(f"[G] Backlog não-LLM drenado; aguardando reset da sessão "
-                    f"(~{secs // 60} min restantes)…")
-                _time.sleep(nap)
-        except KeyboardInterrupt:
-            log("[G] Espera produtiva (Autopilot até restaurar quota) interrompida pelo usuário.")
+                # 1) Espera produtiva: drena/publica o não-LLM enquanto a sessão
+                #    PRO está em cooldown; sai quando a quota é restaurada.
+                while True:
+                    autopilot.run(idioma, 100, manter_batch=False)
+                    w = session_window()
+                    if not w.get("in_cooldown"):
+                        break                                    # quota restaurada
+                    secs = max(0, int(w.get("seconds_until_reset", 0)))
+                    nap = min(300, secs)                          # re-checa a cada ≤5 min
+                    if nap <= 0:
+                        break
+                    log(f"[G] Backlog não-LLM drenado; aguardando reset da sessão "
+                        f"(~{secs // 60} min restantes)…")
+                    _time.sleep(nap)
 
-        if not session_window().get("in_cooldown"):
-            log("[G] ── Retry da fase LLM (quota restaurada) ──")
-            try:
+                if session_window().get("in_cooldown"):
+                    log("[G] Sessão ainda em cooldown — encerrando loop multijanela.")
+                    break
+
+                backlog_antes = llm_orchestrator._content_backlog(idioma)
+                if backlog_antes <= 0:
+                    log("[G] Backlog de conteúdo (sinopse+categoria) zerado — "
+                        "loop multijanela concluído.")
+                    break
+
+                # 2) Nova janela LLM (quota restaurada) + publicação do desbloqueado.
+                log(f"[G] ── Janela LLM (quota restaurada) — "
+                    f"backlog de conteúdo: {backlog_antes:,} ──")
                 llm_orchestrator.run(idioma, wait_for_reset=False)
-            except KeyboardInterrupt:
-                log("[G] Retry da fase LLM interrompido pelo usuário.")
-            except Exception as e_retry:
-                log(f"[G] AVISO: retry da fase LLM retornou com exceção: {e_retry}")
-            # Publica o que o retry desbloqueou (idempotente; barato se nada pendente).
-            try:
                 autopilot.run(idioma, 100, manter_batch=False)
-            except Exception as e_ap2:
-                log(f"[G] AVISO: autopilot pós-retry falhou: {e_ap2}")
-        else:
-            log("[G] Retry da fase LLM pulado — quota ainda em cooldown (espera interrompida).")
+
+                # 3) Guard anti-giro: se a janela não reduziu o backlog, para
+                #    (evita loop infinito quando o conteúdo restante não é gerável).
+                backlog_depois = llm_orchestrator._content_backlog(idioma)
+                if backlog_depois >= backlog_antes:
+                    log(f"[G] Janela LLM sem progresso "
+                        f"({backlog_antes:,}→{backlog_depois:,}) — encerrando loop.")
+                    break
+        except KeyboardInterrupt:
+            log("[G] Loop multijanela interrompido pelo usuário.")
     else:
         # LLM concluiu todo o trabalho (ou claude indisponível): só exaure o
         # não-LLM uma vez — não há quota a aguardar.

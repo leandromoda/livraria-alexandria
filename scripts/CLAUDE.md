@@ -46,6 +46,32 @@ automaticamente ao reiniciar. Útil para deixar a máquina trabalhar sem supervi
 interativa. Inclui: regen sinopse (antes da fase LLM) → remediação mecânica
 (ingest+capas+reconcile) → reparo de ofertas (fix_affiliate_urls + publish_ofertas.run_repair).
 
+### Gargalo de publicação — o autopilot é o único caminho
+
+**Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma
+**sinopse** — e sinopse **só** o LLM (claude CLI) gera. Todo livro que já tem
+sinopse **já está publicado** (0 publicáveis represados); o backlog restante está
+100 % preso em `status_synopsis=0`. Logo **a taxa de publicação = a taxa de geração
+de sinopses = a quota da sessão PRO** (janela de 5h, ~1 janela de sinopses por
+esgotamento). Nenhum step não-LLM aumenta publicações; rodar horas de não-LLM
+depois da quota esgotar adiciona ~0 publicações. Isso **não** é step faltando — é
+o teto de throughput do LLM.
+
+**Como o autopilot ataca isso (G, opção padrão):** quando a fase LLM esgota a
+sessão, o G entra em **loop multijanela** — drena/publica não-LLM → aguarda o
+reset → retoma a fase LLM → publica — atravessando quantas janelas de 5h forem
+necessárias, até o backlog de conteúdo (sinopse+categoria) zerar, uma janela não
+progredir (guard anti-giro) ou o usuário dar Ctrl+C. Assim, **quanto mais longa a
+seção, mais publicações**, sem re-execução manual. (`_run_gargalo` em `main.py`.)
+
+> **Regra ao diagnosticar gargalos operacionais:** o uso do pipeline é, por
+> padrão, **autopilot (G, com fallbacks não-LLM)**. **Nunca** oriente o usuário a
+> "rodar o step X" / "rodar a opção N" como solução — isso é atalho manual. Se um
+> step realmente não estiver coberto pela execução automática, a ação correta é
+> **incorporá-lo ao autopilot** (G/`llm_orchestrator`/`autopilot`), não delegar a
+> execução ao usuário. Mensagens de auditoria que sugerem "rodar step N" são dicas
+> legadas; trate-as como candidatas a incorporação, não como instrução ao usuário.
+
 > A geração LLM (10/11/13) e a auditoria de conteúdo usam o **claude CLI**
 > (assinatura PRO) via agentes batch — Gemini foi aposentado. O orquestrador de QA
 > **`qa.py` já existe** (menu 53-61): `qa.run("audit")` é o passe único de
