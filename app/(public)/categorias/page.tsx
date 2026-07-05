@@ -28,14 +28,18 @@ export default async function CategoriasPage({ searchParams }: PageProps) {
         livro_id
       )
     `)
+    .eq("status_publish", true)
     .order("nome");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const todas = (data ?? []).map((cat: any) => ({
-    ...cat,
-    grupo: SLUG_TO_GROUP[cat.slug as string] ?? "Outros",
-    count: (cat.livros_categorias?.length ?? 0) as number,
-  }));
+  const todas = (data ?? [])
+    .map((cat: any) => ({
+      ...cat,
+      grupo: SLUG_TO_GROUP[cat.slug as string] ?? "Outros",
+      count: (cat.livros_categorias?.length ?? 0) as number,
+    }))
+    // Só categorias com livros — evita cards "0 livros" (links mortos).
+    .filter((cat) => cat.count > 0);
 
   const gruposDisponiveis = [
     ...GRUPOS_ORDEM.filter((g) => todas.some((c) => c.grupo === g)),

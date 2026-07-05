@@ -14,21 +14,46 @@ type PageProps = {
   searchParams: Promise<{ categoria?: string }>;
 };
 
+type ListaRow = {
+  id: string;
+  titulo: string;
+  slug: string;
+  introducao: string | null;
+  lista_livros: { livro_id: string }[];
+};
+
+// A tabela `listas` do Supabase NÃO tem coluna `status_publish` — o filtro
+// antigo .eq("status_publish", true) causava erro 400 e a página mostrava
+// "0 listas". A tabela só recebe listas publicadas (upsert do pipeline);
+// usamos inner join com lista_livros para trazer só listas com livros e
+// paginamos via .range() para não perder listas no teto de 1000 do PostgREST.
+async function fetchPublishedLists(): Promise<ListaRow[]> {
+  const PAGE = 1000;
+  const all: ListaRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("listas")
+      .select("id, titulo, slug, introducao, lista_livros!inner(livro_id)")
+      .order("titulo")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as unknown as ListaRow[]));
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
+
 export default async function ListasPage({ searchParams }: PageProps) {
   const { categoria: rawCategoria } = await searchParams;
   const categoriaAtiva = rawCategoria?.trim() ?? "";
 
-  const { data: todasListasData } = await supabase
-    .from("listas")
-    .select("id, titulo, slug, introducao, lista_livros (livro_id)")
-    .eq("status_publish", true)
-    .order("titulo");
+  const todasListasData = await fetchPublishedLists();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const todasListas: any[] = (todasListasData ?? []).map((l: any) => ({
+  const todasListas: any[] = todasListasData.map((l) => ({
     ...l,
     livro_count: l.lista_livros?.length ?? 0,
-    macrocategoria: (l.macrocategoria as string | null) ?? null,
+    macrocategoria: null,
   }));
 
   // Apenas listas com livros (válidas)

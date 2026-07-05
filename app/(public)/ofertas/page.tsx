@@ -24,27 +24,57 @@ const MARKETPLACE_LABELS: Record<string, string> = {
   mercado_livre: "Mercado Livre",
 };
 
-export default async function OfertasPage() {
-  const { data: rawOfertas } = await supabase
-    .from("ofertas")
-    .select(`
-      id,
-      preco,
-      marketplace,
-      url_afiliada,
-      livros (
-        titulo,
-        slug,
-        autor,
-        imagem_url,
-        isbn,
-        is_publishable
-      )
-    `)
-    .eq("ativa", true);
+type OfertaRow = {
+  id: string;
+  preco: number | null;
+  marketplace: string;
+  url_afiliada: string | null;
+  livros: {
+    titulo: string;
+    slug: string;
+    autor: string | null;
+    imagem_url: string | null;
+    isbn: string | null;
+    is_publishable: boolean;
+  } | null;
+};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ofertas = (rawOfertas ?? []).filter((o: any) => o.livros?.is_publishable === true);
+// O PostgREST corta em 1.000 linhas por request e há >3.500 ofertas ativas —
+// sem paginação, a maioria ficava fora da página (e do schema:ItemList).
+async function fetchActiveOffers(): Promise<OfertaRow[]> {
+  const PAGE = 1000;
+  const all: OfertaRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("ofertas")
+      .select(`
+        id,
+        preco,
+        marketplace,
+        url_afiliada,
+        livros (
+          titulo,
+          slug,
+          autor,
+          imagem_url,
+          isbn,
+          is_publishable
+        )
+      `)
+      .eq("ativa", true)
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as unknown as OfertaRow[]));
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
+
+export default async function OfertasPage() {
+  const ofertas = (await fetchActiveOffers()).filter(
+    (o) => o.livros?.is_publishable === true
+  );
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL || "https://livrariaalexandria.com.br";
