@@ -16,25 +16,41 @@ type PageProps = {
   searchParams: Promise<{ letra?: string }>;
 };
 
+type AutorLista = {
+  id: string;
+  nome: string;
+  slug: string;
+  livros_autores: { livro_id: string }[];
+};
+
+// A tabela `autores` do Supabase NÃO tem coluna `status_publish` — só recebe
+// os autores já publicados (upsert do pipeline). O filtro antigo
+// .eq("status_publish", true) causava erro 400 e a página mostrava 0 autores.
+// Aqui usamos inner join com livros_autores para listar apenas autores que
+// têm ao menos um livro publicado vinculado (evita ~6,7k páginas de autor
+// vazias), e paginamos via .range() para driblar o teto de 1000 do PostgREST.
+async function fetchPublishedAuthors(): Promise<AutorLista[]> {
+  const PAGE = 1000;
+  const all: AutorLista[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("autores")
+      .select("id, nome, slug, livros_autores!inner(livro_id)")
+      .not("nome", "is", null)
+      .order("nome")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as unknown as AutorLista[]));
+    if (data.length < PAGE) break;
+  }
+  return all.filter((a) => (a.nome ?? "").trim() !== "");
+}
+
 export default async function AutoresPage({ searchParams }: PageProps) {
   const { letra: rawLetra } = await searchParams;
   const letra = rawLetra?.toUpperCase() ?? "";
 
-  const { data: todos } = await supabase
-    .from("autores")
-    .select(`
-      id,
-      nome,
-      slug,
-      livros_autores (
-        livro_id
-      )
-    `)
-    .eq("status_publish", true)
-    .order("nome")
-    .range(0, 4999);
-
-  const todosAutores = todos ?? [];
+  const todosAutores = await fetchPublishedAuthors();
 
   const letrasComAutores = new Set(
     todosAutores
@@ -116,8 +132,7 @@ export default async function AutoresPage({ searchParams }: PageProps) {
         <div className="flex-1 min-w-0">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
 
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {autores.map((autor: any) => {
+            {autores.map((autor) => {
 
               const count = autor.livros_autores?.length ?? 0;
 
