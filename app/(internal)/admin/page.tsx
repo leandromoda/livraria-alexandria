@@ -156,6 +156,10 @@ function pct(a: number, b: number): number {
   return b > 0 ? Math.round((a / b) * 100) : 0;
 }
 
+const thClass =
+  "text-xs uppercase tracking-[0.1em] text-[#7B5E3A] font-medium px-4 py-3 border-b border-[#E6DED3]";
+const tdClass = "px-4 py-2.5 border-b border-[#E6DED3]";
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
@@ -167,322 +171,170 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <main className="admin-root">
+    <main className="max-w-[1200px] mx-auto px-6 sm:px-8 pt-10 pb-16 font-sans">
       {/* ── Header ── */}
-      <header className="admin-header">
-        <span className="admin-badge">INTERNAL</span>
-        <h1 className="admin-title">Painel de Controle</h1>
-        <p className="admin-subtitle">Livraria Alexandria — acesso restrito</p>
+      <header className="mb-8 border-l-4 border-[#C9A84C] pl-4">
+        <span className="text-xs uppercase tracking-[0.2em] text-[#7B5E3A] font-semibold">
+          Painel interno
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-serif font-semibold text-[#0D1B2A] mt-1">
+          Painel de Controle
+        </h1>
+        <p className="text-sm text-[#4A4A4A] mt-1">
+          Livraria Alexandria — acesso restrito
+        </p>
       </header>
 
-      {/* ── Status do Catálogo ── */}
-      <section className="section">
-        <h2 className="section-title">Status do Catálogo</h2>
-        <div className="stats-grid">
-          <StatCard label="Total de livros" value={catalog.total} />
-          <StatCard
-            label="Publicados (ativos)"
-            value={catalog.published}
-            accent="green"
-            sub={`${pct(catalog.published, catalog.total)}% do total`}
-          />
-          <StatCard
-            label="Despublicados"
-            value={catalog.blacklisted}
-            accent="red"
-            sub={`${pct(catalog.blacklisted, catalog.total)}% do total`}
-          />
-          <StatCard
-            label="Com capa (ativos)"
-            value={catalog.withCover}
-            sub={`${pct(catalog.withCover, catalog.published)}% dos publicados`}
-          />
-          <StatCard
-            label="Com oferta ativa"
-            value={catalog.withOffer}
-            sub={`${pct(catalog.withOffer, catalog.published)}% dos publicados`}
-          />
-          <StatCard
-            label="Sem capa (ativos)"
-            value={catalog.published - catalog.withCover}
-            accent="red"
-            sub="aguardando capa"
-          />
-        </div>
-      </section>
-
-      {/* ── Top Livros por Cliques ── */}
-      {topLivros.length > 0 && (
-        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
+      <div className="space-y-10">
+        {/* ── Status do Catálogo ── */}
+        <section>
           <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
-            Top Livros por Cliques
+            Status do Catálogo
           </h2>
-          <ol className="space-y-2">
-            {topLivros.map((l, i) => (
-              <li key={l.slug} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-3">
-                  <span className="w-5 text-right text-[#7B5E3A] font-medium">{i + 1}.</span>
-                  <a
-                    href={`/livros/${l.slug}`}
-                    className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
-                  >
-                    {l.titulo}
-                  </a>
-                </span>
-                <span className="text-[#C9A84C] font-semibold">{l.clicks} cliques</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
-
-      {/* ── Cliques Recentes ── */}
-      {recentClicks.length > 0 && (
-        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
-          <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
-            Cliques Recentes
-          </h2>
-          <div className="space-y-2">
-            {recentClicks.map((c) => (
-              <div key={c.id} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-3">
-                  <a
-                    href={`/livros/${c.slug}`}
-                    className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
-                  >
-                    {c.titulo}
-                  </a>
-                  <span className="text-xs text-[#7B5E3A]">{c.marketplace}</span>
-                </span>
-                <span className="text-xs text-[#4A4A4A]">
-                  {new Date(c.created_at).toLocaleString("pt-BR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            ))}
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
+            <StatCard label="Total de livros" value={catalog.total} />
+            <StatCard
+              label="Publicados (ativos)"
+              value={catalog.published}
+              highlight
+              sub={`${pct(catalog.published, catalog.total)}% do total`}
+            />
+            <StatCard
+              label="Despublicados"
+              value={catalog.blacklisted}
+              sub={`${pct(catalog.blacklisted, catalog.total)}% do total`}
+            />
+            <StatCard
+              label="Com capa (ativos)"
+              value={catalog.withCover}
+              sub={`${pct(catalog.withCover, catalog.published)}% dos publicados`}
+            />
+            <StatCard
+              label="Com oferta ativa"
+              value={catalog.withOffer}
+              sub={`${pct(catalog.withOffer, catalog.published)}% dos publicados`}
+            />
+            <StatCard
+              label="Sem capa (ativos)"
+              value={catalog.published - catalog.withCover}
+              sub="aguardando capa"
+            />
           </div>
         </section>
-      )}
 
-      {/* ── Cliques por Marketplace ── */}
-      <section className="section">
-        <h2 className="section-title">Cliques por Marketplace</h2>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: "2rem" }}>#</th>
-                <th>Marketplace</th>
-                <th className="align-right">Cliques</th>
-                <th className="align-right">Proporção</th>
-              </tr>
-            </thead>
-            <tbody>
-              {marketplaceClicks.length === 0 ? (
+        {/* ── Top Livros por Cliques ── */}
+        {topLivros.length > 0 && (
+          <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
+            <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+              Top Livros por Cliques
+            </h2>
+            <ol className="space-y-2">
+              {topLivros.map((l, i) => (
+                <li key={l.slug} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-3">
+                    <span className="w-5 text-right text-[#7B5E3A] font-medium">{i + 1}.</span>
+                    <a
+                      href={`/livros/${l.slug}`}
+                      className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
+                    >
+                      {l.titulo}
+                    </a>
+                  </span>
+                  <span className="text-[#C9A84C] font-semibold">{l.clicks} cliques</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {/* ── Cliques Recentes ── */}
+        {recentClicks.length > 0 && (
+          <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7">
+            <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+              Cliques Recentes
+            </h2>
+            <div className="space-y-2">
+              {recentClicks.map((c) => (
+                <div key={c.id} className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-3">
+                    <a
+                      href={`/livros/${c.slug}`}
+                      className="text-[#0D1B2A] hover:text-[#4A1628] transition-colors"
+                    >
+                      {c.titulo}
+                    </a>
+                    <span className="text-xs text-[#7B5E3A]">{c.marketplace}</span>
+                  </span>
+                  <span className="text-xs text-[#4A4A4A]">
+                    {new Date(c.created_at).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Cliques por Marketplace ── */}
+        <section>
+          <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+            Cliques por Marketplace
+          </h2>
+          <div className="overflow-x-auto bg-white border border-[#E6DED3] rounded-2xl">
+            <table className="w-full text-sm border-separate border-spacing-0">
+              <thead>
                 <tr>
-                  <td colSpan={4} className="empty">Nenhum clique registrado ainda.</td>
+                  <th className={`w-8 text-left ${thClass}`}>#</th>
+                  <th className={`text-left ${thClass}`}>Marketplace</th>
+                  <th className={`text-right ${thClass}`}>Cliques</th>
+                  <th className={`text-right ${thClass}`}>Proporção</th>
                 </tr>
-              ) : (
-                marketplaceClicks.map((row, i) => (
-                  <tr key={row.label}>
-                    <td className="rank">{i + 1}</td>
-                    <td>{row.label}</td>
-                    <td className="align-right">
-                      <span className="pill">{row.clicks}</span>
-                    </td>
-                    <td className="align-right">
-                      <div className="pct-bar-cell">
-                        <span className="muted" style={{ fontSize: "0.7rem", minWidth: "2.5rem", textAlign: "right" }}>
-                          {row.pct}%
-                        </span>
-                        <div className="pct-bar-track">
-                          <div className="pct-bar-fill" style={{ width: `${row.pct}%` }} />
-                        </div>
-                      </div>
+              </thead>
+              <tbody>
+                {marketplaceClicks.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="text-center text-[#7B5E3A] italic px-4 py-8">
+                      Nenhum clique registrado ainda.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <style>{`
-        .admin-root {
-          min-height: 100vh;
-          background: #0a0c10;
-          color: #e2e8f0;
-          font-family: 'IBM Plex Mono', 'Courier New', monospace;
-          padding: 2.5rem 2rem 4rem;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        .admin-header {
-          border-left: 3px solid #f59e0b;
-          padding-left: 1.25rem;
-          margin-bottom: 3rem;
-        }
-
-        .admin-badge {
-          font-size: 0.65rem;
-          letter-spacing: 0.2em;
-          color: #f59e0b;
-          font-weight: 700;
-        }
-
-        .admin-title {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #f8fafc;
-          margin: 0.25rem 0 0.25rem;
-          letter-spacing: -0.02em;
-        }
-
-        .admin-subtitle {
-          font-size: 0.8rem;
-          color: #64748b;
-          margin: 0;
-        }
-
-        .section {
-          margin-bottom: 3rem;
-        }
-
-        .section-title {
-          font-size: 0.7rem;
-          letter-spacing: 0.15em;
-          text-transform: uppercase;
-          color: #94a3b8;
-          margin-bottom: 1rem;
-          padding-bottom: 0.5rem;
-          border-bottom: 1px solid #1e2430;
-        }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 1rem;
-        }
-
-        .stat-card {
-          background: #111520;
-          border: 1px solid #1e2430;
-          border-radius: 6px;
-          padding: 1.25rem 1.5rem;
-        }
-
-        .stat-label {
-          font-size: 0.7rem;
-          color: #64748b;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-          margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-          font-size: 2rem;
-          font-weight: 700;
-          line-height: 1;
-          color: #f8fafc;
-        }
-
-        .stat-value.green { color: #4ade80; }
-        .stat-value.red   { color: #f87171; }
-
-        .stat-sub {
-          font-size: 0.7rem;
-          color: #475569;
-          margin-top: 0.35rem;
-        }
-
-        .table-wrap {
-          overflow-x: auto;
-          border: 1px solid #1e2430;
-          border-radius: 6px;
-        }
-
-        .data-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.8rem;
-        }
-
-        .data-table th {
-          background: #111520;
-          color: #64748b;
-          font-size: 0.65rem;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          padding: 0.75rem 1rem;
-          text-align: left;
-          border-bottom: 1px solid #1e2430;
-          white-space: nowrap;
-        }
-
-        .data-table td {
-          padding: 0.65rem 1rem;
-          border-bottom: 1px solid #141820;
-          color: #cbd5e1;
-          vertical-align: middle;
-        }
-
-        .data-table tr:last-child td { border-bottom: none; }
-        .data-table tr:hover td { background: #111520; }
-
-        .align-right { text-align: right; }
-
-        .rank {
-          color: #475569;
-          font-size: 0.7rem;
-          width: 2rem;
-        }
-
-        .pill {
-          background: #1e2d40;
-          color: #60a5fa;
-          padding: 0.15rem 0.5rem;
-          border-radius: 999px;
-          font-size: 0.75rem;
-          font-weight: 700;
-        }
-
-        .pct-bar-cell {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          justify-content: flex-end;
-        }
-
-        .pct-bar-track {
-          width: 80px;
-          height: 4px;
-          background: #1e2430;
-          border-radius: 2px;
-          overflow: hidden;
-          flex-shrink: 0;
-        }
-
-        .pct-bar-fill {
-          height: 100%;
-          background: #3b82f6;
-          border-radius: 2px;
-        }
-
-        .muted { color: #475569; }
-
-        .empty {
-          text-align: center;
-          color: #334155;
-          padding: 2rem !important;
-          font-style: italic;
-        }
-      `}</style>
+                ) : (
+                  marketplaceClicks.map((row, i) => (
+                    <tr
+                      key={row.label}
+                      className="hover:bg-[#F5F0E8] transition-colors last:[&>td]:border-b-0"
+                    >
+                      <td className={`text-xs text-[#7B5E3A] ${tdClass}`}>{i + 1}</td>
+                      <td className={`text-[#0D1B2A] ${tdClass}`}>{row.label}</td>
+                      <td className={`text-right ${tdClass}`}>
+                        <span className="inline-block bg-[#4A1628] text-white px-2 py-0.5 rounded-full text-xs font-semibold">
+                          {row.clicks}
+                        </span>
+                      </td>
+                      <td className={`text-right ${tdClass}`}>
+                        <div className="flex items-center gap-2 justify-end">
+                          <span className="text-xs text-[#7B5E3A] min-w-[2.5rem] text-right">
+                            {row.pct}%
+                          </span>
+                          <div className="w-20 h-1 bg-[#E6DED3] rounded-full overflow-hidden shrink-0">
+                            <div
+                              className="h-full bg-[#C9A84C] rounded-full"
+                              style={{ width: `${row.pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -492,19 +344,25 @@ export default async function AdminPage() {
 function StatCard({
   label,
   value,
-  accent,
+  highlight,
   sub,
 }: {
   label: string;
   value: number;
-  accent?: "green" | "red";
+  highlight?: boolean;
   sub?: string;
 }) {
   return (
-    <div className="stat-card">
-      <div className="stat-label">{label}</div>
-      <div className={`stat-value${accent ? ` ${accent}` : ""}`}>{value}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
+    <div className="bg-white border border-[#E6DED3] rounded-xl px-5 py-4">
+      <div className="text-xs uppercase tracking-[0.08em] text-[#7B5E3A] mb-2">{label}</div>
+      <div
+        className={`text-3xl font-serif font-semibold leading-none ${
+          highlight ? "text-[#4A1628]" : "text-[#0D1B2A]"
+        }`}
+      >
+        {value.toLocaleString("pt-BR")}
+      </div>
+      {sub && <div className="text-xs text-[#4A4A4A] mt-1.5">{sub}</div>}
     </div>
   );
 }
