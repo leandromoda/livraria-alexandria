@@ -16,24 +16,49 @@ type PageProps = {
   searchParams: Promise<{ q?: string; letra?: string }>;
 };
 
+type LivroLista = {
+  titulo: string;
+  slug: string;
+  imagem_url: string | null;
+  autor: string | null;
+};
+
+// O PostgREST retorna no máximo 1000 linhas por request. O catálogo tem
+// >3400 livros publicados; sem paginação, o índice mostrava só os 1000
+// primeiros. Aqui paginamos via .range() até esgotar e descartamos registros
+// sem título (dado inconsistente que renderizava um card quebrado no topo).
+async function fetchAllPublishableBooks(): Promise<LivroLista[]> {
+  const PAGE = 1000;
+  const all: LivroLista[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("livros")
+      .select("titulo, slug, imagem_url, autor")
+      .eq("is_publishable", true)
+      .not("titulo", "is", null)
+      .order("titulo")
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as LivroLista[]));
+    if (data.length < PAGE) break;
+  }
+  return all.filter((l) => (l.titulo ?? "").trim() !== "");
+}
+
 export default async function LivrosIndex({ searchParams }: PageProps) {
   const { q: rawQ, letra: rawLetra } = await searchParams;
   const q = rawQ?.trim() ?? "";
   const letra = rawLetra?.toUpperCase() ?? "";
 
-  const { data: todos } = await supabase
-    .from("livros")
-    .select("titulo, slug, imagem_url, autor")
-    .eq("is_publishable", true)
-    .order("titulo");
+  const todos = await fetchAllPublishableBooks();
 
   const letrasComLivros = new Set(
-    (todos ?? [])
+    todos
       .map((l) => l.titulo.charAt(0).toUpperCase())
       .filter((c) => /[A-Z]/.test(c))
   );
 
-  let livros = todos ?? [];
+  let livros = todos;
 
   if (q) {
     const qLower = q.toLowerCase();
