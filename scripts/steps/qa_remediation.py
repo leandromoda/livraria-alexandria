@@ -462,11 +462,70 @@ def run_ingest_audit() -> dict:
         conn.close()
 
 
+# ============================================================
+# Fatia: TÍTULO — despublicar publicados sem título (NÃO-LLM)
+# ============================================================
+#
+# Blindagem estrutural (par do check_title do quality_gate): o gate agora
+# reprova título vazio, impedindo NOVOS registros de entrarem. Mas livros JÁ
+# publicados com titulo nulo/vazio precisam ser REBAIXADOS — renderizam um card
+# quebrado e uma página sem identidade. Aqui detectamos e DESPUBLICAMOS
+# (SQLite + Supabase) reusando o mesmo caminho da blacklist. Auto-remediação no
+# loop de QA (G/A) — sem passo manual.
+
+def demote_untitled_published(conn, limit: int = 500) -> dict:
+    """Despublica (SQLite + Supabase) livros publicados com titulo nulo/vazio.
+    Reusa o caminho de despublicação da blacklist. Retorna contadores."""
+    from steps.apply_blacklist import (
+        _despublish_sqlite, _despublish_supabase, _load_env,
+    )
+
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT slug FROM livros
+        WHERE status_publish = 1
+          AND (titulo IS NULL OR TRIM(titulo) = '')
+          AND slug IS NOT NULL AND TRIM(slug) <> ''
+        LIMIT ?
+    """, (limit,))
+    slugs = [r[0] for r in cur.fetchall()]
+    if not slugs:
+        return {"detectados": 0, "despublicados": 0}
+
+    supabase_url, key = _load_env()
+    despublicados = 0
+    for slug in slugs:
+        local_id = _despublish_sqlite(
+            conn, slug, dry_run=False, reason="Título vazio", severity="high"
+        )
+        if not local_id:
+            continue
+        _despublish_supabase(slug, supabase_url, key, dry_run=False)
+        despublicados += 1
+    return {"detectados": len(slugs), "despublicados": despublicados}
+
+
+def run_demote_untitled(limit: int = 500) -> dict:
+    """Passe de despublicação de publicados sem título (não-LLM)."""
+    conn = get_conn()
+    try:
+        res = demote_untitled_published(conn, limit=limit)
+        if res["detectados"]:
+            log(f"[QA-REMEDIA][titulo-vazio] despublicados={res['despublicados']} "
+                f"(de {res['detectados']} publicados sem título)")
+        else:
+            log("[QA-REMEDIA][titulo-vazio] nenhum publicado sem título")
+        return res
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser(description="QA — remediação (capas / sinopse / ingest)")
     p.add_argument("--mode",
-                   choices=["covers", "synopsis-reconcile", "synopsis-regen", "ingest"],
+                   choices=["covers", "synopsis-reconcile", "synopsis-regen",
+                            "ingest", "demote-untitled"],
                    default="covers")
     p.add_argument("--limit", type=int, default=50)
     a = p.parse_args()
@@ -476,5 +535,7 @@ if __name__ == "__main__":
         run_synopsis_reconcile(limit=a.limit)
     elif a.mode == "synopsis-regen":
         run_synopsis_regen(limit=a.limit)
+    elif a.mode == "demote-untitled":
+        run_demote_untitled(limit=a.limit)
     else:
         run_ingest_audit()

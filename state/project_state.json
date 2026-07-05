@@ -1727,6 +1727,22 @@
         "CLAUDE.md",
         "scripts/CLAUDE.md"
       ]
+    },
+    {
+      "id": "TASK-QG-011",
+      "title": "Blindagem de título vazio: quality gate reprova + QA despublica publicados",
+      "status": "resolved",
+      "priority": "medium",
+      "resolved_on": "2026-07-05",
+      "branch": "fix/autopilot-despublica-titulo-vazio",
+      "description": "Livro com titulo nulo/vazio virava is_publishable=1 (o gate nunca checava titulo) e chegava ao catalogo sem titulo (card quebrado). 1 registro publicado assim: os-jogos-psicoticos-na-familia.",
+      "resolution": "(1) quality_gate.check_title reprova titulo vazio (PR #187, previne novos). (2) qa_remediation.demote_untitled_published despublica (SQLite+Supabase, reusa apply_blacklist) publicados sem titulo; roda em qa.remediate_mechanical (G/A) — auto-remediacao sem passo manual. (3) autopilot_audit check #9 reporta a metrica. Site: #185 ja filtra titulo vazio do /livros.",
+      "files": [
+        "scripts/steps/quality_gate.py",
+        "scripts/steps/qa_remediation.py",
+        "scripts/steps/qa.py",
+        "scripts/steps/autopilot_audit.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
