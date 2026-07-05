@@ -1699,6 +1699,34 @@
       "description": "Dois autores publicados no Supabase com nome = :contentReference[oaicite:26]{index=26} e :contentReference[oaicite:30]{index=30}. Artefatos de citacao gerados por LLM durante ingestao de bios/autores. Nenhum livro vinculado (autores fantasmas).",
       "resolution": "Deletados diretamente do Supabase (REST DELETE) e do SQLite local. Nao ha validacao de formato no pipeline de autores — considerar adicionar filtro de pattern no step de publicacao de autores.",
       "files": []
+    },
+    {
+      "id": "TASK-BUG-006",
+      "title": "Bug: Fix Affiliate URLs resetava TODAS as ofertas para republicacao",
+      "status": "resolved",
+      "priority": "high",
+      "resolved_on": "2026-07-05",
+      "branch": "fix/affiliate-urls-reset-seletivo",
+      "description": "scripts/steps/fix_affiliate_urls.py marcava status_publish_oferta=0 para todas as ofertas publicadas, sem checar se alguma URL mudou. Com ML=0/AMZ=0 corrigidas, ainda resetava ~3395 ofertas; interrompido antes de republicar, deixou o site com 372 ofertas ativas (era 2672). Detectado no log pipeline_2026-07-05_09-26-48.log.",
+      "resolution": "Reset seletivo: coleta os book_ids cujas offer_url realmente mudaram e reseta apenas esses (IN(...) com chunking). Sem correcoes -> no-op. PR #181 (merged).",
+      "files": [
+        "scripts/steps/fix_affiliate_urls.py"
+      ]
+    },
+    {
+      "id": "TASK-ARCH-010",
+      "title": "Gargalo estrutural de publicacao: G agora faz loop multijanela ate drenar sinopses",
+      "status": "resolved",
+      "priority": "high",
+      "resolved_on": "2026-07-05",
+      "branch": "feat/autopilot-g-loop-multijanela",
+      "description": "Fato medido: publicar exige sinopse (Quality Gate); sinopse so o LLM gera; todo livro com sinopse ja esta publicado (0 publicaveis represados); backlog restante (~12,6k) 100% preso em status_synopsis=0. Logo taxa de publicacao = taxa de sinopses = quota da sessao PRO (~1 janela por esgotamento). Antes, o G (_run_gargalo) fazia a fase LLM + 1 retry e parava, entao seccoes longas nao aumentavam publicacoes. Nao e step faltando: e teto de throughput do LLM.",
+      "resolution": "Ao esgotar a sessao, o G entra em loop multijanela: drena/publica nao-LLM -> aguarda reset -> retoma a fase LLM -> publica, ate o backlog de conteudo zerar, uma janela nao progredir (guard anti-giro) ou Ctrl+C. Docs (CLAUDE.md raiz + scripts) registram o fato estrutural e a regra 'nunca sugerir rodar step X; incorporar ao autopilot'. PR #182.",
+      "files": [
+        "scripts/main.py",
+        "CLAUDE.md",
+        "scripts/CLAUDE.md"
+      ]
     }
   ],
   "qa_remediation_loop": {
