@@ -159,6 +159,14 @@ def check_editorial_score(score):
     return True, "OK"
 
 
+def check_title(titulo):
+    """Rejeita título nulo/vazio/só-espaços — livro sem título nunca é publicável
+    (renderiza card quebrado no site e não tem página coerente)."""
+    if not titulo or not titulo.strip():
+        return False, "Título vazio"
+    return True, "OK"
+
+
 # =========================
 # UPDATE
 # =========================
@@ -210,6 +218,10 @@ def run(idioma_base="PT", pacote=20, book_ids=None):
         ) = row
 
         motivos = []
+
+        title_ok, title_msg = check_title(titulo)
+        if not title_ok:
+            motivos.append(title_msg)
 
         if status_slug != 1:
             motivos.append("Slug pendente")
