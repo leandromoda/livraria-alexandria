@@ -1743,6 +1743,20 @@
         "scripts/steps/qa.py",
         "scripts/steps/autopilot_audit.py"
       ]
+    },
+    {
+      "id": "TASK-PERF-012",
+      "title": "Autopilot: REPAIR_RELACOES condicional + Ctrl+C responsivo",
+      "status": "resolved",
+      "priority": "medium",
+      "resolved_on": "2026-07-05",
+      "branch": "fix/autopilot-repair-relacoes-e-interrupt",
+      "description": "Log de ~33h (dom→ter) mostrou cada ciclo nao-LLM gastando ~83 min em REPAIR_RELACOES, que re-sincroniza TODOS os 8341 autores (~3543 relacoes idempotentes) todo ciclo com resultado identico (OK=3543, Sem livros=6718). Dominava o tempo dos ciclos com ~0 ganho e as publicacoes mal evoluiram (LLM-gated). Alem disso, Ctrl+C nao respondia durante o REPAIR (loop nao checava interrupt) — usuario precisava apertar varias vezes.",
+      "resolution": "(1) autopilot.run: REPAIR_RELACOES agora roda so quando o nº de livros publicados com supabase_id mudou desde o ultimo reparo (backfill de relacoes novas; step 15 ja publica autores novos inline), com rede de seguranca a cada 25 ciclos. (2) publish_autores.run_repair_relacoes: checa core.interrupt.requested() por autor e encerra em ponto seguro — Ctrl+C responde em segundos (no-op quando invocado fora do autopilot).",
+      "files": [
+        "scripts/steps/autopilot.py",
+        "scripts/steps/publish_autores.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
