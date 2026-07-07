@@ -16,6 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from core.db import get_conn
 from core.logger import log
+from core import interrupt as _interrupt
 
 
 # =========================
@@ -285,7 +286,16 @@ def run_repair_relacoes():
 
     log(f"[REPAIR_RELACOES] {total} autores publicados para re-sincronização")
 
+    interrompido = False
     for i, autor in enumerate(autores, 1):
+        # Ctrl+C cooperativo: sai no próximo autor (ponto seguro) em vez de
+        # rodar os 8k+ até o fim. Quando invocado fora do autopilot (menu 30),
+        # o handler não está instalado e requested() é sempre False (no-op).
+        if _interrupt.requested():
+            log(f"[REPAIR_RELACOES] Interrupção solicitada — encerrando após {i - 1}/{total} autores.")
+            interrompido = True
+            break
+
         local_id   = autor["id"]
         slug       = autor["slug"]
 
@@ -307,4 +317,5 @@ def run_repair_relacoes():
 
     conn.close()
 
-    log(f"[REPAIR_RELACOES] Finalizado | Relações: OK={relacoes} | Falhas={falhas} | Sem livros publicados={sem_livros}")
+    log(f"[REPAIR_RELACOES] {'Interrompido' if interrompido else 'Finalizado'} | "
+        f"Relações: OK={relacoes} | Falhas={falhas} | Sem livros publicados={sem_livros}")

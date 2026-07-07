@@ -615,6 +615,15 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
     # Bottleneck LLM: ciclos consecutivos com QG rodando mas aprovando 0 livros
     ciclos_sem_qg_avanco = 0
 
+    # Reparo de relações de autores (REPAIR_RELACOES) é caro (~80 min re-sincronizando
+    # TODOS os autores publicados a cada ciclo). É um backfill: só agrega valor quando
+    # há livros recém-publicados cujas relações precisam ir ao Supabase — o step 15 já
+    # publica relações de autores novos inline. Rodamos só quando o nº de publicados
+    # (com supabase_id) mudou desde o último reparo, com rede de segurança periódica.
+    REPAIR_SAFETY_EVERY = 25
+    repair_baseline = -1
+    ciclos_sem_repair = 0
+
     ciclo = 0
     try:
         while True:
@@ -707,11 +716,28 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                 interrompido_pelo_usuario = True
                 break
 
-            try:
-                with StepRun("30 Reparar Relacoes Autores", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
-                    publish_autores.run_repair_relacoes()
-            except Exception as e:
-                log(f"[AUTOPILOT] AVISO: repair_relacoes falhou: {e}")
+            # Reparo de relações: só quando houve novas publicações desde o último
+            # reparo (ou rede de segurança a cada REPAIR_SAFETY_EVERY ciclos). Evita
+            # re-sincronizar ~3,5k relações idênticas (~80 min) todo ciclo à toa.
+            conn = get_conn()
+            pub_now = conn.execute(
+                "SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND supabase_id IS NOT NULL"
+            ).fetchone()[0]
+            conn.close()
+
+            if pub_now != repair_baseline or ciclos_sem_repair >= REPAIR_SAFETY_EVERY:
+                try:
+                    with StepRun("30 Reparar Relacoes Autores", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                        publish_autores.run_repair_relacoes()
+                    repair_baseline = pub_now
+                    ciclos_sem_repair = 0
+                except Exception as e:
+                    log(f"[AUTOPILOT] AVISO: repair_relacoes falhou: {e}")
+            else:
+                ciclos_sem_repair += 1
+                log("[AUTOPILOT] Reparo de relações: sem novas publicações desde o "
+                    f"último reparo — pulando (rede de segurança em "
+                    f"{max(0, REPAIR_SAFETY_EVERY - ciclos_sem_repair)} ciclo(s)).")
 
             if _interrupt.requested():
                 log("[AUTOPILOT] Interrupção solicitada — encerrando ao fim do ciclo.")
