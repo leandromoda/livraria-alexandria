@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Listas editoriais",
   description:
     "Seleções temáticas de livros organizadas por gênero, época e estilo. Encontre sua próxima leitura nas listas editoriais da Livraria Alexandria.",
+  alternates: { canonical: "/listas" },
 };
 
 type PageProps = {

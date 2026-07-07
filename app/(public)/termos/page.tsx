@@ -4,6 +4,7 @@ export const metadata = {
   title: "Termos de Uso | Livraria Alexandria",
   description:
     "Termos de Uso da Livraria Alexandria — condições para navegação e utilização da plataforma.",
+  alternates: { canonical: "/termos" },
 };
 
 export default function TermosPage() {

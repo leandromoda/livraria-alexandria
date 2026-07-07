@@ -4,6 +4,7 @@ export const metadata = {
   title: "Política de Privacidade | Livraria Alexandria",
   description:
     "Política de Privacidade da Livraria Alexandria — informações sobre coleta, uso e proteção de dados.",
+  alternates: { canonical: "/privacidade" },
 };
 
 export default function PrivacidadePage() {

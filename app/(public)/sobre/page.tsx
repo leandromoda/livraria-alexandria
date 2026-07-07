@@ -2,6 +2,7 @@ export const metadata = {
   title: "Sobre",
   description:
     "Conheça a Livraria Alexandria — plataforma digital para descoberta de livros, organização por temas e comparação de ofertas.",
+  alternates: { canonical: "/sobre" },
 };
 
 export default function SobrePage() {

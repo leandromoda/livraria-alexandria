@@ -7,8 +7,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [livros, listas, categorias, autores] = await Promise.all([
     supabase.from("livros").select("slug, updated_at").eq("status", "publish"),
     supabase.from("listas").select("slug").eq("status_publish", true),
-    supabase.from("categorias").select("slug").eq("status_publish", true),
-    supabase.from("autores").select("slug").eq("status_publish", true),
+    // Inclui apenas categorias com ao menos 1 livro — evita páginas vazias no sitemap
+    supabase
+      .from("categorias")
+      .select("slug, livros_categorias(livro_id)")
+      .eq("status_publish", true),
+    // Inclui apenas autores com ao menos 1 livro — evita páginas vazias no sitemap
+    supabase
+      .from("autores")
+      .select("slug, livros_autores(livro_id)")
+      .eq("status_publish", true),
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -37,17 +45,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const categoriaPages: MetadataRoute.Sitemap = (categorias.data ?? []).map((c) => ({
-    url: `${base}/categorias/${c.slug}`,
-    changeFrequency: "weekly",
-    priority: 0.6,
-  }));
+  const categoriaPages: MetadataRoute.Sitemap = (categorias.data ?? [])
+    .filter((c: any) => (c.livros_categorias?.length ?? 0) > 0)
+    .map((c) => ({
+      url: `${base}/categorias/${c.slug}`,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }));
 
-  const autorPages: MetadataRoute.Sitemap = (autores.data ?? []).map((a) => ({
-    url: `${base}/autores/${a.slug}`,
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  const autorPages: MetadataRoute.Sitemap = (autores.data ?? [])
+    .filter((a: any) => (a.livros_autores?.length ?? 0) > 0)
+    .map((a) => ({
+      url: `${base}/autores/${a.slug}`,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    }));
 
   return [...staticPages, ...livroPages, ...listaPages, ...categoriaPages, ...autorPages];
 }

@@ -8,6 +8,7 @@ import { SLUG_TO_GROUP, GRUPOS_ORDEM } from "@/lib/taxonomy-groups";
 export const metadata: Metadata = {
   title: "Categorias",
   description: "Explore livros por categoria literária na Livraria Alexandria.",
+  alternates: { canonical: "/categorias" },
 };
 
 type PageProps = {
