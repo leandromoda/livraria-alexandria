@@ -615,13 +615,15 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
     # Bottleneck LLM: ciclos consecutivos com QG rodando mas aprovando 0 livros
     ciclos_sem_qg_avanco = 0
 
-    # Reparo de relações de autores (REPAIR_RELACOES) é caro (~80 min re-sincronizando
-    # TODOS os autores publicados a cada ciclo). É um backfill: só agrega valor quando
-    # há livros recém-publicados cujas relações precisam ir ao Supabase — o step 15 já
-    # publica relações de autores novos inline. Rodamos só quando o nº de publicados
-    # (com supabase_id) mudou desde o último reparo, com rede de segurança periódica.
+    # Reparo de relações de autores (REPAIR_RELACOES) é um backfill: só agrega valor
+    # quando há livros recém-publicados cujas relações precisam ir ao Supabase (o step
+    # 15 já publica relações de autores novos inline). Rodá-lo completo todo ciclo
+    # re-sincroniza ~3,5k relações idênticas (~80 min) à toa. Aqui rodamos INCREMENTAL:
+    # sincroniza só as relações dos livros publicados desde o último reparo (delta por
+    # id). Rede de segurança: reparo COMPLETO a cada REPAIR_SAFETY_EVERY ciclos (pega
+    # drift que o delta por livro não vê, ex.: merges de dedup de autores).
     REPAIR_SAFETY_EVERY = 25
-    repair_baseline = -1
+    repair_synced_ids: set = set()   # ids de livros cujas relações já foram sincronizadas
     ciclos_sem_repair = 0
 
     ciclo = 0
@@ -716,27 +718,40 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                 interrompido_pelo_usuario = True
                 break
 
-            # Reparo de relações: só quando houve novas publicações desde o último
-            # reparo (ou rede de segurança a cada REPAIR_SAFETY_EVERY ciclos). Evita
-            # re-sincronizar ~3,5k relações idênticas (~80 min) todo ciclo à toa.
+            # Reparo de relações INCREMENTAL: sincroniza só as relações dos livros
+            # publicados desde o último reparo. Rede de segurança: reparo COMPLETO a
+            # cada REPAIR_SAFETY_EVERY ciclos. Evita re-sincronizar ~3,5k relações
+            # idênticas (~80 min) todo ciclo.
             conn = get_conn()
-            pub_now = conn.execute(
-                "SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND supabase_id IS NOT NULL"
-            ).fetchone()[0]
+            pub_ids = {
+                r[0] for r in conn.execute(
+                    "SELECT id FROM livros WHERE status_publish = 1 AND supabase_id IS NOT NULL"
+                ).fetchall()
+            }
             conn.close()
+            novos_ids = pub_ids - repair_synced_ids
 
-            if pub_now != repair_baseline or ciclos_sem_repair >= REPAIR_SAFETY_EVERY:
+            if ciclos_sem_repair >= REPAIR_SAFETY_EVERY:
+                # Rede de segurança: re-sincroniza tudo (pega drift de dedup etc.).
                 try:
                     with StepRun("30 Reparar Relacoes Autores", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
                         publish_autores.run_repair_relacoes()
-                    repair_baseline = pub_now
+                    repair_synced_ids = pub_ids
                     ciclos_sem_repair = 0
                 except Exception as e:
-                    log(f"[AUTOPILOT] AVISO: repair_relacoes falhou: {e}")
+                    log(f"[AUTOPILOT] AVISO: repair_relacoes (completo) falhou: {e}")
+            elif novos_ids:
+                try:
+                    with StepRun("30 Reparar Relacoes Autores (incremental)", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                        publish_autores.run_repair_relacoes(livro_ids=list(novos_ids))
+                    repair_synced_ids |= novos_ids
+                    ciclos_sem_repair = 0
+                except Exception as e:
+                    log(f"[AUTOPILOT] AVISO: repair_relacoes (incremental) falhou: {e}")
             else:
                 ciclos_sem_repair += 1
-                log("[AUTOPILOT] Reparo de relações: sem novas publicações desde o "
-                    f"último reparo — pulando (rede de segurança em "
+                log("[AUTOPILOT] Reparo de relações: sem livros novos desde o último "
+                    f"reparo — pulando (rede de segurança em "
                     f"{max(0, REPAIR_SAFETY_EVERY - ciclos_sem_repair)} ciclo(s)).")
 
             if _interrupt.requested():

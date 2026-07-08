@@ -1757,6 +1757,20 @@
         "scripts/steps/autopilot.py",
         "scripts/steps/publish_autores.py"
       ]
+    },
+    {
+      "id": "TASK-PERF-013",
+      "title": "REPAIR_RELACOES incremental (delta por livro) no autopilot",
+      "status": "resolved",
+      "priority": "medium",
+      "resolved_on": "2026-07-08",
+      "branch": "perf/repair-relacoes-incremental",
+      "description": "Follow-up do TASK-PERF-012. O reparo condicional (#190) reduziu a frequencia, mas quando disparava ainda re-sincronizava TODAS as ~3611 relacoes (~84 min) via scan dos 8341 autores, mesmo com poucos livros novos. Log 2026-07-07 mostrou 14 execucoes completas.",
+      "resolution": "publish_autores.run_repair_relacoes(livro_ids=[...]) ganhou modo INCREMENTAL: sincroniza so as relacoes dos livros informados (join livros_autores→autores, book-centric). autopilot rastreia o set de ids ja sincronizados (repair_synced_ids) e passa apenas o delta (livros publicados desde o ultimo reparo). Rede de seguranca: reparo COMPLETO (scan de autores) a cada 25 ciclos, pega drift de dedup. Incremental encerra por interrupt tambem.",
+      "files": [
+        "scripts/steps/publish_autores.py",
+        "scripts/steps/autopilot.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
