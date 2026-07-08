@@ -249,8 +249,14 @@ def run(pacote=100):
 # REPAIR — RELAÇÕES ÓRFÃS
 # =========================
 
-def run_repair_relacoes():
-    """Re-sincroniza livros_autores no Supabase para todos os autores já publicados.
+def run_repair_relacoes(livro_ids=None):
+    """Re-sincroniza livros_autores no Supabase.
+
+    - ``livro_ids=None`` (menu 30 / rede de segurança): re-sincroniza TODOS os
+      autores publicados — backfill completo (~80 min).
+    - ``livro_ids=[...]`` (autopilot): modo INCREMENTAL — sincroniza apenas as
+      relações dos livros informados (recém-publicados desde o último reparo).
+      Segundos em vez de minutos.
 
     Útil quando autores foram publicados antes dos seus livros terem supabase_id,
     deixando a junction table vazia (autores órfãos).
@@ -276,6 +282,49 @@ def run_repair_relacoes():
     livros_autores_url = f"{supabase_url}/rest/v1/livros_autores?on_conflict=livro_id,autor_id"
 
     cur = conn.cursor()
+
+    # ── Modo INCREMENTAL: só as relações dos livros informados ────────────────
+    if livro_ids is not None:
+        if not livro_ids:
+            conn.close()
+            log("[REPAIR_RELACOES] Incremental: nenhum livro novo — nada a sincronizar.")
+            return
+        placeholders = ",".join("?" * len(livro_ids))
+        cur.execute(f"""
+            SELECT l.supabase_id AS livro_sid, a.slug AS autor_slug
+            FROM livros l
+            JOIN livros_autores la ON la.livro_id = l.id
+            JOIN autores a         ON a.id = la.autor_id
+            WHERE l.id IN ({placeholders})
+              AND l.status_publish = 1
+              AND l.supabase_id IS NOT NULL
+              AND a.status_publish = 1
+              AND a.slug IS NOT NULL AND TRIM(a.slug) <> ''
+        """, tuple(livro_ids))
+        pares = cur.fetchall()
+        total = len(pares)
+        log(f"[REPAIR_RELACOES] Incremental: {len(livro_ids)} livro(s) novo(s) → {total} relação(ões)")
+
+        relacoes = falhas = 0
+        interrompido = False
+        for i, par in enumerate(pares, 1):
+            if _interrupt.requested():
+                log(f"[REPAIR_RELACOES] Interrupção solicitada — encerrando após {i - 1}/{total} relações.")
+                interrompido = True
+                break
+            ok = upsert_relacao(par["livro_sid"], par["autor_slug"],
+                                livros_autores_url, headers, supabase_url)
+            if ok:
+                relacoes += 1
+            else:
+                falhas += 1
+
+        conn.close()
+        log(f"[REPAIR_RELACOES] {'Interrompido' if interrompido else 'Finalizado'} (incremental) | "
+            f"Relações: OK={relacoes} | Falhas={falhas}")
+        return
+
+    # ── Modo COMPLETO: todos os autores publicados (backfill) ─────────────────
     cur.execute("SELECT id, slug FROM autores WHERE status_publish = 1")
     autores = cur.fetchall()
 
