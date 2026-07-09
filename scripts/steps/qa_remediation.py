@@ -16,6 +16,8 @@
 # livro para o step de publicação padrão re-fazer o upsert da capa).
 # ============================================================
 
+import re
+
 from core.db import get_conn
 from core.logger import log
 from steps import covers, publish
@@ -392,6 +394,10 @@ _REPORT_FACTORS = {
     "prices":         [("results", "oferta")],                  # filtra status != active
 }
 
+# NNNN_audit_<mode>.json — captura o NNNN e o modo (que pode ter '_': author_bio,
+# title_verify). Usado pela poda/arquivamento de data/logs/.
+_REPORT_RE = re.compile(r"^(\d{4})_audit_(.+)\.json$")
+
 
 def ingest_audit_reports(conn, logs_dir: str = None) -> dict:
     """Enfileira remediações a partir dos relatórios NNNN_audit_<mode>.json."""
@@ -450,16 +456,85 @@ def ingest_audit_reports(conn, logs_dir: str = None) -> dict:
     return {"relatorios": relatorios, "enfileiradas": enfileiradas}
 
 
+def archive_processed_reports(logs_dir: str = None) -> dict:
+    """Poda data/logs/: move relatórios já consumidos para processed_logs/.
+
+    Fecha o buraco do "processado automaticamente": o ingest enfileira as
+    remediações, mas sem isto os JSONs se acumulavam em logs/ até alguém rodar
+    /audit manualmente (1 por vez). Critérios conservadores:
+
+      • Modos operacionais/mecânicos (author_bio + os de _REPORT_FACTORS): a
+        remediação é feita pelos steps / loop mecânico e o /audit os dispensa
+        como "lacunas operacionais". Uma vez ingeridos, são arquivados.
+      • Modos de revisão do /audit (integrity, connectivity, list, title_verify,
+        …): mantém o MAIS RECENTE de cada modo em logs/ (estado atual p/ o /audit
+        revisar) e arquiva os snapshots antigos, já superados pelo mais novo.
+
+    Arquivar = mover para data/log_analysis/processed_logs/ (não apaga; sufixo de
+    timestamp em caso de colisão de nome). A numeração NNNN segue segura: o
+    escritor (core/audit_report) varre processed_logs/ ao gerar o próximo.
+    """
+    import os
+    import glob
+    import shutil
+    from datetime import datetime, timezone
+    from core.audit_report import REPORT_DIR
+
+    logs_dir = logs_dir or str(REPORT_DIR)
+    processed_dir = os.path.join(
+        os.path.dirname(logs_dir), "log_analysis", "processed_logs")
+    os.makedirs(processed_dir, exist_ok=True)
+
+    operational = set(_REPORT_FACTORS) | {"author_bio"}
+
+    # Agrupa por modo, preservando a ordem crescente por NNNN.
+    por_modo: dict[str, list[str]] = {}
+    for path in sorted(glob.glob(
+            os.path.join(logs_dir, "[0-9][0-9][0-9][0-9]_audit_*.json"))):
+        m = _REPORT_RE.match(os.path.basename(path))
+        if not m:
+            continue
+        por_modo.setdefault(m.group(2), []).append(path)
+
+    a_arquivar: list[str] = []
+    for modo, paths in por_modo.items():
+        if modo in operational:
+            a_arquivar.extend(paths)          # todos — já ingeridos/dispensados
+        else:
+            a_arquivar.extend(paths[:-1])     # mantém o mais recente do modo
+
+    arquivados = 0
+    for path in a_arquivar:
+        dest = os.path.join(processed_dir, os.path.basename(path))
+        if os.path.exists(dest):
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%Sz")
+            base, ext = os.path.splitext(os.path.basename(path))
+            dest = os.path.join(processed_dir, f"{base}__{ts}{ext}")
+        try:
+            shutil.move(path, dest)
+            arquivados += 1
+        except Exception:
+            pass
+
+    if arquivados:
+        log(f"[QA-REMEDIA][archive] relatórios movidos p/ processed_logs/: {arquivados}")
+    return {"arquivados": arquivados}
+
+
 def run_ingest_audit() -> dict:
-    """P1 → fila: ingere os relatórios de auditoria na fila de remediação."""
+    """P1 → fila: ingere os relatórios de auditoria na fila de remediação e
+    arquiva os já consumidos (poda data/logs/ — sem depender do /audit manual)."""
     conn = get_conn()
     try:
         res = ingest_audit_reports(conn)
         log(f"[QA-REMEDIA][ingest] relatórios={res['relatorios']} "
             f"remediações enfileiradas={res['enfileiradas']}")
-        return res
     finally:
         conn.close()
+
+    arch = archive_processed_reports()
+    res["arquivados"] = arch["arquivados"]
+    return res
 
 
 # ============================================================
