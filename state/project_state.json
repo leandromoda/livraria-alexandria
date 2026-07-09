@@ -1111,6 +1111,67 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-PIPE-020",
+      "description": "refatoração: dívida do offer_status (texto vs inteiro) — domínio duplo causa confusão no painel",
+      "priority": "medium",
+      "status": "open",
+      "registered_on": "2026-07-09",
+      "origem": "Extraído de recomendacoes_proximos_passos.json (handoff 2026-06-15, item R8), consolidado aqui e o arquivo solto removido.",
+      "contexto": "offer_status vive como texto ('active'/'unavailable'/'error') E como inteiro (0/1), com normalização ad-hoc em publish_ofertas (mapeia 'active'->1). Sintoma visível: painel S mostra 'Ofertas Ativas: 0' apesar de ~17k livros com offer_url. offer_price_monitor grava TEXTO; publish_ofertas exige INTEIRO. Nota: o slug no relatório de preços (PR #193) tornou o ingest de ofertas funcional, mas não toca nesta dívida de tipo.",
+      "plano": [
+        "Padronizar um único domínio para offer_status (recomendado: texto com enum claro, OU inteiro com mapa documentado).",
+        "Atualizar offer_resolver, offer_price_monitor, publish_ofertas e pipeline_status (painel) para o domínio único.",
+        "Migração de dados única + remover a normalização ad-hoc de publish_ofertas.",
+        "Validar: painel S com contagem coerente de ofertas ativas; sem normalização ad-hoc restante."
+      ],
+      "files": [
+        "scripts/steps/offer_resolver.py",
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/steps/publish_ofertas.py",
+        "scripts/steps/pipeline_status.py",
+        "scripts/core/db.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-021",
+      "description": "feature: fila de remediação de BIO de autor (author-level) — reusa o step author_bio (LLM)",
+      "priority": "low",
+      "status": "open",
+      "registered_on": "2026-07-09",
+      "origem": "Extraído de recomendacoes_proximos_passos.json (item R7).",
+      "contexto": "A auditoria author-bio lista autores publicados sem bio. Bio é remediação de AUTOR (tabela autores), não cabe na fila qa_remediation, que é keyed por livro_id — por isso author_bio foi deliberadamente deixado fora do ingest (não está em _REPORT_FACTORS). O inchaço do relatório (enumerava ~8k slugs) foi resolvido no PR #192 (enumeração limitada a _LIST_CAP=300 + auto-arquivamento dos logs); falta a fila author-level em si.",
+      "plano": [
+        "Decidir modelagem: tabela qa_remediation_autor OU coluna de estado em autores.",
+        "Detectar autores publicados sem bio -> reset -> author_bio.run (LLM, batch) -> publish_autores.",
+        "Anti-thrash (cool-down/quarentena) + wire no G/O.",
+        "Validar: autores sem bio reduzem após rodar; bios sobem ao Supabase."
+      ],
+      "files": [
+        "scripts/steps/author_bio.py",
+        "scripts/steps/publish_autores.py",
+        "scripts/steps/qa_remediation.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-022",
+      "description": "feature (opcional): drain de oferta dedicado, targeted por book_ids — depende de TASK-PIPE-020",
+      "priority": "low",
+      "status": "open",
+      "registered_on": "2026-07-09",
+      "origem": "Extraído de recomendacoes_proximos_passos.json (item R9).",
+      "contexto": "Hoje oferta é remediada em massa via fix_affiliate_urls + publish_ofertas.run_repair no G. Um drain targeted (só os livros enfileirados factor=oferta em qa_remediation) seria mais preciso, mas exige book_ids em offer_resolver/marketplace_scraper e depende de resolver a dívida do offer_status (TASK-PIPE-020).",
+      "plano": [
+        "Adicionar book_ids a offer_resolver.run e marketplace_scraper.run.",
+        "drain_oferta: consome qa_remediation factor=oferta -> re-resolve/re-scrape/republish targeted, com anti-thrash.",
+        "Preferir DEPOIS de TASK-PIPE-020 (offer_status limpo)."
+      ],
+      "files": [
+        "scripts/steps/offer_resolver.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/qa_remediation.py"
+      ]
+    },
+    {
       "id": "TASK-PIPE-019",
       "description": "refactor(pipeline): orquestração PRO — priorização do gargalo (WS1), monitoramento de sessão (WS7), motor LLM único = batch (WS2) e calibração empírica de BATCH_SIZE (WS3)",
       "priority": "high",
