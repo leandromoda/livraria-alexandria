@@ -30,7 +30,8 @@ def _next_sequence(log_dir: Path) -> int:
     quando todos os relatórios foram processados, logs/ fica vazia e sem este
     check o próximo começaria em 0001, sobrescrevendo o homônimo já arquivado.
     """
-    processed_dir = log_dir.parent.parent / "log_analysis" / "processed_logs"
+    # log_dir = scripts/data/logs → processed = scripts/data/log_analysis/processed_logs
+    processed_dir = log_dir.parent / "log_analysis" / "processed_logs"
     all_files = list(log_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))
     if processed_dir.exists():
         all_files += list(processed_dir.glob("[0-9][0-9][0-9][0-9]_*.json"))

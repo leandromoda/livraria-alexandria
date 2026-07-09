@@ -66,6 +66,9 @@ SEVERITY_UNPUBLISH = {"medium", "high"}   # threshold para despublicação
 REQUEST_TIMEOUT = 10                       # segundos
 REPORT_DIR = Path(SCRIPTS_ROOT) / "data" / "logs"
 LIST_MIN_MEMBERS = 5                       # mínimo de livros publicados por lista
+_LIST_CAP = 300                            # teto de itens enumerados por relatório
+                                           # (evita relatórios inflados; a remediação
+                                           # não depende da lista completa)
 
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
@@ -681,30 +684,47 @@ def run_list_audit(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
 def check_author_bios(conn: sqlite3.Connection) -> dict:
     """
     Verifica autores publicados sem bio. Sem LLM — apenas relatório.
-    Não despublica. Registra em audit_log para rastreabilidade.
+    Não despublica. Registra uma AMOSTRA em audit_log para rastreabilidade.
+
+    A contagem (`without_bio`) varre todos os autores, mas a enumeração
+    (`slugs_sem_bio` + linhas no audit_log) é limitada a `_LIST_CAP`, igual a
+    covers/classification. A lista completa não tem consumidor — a remediação de
+    bios é do step LLM (13), que varre todos os autores pendentes sozinho — e
+    enumerar os milhares apenas inflava o relatório (~185 KB) e o audit_log sem
+    ganho de cobertura.
     """
     log.info("=== AUTHOR BIO CHECK ===")
-
-    rows = conn.execute(
-        """SELECT id, slug, nome FROM autores
-           WHERE status_publish=1
-             AND (descricao IS NULL OR TRIM(descricao) = '')"""
-    ).fetchall()
 
     total_published = conn.execute(
         "SELECT COUNT(*) FROM autores WHERE status_publish=1"
     ).fetchone()[0]
 
+    without_bio = conn.execute(
+        """SELECT COUNT(*) FROM autores
+           WHERE status_publish=1
+             AND (descricao IS NULL OR TRIM(descricao) = '')"""
+    ).fetchone()[0]
+
+    # Amostra enumerada (teto _LIST_CAP) — para rastreabilidade, não cobertura.
+    rows = conn.execute(
+        """SELECT id, slug, nome FROM autores
+           WHERE status_publish=1
+             AND (descricao IS NULL OR TRIM(descricao) = '')
+           ORDER BY slug LIMIT ?""",
+        (_LIST_CAP,)
+    ).fetchall()
+
     slugs_sem_bio = [r[1] for r in rows]
 
-    if rows:
-        log.info(f"  {len(rows)}/{total_published} autores publicados sem bio:")
+    if without_bio:
+        capped = " (amostra)" if without_bio > len(rows) else ""
+        log.info(f"  {without_bio}/{total_published} autores publicados sem bio{capped}:")
         for _, slug, nome in rows:
             log.info(f"    - {nome} ({slug})")
     else:
         log.info(f"  Todos os {total_published} autores publicados têm bio. OK.")
 
-    # Salva no audit_log como severity=low (sem despublicação)
+    # Salva a amostra no audit_log como severity=low (sem despublicação)
     for autor_id, slug, nome in rows:
         conn.execute(
             """INSERT OR REPLACE INTO audit_log
@@ -724,8 +744,9 @@ def check_author_bios(conn: sqlite3.Connection) -> dict:
     return {
         "mode": "author_bio",
         "total_published": total_published,
-        "without_bio": len(rows),
-        "slugs_sem_bio": slugs_sem_bio,
+        "without_bio": without_bio,
+        "slugs_sem_bio": slugs_sem_bio,          # amostra (teto _LIST_CAP)
+        "enumeration_capped": without_bio > len(slugs_sem_bio),
     }
 
 
@@ -1030,7 +1051,7 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
 # ---------------------------------------------------------------------------
 
 COVERS_SAMPLE_DEFAULT = 30        # capas vivas a checar via HEAD por run
-_LIST_CAP = 300                   # teto de itens listados por categoria de falha
+# _LIST_CAP: teto de itens enumerados por relatório — definido no topo do módulo.
 
 
 def run_covers_audit(conn: sqlite3.Connection, sample: int = COVERS_SAMPLE_DEFAULT,
