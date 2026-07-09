@@ -141,7 +141,7 @@ def fetch_pending(conn, limit):
     cur = conn.cursor()
     cur.execute("""
         SELECT
-            id, titulo, offer_url, supabase_id,
+            id, titulo, slug, offer_url, supabase_id,
             preco_atual, offer_status
         FROM livros
         WHERE status_publish = 1

@@ -152,6 +152,9 @@ NON_BOOK_PATTERNS = [
     r"\bbibliograph",            # "bibliographical", "bibliography"
     r"\bcatalogue\b",            # catálogos em inglês britânico
     r"\bmicrofilm\b",            # coleções de microfilme
+    r"\bfinding list\b",         # índices de biblioteca: "Finding List of..."
+    r"\balphabetical list\b",    # listas bibliográficas
+    r"\bsupplement no\b",        # publicações seriais: "Supplement No. 2 to..."
     # Material didático fora do escopo literário
     r"\bworktext\b",             # "A Worktext in Home Economics"
     r"\bhome economics\b",       # disciplina escolar
@@ -164,6 +167,7 @@ NON_BOOK_PATTERNS = [
     r"\beconomic policy\b",      # "Economic Policy Review"
     r"\beconomic outlook\b",     # "Regional Economic Outlook"
     r"\beconomic theory\b",      # "Macroeconomic Theory"
+    r"\bprincipal works\b",      # índice bibliográfico: "References to the Principal Works..."
 ]
 
 BOOK_POSITIVE_PATTERNS = [
