@@ -622,8 +622,22 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
     # sincroniza só as relações dos livros publicados desde o último reparo (delta por
     # id). Rede de segurança: reparo COMPLETO a cada REPAIR_SAFETY_EVERY ciclos (pega
     # drift que o delta por livro não vê, ex.: merges de dedup de autores).
+    #
+    # SEED da baseline: os livros JÁ publicados no início são assumidos como já
+    # sincronizados por execuções anteriores (relações são upsert idempotente no
+    # Supabase). Sem esse seed, cada re-invocação de run() (o LLM_ORCH re-invoca o
+    # autopilot a cada esgotamento de sessão) trataria todos os ~3,6k publicados como
+    # "novos" e re-sincronizaria o conjunto inteiro (~88 min) à toa. Com o seed, só os
+    # livros publicados DURANTE este run entram no delta; a rede de segurança cobre
+    # qualquer resíduo de execução anterior que tenha falhado.
     REPAIR_SAFETY_EVERY = 25
-    repair_synced_ids: set = set()   # ids de livros cujas relações já foram sincronizadas
+    conn = get_conn()
+    repair_synced_ids: set = {
+        r[0] for r in conn.execute(
+            "SELECT id FROM livros WHERE status_publish = 1 AND supabase_id IS NOT NULL"
+        ).fetchall()
+    }
+    conn.close()
     ciclos_sem_repair = 0
 
     ciclo = 0
