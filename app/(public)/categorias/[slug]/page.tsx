@@ -1,4 +1,13 @@
+// ISR on-demand: página de categoria renderiza no primeiro acesso e fica em
+// cache no edge, revalidando de hora em hora. generateStaticParams vazio
+// habilita o ISR sem prerenderizar todos os slugs no build.
+export const revalidate = 3600;
+export async function generateStaticParams() {
+  return [];
+}
+
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -7,16 +16,71 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// Leituras memoizadas no Data Cache — o fetch no-store do Supabase impediria o
+// ISR on-demand de cachear o render; unstable_cache torna o dado cacheável
+// (chave = slug/categoria_id) e o render vira static-eligible → HIT no edge.
+const getCategoria = unstable_cache(
+  async (slug: string) => {
+    const { data } = await supabase
+      .from("categorias")
+      .select("id, nome, slug, livros_categorias(livro_id)")
+      .eq("slug", slug)
+      .single();
+    return data;
+  },
+  ["categoria-detalhe"],
+  { revalidate: 3600 },
+);
+
+// Conteúdo dependente (listas editoriais + livros + listas automáticas) numa
+// única entrada de cache por categoria — evita usar o array de livroIds como
+// chave de cache (variável e potencialmente enorme).
+const getCategoriaConteudo = unstable_cache(
+  async (categoriaId: string) => {
+    const { data: listasEditorial } = await supabase
+      .from("listas_categorias")
+      .select("weight, listas ( titulo, slug )")
+      .eq("categoria_id", categoriaId)
+      .order("weight", { ascending: false });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const editoriais = listasEditorial?.map((l: any) => l.listas) ?? [];
+
+    const { data: livrosPivot } = await supabase
+      .from("livros_categorias")
+      .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
+      .eq("categoria_id", categoriaId);
+    const livros = (livrosPivot ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((l: any) => l.livros)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((l: any) => l?.is_publishable === true);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const livroIds = livros.map((l: any) => l.id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let automaticas: any[] = [];
+    if (livroIds.length) {
+      const { data: listasAuto } = await supabase
+        .from("lista_livros")
+        .select("listas ( titulo, slug )")
+        .in("livro_id", livroIds)
+        .limit(5);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      automaticas = listasAuto?.map((l: any) => l.listas) ?? [];
+    }
+
+    return { editoriais, livros, automaticas };
+  },
+  ["categoria-conteudo"],
+  { revalidate: 3600 },
+);
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const { data: categoria } = await supabase
-    .from("categorias")
-    .select("nome, livros_categorias(livro_id)")
-    .eq("slug", slug)
-    .single();
+  const categoria = await getCategoria(slug);
 
   if (!categoria) return {};
 
@@ -36,58 +100,14 @@ export default async function CategoriaPage({ params }: PageProps) {
   /**
    * Categoria
    */
-  const { data: categoria } = await supabase
-    .from("categorias")
-    .select("id, nome, slug")
-    .eq("slug", slug)
-    .single();
+  const categoria = await getCategoria(slug);
 
   if (!categoria) return notFound();
 
   /**
-   * Listas editoriais
+   * Listas editoriais + livros + listas automáticas (cacheados juntos)
    */
-  const { data: listasEditorial } = await supabase
-    .from("listas_categorias")
-    .select("weight, listas ( titulo, slug )")
-    .eq("categoria_id", categoria.id)
-    .order("weight", { ascending: false });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editoriais = listasEditorial?.map((l: any) => l.listas) ?? [];
-
-  /**
-   * Livros da categoria
-   */
-  const { data: livrosPivot } = await supabase
-    .from("livros_categorias")
-    .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
-    .eq("categoria_id", categoria.id);
-
-  const livros = (livrosPivot ?? [])
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((l: any) => l.livros)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((l: any) => l?.is_publishable === true);
-
-  /**
-   * Listas automáticas
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const livroIds = livros.map((l: any) => l.id);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let automaticas: any[] = [];
-
-  if (livroIds.length) {
-    const { data: listasAuto } = await supabase
-      .from("lista_livros")
-      .select("listas ( titulo, slug )")
-      .in("livro_id", livroIds)
-      .limit(5);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    automaticas = listasAuto?.map((l: any) => l.listas) ?? [];
-  }
+  const { editoriais, livros, automaticas } = await getCategoriaConteudo(categoria.id);
 
   /**
    * Merge sem duplicar

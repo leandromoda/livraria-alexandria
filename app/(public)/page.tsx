@@ -1,4 +1,7 @@
-export const dynamic = "force-dynamic";
+// ISR: os dados só mudam quando o pipeline publica (em lotes), não a cada
+// request. Servimos do cache do edge e revalidamos de hora em hora — TTFB deixa
+// de depender de um round-trip ao Supabase por pageview.
+export const revalidate = 3600;
 
 import type { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
