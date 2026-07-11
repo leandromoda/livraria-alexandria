@@ -1,4 +1,7 @@
-export const dynamic = "force-dynamic";
+// ISR: ofertas ativas mudam em lote pelo pipeline, não a cada request.
+// Cache no edge + revalidação horária (o preço real vive no marketplace; o
+// exibido já é um snapshot do scrape, então até 1h de staleness é aceitável).
+export const revalidate = 3600;
 
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";

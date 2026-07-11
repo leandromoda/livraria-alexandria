@@ -1,4 +1,13 @@
+// ISR on-demand: lista editorial renderiza no primeiro acesso e fica em cache
+// no edge, revalidando de hora em hora. generateStaticParams vazio habilita o
+// ISR sem prerenderizar todos os slugs no build.
+export const revalidate = 3600;
+export async function generateStaticParams() {
+  return [];
+}
+
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -7,16 +16,51 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// Leituras memoizadas no Data Cache — o fetch no-store do Supabase impediria o
+// ISR on-demand de cachear o render; unstable_cache torna o dado cacheável
+// (chave = slug/lista_id) e o render vira static-eligible → HIT no edge.
+const getLista = unstable_cache(
+  async (slug: string) => {
+    const { data } = await supabase
+      .from("listas")
+      .select("id, titulo, introducao")
+      .eq("slug", slug)
+      .single();
+    return data;
+  },
+  ["lista-detalhe"],
+  { revalidate: 3600 },
+);
+
+const getLivrosDaLista = unstable_cache(
+  async (listaId: string) => {
+    const { data } = await supabase
+      .from("lista_livros")
+      .select(`
+        posicao,
+        livros (
+          id,
+          titulo,
+          slug,
+          autor,
+          imagem_url,
+          is_publishable
+        )
+      `)
+      .eq("lista_id", listaId)
+      .order("posicao", { ascending: true });
+    return data ?? [];
+  },
+  ["lista-livros"],
+  { revalidate: 3600 },
+);
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const { data: lista } = await supabase
-    .from("listas")
-    .select("titulo, introducao")
-    .eq("slug", slug)
-    .single();
+  const lista = await getLista(slug);
 
   if (!lista) return {};
 
@@ -35,11 +79,7 @@ export default async function ListaPage({ params }: PageProps) {
   /**
    * Lista
    */
-  const { data: lista } = await supabase
-    .from("listas")
-    .select("id, titulo, introducao")
-    .eq("slug", slug)
-    .single();
+  const lista = await getLista(slug);
 
   if (!lista) {
     notFound();
@@ -48,21 +88,7 @@ export default async function ListaPage({ params }: PageProps) {
   /**
    * Livros
    */
-  const { data: rawListaLivros } = await supabase
-    .from("lista_livros")
-    .select(`
-      posicao,
-      livros (
-        id,
-        titulo,
-        slug,
-        autor,
-        imagem_url,
-        is_publishable
-      )
-    `)
-    .eq("lista_id", lista.id)
-    .order("posicao", { ascending: true });
+  const rawListaLivros = await getLivrosDaLista(lista.id);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const livros = (rawListaLivros ?? []).filter((item: any) => item.livros?.is_publishable === true);

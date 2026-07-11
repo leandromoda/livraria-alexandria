@@ -1,4 +1,13 @@
+// ISR on-demand: perfil de autor renderiza no primeiro acesso e fica em cache
+// no edge, revalidando de hora em hora. generateStaticParams vazio habilita o
+// ISR sem prerenderizar todos os slugs no build.
+export const revalidate = 3600;
+export async function generateStaticParams() {
+  return [];
+}
+
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -7,16 +16,40 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// Leituras memoizadas no Data Cache — o fetch no-store do Supabase impediria o
+// ISR on-demand de cachear o render; unstable_cache torna o dado cacheável
+// (chave = slug/autor_id) e o render vira static-eligible → HIT no edge.
+const getAutor = unstable_cache(
+  async (slug: string) => {
+    const { data } = await supabase
+      .from("autores")
+      .select("id, nome, slug, nacionalidade, descricao, livros_autores(livro_id)")
+      .eq("slug", slug)
+      .single();
+    return data;
+  },
+  ["autor-detalhe"],
+  { revalidate: 3600 },
+);
+
+const getLivrosDoAutor = unstable_cache(
+  async (autorId: string) => {
+    const { data } = await supabase
+      .from("livros_autores")
+      .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
+      .eq("autor_id", autorId);
+    return data ?? [];
+  },
+  ["autor-livros"],
+  { revalidate: 3600 },
+);
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const { data: autor } = await supabase
-    .from("autores")
-    .select("nome, nacionalidade, livros_autores(livro_id)")
-    .eq("slug", slug)
-    .single();
+  const autor = await getAutor(slug);
 
   if (!autor) return {};
 
@@ -36,21 +69,14 @@ export default async function AutorPage({ params }: PageProps) {
   /**
    * Autor
    */
-  const { data: autor } = await supabase
-    .from("autores")
-    .select("id, nome, slug, nacionalidade, descricao")
-    .eq("slug", slug)
-    .single();
+  const autor = await getAutor(slug);
 
   if (!autor) return notFound();
 
   /**
    * Livros do autor
    */
-  const { data: livrosPivot } = await supabase
-    .from("livros_autores")
-    .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
-    .eq("autor_id", autor.id);
+  const livrosPivot = await getLivrosDoAutor(autor.id);
 
   const livros = (livrosPivot ?? [])
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

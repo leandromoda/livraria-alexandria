@@ -1,4 +1,14 @@
+// ISR on-demand: cada livro renderiza no primeiro acesso e fica em cache no
+// edge, revalidando de hora em hora. O generateStaticParams vazio habilita o
+// cache ISR sem prerenderizar os milhares de slugs no build (evita N queries
+// ao Supabase) — dynamicParams (default) gera cada página sob demanda.
+export const revalidate = 3600;
+export async function generateStaticParams() {
+  return [];
+}
+
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
@@ -8,17 +18,69 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// Leituras memoizadas no Data Cache do Next. O client do Supabase faz fetch com
+// `no-store`, o que impediria o ISR on-demand de cachear o render; envolver as
+// queries em unstable_cache torna o dado cacheável (chave = slug/livro_id) e o
+// render vira static-eligible → HIT no cache do edge. Revalida junto com a rota.
+const getLivro = unstable_cache(
+  async (slug: string) => {
+    const { data } = await supabase
+      .from("livros")
+      .select(`
+        *,
+        livros_categorias (
+          categorias (
+            nome,
+            slug
+          )
+        ),
+        livros_autores (
+          autores (
+            nome,
+            slug
+          )
+        )
+      `)
+      .eq("slug", slug)
+      .eq("is_publishable", true)
+      .single();
+    return data;
+  },
+  ["livro-detalhe"],
+  { revalidate: 3600 },
+);
+
+const getOfertas = unstable_cache(
+  async (livroId: string) => {
+    const { data } = await supabase
+      .from("ofertas")
+      .select("id, preco, marketplace, url_afiliada")
+      .eq("livro_id", livroId)
+      .eq("ativa", true);
+    return data ?? [];
+  },
+  ["livro-ofertas"],
+  { revalidate: 3600 },
+);
+
+const getListasDoLivro = unstable_cache(
+  async (livroId: string) => {
+    const { data } = await supabase
+      .from("lista_livros")
+      .select("listas ( titulo, slug )")
+      .eq("livro_id", livroId);
+    return data ?? [];
+  },
+  ["livro-listas"],
+  { revalidate: 3600 },
+);
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
 
-  const { data: livro } = await supabase
-    .from("livros")
-    .select("titulo, descricao, autor, imagem_url")
-    .eq("slug", slug)
-    .eq("is_publishable", true)
-    .single();
+  const livro = await getLivro(slug);
 
   if (!livro) return {};
 
@@ -60,47 +122,19 @@ export default async function LivroPage({ params }: PageProps) {
   /**
    * Livro + Categorias
    */
-  const { data: livro } = await supabase
-    .from("livros")
-    .select(`
-      *,
-      livros_categorias (
-        categorias (
-          nome,
-          slug
-        )
-      ),
-      livros_autores (
-        autores (
-          nome,
-          slug
-        )
-      )
-    `)
-    .eq("slug", slug)
-    .eq("is_publishable", true)
-    .single();
+  const livro = await getLivro(slug);
 
   if (!livro) {
     notFound();
   }
 
   /**
-   * Ofertas
+   * Ofertas + listas relacionadas (independentes → em paralelo)
    */
-  const { data: ofertas } = await supabase
-    .from("ofertas")
-    .select("id, preco, marketplace, url_afiliada")
-    .eq("livro_id", livro.id)
-    .eq("ativa", true);
-
-  /**
-   * Listas relacionadas
-   */
-  const { data: listasPivot } = await supabase
-    .from("lista_livros")
-    .select("listas ( titulo, slug )")
-    .eq("livro_id", livro.id);
+  const [ofertas, listasPivot] = await Promise.all([
+    getOfertas(livro.id),
+    getListasDoLivro(livro.id),
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listas = listasPivot?.map((l: any) => l.listas).filter(Boolean) ?? [];
