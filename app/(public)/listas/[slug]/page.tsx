@@ -10,6 +10,8 @@ import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { isOptimizableImage } from "@/lib/images";
 import Link from "next/link";
 
 type PageProps = {
@@ -171,9 +173,12 @@ export default async function ListaPage({ params }: PageProps) {
 
             {/* Capa */}
             {item.livros.imagem_url ? (
-              <img
+              <Image
                 src={item.livros.imagem_url}
                 alt={item.livros.titulo}
+                width={48}
+                height={64}
+                unoptimized={!isOptimizableImage(item.livros.imagem_url)}
                 className="flex-shrink-0 w-12 h-16 object-cover rounded-md border border-[#E6DED3]"
               />
             ) : (

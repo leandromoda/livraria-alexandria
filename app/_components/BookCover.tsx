@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import { isOptimizableImage } from "@/lib/images";
 
 interface BookCoverProps {
   src: string | null;
@@ -13,10 +15,14 @@ export default function BookCover({ src, alt }: BookCoverProps) {
   return (
     <>
       {src && !showFallback && (
-        <img
+        <Image
           src={src}
           alt={alt}
-          className="w-44 rounded-xl shadow-md border border-[#E6DED3]"
+          width={176}
+          height={256}
+          priority
+          unoptimized={!isOptimizableImage(src)}
+          className="w-44 h-auto rounded-xl shadow-md border border-[#E6DED3]"
           onError={() => setShowFallback(true)}
         />
       )}
