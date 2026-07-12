@@ -1,8 +1,25 @@
 import "./globals.css";
+import { Lora, Inter } from "next/font/google";
 import Header from "./_components/Header";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
+
+// Fontes self-hosted e com preload automático — substituem o @import
+// render-blocking do Google Fonts. São variable fonts (faixa completa de peso),
+// com italic no serif. `display: swap` evita FOIT.
+const lora = Lora({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  variable: "--font-lora",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -20,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${lora.variable} ${inter.variable}`}>
       <body className="bg-[#F5F0E8] text-[#0D1B2A]">
 
         <Header />
