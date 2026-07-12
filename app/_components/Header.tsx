@@ -26,7 +26,7 @@ export default function Header() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = searchRef.current?.value.trim();
-    if (q) router.push(`/livros?q=${encodeURIComponent(q)}`);
+    if (q) router.push(`/busca?q=${encodeURIComponent(q)}`);
   }
 
   const nav = [
@@ -86,7 +86,8 @@ export default function Header() {
           <input
             ref={searchRef}
             type="search"
-            placeholder="Buscar livros..."
+            placeholder="Buscar..."
+            aria-label="Buscar livros, autores, gêneros e listas"
             className="w-44 px-3 py-1.5 rounded-md bg-[#1B263B] border border-[#415A77] text-sm text-[#F5F0E8] placeholder-[#A8B2C1] focus:outline-none focus:border-[#C9A84C] transition-colors"
           />
         </form>
@@ -126,12 +127,13 @@ export default function Header() {
           <form onSubmit={handleSearch} className="mb-3">
             <input
               type="search"
-              placeholder="Buscar livros..."
+              placeholder="Buscar..."
+              aria-label="Buscar livros, autores, gêneros e listas"
               className="w-full px-3 py-2 rounded-md bg-[#1B263B] border border-[#415A77] text-sm text-[#F5F0E8] placeholder-[#A8B2C1] focus:outline-none focus:border-[#C9A84C] transition-colors"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   const q = (e.target as HTMLInputElement).value.trim();
-                  if (q) router.push(`/livros?q=${encodeURIComponent(q)}`);
+                  if (q) router.push(`/busca?q=${encodeURIComponent(q)}`);
                 }
               }}
             />
