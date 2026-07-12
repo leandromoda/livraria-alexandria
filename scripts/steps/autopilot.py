@@ -166,7 +166,10 @@ def _count_per_step(conn) -> dict:
             WHERE status_enrich = 0
               AND offer_url IS NOT NULL AND offer_url != ''
         """),
-        "5  Slugs": _q("SELECT COUNT(*) FROM livros WHERE status_slug = 0"),
+        "5  Slugs": _q(
+            "SELECT COUNT(*) FROM livros "
+            "WHERE status_slug = 0 OR slug IS NULL OR slug = ''"
+        ),
         "8  Dedup": _q(
             "SELECT COUNT(*) FROM livros WHERE status_dedup = 0 AND status_slug = 1"
         ),
@@ -396,8 +399,9 @@ def count_pending(conn) -> int:
                AND offer_url IS NOT NULL
                AND offer_url != '') +
 
-            -- Step 5: Slugs
-            (SELECT COUNT(*) FROM livros WHERE status_slug = 0) +
+            -- Step 5: Slugs (inclui slugs vazios/NULL já marcados — presos)
+            (SELECT COUNT(*) FROM livros
+             WHERE status_slug = 0 OR slug IS NULL OR slug = '') +
 
             -- Step 8: Dedup (depende de slug)
             (SELECT COUNT(*) FROM livros WHERE status_dedup  = 0 AND status_slug  = 1) +

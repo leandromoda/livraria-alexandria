@@ -64,9 +64,17 @@ def slug_exists(conn, slug):
     return cur.fetchone() is not None
 
 
-def generate_unique_slug(conn, titulo):
+def generate_unique_slug(conn, titulo, book_id=None):
 
     base = base_slug(titulo)
+
+    # Títulos 100% não-ASCII (cirílico, grego, CJK, árabe...) viram string vazia
+    # após o encode('ascii','ignore') em base_slug. Um slug vazio deixa o livro
+    # permanentemente impublicável (o Quality Gate exige slug) e invisível ao
+    # reprocessamento. Fallback determinístico e não-vazio baseado no id do livro.
+    if not base:
+        base = f"livro-{book_id[:12]}" if book_id else "livro"
+
     slug = base
     counter = 2
 
@@ -88,10 +96,16 @@ def fetch_pending(conn, idioma, limit):
     # Slugs são language-agnostic — todos os livros precisam de slug
     # independente do idioma. Filtrar por idioma aqui causaria Progresso=0
     # para livros de outros idiomas que o autopilot nunca processa.
+    #
+    # Inclui também livros já marcados (status_slug=1) porém com slug vazio/NULL:
+    # registros presos por um slug vazio antigo (título não-ASCII) precisam ser
+    # curados — do contrário nunca reentram no processamento (status_slug já = 1).
     cur.execute("""
         SELECT id, titulo
         FROM livros
         WHERE status_slug = 0
+           OR slug IS NULL
+           OR slug = ''
         LIMIT ?
     """, (limit,))
 
@@ -137,7 +151,7 @@ def run(idioma, pacote=10):
 
     for i, (book_id, titulo) in enumerate(rows, start=1):
 
-        slug = generate_unique_slug(conn, titulo)
+        slug = generate_unique_slug(conn, titulo, book_id)
         update_slug(conn, book_id, slug)
         processed += 1
         log(f"[SLUG][{i:03d}/{total:03d}] → {titulo} | {slug}")
