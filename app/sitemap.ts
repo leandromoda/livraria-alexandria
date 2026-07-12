@@ -3,6 +3,16 @@ import { supabase } from "@/lib/supabase";
 
 const base = "https://livrariaalexandria.com.br";
 
+type SlugComCategoriaCount = {
+  slug: string;
+  livros_categorias: { livro_id: string }[] | null;
+};
+
+type SlugComAutorCount = {
+  slug: string;
+  livros_autores: { livro_id: string }[] | null;
+};
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [livros, listas, categorias, autores] = await Promise.all([
     supabase.from("livros").select("slug, updated_at").eq("status", "publish"),
@@ -45,16 +55,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const categoriaPages: MetadataRoute.Sitemap = (categorias.data ?? [])
-    .filter((c: any) => (c.livros_categorias?.length ?? 0) > 0)
+  const categoriaPages: MetadataRoute.Sitemap = (
+    (categorias.data ?? []) as SlugComCategoriaCount[]
+  )
+    .filter((c) => (c.livros_categorias?.length ?? 0) > 0)
     .map((c) => ({
       url: `${base}/categorias/${c.slug}`,
       changeFrequency: "weekly",
       priority: 0.6,
     }));
 
-  const autorPages: MetadataRoute.Sitemap = (autores.data ?? [])
-    .filter((a: any) => (a.livros_autores?.length ?? 0) > 0)
+  const autorPages: MetadataRoute.Sitemap = (
+    (autores.data ?? []) as SlugComAutorCount[]
+  )
+    .filter((a) => (a.livros_autores?.length ?? 0) > 0)
     .map((a) => ({
       url: `${base}/autores/${a.slug}`,
       changeFrequency: "monthly",
