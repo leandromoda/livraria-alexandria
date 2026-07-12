@@ -5,6 +5,8 @@ export const revalidate = 3600;
 
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { isOptimizableImage } from "@/lib/images";
 
 export const metadata: Metadata = {
   title: "Ofertas de livros",
@@ -162,9 +164,12 @@ export default async function OfertasPage() {
 
             {/* Capa */}
             {o.livros.imagem_url ? (
-              <img
+              <Image
                 src={o.livros.imagem_url}
                 alt={o.livros.titulo}
+                width={48}
+                height={64}
+                unoptimized={!isOptimizableImage(o.livros.imagem_url)}
                 className="flex-shrink-0 w-12 h-16 object-cover rounded border border-[#E6DED3]"
               />
             ) : (

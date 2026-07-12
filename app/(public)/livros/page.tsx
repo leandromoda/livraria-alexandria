@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { isOptimizableImage } from "@/lib/images";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -171,9 +173,12 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
               {/* Capa */}
               <div className="flex-shrink-0 w-10 h-14 overflow-hidden rounded border border-[#E6DED3] bg-[#4A1628] flex items-center justify-center">
                 {l.imagem_url ? (
-                  <img
+                  <Image
                     src={l.imagem_url}
                     alt={l.titulo}
+                    width={40}
+                    height={56}
+                    unoptimized={!isOptimizableImage(l.imagem_url)}
                     className="w-full h-full object-cover"
                   />
                 ) : (

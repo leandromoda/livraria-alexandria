@@ -10,6 +10,8 @@ import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
+import Image from "next/image";
+import { isOptimizableImage } from "@/lib/images";
 import Link from "next/link";
 
 type PageProps = {
@@ -208,9 +210,12 @@ export default async function CategoriaPage({ params }: PageProps) {
             >
 
               {livro.imagem_url ? (
-                <img
+                <Image
                   src={livro.imagem_url}
                   alt={livro.titulo}
+                  width={40}
+                  height={56}
+                  unoptimized={!isOptimizableImage(livro.imagem_url)}
                   className="flex-shrink-0 w-10 h-14 object-cover rounded border border-[#E6DED3]"
                 />
               ) : (
