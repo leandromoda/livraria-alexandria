@@ -1858,6 +1858,20 @@
         "agents/synopsis_batch/prompt.md",
         "scripts/steps/qa_remediation.py"
       ]
+    },
+    {
+      "id": "TASK-BUG-013",
+      "title": "Publicacao de autores quebrada: payload enviava status_publish inexistente (Supabase)",
+      "status": "resolved",
+      "priority": "high",
+      "resolved_on": "2026-07-10",
+      "branch": "fix/publish-autores-status-publish-inexistente",
+      "description": "publish_autores.upsert_autor enviava 'status_publish': True no payload, mas a tabela autores do Supabase NAO tem essa coluna (colunas reais: id, nome, slug, nacionalidade, descricao, created_at). PostgREST retornava 400 PGRST204 em TODO autor -> upsert_autor retornava False -> mark_published local nunca era atingido -> nenhum autor era publicado e todos eram re-tentados a cada run. Detectado por outra sessao (publicou Denis Cruz manualmente). Bate com o gotcha ja anotado (leitura corrigida no #186).",
+      "resolution": "Removido 'status_publish' do payload de upsert_autor. Presenca na tabela = publicado (so publicados recebem upsert). Testado contra o Supabase: payload antigo 400 PGRST204, payload novo 200 OK. Gotcha documentado em scripts/CLAUDE.md (autores e listas nao tem status_publish no Supabase).",
+      "files": [
+        "scripts/steps/publish_autores.py",
+        "scripts/CLAUDE.md"
+      ]
     }
   ],
   "qa_remediation_loop": {

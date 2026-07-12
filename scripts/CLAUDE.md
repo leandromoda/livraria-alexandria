@@ -460,6 +460,14 @@ ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_updated_at TIMESTAMPTZ;
 > `qa_retry`, `qa_quarantine`, `reactivation_pending`, `preco`, `marketplace`,
 > `offer_url`, etc.) NÃO são enviadas ao Supabase — são apenas estado local.
 
+> **⚠️ Gotcha — tabelas `autores` e `listas` NÃO têm `status_publish` no Supabase.**
+> Colunas reais de `autores`: `id, nome, slug, nacionalidade, descricao, created_at`.
+> `status_publish` existe só no SQLite local (flag de pipeline). Enviá-la no
+> payload de upsert retorna **400 PGRST204** ("column not found") e trava a
+> publicação. A **presença na tabela já significa "publicado"** (só publicados
+> recebem upsert) — por isso o frontend também não filtra por `status_publish`
+> nessas tabelas (usa inner join com a junction). Ver `publish_autores.upsert_autor`.
+
 ---
 
 ## Estado Atual

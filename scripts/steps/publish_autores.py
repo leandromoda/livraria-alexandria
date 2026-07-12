@@ -113,12 +113,17 @@ def upsert_autor(row, autores_url, headers):
 
     now = datetime.utcnow().isoformat()
 
+    # NÃO enviar status_publish: a tabela `autores` do Supabase não tem essa
+    # coluna (colunas reais: id, nome, slug, nacionalidade, descricao, created_at).
+    # Enviá-la fazia o PostgREST retornar 400 em TODO autor — nenhum era publicado
+    # e o mark_published local nunca era atingido (publicação de autores travada
+    # em todo o pipeline). A presença na tabela já significa "publicado" (só
+    # autores publicados recebem upsert). Ver gotcha em scripts/CLAUDE.md.
     payload = {
-        "nome":           nome,
-        "slug":           slug,
-        "nacionalidade":  nacionalidade,
-        "status_publish": True,
-        "created_at":     now,
+        "nome":          nome,
+        "slug":          slug,
+        "nacionalidade": nacionalidade,
+        "created_at":    now,
     }
 
     if descricao:
