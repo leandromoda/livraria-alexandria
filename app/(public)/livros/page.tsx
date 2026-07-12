@@ -1,10 +1,10 @@
-export const dynamic = "force-dynamic";
-
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { isOptimizableImage } from "@/lib/images";
 import Link from "next/link";
+import Pagination from "@/app/_components/Pagination";
 
 export const metadata: Metadata = {
   title: "Livros",
@@ -14,9 +14,10 @@ export const metadata: Metadata = {
 };
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const PAGE_SIZE = 48;
 
 type PageProps = {
-  searchParams: Promise<{ q?: string; letra?: string }>;
+  searchParams: Promise<{ q?: string; letra?: string; page?: string }>;
 };
 
 type LivroLista = {
@@ -26,30 +27,35 @@ type LivroLista = {
   autor: string | null;
 };
 
-// O PostgREST retorna no máximo 1000 linhas por request. O catálogo tem
-// >3400 livros publicados; sem paginação, o índice mostrava só os 1000
-// primeiros. Aqui paginamos via .range() até esgotar e descartamos registros
-// sem título (dado inconsistente que renderizava um card quebrado no topo).
-async function fetchAllPublishableBooks(): Promise<LivroLista[]> {
-  const PAGE = 1000;
-  const all: LivroLista[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from("livros")
-      .select("titulo, slug, imagem_url, autor")
-      .eq("is_publishable", true)
-      .not("titulo", "is", null)
-      .order("titulo")
-      .range(from, from + PAGE - 1);
-    if (error || !data || data.length === 0) break;
-    all.push(...(data as LivroLista[]));
-    if (data.length < PAGE) break;
-  }
-  return all.filter((l) => (l.titulo ?? "").trim() !== "");
-}
+// A página lê searchParams (q/letra) e por isso renderiza no servidor sob
+// demanda — o que preserva SEO (todos os links no HTML) e mantém o payload
+// pequeno (só o subconjunto filtrado). O custo antes era refazer a varredura
+// completa do catálogo no Supabase a cada request; agora o fetch é memoizado
+// no Data Cache (unstable_cache, revalida de hora em hora).
+const fetchAllPublishableBooks = unstable_cache(
+  async (): Promise<LivroLista[]> => {
+    const PAGE = 1000;
+    const all: LivroLista[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("livros")
+        .select("titulo, slug, imagem_url, autor")
+        .eq("is_publishable", true)
+        .not("titulo", "is", null)
+        .order("titulo")
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      all.push(...(data as LivroLista[]));
+      if (data.length < PAGE) break;
+    }
+    return all.filter((l) => (l.titulo ?? "").trim() !== "");
+  },
+  ["livros-index"],
+  { revalidate: 3600 },
+);
 
 export default async function LivrosIndex({ searchParams }: PageProps) {
-  const { q: rawQ, letra: rawLetra } = await searchParams;
+  const { q: rawQ, letra: rawLetra, page: rawPage } = await searchParams;
   const q = rawQ?.trim() ?? "";
   const letra = rawLetra?.toUpperCase() ?? "";
 
@@ -74,6 +80,27 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
     livros = livros.filter((l) => l.titulo.toUpperCase().startsWith(letra));
   }
 
+  // Paginação server-side: renderizar o catálogo inteiro (>3400 itens) gerava
+  // um HTML de vários MB e render lento. Aqui servimos PAGE_SIZE por vez.
+  const totalPages = Math.max(1, Math.ceil(livros.length / PAGE_SIZE));
+  const currentPage = Math.min(
+    Math.max(1, Number(rawPage) || 1),
+    totalPages
+  );
+  const pageItems = livros.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const makeHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (letra) params.set("letra", letra);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    return qs ? `/livros?${qs}` : "/livros";
+  };
+
   const totalLabel = q
     ? `${livros.length} ${livros.length === 1 ? "resultado" : "resultados"} para "${q}"`
     : letra
@@ -83,26 +110,18 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
   return (
     <div className="space-y-8">
 
-      {/* =========================
-          HEADER
-      ========================== */}
+      {/* HEADER */}
       <header>
-
         <p className="text-[#C9A84C] text-xs font-semibold uppercase tracking-widest mb-2">
           Catálogo
         </p>
-
         <h1 className="text-3xl font-serif font-semibold text-[#0D1B2A]">
           {q ? "Resultados da busca" : "Todos os livros"}
         </h1>
-
         <p className="text-[#4A4A4A] text-sm mt-2">{totalLabel}</p>
-
       </header>
 
-      {/* =========================
-          LAYOUT COM SIDEBAR
-      ========================== */}
+      {/* LAYOUT COM SIDEBAR */}
       <div className="flex gap-8 items-start">
 
         {/* Sidebar de letras */}
@@ -149,7 +168,9 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
         )}
 
         {/* Lista de livros */}
-        <div className="flex-1 min-w-0 divide-y divide-[#E6DED3]">
+        <div className="flex-1 min-w-0">
+
+          <div className="divide-y divide-[#E6DED3]">
 
           {livros.length === 0 && q && (
             <p className="text-sm text-[#4A4A4A] py-4">
@@ -163,7 +184,7 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
             </p>
           )}
 
-          {livros.map((l) => (
+          {pageItems.map((l) => (
             <a
               key={l.slug}
               href={`/livros/${l.slug}`}
@@ -188,21 +209,26 @@ export default async function LivrosIndex({ searchParams }: PageProps) {
 
               {/* Texto */}
               <div className="leading-tight">
-
                 <p className="font-serif font-semibold text-[#0D1B2A] group-hover:text-[#4A1628] transition-colors">
                   {l.titulo}
                 </p>
-
                 {l.autor && (
                   <p className="text-sm text-[#7B5E3A] mt-0.5">
                     {l.autor}
                   </p>
                 )}
-
               </div>
 
             </a>
           ))}
+
+          </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            makeHref={makeHref}
+          />
 
         </div>
 

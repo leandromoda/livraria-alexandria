@@ -5,8 +5,7 @@ export const revalidate = 3600;
 
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
-import Image from "next/image";
-import { isOptimizableImage } from "@/lib/images";
+import OfertasList from "./OfertasList";
 
 export const metadata: Metadata = {
   title: "Ofertas de livros",
@@ -14,15 +13,6 @@ export const metadata: Metadata = {
     "As melhores ofertas em literatura nacional e internacional com preços atualizados.",
   alternates: { canonical: "/ofertas" },
 };
-
-function formatPrice(value: unknown): string | null {
-  const num = Number(value);
-  if (!value || num === 0 || isNaN(num)) return null;
-  return num.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 const MARKETPLACE_LABELS: Record<string, string> = {
   amazon: "Amazon",
@@ -151,86 +141,21 @@ export default async function OfertasPage() {
       </header>
 
       {/* =========================
-          LISTA DE OFERTAS
+          LISTA DE OFERTAS (paginada no client)
       ========================== */}
-      <div className="space-y-4">
-
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {ofertas?.map((o: any) => (
-          <div
-            key={o.id}
-            className="flex items-center gap-5 bg-white border border-[#E6DED3] rounded-xl px-6 py-5 hover:border-[#C9A84C] hover:shadow-sm transition-all"
-          >
-
-            {/* Capa */}
-            {o.livros.imagem_url ? (
-              <Image
-                src={o.livros.imagem_url}
-                alt={o.livros.titulo}
-                width={48}
-                height={64}
-                unoptimized={!isOptimizableImage(o.livros.imagem_url)}
-                className="flex-shrink-0 w-12 h-16 object-cover rounded border border-[#E6DED3]"
-              />
-            ) : (
-              <div className="flex-shrink-0 w-12 h-16 rounded bg-[#4A1628] flex items-center justify-center">
-                <span className="text-[#C9A84C] text-base font-serif">A</span>
-              </div>
-            )}
-
-            {/* Dados */}
-            <div className="flex-1 min-w-0">
-
-              <a
-                href={`/livros/${o.livros.slug}`}
-                className="block font-serif font-semibold text-base text-[#0D1B2A] leading-snug hover:text-[#4A1628] transition-colors"
-              >
-                {o.livros.titulo}
-              </a>
-
-              {o.livros.autor && (
-                <p className="text-sm text-[#4A4A4A] mt-0.5">
-                  por {o.livros.autor}
-                </p>
-              )}
-
-              <span className="text-xs text-[#7B5E3A] bg-[#F5F0E8] border border-[#E6DED3] px-2.5 py-0.5 rounded-full mt-2 inline-block">
-                {MARKETPLACE_LABELS[o.marketplace] ?? o.marketplace}
-              </span>
-
-            </div>
-
-            {/* Preço + CTA */}
-            <div className="flex-shrink-0 text-right">
-
-              {(() => {
-                const price = formatPrice(o.preco);
-                return price ? (
-                  <p className="text-xl font-serif font-semibold text-[#4A1628] mb-2">
-                    R$ {price}
-                  </p>
-                ) : (
-                  <p className="text-sm text-[#7B5E3A] mb-2">
-                    Consulte o site
-                  </p>
-                );
-              })()}
-
-              <a
-                href={`/api/click/${o.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-xs font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
-              >
-                Ver oferta →
-              </a>
-
-            </div>
-
-          </div>
-        ))}
-
-      </div>
+      <OfertasList
+        ofertas={ofertas.map((o) => ({
+          id: o.id,
+          preco: o.preco,
+          marketplace: o.marketplace,
+          livros: {
+            titulo: o.livros!.titulo,
+            slug: o.livros!.slug,
+            autor: o.livros!.autor,
+            imagem_url: o.livros!.imagem_url,
+          },
+        }))}
+      />
 
     </div>
   );
