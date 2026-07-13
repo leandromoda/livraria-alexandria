@@ -54,6 +54,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-07-13 | canônica | `metadataBase` → apex sem-www (`app/layout.tsx`); canonical relativa não resolve mais para o domínio que redireciona | #209 |
 | 2026-07-10 | domínio | Redirect www→apex 308 (Vercel Domains); apex vira Production | — (config) |
 | 2026-07-10 | middleware | Removido middleware de normalização de slug | #197 |
 | 2026-07-07 | build | Remover chave `eslint` inválida e `next.config.js` duplicado | #183 |
@@ -67,12 +68,9 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 ## Itens em aberto
 
-- **⚠️ `metadataBase` aponta p/ www** — `app/layout.tsx:31` está
-  `new URL("https://www.livrariaalexandria.com.br")`. As `alternates.canonical`
-  relativas resolvem para **www**, que agora 308-redireciona para o apex. A
-  canônica deveria apontar direto para o apex sem-www. **Fix pendente**: trocar
-  para `https://livrariaalexandria.com.br`. (Foi mudado p/ www em 2026-06-14 pelo
-  curador, antes da estratégia sem-www; agora está incorreto.)
+- **`agents/audit/prompt.md` ainda referencia URLs `www`** — o agente de auditoria
+  crawleia `https://www.livrariaalexandria.com.br` (segue o 308 p/ o apex, então
+  funciona). Cleanup menor: apontar direto p/ o apex. Baixa prioridade.
 
 ---
 
