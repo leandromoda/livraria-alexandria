@@ -103,6 +103,16 @@ def fix_offer_status(conn=None):
     Livros seeds importados com offer_status='active' (texto) nunca eram
     elegíveis para step 17 (exige offer_status=1 inteiro). Esta função
     corrige o estado para que possam ser publicados.
+
+    Também recupera ofertas em offer_status='error': o offer_price_monitor
+    marca 'error' quando falha ao BUSCAR a página da oferta (bloqueio/timeout
+    transitório da Amazon) — mas deixa offer_url e status_publish intactos.
+    Esse estado é morto: inelegível para publicar (exige status active), invisível
+    para re-resolver (exige offer_url NULL) e mesmo assim contado pela auditoria.
+    Como offer_url continua válida (tipicamente link de busca, forma usada por
+    ~metade das ofertas ativas), normalizar 'error' → 1 as devolve ao fluxo de
+    publicação. NÃO toca em 'unavailable' (indisponibilidade real, com
+    is_publishable=0).
     """
     from core.db import get_conn as _get_conn
     close_conn = conn is None
@@ -112,12 +122,13 @@ def fix_offer_status(conn=None):
     cur = conn.cursor()
 
     # 1. Normaliza offer_status texto → inteiro e reseta o flag de publicação
+    #    ('active' = seeds legados; 'error' = falha transitória do price monitor)
     cur.execute("""
         UPDATE livros
         SET offer_status         = 1,
             status_publish_oferta = 0,
             updated_at           = CURRENT_TIMESTAMP
-        WHERE offer_status = 'active'
+        WHERE offer_status IN ('active', 'error')
           AND offer_url IS NOT NULL
     """)
     conn.commit()
