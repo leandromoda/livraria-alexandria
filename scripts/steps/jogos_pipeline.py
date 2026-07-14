@@ -664,6 +664,130 @@ def quality_gate():
 # 7. PUBLISH (Supabase — tabela jogos)
 # =========================
 
+# Contrato de publicação — FONTE ÚNICA dos campos enviados ao Supabase.
+# Mapeamento local (SQLite jogos) -> remoto (Supabase jogos):
+#   ano_lancamento -> ano_publicacao | offer_url -> url_afiliada
+#   sinopse -> descricao (convenção do site, igual a livros)
+#   preco_atual -> preco_atual (fallback: preco do seed)
+# Colunas SÓ locais (nunca enviadas): lookup_query, preco, sinopse,
+#   status_*, publish_blockers, seed_id, idioma.
+# verify_supabase() valida este contrato contra o schema remoto real.
+SUPABASE_PAYLOAD_COLUMNS = (
+    "id", "titulo", "slug", "autor", "categoria", "descricao",
+    "imagem_url", "ano_publicacao", "preco_atual", "marketplace",
+    "url_afiliada", "offer_status", "is_publishable",
+    "created_at", "updated_at",
+)
+
+# Colunas inseridas pela rota /api/click-jogo/[id] em jogo_clicks
+CLICK_COLUMNS = (
+    "jogo_id", "user_agent", "referer", "ip_hash",
+    "utm_source", "utm_medium", "utm_campaign", "session_id",
+)
+
+
+def _int_or_none(v):
+    """Coerção defensiva: '' e strings numéricas do seed viram int/None —
+    string vazia num campo integer do PostgREST retorna 400 (bug conhecido
+    do publish de livros, sessão 18)."""
+    if v is None or v == "":
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _float_or_none(v):
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _text_or_none(v):
+    if v is None:
+        return None
+    v = str(v).strip()
+    return v or None
+
+
+def _build_payload(r, now):
+    """Monta o payload de upsert a partir de uma row local. As chaves são
+    EXATAMENTE SUPABASE_PAYLOAD_COLUMNS (validadas por teste)."""
+    supabase_id = r["supabase_id"] or str(uuid.uuid5(UUID_NAMESPACE_JOGOS, r["id"]))
+    return {
+        "id":             supabase_id,
+        "titulo":         r["titulo"],
+        "slug":           r["slug"],
+        "autor":          _text_or_none(r["autor"]),
+        "categoria":      r["categoria"],
+        # Convenção do site (igual a livros): descricao publicada = sinopse editorial
+        "descricao":      _text_or_none(r["sinopse"]),
+        "imagem_url":     _text_or_none(r["imagem_url"]),
+        "ano_publicacao": _int_or_none(r["ano_lancamento"]),
+        "preco_atual":    _float_or_none(r["preco_atual"]) or _float_or_none(r["preco"]),
+        "marketplace":    _text_or_none(r["marketplace"]),
+        "url_afiliada":   _text_or_none(r["offer_url"]),
+        "offer_status":   r["offer_status"] or "active",
+        "is_publishable": True,
+        "created_at":     r["created_at"] or now,
+        "updated_at":     now,
+    }
+
+
+def verify_supabase(verbose=True):
+    """Valida o contrato local<->Supabase contra o schema remoto REAL (OpenAPI
+    do PostgREST): toda coluna do payload precisa existir em `jogos`, e toda
+    coluna gravada pela rota de click precisa existir em `jogo_clicks`.
+
+    Retorna True se compatível; False se tabela ausente (migração pendente,
+    TASK-JOGOS-001) ou se houver coluna faltante (drift de schema)."""
+    url, key = _supabase_creds()
+    if not url or not key:
+        log("[JOGOS_VERIFY] ERRO: credenciais Supabase ausentes em .env.local")
+        return False
+
+    try:
+        res = requests.get(
+            f"{url}/rest/v1/",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+            timeout=30,
+        )
+        defs = res.json().get("definitions", {})
+    except Exception as e:
+        log(f"[JOGOS_VERIFY] ERRO ao ler schema remoto: {e}")
+        return False
+
+    ok = True
+    for table, wanted in (("jogos", SUPABASE_PAYLOAD_COLUMNS),
+                          ("jogo_clicks", CLICK_COLUMNS)):
+        props = defs.get(table, {}).get("properties")
+        if not props:
+            log(f"[JOGOS_VERIFY] [X] Tabela `{table}` AUSENTE no Supabase — aplicar "
+                f"scripts/sql/2026-07-14_secao_jogos.sql no SQL Editor (TASK-JOGOS-001).")
+            ok = False
+            continue
+
+        remote = set(props.keys())
+        faltantes = [c for c in wanted if c not in remote]
+        if faltantes:
+            log(f"[JOGOS_VERIFY] [X] `{table}`: colunas do contrato AUSENTES no remoto "
+                f"(publicação retornaria 400 PGRST204): {', '.join(faltantes)}")
+            ok = False
+        elif verbose:
+            extras = sorted(remote - set(wanted))
+            log(f"[JOGOS_VERIFY] [OK] `{table}`: {len(wanted)} coluna(s) do contrato "
+                f"presentes no remoto"
+                + (f" (remoto tem ainda: {', '.join(extras)})" if extras else ""))
+
+    if ok and verbose:
+        log("[JOGOS_VERIFY] Contrato local<->Supabase compatível.")
+    return ok
+
+
 def _supabase_creds():
     """Credenciais lidas de PROJECT_ROOT/.env.local (padrão publish_autores)."""
     env_path = Path(BASE_DIR).parent / ".env.local"
@@ -716,25 +840,8 @@ def publish(pacote=200):
     ok = falhas = 0
     now = datetime.utcnow().isoformat()
     for i, r in enumerate(rows, 1):
-        supabase_id = r["supabase_id"] or str(uuid.uuid5(UUID_NAMESPACE_JOGOS, r["id"]))
-        payload = {
-            "id":             supabase_id,
-            "titulo":         r["titulo"],
-            "slug":           r["slug"],
-            "autor":          r["autor"],
-            "categoria":      r["categoria"],
-            # Convenção do site (igual a livros): descricao publicada = sinopse editorial
-            "descricao":      r["sinopse"],
-            "imagem_url":     r["imagem_url"],
-            "ano_publicacao": r["ano_lancamento"],
-            "preco_atual":    r["preco_atual"] if r["preco_atual"] else r["preco"],
-            "marketplace":    r["marketplace"],
-            "url_afiliada":   r["offer_url"],
-            "offer_status":   r["offer_status"] or "active",
-            "is_publishable": True,
-            "created_at":     r["created_at"] or now,
-            "updated_at":     now,
-        }
+        payload = _build_payload(r, now)
+        supabase_id = payload["id"]
         try:
             res = requests.post(table_url, headers=headers, json=payload, timeout=60)
             if res.status_code in (200, 201, 409):
@@ -793,19 +900,41 @@ def status():
 # AUTOPILOT
 # =========================
 
-def autopilot(max_lotes_llm=10):
-    """Sequência completa: seeds -> resolver -> scraper -> slugs ->
-    sinopses (lotes LLM até drenar/limite) -> QG -> publicar -> status."""
-    log("[JOGOS_AUTOPILOT] Iniciando passe completo da Seção Jogos")
-    reclaim_stuck()
-    import_seeds()
+def _synopsis_backlog(conn=None) -> int:
+    """Jogos com descrição válida ainda sem sinopse aprovada — é o backlog
+    que trava publicação (QG exige sinopse), análogo ao _content_backlog do G."""
+    own = conn is None
+    if own:
+        conn = get_conn()
+        ensure_schema(conn)
+    n = conn.execute("""
+        SELECT COUNT(*) FROM jogos
+        WHERE status_synopsis != 1
+          AND descricao IS NOT NULL AND TRIM(descricao) != ''
+          AND status_publish = 0
+    """).fetchone()[0]
+    if own:
+        conn.close()
+    return n
 
-    # Não-LLM até exaustão (pacotes generosos; tabela é pequena)
+
+def _drain_non_llm():
+    """Exaure todo o trabalho não-LLM (idempotente — flags de status impedem
+    reprocessamento): seeds novos -> resolver -> scraper -> slugs."""
+    import_seeds()
     while resolve_offers(200):
         pass
     while scrape(30):
         pass
     gen_slugs()
+
+
+def autopilot(max_lotes_llm=10):
+    """Passe único (opção A do jogos.py): seeds -> resolver -> scraper ->
+    slugs -> sinopses (lotes LLM até drenar/limite) -> QG -> publicar."""
+    log("[JOGOS_AUTOPILOT] Iniciando passe completo da Seção Jogos")
+    reclaim_stuck()
+    _drain_non_llm()
 
     run_synopsis_batch(max_lotes=max_lotes_llm)
 
@@ -813,3 +942,102 @@ def autopilot(max_lotes_llm=10):
     publish()
     status()
     log("[JOGOS_AUTOPILOT] Passe concluído")
+
+
+def autopilot_j():
+    """Opção J — autopilot da Seção Jogos no MODELO DO G (loop multijanela).
+
+    Espelha o _run_gargalo do main.py: um passe não-LLM + fase LLM; se sobrar
+    backlog de sinopse (a quota da sessão PRO esgotou), entra em loop
+    multijanela — espera produtiva (drena não-LLM + publica) -> aguarda o
+    reset da sessão -> nova janela LLM -> publica — até o backlog zerar,
+    uma janela não progredir (guard anti-giro) ou Ctrl+C.
+    Sem confirmações interativas, como o G."""
+    from core.claude_runner import claude_available
+    from core.claude_usage_tracker import session_window
+
+    log("[J] Autopilot Jogos (modelo G) — passe único + loop multijanela")
+
+    # Pré-checagem do contrato de publicação (não bloqueia o trabalho local:
+    # sem a migração o pipeline avança até o publish, que falha com instrução).
+    verify_supabase(verbose=False)
+
+    reclaim_stuck()
+    _drain_non_llm()
+
+    # ── 1ª janela LLM ──────────────────────────────────────────
+    if claude_available():
+        run_synopsis_batch(max_lotes=100)
+    else:
+        log("[J] claude CLI indisponível — pulando fase LLM (sinopses ficam pendentes).")
+    quality_gate()
+    publish()
+
+    backlog = _synopsis_backlog()
+    if backlog <= 0:
+        log("[J] Backlog de sinopses zerado no primeiro passe.")
+    elif not claude_available():
+        log(f"[J] {backlog} sinopse(s) pendente(s), mas claude CLI indisponível — "
+            f"encerrando sem loop multijanela.")
+    else:
+        # ── LOOP MULTIJANELA (modelo G) ────────────────────────
+        log(f"[J] Backlog de sinopses restante: {backlog} — entrando em loop "
+            f"multijanela (drena não-LLM -> aguarda reset -> retoma LLM).")
+        try:
+            while True:
+                # 1) Espera produtiva: drena/publica o não-LLM enquanto a
+                #    sessão PRO está em cooldown; sai quando a quota volta.
+                while True:
+                    _drain_non_llm()
+                    quality_gate()
+                    publish()
+                    w = session_window()
+                    if not w.get("in_cooldown"):
+                        break                                # quota restaurada
+                    secs = max(0, int(w.get("seconds_until_reset", 0)))
+                    nap = min(300, secs)                     # re-checa a cada <=5 min
+                    if nap <= 0:
+                        break
+                    log(f"[J] Não-LLM drenado; aguardando reset da sessão "
+                        f"(~{secs // 60} min restantes)…")
+                    time.sleep(nap)
+
+                if session_window().get("in_cooldown"):
+                    log("[J] Sessão ainda em cooldown — encerrando loop multijanela.")
+                    break
+
+                backlog_antes = _synopsis_backlog()
+                if backlog_antes <= 0:
+                    log("[J] Backlog de sinopses zerado — loop multijanela concluído.")
+                    break
+
+                # 2) Nova janela LLM (quota restaurada) + publicação.
+                log(f"[J] ── Janela LLM (quota restaurada) — backlog: {backlog_antes} ──")
+                run_synopsis_batch(max_lotes=100)
+                quality_gate()
+                publish()
+
+                # 3) Guard anti-giro: janela sem progresso -> para (evita loop
+                #    infinito quando o restante não é gerável, ex: descrição ruim).
+                backlog_depois = _synopsis_backlog()
+                if backlog_depois >= backlog_antes:
+                    log(f"[J] Janela LLM sem progresso "
+                        f"({backlog_antes}->{backlog_depois}) — encerrando loop.")
+                    break
+        except KeyboardInterrupt:
+            log("[J] Loop multijanela interrompido pelo usuário.")
+
+    # ── Relatório final ────────────────────────────────────────
+    status()
+    try:
+        w = session_window()
+        restante = _synopsis_backlog()
+        if w.get("in_cooldown"):
+            log(f"[J] Sessão PRO em cooldown (reset previsto: {w.get('reset_at', '?')}). "
+                f"Backlog de sinopses: {restante}.")
+        elif restante > 0:
+            log(f"[J] Janela disponível e {restante} sinopse(s) pendente(s) — "
+                f"re-rode J para avançar.")
+    except Exception:
+        pass
+    log("[J] Passe concluído.")
