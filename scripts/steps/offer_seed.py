@@ -204,6 +204,9 @@ def ensure_tables(conn):
         -- Supabase sync
         supabase_id         TEXT,
 
+        -- Rastreio de origem
+        seed_id             TEXT,
+
         created_at      DATETIME,
         updated_at      DATETIME
     )
@@ -232,6 +235,9 @@ def ensure_tables(conn):
         ("status_publish_oferta",  "INTEGER DEFAULT 0"),
         ("status_enrich",          "INTEGER DEFAULT 0"),
         ("status_categorize",      "INTEGER DEFAULT 0"),
+        # INSERT usa seed_id desde sempre, mas o bootstrap não criava a coluna
+        # (em produção o core/db.py migrava). Banco novo quebrava sem isto.
+        ("seed_id",                "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")

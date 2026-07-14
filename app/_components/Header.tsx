@@ -32,6 +32,7 @@ export default function Header() {
   const nav = [
     { href: "/listas", label: "Listas" },
     { href: "/livros", label: "Livros" },
+    { href: "/jogos", label: "Jogos" },
     { href: "/autores", label: "Autores" },
     { href: "/categorias", label: "Categorias" },
     { href: "/ofertas", label: "Ofertas" },
