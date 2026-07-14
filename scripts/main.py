@@ -1159,6 +1159,7 @@ def main():
 S  → Status do pipeline (atualizar)
 G  → Atacar gargalos — executa o plano automaticamente (sem confirmação) → Autopilot A
 W  → Esperar reset da sessão Claude PRO e então rodar o G automaticamente
+J  → Jogos — autopilot da Seção Jogos, modelo G (pipeline paralelo, multijanela)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
 I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
@@ -1190,6 +1191,12 @@ E  → Exports
 
         elif op.upper() == "W":
             _run_wait_then_gargalo(idioma)
+
+        elif op.upper() == "J":
+            # Seção Jogos — pipeline paralelo (import lazy: main.py não carrega
+            # nada do domínio jogos fora desta opção)
+            from steps import jogos_pipeline
+            jogos_pipeline.autopilot_j()
 
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")

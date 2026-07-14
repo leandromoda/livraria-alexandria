@@ -26,6 +26,8 @@ MENU = """
  7  Publicar no Supabase  (tabela jogos)
 
  A  Autopilot — passe completo (1→7)
+ J  Autopilot multijanela — modelo G (espera reset da sessão e retoma)
+ V  Verificar compatibilidade com o Supabase (contrato de publicação)
  S  Status
  Q  Sair
 """
@@ -51,6 +53,10 @@ def executar(opcao: str) -> bool:
         jp.publish()
     elif opcao == "A":
         jp.autopilot()
+    elif opcao == "J":
+        jp.autopilot_j()
+    elif opcao == "V":
+        jp.verify_supabase()
     elif opcao == "S":
         jp.status()
     elif opcao == "Q":

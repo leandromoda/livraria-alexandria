@@ -198,9 +198,30 @@ isolamento é **por construção**, não por guards espalhados no código de liv
 
 ```bash
 cd scripts
-python jogos.py        # menu próprio (1-7, A=autopilot, S=status)
-python jogos.py A      # autopilot direto
+python jogos.py        # menu próprio (1-7, A=passe único, J=multijanela, V=verify, S=status)
+python jogos.py J      # autopilot multijanela direto
+python main.py         # → letra J também roda o autopilot de jogos
 ```
+
+**Opção J (modelo G):** passe não-LLM + fase LLM; se a quota da sessão PRO
+esgotar com backlog de sinopse, entra em **loop multijanela** — espera
+produtiva (drena não-LLM + publica) → aguarda o reset → nova janela LLM →
+publica — até drenar, uma janela não progredir (guard anti-giro) ou Ctrl+C.
+Acessível também pela letra **J** no menu do `main.py` (import lazy — nada do
+domínio jogos carrega fora dessa opção).
+
+**Opção V — contrato de publicação:** `verify_supabase()` compara as colunas
+do payload (`SUPABASE_PAYLOAD_COLUMNS`) e da rota de click (`CLICK_COLUMNS`)
+com o schema remoto real (OpenAPI do PostgREST). Detecta tabela ausente
+(migração pendente) e drift de coluna (que causaria 400 PGRST204) ANTES do
+publish. O J roda essa checagem automaticamente no início.
+
+Mapeamento local → Supabase (fonte única em `SUPABASE_PAYLOAD_COLUMNS`):
+`ano_lancamento→ano_publicacao`, `offer_url→url_afiliada`,
+`sinopse→descricao` (convenção igual a livros), `preco_atual` com fallback
+`preco`. Colunas só locais (nunca enviadas): `lookup_query, preco, sinopse,
+status_*, publish_blockers, seed_id, idioma`. Tipos coeridos no payload
+(`int/float/None` — string vazia em campo numérico = 400, bug da sessão 18).
 
 | Aspecto | Livros | Jogos |
 |---|---|---|
