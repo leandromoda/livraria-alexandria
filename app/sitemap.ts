@@ -14,7 +14,7 @@ type SlugComAutorCount = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [livros, listas, categorias, autores] = await Promise.all([
+  const [livros, listas, categorias, autores, jogos] = await Promise.all([
     supabase.from("livros").select("slug, updated_at").eq("status", "publish"),
     supabase.from("listas").select("slug").eq("status_publish", true),
     // Inclui apenas categorias com ao menos 1 livro — evita páginas vazias no sitemap
@@ -27,11 +27,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from("autores")
       .select("slug, livros_autores(livro_id)")
       .eq("status_publish", true),
+    // Seção Jogos (tabela própria do pipeline paralelo); enquanto a migração
+    // não for aplicada, a query retorna erro e a lista sai vazia
+    supabase.from("jogos").select("slug, updated_at").eq("is_publishable", true),
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
     "/",
     "/livros",
+    "/jogos",
     "/listas",
     "/categorias",
     "/autores",
@@ -75,5 +79,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-  return [...staticPages, ...livroPages, ...listaPages, ...categoriaPages, ...autorPages];
+  const jogoPages: MetadataRoute.Sitemap = (jogos.data ?? []).map((j) => ({
+    url: `${base}/jogos/${j.slug}`,
+    lastModified: j.updated_at ?? undefined,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  return [
+    ...staticPages,
+    ...livroPages,
+    ...listaPages,
+    ...categoriaPages,
+    ...autorPages,
+    ...jogoPages,
+  ];
 }

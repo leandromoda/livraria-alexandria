@@ -188,6 +188,48 @@ scripts/
 
 ---
 
+## Pipeline de Jogos (paralelo e independente)
+
+A **Seção Jogos** do site (RPG de mesa, jogos de tabuleiro, jogos de cartas)
+tem um pipeline **próprio e isolado** — decisão de arquitetura de 2026-07-14:
+jogos não são análogos a livros (enrich/covers/dedup/review/listas/auditorias
+de livros produziriam dados errados ou despublicação indevida), então o
+isolamento é **por construção**, não por guards espalhados no código de livros.
+
+```bash
+cd scripts
+python jogos.py        # menu próprio (1-7, A=autopilot, S=status)
+python jogos.py A      # autopilot direto
+```
+
+| Aspecto | Livros | Jogos |
+|---|---|---|
+| Tabela local | `livros` (books.db) | `jogos` (mesmo books.db) |
+| Seeds | `NNN_offer_seeds.json` | `NNN_jogos_seeds.json` |
+| Seeder (ChatGPT) | `agents/seeder_agent - theme driven.txt` | `agents/seeder_agent - jogos theme driven.txt` |
+| Sinopse (LLM) | `agents/synopsis_batch` (`*_synopsis_input.json`) | `agents/synopsis_jogos_batch` (`*_synopsis_jogos_input.json`) |
+| Tabela Supabase | `livros` (+ ofertas/autores/categorias/listas) | `jogos` (oferta embutida; sem autores/listas de livros) |
+| Click tracking | `/api/click/[id]` → `oferta_clicks` | `/api/click-jogo/[id]` → `jogo_clicks` |
+| Página | `/livros/[slug]` | `/jogos/[slug]` |
+
+- **Módulo:** `steps/jogos_pipeline.py` (seed → resolver → scraper → slug →
+  sinopse LLM → QG → publish). Entrypoint: `scripts/jogos.py` — **não** passa
+  pelo `main.py` nem pelo autopilot G.
+- **Reuso apenas de funções puras** dos steps de livros (nada é modificado lá):
+  `offer_resolver.resolve_offer` e `marketplace_scraper.scrape_marketplace`,
+  além de `core.claude_runner` e `core.batch_numbering`.
+- **Sem no pipeline de jogos (de propósito):** enrich via Google Books, capas
+  via APIs de livro (fonte única = scraper do marketplace), dedup contra
+  livros, review `is_book`, categorização LLM (categoria vem do seed),
+  listas "Melhores livros de…", páginas de autor para designers,
+  auditorias de veracidade de título (Google Books não cataloga jogos).
+- **Migração Supabase (1x):** `scripts/sql/2026-07-14_secao_jogos.sql` no SQL
+  Editor cria `jogos` + `jogo_clicks` (RLS read público em `jogos`). Sem ela,
+  o publish (opção 7) falha com mensagem orientando a migração; o site fica
+  de pé normalmente (hub `/jogos` mostra "em breve").
+
+---
+
 ## Banco de Dados (SQLite)
 
 **Arquivo:** `data/books.db`
