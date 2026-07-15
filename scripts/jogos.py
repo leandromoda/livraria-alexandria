@@ -19,11 +19,12 @@ MENU = """
 
  1  Importar seeds        (data/seeds/NNN_jogos_seeds.json)
  2  Resolver ofertas      (lookup_query → URL afiliada)
- 3  Scraper marketplace   (capa + descrição + preço)
+ 3  Scraper marketplace   (busca → produto: capa + descrição + preço)
  4  Gerar slugs
  5  Sinopses (lote LLM — claude CLI)
  6  Quality gate
  7  Publicar no Supabase  (tabela jogos)
+ 8  Finder (lote LLM — acha produto + descrição p/ jogos sem fonte)
 
  A  Autopilot — passe completo (1→7)
  J  Autopilot multijanela — modelo G (espera reset da sessão e retoma)
@@ -51,6 +52,8 @@ def executar(opcao: str) -> bool:
         jp.quality_gate()
     elif opcao == "7":
         jp.publish()
+    elif opcao == "8":
+        jp.run_finder_batch()
     elif opcao == "A":
         jp.autopilot()
     elif opcao == "J":

@@ -141,11 +141,28 @@ def ensure_schema(conn):
         status_synopsis INTEGER DEFAULT 0,
         status_publish  INTEGER DEFAULT 0,
 
+        -- Agente finder (LLM): 1=já tentou e não achou (não re-exportar)
+        finder_tried    INTEGER DEFAULT 0,
+
+        -- Rejeições de sinopse com a MESMA descrição (anti-loop de quota):
+        -- ao atingir SYN_REJECTS_MAX a descrição é descartada como fonte ruim
+        syn_rejects     INTEGER DEFAULT 0,
+
         seed_id         TEXT,
         created_at      DATETIME,
         updated_at      DATETIME
     )
     """)
+
+    # Migrations para bancos onde a tabela jogos já existia sem colunas novas
+    for col, definition in [
+        ("finder_tried", "INTEGER DEFAULT 0"),
+        ("syn_rejects",  "INTEGER DEFAULT 0"),
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE jogos ADD COLUMN {col} {definition}")
+        except sqlite3.OperationalError:
+            pass  # coluna já existe
 
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jogos_slug ON jogos(slug)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_jogos_categoria ON jogos(categoria)")
@@ -335,15 +352,139 @@ def resolve_offers(pacote=100):
 
 
 # =========================
-# 3. SCRAPER (capa + descrição + preço)
+# 3. SCRAPER (capa + descrição + preço — via PÁGINA DO PRODUTO)
 # =========================
 
-def scrape(pacote=30):
-    """Step 3 — extrai imagem/descrição/preço da página do marketplace.
-    ÚNICA fonte de capa e descrição para jogos (sem Google Books/OpenLibrary,
-    que só catalogam livros e devolveriam dados de obra homônima)."""
-    from steps.marketplace_scraper import scrape_marketplace  # puro: url -> dict
+# O offer_url do resolver é uma URL de BUSCA. Os SELECTORS do
+# marketplace_scraper são de PÁGINA DE PRODUTO (#productDescription,
+# .ui-pdp-*) — raspar a busca não rende descrição nem imagem (só um preço
+# de card, possivelmente de outro item). Nos livros esse buraco era coberto
+# pelos fallbacks Open Library/Google Books, que jogos não usam (por design).
+# Aqui, portanto: busca -> resultado CUJO TÍTULO CASA com o jogo -> raspa a
+# página do produto, e o offer_url é promovido ao deep-link afiliado.
+#
+# A validação de título é OBRIGATÓRIA: o 1º resultado da busca pode ser
+# outro produto (medido: "Knave" retornou Blades in the Dark). Sem card
+# compatível -> sem produto -> item fica sem descrição e vai para o agente
+# finder (LLM), que cobre também os muros anti-bot (Amazon 503/captcha,
+# ML account-verification) — mesmo papel do offer_finder nos livros.
 
+_AMAZON_ASIN_RE = re.compile(r"/dp/([A-Z0-9]{10})")
+_ML_LINK_RE     = re.compile(
+    r"https?://(?:produto\.mercadolivre\.com\.br/MLB-?\d+[^\s\"'#?]*"
+    r"|www\.mercadolivre\.com\.br/[^\s\"'#?]*?/p/MLB\d+)"
+)
+
+# Tokens que não identificam o produto (edição/formato/tipo)
+_TITULO_STOPWORDS = {
+    "rpg", "livro", "basico", "básico", "caixa", "box", "edicao", "edição",
+    "jogo", "jogos", "de", "do", "da", "dos", "das", "e", "o", "a", "em",
+    "para", "ed", "vol", "volume", "2a", "1a", "3a", "ii", "iii",
+}
+
+
+def _tokens_titulo(texto):
+    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode("ascii")
+    t = re.sub(r"[^a-z0-9\s]", " ", t.lower())
+    return [w for w in t.split() if w and w not in _TITULO_STOPWORDS]
+
+
+def _titulo_compativel(titulo_jogo, titulo_resultado):
+    """True se o título do resultado da busca corresponde ao jogo procurado.
+    Critério: >=60% dos tokens significativos do jogo presentes no resultado
+    (ou similaridade global >=0.6). Rejeita produto errado; falso negativo é
+    aceitável (o item vai para o agente finder)."""
+    from difflib import SequenceMatcher
+
+    tj = _tokens_titulo(titulo_jogo)
+    if not tj:
+        return False
+    tr = set(_tokens_titulo(titulo_resultado))
+    if tr:
+        hits = sum(1 for w in tj if w in tr)
+        if hits / len(tj) >= 0.6:
+            return True
+    a = " ".join(tj)
+    b = " ".join(sorted(tr))
+    return SequenceMatcher(None, a, b).ratio() >= 0.6
+
+
+def _find_product_url(soup, marketplace, titulo):
+    """Extrai da página de BUSCA a URL do primeiro resultado cujo TÍTULO casa
+    com o jogo. Retorna URL canônica sem tag de afiliado, ou None."""
+    if soup is None:
+        return None
+
+    if marketplace == "amazon":
+        # Cards de resultado (páginas reais têm; páginas de captcha, não)
+        for card in soup.select('div[data-component-type="s-search-result"]'):
+            h2 = card.select_one("h2")
+            card_titulo = h2.get_text(" ", strip=True) if h2 else ""
+            if not _titulo_compativel(titulo, card_titulo):
+                continue
+            for a in card.select('a[href*="/dp/"]'):
+                href = a.get("href") or ""
+                if "/sspa/" in href or "sspa=" in href:   # patrocinado
+                    continue
+                m = _AMAZON_ASIN_RE.search(href)
+                if m:
+                    return f"https://www.amazon.com.br/dp/{m.group(1)}"
+        return None
+
+    if marketplace == "mercadolivre":
+        # Layouts novo (poly-card) e antigo (ui-search)
+        cards = soup.select("div.poly-card, li.ui-search-layout__item")
+        for card in cards:
+            t = card.select_one(
+                ".poly-component__title, .ui-search-item__title, h3, h2"
+            )
+            card_titulo = t.get_text(" ", strip=True) if t else ""
+            if not _titulo_compativel(titulo, card_titulo):
+                continue
+            for a in card.select("a[href]"):
+                href = (a.get("href") or "").split("#", 1)[0]
+                if "click1.mercadolivre" in href or "mclics" in href:  # anúncio
+                    continue
+                m = _ML_LINK_RE.match(href)
+                if m:
+                    return m.group(0)
+        return None
+
+    return None
+
+
+def _resolve_produto(search_url, titulo):
+    """Busca -> página do produto compatível com o título.
+    Retorna (result_dict|None, product_url_afiliada|None). SEM fallback de
+    raspar a página de busca: dado de produto errado é pior que dado nenhum
+    (o item sem descrição segue para o agente finder)."""
+    from steps.marketplace_scraper import (
+        detect_marketplace, fetch_page, scrape_marketplace,
+    )
+    from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
+
+    marketplace = detect_marketplace(search_url)
+    soup = fetch_page(search_url)
+    if soup is None:
+        return None, None
+
+    product_url = _find_product_url(soup, marketplace, titulo)
+    if not product_url:
+        return None, None
+
+    result = scrape_marketplace(product_url)
+    if not result:
+        return None, None
+
+    afiliada = (inject_amazon_tag(product_url) if marketplace == "amazon"
+                else inject_ml_affiliate(product_url))
+    return result, afiliada
+
+
+def scrape(pacote=30):
+    """Step 3 — resolve a busca para a página do PRODUTO e extrai
+    imagem/descrição/preço de lá. ÚNICA fonte de conteúdo para jogos
+    (sem Google Books/OpenLibrary, que só catalogam livros)."""
     log("[JOGOS_SCRAPE] Iniciando")
     conn = get_conn()
     ensure_schema(conn)
@@ -360,30 +501,38 @@ def scrape(pacote=30):
     for i, r in enumerate(rows, 1):
         log(f"[JOGOS_SCRAPE][{i:03d}/{len(rows):03d}] -> {r['titulo']}")
         try:
-            result = scrape_marketplace(r["offer_url"])
+            result, product_url = _resolve_produto(r["offer_url"], r["titulo"])
         except Exception as e:
-            result = None
+            result, product_url = None, None
             log(f"[JOGOS_SCRAPE] ERRO -> {r['titulo']} | {e}")
 
-        if result:
+        if result and product_url:
             offer_status = "active" if result.get("disponivel", True) else "unavailable"
             cur.execute("""
                 UPDATE jogos
-                SET imagem_url  = COALESCE(?, imagem_url),
+                SET offer_url   = ?,
+                    imagem_url  = COALESCE(?, imagem_url),
                     descricao   = COALESCE(?, descricao),
                     preco_atual = COALESCE(?, preco_atual),
                     offer_status = ?,
                     status_scrape = 1,
+                    syn_rejects = CASE WHEN ? IS NOT NULL THEN 0
+                                       ELSE COALESCE(syn_rejects, 0) END,
                     updated_at  = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (result.get("cover_url"), result.get("descricao"),
-                  result.get("preco"), offer_status, r["id"]))
+            """, (product_url, result.get("cover_url"), result.get("descricao"),
+                  result.get("preco"), offer_status, result.get("descricao"), r["id"]))
+            log(f"[JOGOS_SCRAPE] OK [produto] -> {r['titulo']}"
+                + ("" if result.get("descricao") else " (sem descrição na página)"))
             ok += 1
         else:
+            # Sem produto compatível (busca bloqueada/captcha ou título sem
+            # correspondência) — fica para o agente finder (LLM).
             cur.execute(
                 "UPDATE jogos SET status_scrape=2, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                 (r["id"],),
             )
+            log(f"[JOGOS_SCRAPE] SEM PRODUTO COMPATÍVEL -> {r['titulo']} (vai ao finder LLM)")
             falhas += 1
         conn.commit()
         time.sleep(SCRAPE_DELAY_S)
@@ -440,6 +589,182 @@ def gen_slugs(pacote=500):
     conn.close()
     log(f"[JOGOS_SLUG] Finalizado | Slugs gerados: {ok}")
     return ok
+
+
+# =========================
+# 4b. FINDER (batch LLM — conteúdo quando o scraper não alcança)
+# =========================
+
+# Os marketplaces bot-walham scraping direto (Amazon: 503/captcha; ML:
+# account-verification). Mesmo papel do offer_finder nos livros: um agente
+# claude com WebSearch/WebFetch localiza a página REAL do produto, valida a
+# correspondência de título e extrai descrição/imagem/preço.
+
+FINDER_PREFIX     = "jogos_finder"   # NNN_jogos_finder_input.json
+FINDER_BATCH_SIZE = int(os.environ.get("BATCH_SIZE_JOGOS_FINDER", 10))
+FINDER_PROCESSED  = os.path.join(BATCH_DIR, f"processed_{FINDER_PREFIX}")
+FINDER_TIMEOUT_S  = 1800   # WebSearch+WebFetch por item — lote é lento
+
+# detect_marketplace() -> convenção local dos seeds
+_MKT_LOCAL = {"amazon": "amazon", "mercadolivre": "mercado_livre"}
+
+
+def finder_export(pacote=None):
+    """Exporta lote NNN_jogos_finder_input.json com os jogos sem descrição
+    ainda não tentados pelo finder. Não exporta se já há input em voo."""
+    import glob as _glob
+
+    os.makedirs(BATCH_DIR, exist_ok=True)
+    os.makedirs(FINDER_PROCESSED, exist_ok=True)
+
+    if _glob.glob(os.path.join(BATCH_DIR, f"*_{FINDER_PREFIX}_input.json")):
+        log("[JOGOS_FINDER] Input já em voo — aguardando o agente processar.")
+        return 0
+
+    conn = get_conn()
+    ensure_schema(conn)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, slug, titulo, autor, categoria, marketplace, lookup_query
+        FROM jogos
+        WHERE (descricao IS NULL OR TRIM(descricao) = '')
+          AND COALESCE(finder_tried, 0) = 0
+          AND status_publish = 0
+        ORDER BY created_at ASC
+        LIMIT ?
+    """, (min(pacote or FINDER_BATCH_SIZE, FINDER_BATCH_SIZE),))
+    rows = cur.fetchall()
+
+    if not rows:
+        log("[JOGOS_FINDER] Nada pendente para o finder.")
+        conn.close()
+        return 0
+
+    jogos = [{
+        "id":           r["id"],
+        "slug":         r["slug"] or "",
+        "titulo":       r["titulo"],
+        "autor":        r["autor"] or "",
+        "categoria":    CATEGORIA_LABELS.get(r["categoria"], r["categoria"]),
+        "marketplace":  r["marketplace"] or "amazon",
+        "lookup_query": r["lookup_query"] or "",
+    } for r in rows]
+
+    from core.batch_numbering import next_batch_number
+    num = next_batch_number(BATCH_DIR, FINDER_PREFIX)
+    path = os.path.join(BATCH_DIR, f"{num}_{FINDER_PREFIX}_input.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({
+            "meta": {"exported_at": datetime.utcnow().isoformat(), "batch": num,
+                     "total": len(jogos)},
+            "jogos": jogos,
+        }, f, ensure_ascii=False, indent=2)
+
+    conn.close()
+    log(f"[JOGOS_FINDER] Exportados: {len(jogos)} -> {os.path.basename(path)}")
+    return len(jogos)
+
+
+def finder_import():
+    """Importa NNN_jogos_finder_output.json: FOUND -> descrição/imagem/preço +
+    offer_url promovida ao deep-link afiliado; NOT_FOUND -> finder_tried=1."""
+    import glob as _glob
+    from steps.marketplace_scraper import detect_marketplace
+    from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
+
+    os.makedirs(FINDER_PROCESSED, exist_ok=True)
+    outputs = sorted(_glob.glob(os.path.join(BATCH_DIR, f"*_{FINDER_PREFIX}_output.json")))
+    if not outputs:
+        log("[JOGOS_FINDER] Nenhum output pendente.")
+        return 0
+
+    conn = get_conn()
+    ensure_schema(conn)
+    cur = conn.cursor()
+    encontrados = nao_encontrados = 0
+
+    for path in outputs:
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            log(f"[JOGOS_FINDER] ERRO ao ler {os.path.basename(path)}: {e}")
+            continue
+
+        for item in data.get("resultados", []):
+            jogo_id   = item.get("id")
+            status    = (item.get("status") or "").upper()
+            url       = (item.get("url_produto") or "").strip()
+            descricao = (item.get("descricao") or "").strip()
+            mkt       = detect_marketplace(url)
+
+            if status == "FOUND" and url and mkt and len(descricao) >= 80:
+                afiliada = (inject_amazon_tag(url) if mkt == "amazon"
+                            else inject_ml_affiliate(url))
+                cur.execute("""
+                    UPDATE jogos
+                    SET offer_url    = ?,
+                        marketplace  = ?,
+                        descricao    = ?,
+                        imagem_url   = COALESCE(?, imagem_url),
+                        preco_atual  = COALESCE(?, preco_atual),
+                        offer_status = 'active',
+                        status_scrape = 1,
+                        syn_rejects  = 0,
+                        updated_at   = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (afiliada, _MKT_LOCAL[mkt], descricao,
+                      _text_or_none(item.get("imagem_url")),
+                      _float_or_none(item.get("preco")),
+                      jogo_id))
+                encontrados += 1
+            else:
+                motivo = item.get("motivo") or ("output inválido" if status == "FOUND" else "não encontrado")
+                cur.execute("""
+                    UPDATE jogos SET finder_tried = 1,
+                           updated_at = CURRENT_TIMESTAMP WHERE id = ?
+                """, (jogo_id,))
+                nao_encontrados += 1
+                log(f"[JOGOS_FINDER] NOT_FOUND ({motivo}) -> id={jogo_id}")
+        conn.commit()
+
+        dest = os.path.join(FINDER_PROCESSED, os.path.basename(path))
+        try:
+            if os.path.exists(dest):
+                os.remove(dest)
+            shutil.move(path, dest)
+        except Exception as e:
+            log(f"[JOGOS_FINDER] AVISO: falha ao arquivar {os.path.basename(path)}: {e}")
+
+    conn.close()
+    log(f"[JOGOS_FINDER] Finalizado | Encontrados: {encontrados} | Não encontrados: {nao_encontrados}")
+    return encontrados
+
+
+def run_finder_batch(max_lotes=5):
+    """Ciclo finder completo: export -> agente (claude CLI + WebSearch) ->
+    import, até drenar os sem-descrição, esgotar max_lotes ou falhar/limite."""
+    from core.claude_runner import agent_prompt_path, run_agent
+
+    total = 0
+    for _ in range(max_lotes):
+        exportados = finder_export()
+        if not exportados:
+            break
+        ok, out = run_agent(agent_prompt_path("jogos_finder_batch"),
+                            timeout=FINDER_TIMEOUT_S, wait_on_limit=False)
+        if not ok:
+            log(f"[JOGOS_FINDER] Agente falhou/limite de sessão — parando. {out[:200]}")
+            # devolve o input em voo para a fila (evita lote órfão)
+            import glob as _glob
+            for p in _glob.glob(os.path.join(BATCH_DIR, f"*_{FINDER_PREFIX}_input.json")):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            break
+        total += finder_import()
+    return total
 
 
 # =========================
@@ -536,9 +861,16 @@ def _valida_sinopse(texto):
     return None
 
 
+SYN_REJECTS_MAX = 2   # tentativas de sinopse por FONTE (descrição)
+
+
 def synopsis_import():
     """Importa NNN_synopsis_jogos_output.json -> sinopse + status_synopsis=1.
-    REJECTED/inválida -> status_synopsis=0 (volta à fila)."""
+
+    REJECTED/inválida -> status_synopsis=0 (volta à fila) e syn_rejects+1.
+    Ao atingir SYN_REJECTS_MAX, a DESCRIÇÃO é descartada como fonte ruim
+    (medido: title-mismatch re-exportava a mesma descrição em loop, queimando
+    quota) e o jogo volta ao finder (finder_tried=0) por uma fonte melhor."""
     import glob as _glob
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
@@ -571,17 +903,31 @@ def synopsis_import():
 
             if status == "APPROVED" and not problema:
                 cur.execute("""
-                    UPDATE jogos SET sinopse=?, status_synopsis=1,
+                    UPDATE jogos SET sinopse=?, status_synopsis=1, syn_rejects=0,
                            updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """, (sinopse, jogo_id))
                 aprovados += 1
             else:
                 cur.execute("""
                     UPDATE jogos SET status_synopsis=0,
+                           syn_rejects = COALESCE(syn_rejects, 0) + 1,
                            updated_at=CURRENT_TIMESTAMP WHERE id=?
                 """, (jogo_id,))
                 rejeitados += 1
-                log(f"[JOGOS_SYN_IMPORT] Rejeitado ({problema}) -> id={jogo_id}")
+                row = cur.execute(
+                    "SELECT COALESCE(syn_rejects,0) FROM jogos WHERE id=?", (jogo_id,)
+                ).fetchone()
+                n_rejects = row[0] if row else 0
+                if n_rejects >= SYN_REJECTS_MAX:
+                    cur.execute("""
+                        UPDATE jogos SET descricao=NULL, finder_tried=0, syn_rejects=0,
+                               updated_at=CURRENT_TIMESTAMP WHERE id=?
+                    """, (jogo_id,))
+                    log(f"[JOGOS_SYN_IMPORT] Rejeitado ({problema}) -> id={jogo_id} | "
+                        f"{n_rejects}ª rejeição: descrição DESCARTADA (fonte ruim) — "
+                        f"volta ao finder por fonte nova")
+                else:
+                    log(f"[JOGOS_SYN_IMPORT] Rejeitado ({problema}) -> id={jogo_id}")
         conn.commit()
 
         dest = os.path.join(PROCESSED_DIR, os.path.basename(path))
@@ -884,8 +1230,11 @@ def status():
     for slug in sorted(CATEGORIA_SLUGS):
         n = cur.execute("SELECT COUNT(*) FROM jogos WHERE categoria=?", (slug,)).fetchone()[0]
         print(f"  {CATEGORIA_LABELS[slug]:<22} {n}")
+    com_descricao = q("SELECT COUNT(*) FROM jogos "
+                      "WHERE descricao IS NOT NULL AND TRIM(descricao) != ''")
     print(f"Com oferta resolvida:  {q('SELECT COUNT(*) FROM jogos WHERE offer_url IS NOT NULL')}")
     print(f"Com scrape feito:      {q('SELECT COUNT(*) FROM jogos WHERE status_scrape=1')}")
+    print(f"Com descrição:         {com_descricao}")
     print(f"Com slug:              {q('SELECT COUNT(*) FROM jogos WHERE status_slug=1')}")
     print(f"Sinopse pendente:      {q('SELECT COUNT(*) FROM jogos WHERE status_synopsis=0')}")
     print(f"Sinopse em fila (3):   {q('SELECT COUNT(*) FROM jogos WHERE status_synopsis=3')}")
@@ -918,9 +1267,56 @@ def _synopsis_backlog(conn=None) -> int:
     return n
 
 
+def _sem_descricao(conn=None, acionavel=False) -> int:
+    """Jogos ainda sem descrição — o gargalo de FONTE (o LLM não tem de onde
+    gerar). Distinto do backlog de sinopse (que só conta os geráveis).
+    acionavel=True: só os que o finder ainda pode tentar (finder_tried=0)."""
+    own = conn is None
+    if own:
+        conn = get_conn()
+        ensure_schema(conn)
+    extra = "AND COALESCE(finder_tried, 0) = 0" if acionavel else ""
+    n = conn.execute(f"""
+        SELECT COUNT(*) FROM jogos
+        WHERE (descricao IS NULL OR TRIM(descricao) = '')
+          AND status_publish = 0
+          {extra}
+    """).fetchone()[0]
+    if own:
+        conn.close()
+    return n
+
+
+def _requeue_scrape_sem_descricao():
+    """Re-enfileira para scrape os jogos que já passaram pelo scraper mas
+    ficaram sem descrição (503 transiente da Amazon, produto não encontrado
+    na busca, ou raspagem antiga da página de busca). Idempotente: sucesso
+    grava descricao e o item sai deste filtro."""
+    conn = get_conn()
+    ensure_schema(conn)
+    cur = conn.execute("""
+        UPDATE jogos SET status_scrape = 0, updated_at = CURRENT_TIMESTAMP
+        WHERE status_scrape != 0
+          AND (descricao IS NULL OR TRIM(descricao) = '')
+          AND offer_url IS NOT NULL AND offer_url != ''
+          AND status_publish = 0
+    """)
+    n = cur.rowcount
+    conn.commit()
+    conn.close()
+    if n:
+        log(f"[JOGOS_SCRAPE] {n} jogo(s) sem descrição re-enfileirado(s) para nova raspagem")
+    return n
+
+
 def _drain_non_llm():
     """Exaure todo o trabalho não-LLM (idempotente — flags de status impedem
-    reprocessamento): seeds novos -> resolver -> scraper -> slugs."""
+    reprocessamento): seeds novos -> resolver -> scraper -> slugs.
+
+    NÃO re-enfileira scrape aqui: esta função roda a cada <=5 min na espera
+    produtiva do loop multijanela — re-raspar os 'sem descrição' nessa
+    frequência martelaria o marketplace. O requeue é 1x por passe
+    (_requeue_scrape_sem_descricao no início do autopilot/autopilot_j)."""
     import_seeds()
     while resolve_offers(200):
         pass
@@ -934,8 +1330,10 @@ def autopilot(max_lotes_llm=10):
     slugs -> sinopses (lotes LLM até drenar/limite) -> QG -> publicar."""
     log("[JOGOS_AUTOPILOT] Iniciando passe completo da Seção Jogos")
     reclaim_stuck()
+    _requeue_scrape_sem_descricao()
     _drain_non_llm()
 
+    run_finder_batch(max_lotes=max_lotes_llm)
     run_synopsis_batch(max_lotes=max_lotes_llm)
 
     quality_gate()
@@ -963,26 +1361,37 @@ def autopilot_j():
     verify_supabase(verbose=False)
 
     reclaim_stuck()
+    _requeue_scrape_sem_descricao()
     _drain_non_llm()
 
-    # ── 1ª janela LLM ──────────────────────────────────────────
+    # -- 1ª janela LLM: finder (fonte) -> sinopses (geração) ----
     if claude_available():
+        run_finder_batch(max_lotes=100)
         run_synopsis_batch(max_lotes=100)
     else:
-        log("[J] claude CLI indisponível — pulando fase LLM (sinopses ficam pendentes).")
+        log("[J] claude CLI indisponível — pulando fase LLM (finder e sinopses ficam pendentes).")
     quality_gate()
     publish()
 
-    backlog = _synopsis_backlog()
-    if backlog <= 0:
-        log("[J] Backlog de sinopses zerado no primeiro passe.")
+    backlog  = _synopsis_backlog()
+    sem_desc = _sem_descricao(acionavel=True)
+    pendente_llm = backlog + sem_desc
+
+    if pendente_llm <= 0:
+        mortos = _sem_descricao() - sem_desc
+        if mortos:
+            log(f"[J] Conteúdo gerável drenado. {mortos} jogo(s) sem descrição já "
+                f"esgotaram scraper e finder — ficam bloqueados no QG (revisão manual).")
+        else:
+            log("[J] Backlog de conteúdo (fonte + sinopses) zerado no primeiro passe.")
     elif not claude_available():
-        log(f"[J] {backlog} sinopse(s) pendente(s), mas claude CLI indisponível — "
-            f"encerrando sem loop multijanela.")
+        log(f"[J] {backlog} sinopse(s) e {sem_desc} descrição(ões) pendentes, mas "
+            f"claude CLI indisponível — encerrando sem loop multijanela.")
     else:
-        # ── LOOP MULTIJANELA (modelo G) ────────────────────────
-        log(f"[J] Backlog de sinopses restante: {backlog} — entrando em loop "
-            f"multijanela (drena não-LLM -> aguarda reset -> retoma LLM).")
+        # -- LOOP MULTIJANELA (modelo G) ------------------------
+        log(f"[J] Backlog restante — sinopses: {backlog} | sem descrição "
+            f"(finder): {sem_desc} — entrando em loop multijanela "
+            f"(drena não-LLM -> aguarda reset -> retoma LLM).")
         try:
             while True:
                 # 1) Espera produtiva: drena/publica o não-LLM enquanto a
@@ -1006,32 +1415,41 @@ def autopilot_j():
                     log("[J] Sessão ainda em cooldown — encerrando loop multijanela.")
                     break
 
-                backlog_antes = _synopsis_backlog()
-                if backlog_antes <= 0:
-                    log("[J] Backlog de sinopses zerado — loop multijanela concluído.")
+                backlog_antes  = _synopsis_backlog()
+                sem_desc_antes = _sem_descricao(acionavel=True)
+                if backlog_antes + sem_desc_antes <= 0:
+                    log("[J] Backlog de conteúdo zerado — loop multijanela concluído.")
                     break
 
                 # 2) Nova janela LLM (quota restaurada) + publicação.
-                log(f"[J] ── Janela LLM (quota restaurada) — backlog: {backlog_antes} ──")
+                log(f"[J] -- Janela LLM (quota restaurada) — sinopses: "
+                    f"{backlog_antes} | finder: {sem_desc_antes} --")
+                run_finder_batch(max_lotes=100)
                 run_synopsis_batch(max_lotes=100)
                 quality_gate()
                 publish()
 
-                # 3) Guard anti-giro: janela sem progresso -> para (evita loop
-                #    infinito quando o restante não é gerável, ex: descrição ruim).
-                backlog_depois = _synopsis_backlog()
-                if backlog_depois >= backlog_antes:
-                    log(f"[J] Janela LLM sem progresso "
-                        f"({backlog_antes}->{backlog_depois}) — encerrando loop.")
+                # 3) Guard anti-giro: janela sem NENHUM progresso (nem descrição
+                #    adquirida, nem sinopse gerada) -> para.
+                backlog_depois  = _synopsis_backlog()
+                sem_desc_depois = _sem_descricao(acionavel=True)
+                if backlog_depois >= backlog_antes and sem_desc_depois >= sem_desc_antes:
+                    log(f"[J] Janela LLM sem progresso (sinopses {backlog_antes}->"
+                        f"{backlog_depois}; finder {sem_desc_antes}->{sem_desc_depois}) "
+                        f"— encerrando loop.")
                     break
         except KeyboardInterrupt:
             log("[J] Loop multijanela interrompido pelo usuário.")
 
-    # ── Relatório final ────────────────────────────────────────
+    # -- Relatório final ----------------------------------------
     status()
     try:
         w = session_window()
         restante = _synopsis_backlog()
+        sem_desc = _sem_descricao()
+        if sem_desc:
+            log(f"[J] {sem_desc} jogo(s) sem descrição (gargalo de fonte) — "
+                f"serão re-raspados no próximo J.")
         if w.get("in_cooldown"):
             log(f"[J] Sessão PRO em cooldown (reset previsto: {w.get('reset_at', '?')}). "
                 f"Backlog de sinopses: {restante}.")
