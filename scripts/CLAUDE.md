@@ -229,6 +229,7 @@ status_*, publish_blockers, seed_id, idioma`. Tipos coeridos no payload
 | Seeds | `NNN_offer_seeds.json` | `NNN_jogos_seeds.json` |
 | Seeder (ChatGPT) | `agents/seeder_agent - theme driven.txt` | `agents/seeder_agent - jogos theme driven.txt` |
 | Sinopse (LLM) | `agents/synopsis_batch` (`*_synopsis_input.json`) | `agents/synopsis_jogos_batch` (`*_synopsis_jogos_input.json`) |
+| Conteúdo qdo. scraper bloqueado | `agents/offer_finder` (MODE 1) | `agents/jogos_finder_batch` (`*_jogos_finder_*.json`) |
 | Tabela Supabase | `livros` (+ ofertas/autores/categorias/listas) | `jogos` (oferta embutida; sem autores/listas de livros) |
 | Click tracking | `/api/click/[id]` → `oferta_clicks` | `/api/click-jogo/[id]` → `jogo_clicks` |
 | Página | `/livros/[slug]` | `/jogos/[slug]` |
@@ -239,6 +240,23 @@ status_*, publish_blockers, seed_id, idioma`. Tipos coeridos no payload
 - **Reuso apenas de funções puras** dos steps de livros (nada é modificado lá):
   `offer_resolver.resolve_offer` e `marketplace_scraper.scrape_marketplace`,
   além de `core.claude_runner` e `core.batch_numbering`.
+- **Scrape em 2 saltos (busca → produto) com validação de título:** o
+  `offer_url` do resolver é uma URL de BUSCA, e os SELECTORS do scraper são
+  de página de PRODUTO — o scraper acha na busca o card cujo TÍTULO casa com
+  o jogo (`_titulo_compativel`; pula patrocinados; sem card compatível =
+  falha, NUNCA pegar o 1º resultado às cegas — medido: "Knave" retornava
+  Blades in the Dark) e raspa a página do produto; o `offer_url` é promovido
+  ao deep-link afiliado. Re-enfileiramento dos sem-descrição 1x por passe do
+  J/A (`_requeue_scrape_sem_descricao`) — nunca na espera produtiva
+  multijanela (não martelar o marketplace).
+- **Finder (LLM) — fonte quando o scraper não alcança:** Amazon responde
+  503/captcha e o ML redireciona para account-verification (bot walls
+  medidos). O agente `jogos_finder_batch` (claude CLI + WebSearch/WebFetch,
+  mesmo papel do offer_finder nos livros) localiza a página REAL do produto,
+  valida o título e extrai descrição/imagem/preço; `finder_import` injeta a
+  tag de afiliado e promove o `offer_url`. NOT_FOUND marca `finder_tried=1`
+  (não re-exporta). No J, a fase LLM é finder → sinopses, e o guard de
+  progresso da janela considera também descrições adquiridas.
 - **Sem no pipeline de jogos (de propósito):** enrich via Google Books, capas
   via APIs de livro (fonte única = scraper do marketplace), dedup contra
   livros, review `is_book`, categorização LLM (categoria vem do seed),
