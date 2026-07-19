@@ -88,6 +88,17 @@ export default async function JogoPage({ params }: PageProps) {
   const preco = formatPrice(jogo.preco_atual);
   const ofertaAtiva = Boolean(jogo.url_afiliada) && jogo.offer_status !== "unavailable";
 
+  // Google exige offers/review/aggregateRating em todo Product — sem preço não há Offer válido
+  const ofertaJsonLd =
+    ofertaAtiva && jogo.preco_atual
+      ? {
+          "@type": "Offer" as const,
+          price: Number(jogo.preco_atual),
+          priceCurrency: "BRL",
+          availability: "https://schema.org/InStock",
+        }
+      : undefined;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -96,25 +107,19 @@ export default async function JogoPage({ params }: PageProps) {
     ...(jogo.imagem_url ? { image: jogo.imagem_url } : {}),
     ...(jogo.autor ? { brand: { "@type": "Brand", name: jogo.autor } } : {}),
     category: categoriaLabel,
-    ...(ofertaAtiva && jogo.preco_atual
-      ? {
-          offers: {
-            "@type": "Offer",
-            price: Number(jogo.preco_atual),
-            priceCurrency: "BRL",
-            availability: "https://schema.org/InStock",
-          },
-        }
-      : {}),
+    ...(ofertaJsonLd ? { offers: ofertaJsonLd } : {}),
   };
 
   return (
     <div className="space-y-10">
 
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {/* Schema JSON-LD — só renderiza quando há offers para satisfazer requisito do Google */}
+      {ofertaJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
 
       {/* =========================
           BREADCRUMB
