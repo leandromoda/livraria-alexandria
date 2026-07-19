@@ -70,7 +70,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
-| 2026-07-19 | dados estruturados | `jogos/[slug]`: JSON-LD `Product` era renderizado **incondicionalmente** e saía sem `offers` (10 de 11 jogos com `preco_atual` nulo) → erro crítico "Especifique offers/review/aggregateRating". Guard no render, igual a `livros/[slug]` | #215 |
+| 2026-07-19 | dados estruturados | `jogos/[slug]`: JSON-LD `Product` era renderizado **incondicionalmente** e saía sem `offers` (10 de 11 jogos com `preco_atual` nulo) → erro crítico "Especifique offers/review/aggregateRating". Guard no render, igual a `livros/[slug]` | #216 |
 | 2026-07-13 | canônica | `metadataBase` → apex sem-www (`app/layout.tsx`); canonical relativa não resolve mais para o domínio que redireciona | #209 |
 | 2026-07-10 | domínio | Redirect www→apex 308 (Vercel Domains); apex vira Production | — (config) |
 | 2026-07-10 | middleware | Removido middleware de normalização de slug | #197 |
@@ -91,7 +91,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 - **`preco_atual` nulo em 10 de 11 jogos** (banco, 2026-07-19) — `offer_status`
   é `"active"` e `url_afiliada` está preenchida, mas o preço não é gravado. É
   **lacuna do pipeline de jogos**, não do site. Enquanto durar, as páginas de
-  jogo ficam sem rich result (o guard do #215 evita o erro crítico, mas o
+  jogo ficam sem rich result (o guard do #216 evita o erro crítico, mas o
   `Product` deixa de ser emitido). Corrigir o scraper de preço em `scripts/jogos.py`
   → o rich result volta sozinho. Não é tarefa de SEO.
 - **5xx (23) é transiente, não regressão** — amostra de 2026-07-19: 4 de 5 livros
@@ -119,4 +119,4 @@ Leitura da variação: as altas de "Bloq. robots" (+872), "Canônica dup." (+523
 o novo bloco "Página com redirecionamento" (1.147) são **todas** consequência
 esperada do crescimento de ofertas + da migração www→apex — nenhuma é bug.
 O único bug real da seção veio **por e-mail**, não pelo relatório: o `Product`
-sem `offers` em Jogos (#215).
+sem `offers` em Jogos (#216).
