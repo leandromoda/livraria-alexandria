@@ -242,7 +242,16 @@ def insert_seed(conn, seed, seed_id=None):
 
 
 def import_seeds():
-    """Step 1 — importa NNN_jogos_seeds.json e move para ingested_seeds/."""
+    """Step 1 — importa NNN_jogos_seeds.json e move para ingested_seeds/.
+
+    Nome de arquivo repetido NÃO é falha: o seed é reprocessado e SOBRESCREVE
+    o anterior (registro em seed_imports via INSERT OR REPLACE + arquivo em
+    ingested_seeds/). A proteção contra dado duplicado é por ITEM
+    (insert_seed -> "duplicate" em titulo+autor), não pelo nome do arquivo —
+    mesmo comportamento do pipeline de livros (offer_seed.run()). Antes, o
+    skip por nome fazia um seed novo reusando um número já consumido ser
+    ignorado em silêncio e ficar preso em seeds/ para sempre.
+    """
     log("[JOGOS_SEED] Iniciando importação de seeds de jogos")
     conn = get_conn()
     ensure_schema(conn)
@@ -258,8 +267,8 @@ def import_seeds():
         cur = conn.cursor()
         cur.execute("SELECT 1 FROM seed_imports WHERE filename = ?", (filename,))
         if cur.fetchone():
-            log(f"[JOGOS_SEED] Já importado -> {filename}")
-            continue
+            log(f"[JOGOS_SEED] Nome já usado -> {filename} | reprocessando "
+                f"(sobrescreve o anterior; itens repetidos caem no dedup)")
 
         try:
             seeds = _load_seeds(filepath)
