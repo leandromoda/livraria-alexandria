@@ -18,6 +18,7 @@ Uma linha por alteração relevante aplicada (mais recentes no topo).
 
 | Data | Escopo | Alteração | Risco | Aprovação |
 |------|--------|-----------|-------|-----------|
+| 2026-07-12 | seed | `468_offer_seeds.json` gerado — 1 título: "Esquadrão 7" (Denis Cruz, CPB), literatura infantil PT, oferta Mercado Livre. Aguarda ingestão | alto | usuário |
 | 2026-06-21 | pipeline_sinopse | `synopsis_batch/prompt.md` — 3 correções: GATE 0c eleva threshold; passo 2 remove fallback genérico → REJECTED; passo 3 adiciona verificação coerência título-protagonista | médio | usuário |
 | 2026-06-15 | contos_de_fada | 5 contos de fada + Mensagem/Pessoa removidos de `mitologia-e-lendas` | alto | usuário |
 | 2026-06-15 | contos_de_fada | Cinderela, O Livro sem Figuras, A Seleção, Especiais removidos de `fantasia-juvenil` | alto | usuário |
@@ -102,3 +103,4 @@ evitar duplicação e acompanhar o que ainda aguarda ingestão em
 | Arquivo | Tema / cluster | Idioma | Itens | Data | Ingerido? |
 |---------|----------------|--------|-------|------|-----------|
 | `461_offer_seeds.json` | contos de fada / folclore / literatura infantil BR | PT | 25 | 2026-06-15 | Não |
+| `468_offer_seeds.json` | literatura infantil BR (paradidático — bullying/inclusão) | PT | 1 | 2026-07-12 | Sim (publicado — /livros/esquadrao-7) |
