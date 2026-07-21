@@ -182,6 +182,7 @@ def menu_ingestao(idioma):
 2  → Enriquecer descrições (Google Books / OpenLibrary) [fallback manual — coberto pelo step 4]
 3  → Resolver Ofertas (lookup → URL afiliado)
 4  → Enriquecer via Marketplace Scraper (capa + descrição + preço)
+5  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 
 V  → Voltar
 """)
@@ -189,6 +190,11 @@ V  → Voltar
 
         if op.upper() == "V":
             break
+
+        elif op == "5":
+            # Movida do topo (a letra I passou a ser a seção Livros Infantis).
+            log(f"Iniciando Ingestão Orientada (idioma={idioma})…")
+            ingestao_orientada.run(idioma)
 
         elif op == "1":
             log("Importando Offer Seeds…")
@@ -1030,10 +1036,37 @@ def _run_gargalo(idioma: str):
         log("[G] Iniciando Autopilot A até exaustão…")
         autopilot.run(idioma, 100, manter_batch=False)
 
+    # ── Fallback: seções paralelas (Jogos + Livros Infantis) ──
+    # Esgotado o que o pipeline de livros podia fazer, a sessão ainda tem
+    # valor a extrair nas outras seções — cujo trabalho não-LLM (ofertas,
+    # enriquecimento, capas) não consome quota nenhuma.
+    _run_secoes_paralelas()
+
     # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
     _print_gargalo_report(idioma)
 
     log(f"[G] Passe concluído. v{get_version()}")
+
+
+def _run_secoes_paralelas():
+    """Aciona os autopilots das seções paralelas como fallback do G.
+
+    Cada seção tem pipeline, tabela e agentes próprios — nada aqui toca o
+    pipeline de livros. Import lazy + try isolado: falha numa seção não pode
+    comprometer o resultado do G."""
+    for letra, nome, modulo, funcao in (
+        ("J", "Jogos",           "jogos_pipeline",    "autopilot_j"),
+        ("I", "Livros Infantis", "infantis_pipeline", "autopilot_i"),
+    ):
+        try:
+            log(f"[G] Fallback -> seção {nome} (opção {letra})")
+            mod = __import__(f"steps.{modulo}", fromlist=[modulo])
+            getattr(mod, funcao)()
+        except KeyboardInterrupt:
+            log(f"[G] Seção {nome} interrompida pelo usuário.")
+            raise
+        except Exception as e:
+            log(f"[G] ERRO na seção {nome} (ignorado, G segue): {e}")
 
 
 def _run_wait_then_gargalo(idioma: str):
@@ -1160,8 +1193,8 @@ S  → Status do pipeline (atualizar)
 G  → Atacar gargalos — executa o plano automaticamente (sem confirmação) → Autopilot A
 W  → Esperar reset da sessão Claude PRO e então rodar o G automaticamente
 J  → Jogos — autopilot da Seção Jogos, modelo G (pipeline paralelo, multijanela)
+I  → Livros Infantis — autopilot da seção (pipeline paralelo, multijanela)
 A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
-I  → Ingestão Orientada — pipeline completo com LLM (seeds → publicação)
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
 M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Batch Autopilot (sinopse + categorias via Claude)
@@ -1203,8 +1236,10 @@ E  → Exports
             autopilot.run(idioma, 100, manter_batch=True)
 
         elif op.upper() == "I":
-            log(f"Iniciando Ingestão Orientada (idioma={idioma}, provider=claude)…")
-            ingestao_orientada.run(idioma)
+            # Seção Livros Infantis — pipeline paralelo (import lazy: o main
+            # não carrega nada do domínio infantis fora desta opção).
+            from steps import infantis_pipeline
+            infantis_pipeline.autopilot_i()
 
         elif op.upper() == "O":
             from core.claude_runner import claude_available

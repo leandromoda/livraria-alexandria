@@ -61,6 +61,23 @@ BATCH_SIZE = int(os.environ.get("BATCH_SIZE_SYNOPSIS_JOGOS", 15))
 SINOPSE_MIN_CHARS = 400
 SCRAPE_DELAY_S    = 3.0
 
+# Custo previsível por execução: quantos lotes LLM cada fase pode consumir
+# num passe. Antes era 100 (até 1.000 itens), o que tornava impossível prever
+# se um run cabia na janela da sessão PRO.
+MAX_LOTES_FINDER   = int(os.environ.get("JOGOS_MAX_LOTES_FINDER", 12))
+MAX_LOTES_SYNOPSIS = int(os.environ.get("JOGOS_MAX_LOTES_SYNOPSIS", 12))
+
+# Um input de lote parado além disto é ÓRFÃO de um run morto: o agente move o
+# input para processed_* assim que começa a processá-lo, então um arquivo que
+# permanece em batch/ por mais que o timeout do agente (finder: 30 min)
+# significa que ninguém o consumiu.
+BATCH_STALE_MINUTES = int(os.environ.get("JOGOS_BATCH_STALE_MINUTES", 45))
+
+# Tentativas de raspagem por jogo antes de desistir e deixar para o finder.
+# Sem isto, todo passe re-enfileirava TODOS os sem-descrição (centenas de
+# requisições a marketplaces que bloqueiam, com rendimento ~zero).
+MAX_SCRAPE_ATTEMPTS = int(os.environ.get("JOGOS_MAX_SCRAPE_ATTEMPTS", 3))
+
 # UUID namespace próprio (distinto do de livros) — publicação determinística
 UUID_NAMESPACE_JOGOS = uuid.UUID("22222222-3333-4444-5555-666666666666")
 
@@ -148,6 +165,9 @@ def ensure_schema(conn):
         -- ao atingir SYN_REJECTS_MAX a descrição é descartada como fonte ruim
         syn_rejects     INTEGER DEFAULT 0,
 
+        -- Tentativas de raspagem já gastas (backoff do requeue)
+        scrape_attempts INTEGER DEFAULT 0,
+
         seed_id         TEXT,
         created_at      DATETIME,
         updated_at      DATETIME
@@ -156,8 +176,9 @@ def ensure_schema(conn):
 
     # Migrations para bancos onde a tabela jogos já existia sem colunas novas
     for col, definition in [
-        ("finder_tried", "INTEGER DEFAULT 0"),
-        ("syn_rejects",  "INTEGER DEFAULT 0"),
+        ("finder_tried",    "INTEGER DEFAULT 0"),
+        ("syn_rejects",     "INTEGER DEFAULT 0"),
+        ("scrape_attempts", "INTEGER DEFAULT 0"),
     ]:
         try:
             conn.execute(f"ALTER TABLE jogos ADD COLUMN {col} {definition}")
@@ -626,7 +647,9 @@ def finder_export(pacote=None):
     os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(FINDER_PROCESSED, exist_ok=True)
 
-    if _glob.glob(os.path.join(BATCH_DIR, f"*_{FINDER_PREFIX}_input.json")):
+    # Descarta lotes órfãos antes de decidir: sem isto, um input de run morto
+    # bloqueava o finder indefinidamente.
+    if purge_stale_inputs(FINDER_PREFIX, tag="JOGOS_FINDER"):
         log("[JOGOS_FINDER] Input já em voo — aguardando o agente processar.")
         return 0
 
@@ -780,17 +803,55 @@ def run_finder_batch(max_lotes=5):
 # 5. SINOPSES (batch LLM — claude CLI)
 # =========================
 
+def purge_stale_inputs(prefix, tag="JOGOS_RECLAIM"):
+    """Remove inputs de lote ÓRFÃOS (mais velhos que BATCH_STALE_MINUTES) e
+    devolve a lista dos que continuam legitimamente em voo.
+
+    O agente move o input para processed_* assim que começa a processá-lo.
+    Logo, um input que permanece em batch/ por mais tempo que o timeout do
+    agente é resto de um run morto — mantê-lo bloqueava o reclaim e os itens
+    ficavam presos em status 3 para sempre, enquanto cada novo passe exportava
+    mais um lote que também morria (moinho de quota).
+    """
+    import glob as _glob
+
+    vivos, orfaos = [], []
+    limite_s = BATCH_STALE_MINUTES * 60
+    agora = time.time()
+
+    for path in _glob.glob(os.path.join(BATCH_DIR, f"*_{prefix}_input.json")):
+        try:
+            idade_s = agora - os.path.getmtime(path)
+        except OSError:
+            continue
+        (orfaos if idade_s > limite_s else vivos).append((path, idade_s))
+
+    for path, idade_s in orfaos:
+        try:
+            os.remove(path)
+            log(f"[{tag}] Lote órfão removido: {os.path.basename(path)} "
+                f"(parado há {int(idade_s // 60)} min, sem agente)")
+        except OSError as e:
+            log(f"[{tag}] AVISO: falha ao remover lote órfão "
+                f"{os.path.basename(path)}: {e}")
+
+    return [p for p, _ in vivos]
+
+
 def reclaim_stuck(conn=None):
-    """Recupera jogos presos em status_synopsis=3 sem lote em voo (órfãos de
-    fila — export feito mas agente nunca gerou output)."""
+    """Recupera jogos presos em status_synopsis=3 cuja fila não existe mais.
+
+    Lotes órfãos (run morto) são descartados primeiro; só um lote realmente
+    recente segura o reclaim."""
     own = conn is None
     if own:
         conn = get_conn()
         ensure_schema(conn)
-    import glob as _glob
-    in_flight = _glob.glob(os.path.join(BATCH_DIR, f"*_{BATCH_PREFIX}_input.json"))
+
+    em_voo = purge_stale_inputs(BATCH_PREFIX)
+
     n = 0
-    if not in_flight:
+    if not em_voo:
         cur = conn.execute(
             "UPDATE jogos SET status_synopsis=0, updated_at=CURRENT_TIMESTAMP WHERE status_synopsis=3"
         )
@@ -798,6 +859,9 @@ def reclaim_stuck(conn=None):
         conn.commit()
         if n:
             log(f"[JOGOS_RECLAIM] {n} jogo(s) recuperado(s) de fila órfã (status 3->0)")
+    else:
+        log(f"[JOGOS_RECLAIM] {len(em_voo)} lote(s) ainda em voo — reclaim adiado.")
+
     if own:
         conn.close()
     return n
@@ -1297,24 +1361,46 @@ def _sem_descricao(conn=None, acionavel=False) -> int:
 
 
 def _requeue_scrape_sem_descricao():
-    """Re-enfileira para scrape os jogos que já passaram pelo scraper mas
-    ficaram sem descrição (503 transiente da Amazon, produto não encontrado
-    na busca, ou raspagem antiga da página de busca). Idempotente: sucesso
-    grava descricao e o item sai deste filtro."""
+    """Re-enfileira para scrape os jogos sem descrição, COM BACKOFF.
+
+    Só reentram os que ainda têm tentativas (scrape_attempts <
+    MAX_SCRAPE_ATTEMPTS), e cada requeue consome uma. Antes, todo passe
+    re-enfileirava TODOS os sem-descrição — centenas de requisições a
+    marketplaces que bloqueiam (Amazon 503/captcha, ML account-verification),
+    com rendimento próximo de zero e ~20 min de atraso até o trabalho útil.
+    Quem esgota as tentativas fica para o finder (LLM), que é quem de fato
+    atravessa o bloqueio.
+    """
     conn = get_conn()
     ensure_schema(conn)
-    cur = conn.execute("""
-        UPDATE jogos SET status_scrape = 0, updated_at = CURRENT_TIMESTAMP
+    cur = conn.execute(f"""
+        UPDATE jogos
+        SET status_scrape   = 0,
+            scrape_attempts = COALESCE(scrape_attempts, 0) + 1,
+            updated_at      = CURRENT_TIMESTAMP
         WHERE status_scrape != 0
           AND (descricao IS NULL OR TRIM(descricao) = '')
           AND offer_url IS NOT NULL AND offer_url != ''
           AND status_publish = 0
+          AND COALESCE(scrape_attempts, 0) < {MAX_SCRAPE_ATTEMPTS}
     """)
     n = cur.rowcount
     conn.commit()
+
+    esgotados = conn.execute(f"""
+        SELECT COUNT(*) FROM jogos
+        WHERE (descricao IS NULL OR TRIM(descricao) = '')
+          AND status_publish = 0
+          AND COALESCE(scrape_attempts, 0) >= {MAX_SCRAPE_ATTEMPTS}
+    """).fetchone()[0]
     conn.close()
+
     if n:
-        log(f"[JOGOS_SCRAPE] {n} jogo(s) sem descrição re-enfileirado(s) para nova raspagem")
+        log(f"[JOGOS_SCRAPE] {n} jogo(s) sem descrição re-enfileirado(s) "
+            f"(limite {MAX_SCRAPE_ATTEMPTS} tentativas)")
+    if esgotados:
+        log(f"[JOGOS_SCRAPE] {esgotados} jogo(s) esgotaram as tentativas de "
+            f"raspagem — seguem só pelo finder (LLM)")
     return n
 
 
@@ -1375,8 +1461,8 @@ def autopilot_j():
 
     # -- 1ª janela LLM: finder (fonte) -> sinopses (geração) ----
     if claude_available():
-        run_finder_batch(max_lotes=100)
-        run_synopsis_batch(max_lotes=100)
+        run_finder_batch(max_lotes=MAX_LOTES_FINDER)
+        run_synopsis_batch(max_lotes=MAX_LOTES_SYNOPSIS)
     else:
         log("[J] claude CLI indisponível — pulando fase LLM (finder e sinopses ficam pendentes).")
     quality_gate()
@@ -1433,8 +1519,8 @@ def autopilot_j():
                 # 2) Nova janela LLM (quota restaurada) + publicação.
                 log(f"[J] -- Janela LLM (quota restaurada) — sinopses: "
                     f"{backlog_antes} | finder: {sem_desc_antes} --")
-                run_finder_batch(max_lotes=100)
-                run_synopsis_batch(max_lotes=100)
+                run_finder_batch(max_lotes=MAX_LOTES_FINDER)
+                run_synopsis_batch(max_lotes=MAX_LOTES_SYNOPSIS)
                 quality_gate()
                 publish()
 
