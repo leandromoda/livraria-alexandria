@@ -33,6 +33,7 @@ export default function Header() {
     { href: "/listas", label: "Listas" },
     { href: "/livros", label: "Livros" },
     { href: "/jogos", label: "Jogos" },
+    { href: "/infantis", label: "Infantis" },
     { href: "/autores", label: "Autores" },
     { href: "/categorias", label: "Categorias" },
     { href: "/ofertas", label: "Ofertas" },

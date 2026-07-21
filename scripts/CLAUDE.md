@@ -188,6 +188,67 @@ scripts/
 
 ---
 
+## Seções paralelas — visão geral
+
+O site tem **três** pipelines independentes. O de livros é o principal; os
+outros dois são isolados **por construção** (tabela, steps, seeds e agentes
+próprios) para não arriscar o que já funciona.
+
+| | Livros | Jogos | Livros Infantis |
+|---|---|---|---|
+| Entrada | `main.py` (G/A/O…) | `jogos.py` ou **J** | **I** no `main.py` |
+| Tabela local | `livros` | `jogos` | `livros_infantis` |
+| Seeds | `NNN_offer_seeds.json` | `NNN_jogos_seeds.json` | `NNN_infantis_seeds.json` |
+| Tabela Supabase | `livros` (+ofertas…) | `jogos` | `livros_infantis` |
+| Click | `/api/click/[id]` | `/api/click-jogo/[id]` | `/api/click-infantil/[id]` |
+| Página | `/livros/[slug]` | `/jogos/[slug]` | `/infantis/[slug]` |
+
+**Fallback do G:** ao esgotar o que o pipeline de livros podia fazer, o G
+chama `_run_secoes_paralelas()` → autopilot **J** e depois **I**. O trabalho
+não-LLM dessas seções (ofertas, enriquecimento, capas) não consome quota
+nenhuma. Cada seção roda em `try` isolado: falha numa não compromete o G.
+
+> ⚠ **A letra `I` mudou de dono.** Era "Ingestão Orientada", que passou para o
+> **submenu Ingestão, opção 5**. No topo, `I` agora é a seção Livros Infantis.
+
+---
+
+## Pipeline de Livros Infantis (paralelo e independente)
+
+Seção de livros para leitores de **até 12 anos**, segmentada por idade.
+
+```bash
+cd scripts
+python main.py     # → opção I (autopilot multijanela)
+```
+
+**Por que tabela própria:** a seção precisa de `faixa_etaria`, `idade_min/max`
+e `ilustrador` (em livro infantil o ilustrador é coautor de fato) — campos que
+`livros` não tem e que não fazem sentido no catálogo geral. Acrescentá-los lá
+mexeria no pipeline funcional, o mesmo motivo que isolou os jogos.
+
+**Diferença importante vs. Jogos:** livro infantil **é livro** — Google Books e
+OpenLibrary catalogam esses títulos. Por isso este pipeline tem um step de
+**enriquecimento por ISBN/título (`enrich`, sem LLM)** antes do scraper, e a
+maior parte do conteúdo entra de graça. O LLM é usado **só na sinopse**, o que
+torna esta seção muito mais barata em quota que a de jogos (onde a descrição
+só vinha pelo agente finder via WebSearch).
+
+**Subcategorias por idade** (`FAIXAS` em `steps/infantis_pipeline.py`, espelhadas
+no hub `/infantis`): `0-2-anos`, `3-5-anos`, `6-8-anos`, `9-12-anos`.
+
+- **Steps:** seeds → ofertas → **enrich (Google Books/OpenLibrary)** → scraper
+  → slugs → sinopse (agente `synopsis_infantis_batch`) → QG → publish.
+- **Seeder (ChatGPT):** `agents/seeder_agent - infantis theme driven.txt` —
+  theme-driven, faixa etária obrigatória com grafia fixa, e regras explícitas
+  de **JSON puro** (sem markdown/cerca, sem JSONL, sem aspas curvas) para o
+  arquivo ser ingerível. O import ainda assim tolera BOM e cerca de markdown.
+- **Migração Supabase (1x):** `scripts/sql/2026-07-21_secao_infantis.sql`
+  (`livros_infantis` + `livro_infantil_clicks`). Sem ela o site fica de pé
+  (hub mostra "em breve") e só o publish falha, com mensagem orientando.
+
+---
+
 ## Pipeline de Jogos (paralelo e independente)
 
 A **Seção Jogos** do site (RPG de mesa, jogos de tabuleiro, jogos de cartas)
