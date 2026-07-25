@@ -469,7 +469,37 @@ O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 3. **Persistência:** `data/claude_usage.json`.
 4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
-### Rotação de bios — cota fixa por ciclo
+### Rotações — cotas fixas por ciclo
+
+Duas filas ficavam atrás da sinopse na Fase A e, como ela não zera numa janela
+de 5h, **nunca eram alcançadas**. A correção é a mesma nas duas: uma cota fixa
+executada **no início do ciclo, antes da sinopse**.
+
+| Rotação | Env | Padrão | Unidade | Fila em 2026-07-25 |
+|---|---|---|---|---|
+| Bios | `BIO_POR_CICLO` | 10 | autores | 8.034 |
+| Categorização | `CLASSIFY_POR_CICLO` | 25 | livros | 13.872 |
+
+`0` desliga qualquer uma delas. As cotas recortam abaixo do `BATCH_SIZE_*` via
+o parâmetro `limite` dos respectivos `_export_*`.
+
+> **A ordem é o mecanismo.** Rodar as rotações *depois* da sinopse seria
+> idêntico a não tê-las: a janela acaba na sinopse e o fluxo nunca chega lá.
+
+> **⚠ As duas se comportam DIFERENTE frente ao guard anti-giro do G**, que
+> compara `_content_backlog()` (= sinopse + categorização) entre janelas:
+> - **Bios não entram** nessa conta — uma janela que só gerou bios continua
+>   sendo corretamente detectada como "sem progresso" e encerra o loop.
+> - **Categorização entra.** Uma janela em que só a rotação de classify
+>   progrediu conta como progresso e o loop continua. Está correto (o backlog
+>   caiu de verdade), mas com a sinopse travada o G segue rodando enquanto
+>   houver categorização — até ~555 janelas no backlog atual. Para encerrar
+>   antes: Ctrl+C ou `CLASSIFY_POR_CICLO=0`.
+
+Os `_drain_*` ilimitados seguem no fim da Fase A: quando as filas realmente
+zerarem, tudo drena de uma vez como antes.
+
+### Rotação de bios — detalhe
 
 **Problema (medido em 2026-07-25):** a fase de bios do `llm_orchestrator` só é
 alcançada depois de sinopse **e** categorização zerarem. Isso são ~1.300 lotes
@@ -574,8 +604,9 @@ BATCH_SIZE_SYNOPSIS=15
 BATCH_SIZE_CLASSIFY=25
 BATCH_SIZE_AUTHOR_BIO=25
 
-# Rotação de bios (ver "Rotação de bios"). Autores por ciclo, não lotes.
-BIO_POR_CICLO=10                 # 0 desliga a rotação
+# Rotações (ver "Rotações"). Cotas por ciclo, não lotes. 0 desliga.
+BIO_POR_CICLO=10                 # autores por ciclo
+CLASSIFY_POR_CICLO=25            # livros por ciclo
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
