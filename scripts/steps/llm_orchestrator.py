@@ -42,17 +42,9 @@ class ClaudeAuthError(RuntimeError):
     pass
 
 
-_AUTH_PATTERNS = [
-    "401",
-    "invalid authentication",
-    "authentication credentials",
-    "unauthenticated",
-]
-
-
-def _is_auth_error(output: str) -> bool:
-    lower = output.lower()
-    return any(p in lower for p in _AUTH_PATTERNS)
+# Fonte única em core.claude_runner — evita que os padrões divirjam entre o
+# pré-voo do G e a detecção durante o ciclo.
+from core.claude_runner import is_auth_error as _is_auth_error
 
 
 from core.batch_numbering import next_batch_number, pending_batch_input

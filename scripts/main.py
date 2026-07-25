@@ -883,9 +883,28 @@ def _run_gargalo(idioma: str):
         log(f"[G] AVISO: gatilho de regeneração de sinopse falhou: {e_sr}")
 
     # ── FASE LLM priorizada (WS1) — consome a sessão PRO ──
-    from core.claude_runner import claude_available
+    from core.claude_runner import claude_available, session_status
     llm_limited = False   # True se a fase LLM parou por limite de sessão (habilita retry pós-fallback)
-    if claude_available():
+
+    # Pré-voo: `claude_available()` só confirma que o executável existe. Com o
+    # token expirado ele devolve True, a fase LLM roda, e cada export marca
+    # livros como status_*=3 (em voo) antes de falhar com 401 — deixando lotes
+    # órfãos e livros presos nesse estado. Uma chamada trivial evita o ciclo
+    # inteiro. "limite" NÃO bloqueia: o orquestrador já trata quota esgotada.
+    _sessao, _detalhe = session_status()
+    if _sessao == "auth":
+        log("[G] ⛔ Sessão do claude CLI inválida ou expirada — fase LLM PULADA.")
+        log(f"[G]    {_detalhe}")
+        log("[G]    Solução: abra um terminal e rode 'claude auth login'.")
+        log("[G]    Segue só com o trabalho não-LLM.")
+    elif _sessao == "erro":
+        log(f"[G] ⚠ Pré-voo da sessão falhou: {_detalhe}")
+        log("[G]    Fase LLM PULADA — segue só com o trabalho não-LLM.")
+    elif _sessao == "limite":
+        log("[G] Sessão em cooldown de quota — fase LLM segue mesmo assim "
+            "(o orquestrador trata espera e fallback).")
+
+    if _sessao in ("ok", "limite") and claude_available():
         log("[G] ── Fase LLM priorizada (orquestrador) ──")
         try:
             # Passe único: ao esgotar a sessão, o orquestrador roda o
@@ -896,7 +915,8 @@ def _run_gargalo(idioma: str):
             log("[G] Fase LLM interrompida pelo usuário.")
         except Exception as e_llm:
             log(f"[G] AVISO: fase LLM retornou com exceção: {e_llm}")
-    else:
+    elif _sessao == "sem_cli":
+        # auth/erro já foram logados com o motivo específico no pré-voo.
         log("[G] claude CLI não encontrado — pulando fase LLM (segue só não-LLM).")
 
     # ── FASE QA / REMEDIAÇÃO (WS4/WS5, não-LLM) ──────────────────

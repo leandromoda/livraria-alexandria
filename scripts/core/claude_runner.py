@@ -144,7 +144,61 @@ def _find_claude() -> str | None:
 
 
 def claude_available() -> bool:
+    """Só confirma que o EXECUTÁVEL existe — não que a sessão esteja válida.
+
+    Use `session_status()` antes de gastar um ciclo: com o token expirado este
+    aqui devolve True e todo agente falha depois com 401.
+    """
     return _find_claude() is not None
+
+
+# Padrões de erro de autenticação. "401" cobre o caso comum; os demais cobrem a
+# mensagem do token expirado ("Failed to authenticate. API Error: 401 OAuth
+# access token has expired. Re-authenticate to continue.") mesmo que o código
+# numérico mude de formato.
+_AUTH_PATTERNS = [
+    "401",
+    "invalid authentication",
+    "authentication credentials",
+    "unauthenticated",
+    "token has expired",
+    "re-authenticate",
+]
+
+
+def is_auth_error(output: str) -> bool:
+    lower = output.lower()
+    return any(p in lower for p in _AUTH_PATTERNS)
+
+
+def session_status(timeout: int = _PROBE_TIMEOUT) -> tuple[str, str]:
+    """Pré-voo da sessão do claude CLI. Retorna (estado, detalhe).
+
+    Estados:
+      "ok"        — a sessão responde; pode rodar a fase LLM.
+      "sem_cli"   — executável não encontrado.
+      "auth"      — sessão inválida/expirada. Rodar a fase LLM só desperdiça:
+                    cada export marca livros como status_*=3 (em voo) e, ao
+                    falhar, deixa lotes órfãos e livros presos nesse estado.
+      "limite"    — quota esgotada. NÃO é motivo para pular a fase LLM: o
+                    orquestrador já trata isso (fallback não-LLM / espera).
+      "erro"      — outra falha; o chamador decide.
+
+    Custo: uma chamada trivial ("responda ok"), na casa de segundos — barato
+    contra um ciclo inteiro desperdiçado.
+    """
+    if not claude_available():
+        return "sem_cli", "executável 'claude' não encontrado no PATH"
+
+    ok, out = _invoke(_PROBE_PROMPT, timeout, {**os.environ})
+
+    if ok:
+        return "ok", ""
+    if is_auth_error(out):
+        return "auth", out.strip()[:200]
+    if _tracker.is_limit_error(out):
+        return "limite", out.strip()[:200]
+    return "erro", out.strip()[:200]
 
 
 def _invoke(prompt_text: str, timeout: int, env: dict,

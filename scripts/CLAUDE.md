@@ -458,6 +458,28 @@ python -c "import os; from core.claude_runner import _invoke; [print(m, '->', _i
 > as quotas são por modelo, e sondar com o padrão manteria a espera mesmo com o
 > modelo rápido já liberado.
 
+### Pré-voo de sessão (opção G)
+
+`claude_available()` só confirma que o **executável** existe. Com o token
+expirado ele devolve `True`, a fase LLM roda, e cada export marca livros como
+`status_*=3` (em voo) **antes** de falhar com 401 — deixando lotes órfãos e
+livros presos nesse estado. Aconteceu em 2026-07-25: 5 lotes órfãos de
+categorização e 40 livros parados em `status_categorize=3`.
+
+`claude_runner.session_status()` faz uma chamada trivial e classifica:
+
+| Estado | Significado | Efeito no G |
+|---|---|---|
+| `ok` | sessão responde | roda a fase LLM |
+| `limite` | quota esgotada | **roda mesmo assim** — o orquestrador já trata espera/fallback |
+| `auth` | sessão inválida/expirada | **pula** a fase LLM e orienta `claude auth login` |
+| `erro` | outra falha | **pula** a fase LLM, segue no não-LLM |
+| `sem_cli` | executável ausente | pula a fase LLM |
+
+Custo: segundos, contra um ciclo inteiro desperdiçado. Os padrões de erro de
+autenticação vivem em `claude_runner._AUTH_PATTERNS` (fonte única — o
+`llm_orchestrator` importa `is_auth_error` de lá, para os dois não divergirem).
+
 ### Controle de sessão (não tokens)
 
 O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
