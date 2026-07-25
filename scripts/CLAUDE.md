@@ -610,6 +610,19 @@ ALTER TABLE livros ADD COLUMN IF NOT EXISTS preco_updated_at TIMESTAMPTZ;
 > recebem upsert) — por isso o frontend também não filtra por `status_publish`
 > nessas tabelas (usa inner join com a junction). Ver `publish_autores.upsert_autor`.
 
+> **⚠️ Gotcha — publicação de autor é one-shot; a bio precisa de resync.**
+> `fetch_autores_pendentes` filtra por `status_publish = 0`, então cada autor é
+> enviado ao Supabase **uma única vez**. Como a bio (`author_bio`) só é gerada
+> muito depois — a fase de bios no `llm_orchestrator` roda **após** sinopse e
+> categorização zerarem, o que raramente acontece —, o autor entrava no Supabase
+> com `descricao` NULL e nunca mais era reenviado. Medido em 2026-07-25:
+> **0 de 8.399 autores no Supabase tinham bio**, embora 308 já tivessem bio no
+> SQLite. Corrigido com a coluna local `autores.status_publish_bio` + o resync em
+> `publish_autores._resync_bios`, que roda ao final de **todo** `run()` (inclusive
+> quando não há autor novo). O payload do resync **não** inclui `created_at` — com
+> `resolution=merge-duplicates` o PostgREST só sobrescreve as colunas enviadas, e
+> mandá-la reescreveria a data de criação de cada autor re-sincronizado.
+
 ---
 
 ## Estado Atual

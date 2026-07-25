@@ -58,6 +58,29 @@ def fetch_autores_pendentes(conn, pacote):
     return cur.fetchall()
 
 
+def fetch_bios_pendentes(conn, pacote):
+    """Autores JÁ publicados cuja bio ainda não foi enviada ao Supabase.
+
+    A publicação de autor é one-shot (`fetch_autores_pendentes` filtra por
+    `status_publish = 0`), mas a bio é gerada muito depois — o autor entra no
+    Supabase sem `descricao` e nunca mais é reenviado. Esta fila corrige isso.
+    """
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, nome, slug, nacionalidade, descricao
+        FROM autores
+        WHERE status_publish     = 1
+          AND status_publish_bio = 0
+          AND descricao IS NOT NULL
+          AND TRIM(descricao) <> ''
+        LIMIT ?
+    """, (pacote,))
+
+    return cur.fetchall()
+
+
 def fetch_relacoes(conn, autor_id_local):
     """Retorna supabase_id dos livros relacionados ao autor."""
 
@@ -132,6 +155,24 @@ def upsert_autor(row, autores_url, headers):
     return upsert(autores_url, payload, headers)
 
 
+def upsert_bio(row, autores_url, headers):
+    """Atualiza só os campos editoriais do autor já publicado.
+
+    Sem `created_at` no payload de propósito: com `resolution=merge-duplicates`
+    o PostgREST só sobrescreve as colunas enviadas, e mandar `created_at` aqui
+    reescreveria a data de criação de todo autor re-sincronizado.
+    """
+
+    payload = {
+        "nome":          row["nome"],
+        "slug":          row["slug"],
+        "nacionalidade": row["nacionalidade"],
+        "descricao":     row["descricao"],
+    }
+
+    return upsert(autores_url, payload, headers)
+
+
 def upsert_relacao(livro_supabase_id, autor_slug, livros_autores_url, headers, supabase_url):
     """Resolve autor_id via slug no Supabase e insere relação."""
 
@@ -168,14 +209,29 @@ def upsert_relacao(livro_supabase_id, autor_slug, livros_autores_url, headers, s
 # FLAG LOCAL
 # =========================
 
-def mark_published(conn, local_id):
+def mark_published(conn, local_id, bio_enviada=False):
 
     cur = conn.cursor()
 
     cur.execute("""
         UPDATE autores
-        SET status_publish = 1,
-            updated_at     = CURRENT_TIMESTAMP
+        SET status_publish     = 1,
+            status_publish_bio = ?,
+            updated_at         = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (1 if bio_enviada else 0, local_id))
+
+    conn.commit()
+
+
+def mark_bio_published(conn, local_id):
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE autores
+        SET status_publish_bio = 1,
+            updated_at         = CURRENT_TIMESTAMP
         WHERE id = ?
     """, (local_id,))
 
@@ -213,41 +269,97 @@ def run(pacote=100):
 
     if not autores:
         log("Nenhum autor pendente para publicação.")
-        conn.close()
-        return
+    else:
+        inserted  = 0
+        failed    = 0
+        relacoes  = 0
+        total     = len(autores)
 
-    inserted  = 0
-    failed    = 0
-    relacoes  = 0
-    total     = len(autores)
+        for i, row in enumerate(autores, start=1):
 
-    for i, row in enumerate(autores, start=1):
+            if _interrupt.requested():
+                log(f"[AUTORES] Interrupção solicitada — encerrando após {i - 1}/{total}.")
+                break
 
-        local_id = row["id"]
-        slug     = row["slug"]
+            local_id = row["id"]
+            slug     = row["slug"]
 
-        ok = upsert_autor(row, autores_url, headers)
+            ok = upsert_autor(row, autores_url, headers)
 
-        if not ok:
-            failed += 1
-            log(f"[AUTORES][{i:03d}/{total:03d}] FALHA → {row['nome']}")
-            continue
+            if not ok:
+                failed += 1
+                log(f"[AUTORES][{i:03d}/{total:03d}] FALHA → {row['nome']}")
+                continue
 
-        # Publica relações livros_autores
-        livros_rows = fetch_relacoes(conn, local_id)
+            # Publica relações livros_autores
+            livros_rows = fetch_relacoes(conn, local_id)
 
-        for livro_row in livros_rows:
-            livro_supabase_id = livro_row["supabase_id"]
-            upsert_relacao(livro_supabase_id, slug, livros_autores_url, headers, supabase_url)
-            relacoes += 1
+            for livro_row in livros_rows:
+                livro_supabase_id = livro_row["supabase_id"]
+                upsert_relacao(livro_supabase_id, slug, livros_autores_url, headers, supabase_url)
+                relacoes += 1
 
-        mark_published(conn, local_id)
-        inserted += 1
-        log(f"[AUTORES][{i:03d}/{total:03d}] OK → {row['nome']}")
+            # A bio já foi junto no payload quando existia — não precisa resync.
+            mark_published(conn, local_id, bio_enviada=bool(row["descricao"]))
+            inserted += 1
+            log(f"[AUTORES][{i:03d}/{total:03d}] OK → {row['nome']}")
+
+        log(f"Autores publicados: {inserted} | Relações: {relacoes} | Falhas: {failed}")
+
+    # Resync das bios que chegaram DEPOIS do primeiro publish. Roda sempre,
+    # inclusive quando não há autor novo — é justamente o caso em que o
+    # backlog de bios se acumula.
+    _resync_bios(conn, autores_url, headers, pacote)
 
     conn.close()
 
-    log(f"Autores publicados: {inserted} | Relações: {relacoes} | Falhas: {failed}")
+
+# =========================
+# RESYNC — BIOS PÓS-PUBLICAÇÃO
+# =========================
+
+def _resync_bios(conn, autores_url, headers, pacote):
+    """Envia ao Supabase a `descricao` de autores publicados sem bio.
+
+    Idempotente: cada autor sincronizado recebe `status_publish_bio = 1` e sai
+    da fila. Lote a lote até esvaziar (ou até interrupção do usuário).
+    """
+
+    enviados = falhas = 0
+
+    while True:
+        rows = fetch_bios_pendentes(conn, pacote)
+
+        if not rows:
+            break
+
+        total = len(rows)
+        enviados_lote = 0
+
+        for i, row in enumerate(rows, start=1):
+
+            if _interrupt.requested():
+                log(f"[AUTORES][BIO] Interrupção solicitada — encerrando após {i - 1}/{total}.")
+                log(f"[AUTORES][BIO] Bios sincronizadas: {enviados} | Falhas: {falhas}")
+                return
+
+            if upsert_bio(row, autores_url, headers):
+                mark_bio_published(conn, row["id"])
+                enviados_lote += 1
+                enviados += 1
+                log(f"[AUTORES][BIO][{i:03d}/{total:03d}] OK → {row['nome']}")
+            else:
+                falhas += 1
+                log(f"[AUTORES][BIO][{i:03d}/{total:03d}] FALHA → {row['nome']}")
+
+        # Guard anti-giro: as falhas mantêm status_publish_bio = 0 e voltariam
+        # na próxima query. Sem progresso NESTE lote, para (ex: Supabase fora).
+        if enviados_lote == 0:
+            log("[AUTORES][BIO] Nenhuma bio sincronizada no lote — abortando resync.")
+            break
+
+    if enviados or falhas:
+        log(f"[AUTORES][BIO] Bios sincronizadas: {enviados} | Falhas: {falhas}")
 
 
 # =========================
