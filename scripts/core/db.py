@@ -174,6 +174,10 @@ def ensure_schema(conn):
         ("deduped",   "INTEGER DEFAULT 0"),
         ("descricao", "TEXT"),
         ("bio",       "TEXT"),
+        # 1 = a `descricao` atual já foi enviada ao Supabase. Bio gerada DEPOIS
+        # do primeiro publish zera nada aqui (fica 0) e é reenviada pelo
+        # resync em publish_autores.run(). Ver "publicação one-shot" no CLAUDE.md.
+        ("status_publish_bio", "INTEGER DEFAULT 0"),
     ]:
         try:
             cur.execute(f"ALTER TABLE autores ADD COLUMN {col} {definition}")
