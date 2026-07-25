@@ -89,6 +89,13 @@ BATCH_SIZE_AUTHOR_BIO = int(os.getenv("BATCH_SIZE_AUTHOR_BIO", "25"))
 # sinopse e categorização, que juntas somam ~1.300 lotes e não zeram numa
 # janela de 5h. 0 desliga a rotação e restaura o comportamento antigo.
 BIO_POR_CICLO = int(os.getenv("BIO_POR_CICLO", "10"))
+
+# Mesma fome que as bios, com fila maior e prejuízo já no ar: em 2026-07-25,
+# 2.620 dos 4.403 livros publicados (60%) estavam no site sem categoria
+# temática — fora das páginas de categoria e das listas. Categorização é
+# barata (~6,5 s/livro contra ~26 s/livro da sinopse), então a cota padrão é
+# um lote cheio. 0 desliga.
+CLASSIFY_POR_CICLO = int(os.getenv("CLASSIFY_POR_CICLO", "25"))
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
 
@@ -229,9 +236,13 @@ def _import_synopsis() -> int:
 # EXPORT — CLASSIFY
 # =========================
 
-def _export_classify(conn) -> int:
+def _export_classify(conn, limite: int | None = None) -> int:
+    """Exporta um lote de categorização. `limite` recorta abaixo de
+    BATCH_SIZE_CLASSIFY para a cota da rotação."""
     os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(BATCH_DIR / "processed_categorize", exist_ok=True)
+
+    tamanho = min(limite, BATCH_SIZE_CLASSIFY) if limite else BATCH_SIZE_CLASSIFY
 
     cur = conn.cursor()
     try:
@@ -242,7 +253,7 @@ def _export_classify(conn) -> int:
               AND status_review     = 1
             ORDER BY priority_score DESC, created_at ASC
             LIMIT ?
-        """, (BATCH_SIZE_CLASSIFY,))
+        """, (tamanho,))
     except Exception:
         cur.execute("""
             SELECT id, titulo, slug, autor, descricao, NULL AS sinopse
@@ -251,7 +262,7 @@ def _export_classify(conn) -> int:
               AND status_review     = 1
             ORDER BY created_at ASC
             LIMIT ?
-        """, (BATCH_SIZE_CLASSIFY,))
+        """, (tamanho,))
 
     rows = cur.fetchall()
 
@@ -881,6 +892,61 @@ def _rotacao_author_bio(cota: int) -> tuple[int, bool]:
     return _import_author_bio(), False
 
 
+def _rotacao_classify(cota: int) -> tuple[int, bool]:
+    """Categoriza até `cota` livros — UM lote — no início do ciclo.
+
+    Mesma justificativa da rotação de bios (`_rotacao_author_bio`): a fase de
+    categorização fica atrás da sinopse, que não zera numa janela de 5h, então
+    nunca era alcançada. Diferença: aqui o prejuízo já está no ar — 2.620 dos
+    4.403 livros publicados (60%, medido em 2026-07-25) estão no site sem
+    categoria temática, fora das páginas de categoria e das listas.
+
+    Categorização é barata (~6,5 s/livro contra ~26 s/livro da sinopse), então
+    a cota padrão é um lote cheio.
+
+    ⚠ Diferença em relação à rotação de bios: categorização **entra** em
+    `_content_backlog()`, que é o que o guard anti-giro do G compara entre
+    janelas. Logo, uma janela em que só a rotação de classify progrediu conta
+    como progresso e o loop multijanela continua. Isso é correto — o backlog de
+    conteúdo realmente diminuiu —, mas significa que, com a sinopse travada, o
+    G segue rodando enquanto houver categorização a fazer (até ~555 janelas no
+    backlog de 2026-07-25). Para encerrar antes, Ctrl+C ou CLASSIFY_POR_CICLO=0.
+    """
+    if cota <= 0:
+        return 0, False
+
+    conn = get_conn()
+    try:
+        n = _count_pending_classify(conn)
+        if n <= 0:
+            return 0, False
+        log(f"[LLM_ORCH] classify (rotação): {n} pendentes — cota de {cota} neste ciclo")
+        exportados = _export_classify(conn, limite=cota)
+    finally:
+        conn.close()
+
+    if exportados <= 0:
+        return 0, False
+
+    ok, limit_persists = _run_agent_step("classify", "classify_batch", timeout=900,
+                                         batch_prefix="categorize")
+    if limit_persists:
+        return 0, True
+
+    if not ok:
+        return 0, False
+
+    _import_classify()
+
+    # Retorna o EXPORTADO, não o categorizado — igual a `_drain_classify`. Os
+    # dois números divergem de propósito: `_run_agent_step` resolve o lote de
+    # MENOR número ainda sem output, que pode ser um órfão de ciclo anterior
+    # (medido em 2026-07-25: 5 órfãos acumulados). O ciclo então exporta o lote
+    # N e processa o órfão N-k — defasagem de um lote, herdada do desenho e
+    # desejável, porque senão os órfãos nunca seriam drenados.
+    return exportados, False
+
+
 def _content_backlog(idioma: str) -> int:
     """Soma do backlog de conteúdo que destrava publicação (sinopse + categoria)."""
     conn = get_conn()
@@ -1001,12 +1067,20 @@ def run(idioma: str, wait_for_reset: bool = True):
         # categorização, depois bios — cada um drenado em vários lotes.
         # ClaudeAuthError aborta imediatamente: sessão inativa, aguardar não ajuda.
         try:
-            # Rotação de bios: cota fixa ANTES da sinopse. Depois seria o mesmo
-            # que não rodar — a janela acaba na sinopse e nunca chega aqui.
+            # Rotações: cotas fixas ANTES da sinopse. Depois seria o mesmo que
+            # não rodar — a janela acaba na sinopse e nunca chega aqui.
             bio_rot, cycle_limit_hit = _rotacao_author_bio(BIO_POR_CICLO)
             cycle_done += bio_rot
             if bio_rot:
                 log(f"[LLM_ORCH] author_bio (rotação): {bio_rot} bio(s) geradas neste ciclo")
+
+            if not cycle_limit_hit:
+                cls_rot, cycle_limit_hit = _rotacao_classify(CLASSIFY_POR_CICLO)
+                cycle_done += cls_rot
+                if cls_rot:
+                    # "enviados", não "categorizados": o lote processado pode ser
+                    # um órfão anterior, não o que acabou de ser exportado.
+                    log(f"[LLM_ORCH] classify (rotação): {cls_rot} livro(s) enviados ao classificador")
 
             if not cycle_limit_hit:
                 syn_done, cycle_limit_hit = _drain_synopsis(idioma)
