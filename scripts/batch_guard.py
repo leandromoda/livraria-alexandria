@@ -21,7 +21,7 @@ import re
 import sys
 
 BATCH = os.path.join("data", "batch")
-NUM_PAT = re.compile(r"(\d{3})_")
+NUM_PAT = re.compile(r"(\d+)_")
 
 
 def _get_nums(pattern: str) -> set:

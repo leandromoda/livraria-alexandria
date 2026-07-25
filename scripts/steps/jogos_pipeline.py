@@ -52,7 +52,7 @@ SEEDS_DIR = os.path.join(DATA_DIR, "seeds")
 BATCH_DIR = os.path.join(DATA_DIR, "batch")
 DB_PATH   = os.path.join(DATA_DIR, "books.db")
 
-SEED_PATTERN  = re.compile(r"^\d{3}_jogos_seeds\.json$")
+SEED_PATTERN  = re.compile(r"^\d+_jogos_seeds\.json$")
 BATCH_PREFIX  = "synopsis_jogos"   # NNN_synopsis_jogos_input.json
 PROCESSED_DIR = os.path.join(BATCH_DIR, f"processed_{BATCH_PREFIX}")
 

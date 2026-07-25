@@ -26,7 +26,7 @@ BATCH_DIR     = os.path.join(DATA_DIR, "batch")
 PROCESSED_DIR  = os.path.join(BATCH_DIR, "processed_categorize")
 TAXONOMY_PATH  = os.path.join(DATA_DIR, "taxonomy.json")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
-OUTPUT_PAT     = re.compile(r"^(\d{3})_categorize_output\.json$")
+OUTPUT_PAT     = re.compile(r"^(\d+)_categorize_output\.json$")
 
 MAX_CATEGORIES = 5
 
