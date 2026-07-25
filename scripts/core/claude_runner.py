@@ -220,9 +220,42 @@ def _wait_and_probe(limit_output: str, env: dict, model: str | None = None) -> b
     return False
 
 
+def input_hint(input_path: str | Path) -> str:
+    """Bloco a anexar ao prompt informando o lote já resolvido.
+
+    O agente continua com todas as instruções originais: se ignorar este bloco,
+    faz o Glob e chega ao MESMO arquivo (a resolução em Python replica a regra
+    do prompt). Ou seja, é economia de turnos sem risco de divergência.
+    """
+    rel = Path(input_path)
+    try:
+        rel = rel.relative_to(REPO_ROOT)
+    except ValueError:
+        pass
+
+    return f"""
+
+---
+
+## Input já resolvido pelo orquestrador
+
+O lote a processar nesta execução é:
+
+    {rel.as_posix()}
+
+Este caminho já foi resolvido com a MESMA regra da seção "Input" acima (menor
+número ainda sem `_output.json` correspondente), então **não rode Glob nem `ls`
+para procurar** — leia o arquivo direto com Read.
+
+Todo o resto do fluxo continua igual: mover o input para o `processed_*/`
+correspondente e gravar o output com o mesmo prefixo numérico.
+"""
+
+
 def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
               wait_on_limit: bool = True,
-              model: str | None = None) -> tuple[bool, str]:
+              model: str | None = None,
+              extra_context: str | None = None) -> tuple[bool, str]:
     """
     Carrega o prompt de `prompt_path` e invoca `claude --print` via subprocess.
 
@@ -252,6 +285,9 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
         model = model_for_agent(path.parent.name)
 
     prompt_text = path.read_text(encoding="utf-8")
+    if extra_context:
+        prompt_text += extra_context
+
     env = {**os.environ}
 
     if model:
