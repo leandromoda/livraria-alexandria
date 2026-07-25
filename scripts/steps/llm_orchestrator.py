@@ -82,6 +82,13 @@ AGENTS_DIR    = SCRIPTS_DIR.parent / "agents"
 BATCH_SIZE_SYNOPSIS   = int(os.getenv("BATCH_SIZE_SYNOPSIS", "15"))
 BATCH_SIZE_CLASSIFY   = int(os.getenv("BATCH_SIZE_CLASSIFY", "25"))
 BATCH_SIZE_AUTHOR_BIO = int(os.getenv("BATCH_SIZE_AUTHOR_BIO", "25"))
+
+# Rotação de bios (ver "Rotação de bios" no CLAUDE.md).
+# Cota de autores — não de lotes — processados no INÍCIO de cada ciclo, antes
+# da sinopse. Sem isso as bios nunca rodam: a fase de bios fica atrás de
+# sinopse e categorização, que juntas somam ~1.300 lotes e não zeram numa
+# janela de 5h. 0 desliga a rotação e restaura o comportamento antigo.
+BIO_POR_CICLO = int(os.getenv("BIO_POR_CICLO", "10"))
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
 
@@ -304,10 +311,14 @@ def _import_classify() -> int:
 # EXPORT — AUTHOR BIO
 # =========================
 
-def _export_author_bio(conn) -> int:
+def _export_author_bio(conn, limite: int | None = None) -> int:
+    """Exporta um lote de bios. `limite` recorta abaixo de BATCH_SIZE_AUTHOR_BIO
+    para a cota da rotação (ex: 10 autores), que é menor que um lote cheio."""
     processed_dir = BATCH_DIR / "processed_author_bio"
     os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(processed_dir, exist_ok=True)
+
+    tamanho = min(limite, BATCH_SIZE_AUTHOR_BIO) if limite else BATCH_SIZE_AUTHOR_BIO
 
     cur = conn.cursor()
     cur.execute("""
@@ -320,7 +331,7 @@ def _export_author_bio(conn) -> int:
         GROUP BY a.id
         ORDER BY a.nome ASC
         LIMIT ?
-    """, (BATCH_SIZE_AUTHOR_BIO,))
+    """, (tamanho,))
 
     rows = cur.fetchall()
 
@@ -828,6 +839,48 @@ def _drain_author_bio() -> tuple[int, bool]:
     return done, False
 
 
+def _rotacao_author_bio(cota: int) -> tuple[int, bool]:
+    """Gera até `cota` bios — UM lote — no início do ciclo. Retorna (feitas, limit_hit).
+
+    Por que existe: `_drain_author_bio` só é alcançado depois de sinopse E
+    categorização zerarem. Medido em 2026-07-25, isso são ~1.300 lotes contra
+    uma janela de 5h que não chega perto disso, então as bios ficavam em fome
+    permanente — 8.034 autores sem bio e 0 gerada por janela.
+
+    A rotação roda ANTES da sinopse de propósito. Rodar depois seria idêntico
+    a não rodar: a janela acaba na sinopse e o fluxo nunca chega aqui.
+
+    O custo é explícito e limitado: 1 chamada por ciclo, `cota` autores. Com
+    a cota padrão (10) isso é ~1 lote contra as centenas gastas em sinopse —
+    a prioridade do gargalo continua intacta.
+    """
+    if cota <= 0:
+        return 0, False
+
+    conn = get_conn()
+    try:
+        n = _count_pending_author_bio(conn)
+        if n <= 0:
+            return 0, False
+        log(f"[LLM_ORCH] author_bio (rotação): {n} pendentes — cota de {cota} neste ciclo")
+        exportados = _export_author_bio(conn, limite=cota)
+    finally:
+        conn.close()
+
+    if exportados <= 0:
+        return 0, False
+
+    ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900,
+                                         batch_prefix="author_bio")
+    if limit_persists:
+        return 0, True
+
+    if not ok:
+        return 0, False
+
+    return _import_author_bio(), False
+
+
 def _content_backlog(idioma: str) -> int:
     """Soma do backlog de conteúdo que destrava publicação (sinopse + categoria)."""
     conn = get_conn()
@@ -948,10 +1001,18 @@ def run(idioma: str, wait_for_reset: bool = True):
         # categorização, depois bios — cada um drenado em vários lotes.
         # ClaudeAuthError aborta imediatamente: sessão inativa, aguardar não ajuda.
         try:
-            syn_done, cycle_limit_hit = _drain_synopsis(idioma)
-            cycle_done += syn_done
-            if syn_done == 0 and not cycle_limit_hit:
-                log("[LLM_ORCH] synopsis: nenhum pendente — skip")
+            # Rotação de bios: cota fixa ANTES da sinopse. Depois seria o mesmo
+            # que não rodar — a janela acaba na sinopse e nunca chega aqui.
+            bio_rot, cycle_limit_hit = _rotacao_author_bio(BIO_POR_CICLO)
+            cycle_done += bio_rot
+            if bio_rot:
+                log(f"[LLM_ORCH] author_bio (rotação): {bio_rot} bio(s) geradas neste ciclo")
+
+            if not cycle_limit_hit:
+                syn_done, cycle_limit_hit = _drain_synopsis(idioma)
+                cycle_done += syn_done
+                if syn_done == 0 and not cycle_limit_hit:
+                    log("[LLM_ORCH] synopsis: nenhum pendente — skip")
 
             if not cycle_limit_hit:
                 cls_done, cycle_limit_hit = _drain_classify()
