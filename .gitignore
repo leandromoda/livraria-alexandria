@@ -51,6 +51,10 @@ scripts/data/*.db-shm
 scripts/data/books.db
 scripts/data/backup/
 scripts/data/seeds/
+# Lotes de input/output dos agentes batch — dado de runtime, mesma natureza
+# de seeds/. Ficava fora do ignore e aparecia como untracked em toda sessão,
+# a um `git add -A` distraído de ser versionado.
+scripts/data/batch/
 scripts/data/audit_*.json
 scripts/data/blacklist.json
 scripts/data/gemini_usage.json

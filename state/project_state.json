@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-21 (sessao 31 — (1) 3 correcoes no pipeline de jogos apos o J queimar quota sem publicar: [a] lote orfao travava o reclaim para sempre (input de run morto nunca sumia -> itens presos em status_synopsis=3 e cada passe exportava mais um lote que tambem morria; moinho de quota) -> purge_stale_inputs() descarta input parado > BATCH_STALE_MINUTES=45 e libera os presos, aplicado tambem ao finder_export; [b] requeue de scrape re-enfileirava TODOS os sem-descricao a cada passe (231 itens, ~20 min de HTTP contra marketplaces que bloqueiam) -> backoff por scrape_attempts, MAX_SCRAPE_ATTEMPTS=3, quem esgota segue so pelo finder; [c] max_lotes=100 (ate 1.000 itens) -> MAX_LOTES_FINDER/SYNOPSIS=12 env-configuraveis, custo previsivel por execucao. (2) NOVA SECAO LIVROS INFANTIS (ate 12 anos) em pipeline paralelo proprio: tabela livros_infantis (faixa_etaria/idade_min/idade_max/ilustrador), steps/infantis_pipeline.py, opcao I no main.py, agente synopsis_infantis_batch, seeder theme-driven com regras de JSON puro, paginas /infantis e /infantis/[slug], /api/click-infantil/[id], migracao 2026-07-21_secao_infantis.sql (TASK-INFANTIS-001). DIFERENCA vs jogos: livro infantil E livro, entao ha step enrich via Google Books/OpenLibrary SEM LLM — o LLM so gera sinopse, tornando a secao muito mais barata em quota. (3) Letra I liberada: 'Ingestao Orientada' movida para o submenu Ingestao (opcao 5). (4) G ganhou fallback _run_secoes_paralelas() -> autopilot J e I, cada um em try isolado.) | 2026-07-14 (sessao 30c — fix(jogos): 1ª rodada real do J travou em 0 publicáveis: scraper raspava a PÁGINA DE BUSCA (0 descrições/imagens; SELECTORS são de página de produto) e, no deep-link ingênuo, o 1º resultado podia ser OUTRO produto ('Knave' recebeu descrição de Blades in the Dark). Fixes: (1) scrape 2 saltos com validação de título por card (_titulo_compativel, pula patrocinados, sem card compatível = falha — nunca às cegas); (2) bot walls MEDIDOS (Amazon 503/captcha; ML redirect account-verification) -> novo agente jogos_finder_batch (WebSearch/WebFetch, papel do offer_finder) acha a página real do produto e extrai descrição/imagem/preço, com finder_tried anti-loop; (3) fase LLM do J = finder -> sinopses, guard de janela considera descrições adquiridas; (4) requeue de scrape sem-descrição 1x/passe (nunca na espera multijanela); (5) mensagens honestas: distinguir backlog gerável de 'sem descrição' (gargalo de fonte).) | 2026-07-14 (sessao 30b — feat(jogos): autopilot J multijanela (modelo G) acessível pela letra J no main.py (import lazy) e no jogos.py; contrato de publicação local<->Supabase formalizado (SUPABASE_PAYLOAD_COLUMNS + CLICK_COLUMNS, tipos coeridos int/float/None) + verify_supabase() valida contra o OpenAPI remoto (tabela ausente/drift ANTES do publish, opção V). Migração TASK-JOGOS-001 APLICADA pelo usuário e verificada ao vivo: jogos 15/15 e jogo_clicks 8/8 colunas do contrato presentes — publicação liberada, Seção Jogos operacional.) | 2026-07-14 (sessao 30 — feat: Seção Jogos via PIPELINE PARALELO INDEPENDENTE. Decisão: jogos NÃO entram na tabela livros nem no pipeline de livros — auditoria identificou 8 pontos de confusão (enrich Google Books contaminaria descrição; covers por título+autor pegaria capa de livro homônimo; dedup fundiria jogo↔livro homônimo ('Azul','War'); backfill de lookup com sufixo 'livro'; listas 'Melhores livros de Jogos de Tabuleiro'; designers virando páginas de autor; title-verify DESPUBLICARIA jogos automaticamente como 'alucinação'; content-audit flagaria 'fora do contexto literário'). Em vez de 8 guards em código funcional, isolamento por construção: tabela local `jogos` (mesmo books.db), steps próprios em steps/jogos_pipeline.py, entrypoint scripts/jogos.py (não passa pelo main.py/G), seeds NNN_jogos_seeds.json, agente LLM próprio synopsis_jogos_batch, publicação em tabela Supabase `jogos` (oferta embutida), click em /api/click-jogo/[id]→jogo_clicks, páginas /jogos e /jogos/[slug]. Listas e autores de livros NÃO recebem jogos (listas de jogos independentes = futuro). Reuso só de funções puras (resolve_offer, scrape_marketplace, claude_runner). Migração pendente: TASK-JOGOS-001. Também: fix latente offer_seed (bootstrap sem coluna seed_id quebrava banco novo). Ver módulo 'Seção Jogos' em architecture.modules.) | 2026-07-12 (sessao 29 — perf(site): 4 PRs (#198-201) tornam todas as rotas publicas cacheadas. #198 ISR+unstable_cache nos [slug]/home/ofertas (gotcha: fetch no-store do Supabase exige unstable_cache p/ cachear render on-demand). #199 fontes self-hosted via next/font (remove @import bloqueante). #200 next/image + remotePatterns (covers.openlibrary/books.google/m.media-amazon) + width/height (CLS 0) + lazy; guard unoptimized p/ hosts fora da lista via lib/images.ts. #201 Data Cache + paginacao server-side (48/pag, app/_components/Pagination.tsx) nos indices — /livros caiu de 8,3 MB/9s p/ 128 KB/0,1s, /listas 1,2 MB->110 KB. Descartada tentativa de filtro client-side (useSearchParams -> SSR vazio, quebra SEO). Ver architecture.caching_strategy. Tambem: lint do projeto zerado (#202 tipa filtros do sitemap). +2 erros no-explicit-any pre-existentes eliminados.) | 2026-07-10 (sessao 28 — avaliacao: proposta de regen-synopsis reaproveitando sinopse rejeitada por muito curta DESCARTADA. Sem corpus (texto rejeitado e descartado no import), populacao vazia (0 aprovadas <400 chars, 0 loopers cronicos em qa_remediation), token accounting negativo (seed e input aditivo +~15%, saida identica, janela 5h inalterada). Gargalo real = 10041/12018 pendentes sem descricao (problema de fonte, nao de geracao). Ver TASK-SYN-014.) | 2026-05-30 (sessão 27 — refactor(pipeline) fases 1+2 da orquestração PRO no branch refactor/pipeline-pro-orquestracao. PREMISSA: geração LLM só pela quota da assinatura Claude PRO (claude CLI, janela 5h), NUNCA API paga; Gemini APOSENTADO. WS1: llm_orchestrator drena o gargalo de conteúdo (sinopse→categoria→bios) lote-a-lote antes de agentes não-críticos. WS7: claude_usage_tracker.session_window + bloco 'SESSÃO CLAUDE PRO' no pipeline_status. reclaim.py (idempotente) recupera estados presos (status_*=3 órfãos + inputs órfãos) no início de cada ação — 1ª execução recuperou 3.785 livros. WS2: motor LLM ÚNICO = batch (synopsis_batch/classify_batch); FSM de sinopse REMOVIDO (markdown_executor MODE 2, agents/synopsis/*, R1-R8, 4 testes); categorize.py per-item removido; synopsis.py e categorize.py viraram wrappers finos do batch; markdown_executor MODE 1 preservado (author_bio/offer_finder). WS3: BATCH_SIZE_* env-configurável e calibrado por medição empírica (tools/measure_batch.py): synopsis 5→15, classify 10→25. WS9 (fase 0): menu renumerado por grupos sem colisão — Geração 10-19 (bios→13), Publicação 20-30, Auditoria/QA 40-51 (libera 40+ para o qa.py do WS4); main.py é a fonte de verdade. WS4/WS5 (fase 3): estágio de QA + reprocessamento de blacklist. db.py +colunas blacklist_reason/severity/qa_retry/qa_quarantine; apply_blacklist persiste a causa; novo reprocess_blacklist.py (classifica por causa → reset+regenera ou quarentena, MAX_QA_RETRY=2); novo qa.py orquestrador (modos remediate/full/consistency/blacklist/reprocess/lists/content/titles); menu 52/53. WS6 (fase 4): opção G virou orquestrador único de passe único (reclaim → fase LLM priorizada opcional → QA/remediação → audits → Autopilot A → relatório de sessão + backlog); WS8 (SEO/autores) coberto sem código novo (bios na fase LLM, publish autores/listas no Autopilot A). Commits: 6edbb37, c7f1083, 5a6250d, 26b8a3a, 442c639, ab9c2e3, fbc09b1 (WS4/5) + WS6. Docs: pipelineimprovementplan.json + schema_pipeline.json. Resta só fase 5 (WS9 consolidação de steps, baixa prioridade).) | 2026-05-28 (sessão 26 — feat(pipeline): painel de status estendido + opção G de ataque a gargalos. (1) pipeline_status.py reescrito: 3 novas seções exibidas ao final do run() — 'ÚLTIMA EXECUÇÃO DOS STEPS' (22 steps rastreados via pipeline_runs, com variantes de nome autopilot+manual), 'AUDITORIA — ÚLTIMA EXECUÇÃO E SITUAÇÃO' (7 steps de auditoria com staleness configurable: 21 Conectividade <24h, 22 Conteúdo <48h, 28 Integridade <12h, 29 Listas <48h, 30 Bios <72h, 31 Título <168h, 32 Consistência <48h; ícone ⚠ quando stale; fallback mtime de arquivos JSON em data/logs/ para steps sem StepRun), 'LLM — PROCESSAMENTO DE OUTPUTS' (blacklist.json mtime, llm_orchestrator, batch_import, offer_list_importer), contador de logs pendentes em data/logs/ aguardando revisão LLM. Nova função build_gargalo_plan(conn, idioma): analisa audits stale, blacklist pendente, top-6 gargalos de pipeline (via _count_per_step), gargalos LLM (10 Categorizar: 11403 pendentes, 11 Sinopses: 12906 pendentes), sempre termina com Autopilot A; salva em scripts/data/gargalo_plan.json. (2) main.py: status automático exibido ao abrir (pipeline_status.run() antes do while loop); prompt de startup aceita opção diretamente (digitando G, A, S etc. sem precisar passar pelo menu); nova opção G no menu chama _run_gargalo(idioma): exibe plano por tipo [AUDITORIA/PIPELINE/LLM/AUTOPILOT], executa steps auto-executáveis (audit_connectivity, autopilot_audit, audit_list, audit_author_bios, consistency_check, apply_blacklist), finaliza sempre com autopilot.run() até exaustão. PRs: #125 (feature principal) + #126 (UX fix startup prompt).) | 2026-05-20 (sessão 25 — novo steps/ingestao_orientada.py: Opção I no menu principal — autopilot full-pipeline com LLM orientado a seeds. Sequência: import seeds → enrich → resolver ofertas → scraper → slugify → dedup → review → categorize LLM → synopsis LLM → capas → quality gate → publish livros/autores/cats/ofertas/listas. Re-ingestão automática: ao iniciar, reseta status_synopsis=0 para livros QG-rejeitados (is_publishable=0, status_synopsis=1, status_review=1) forçando nova geração de sinopse; livros aprovados mas não publicados (is_publishable=1, status_publish=0) são capturados naturalmente pelo step 14. Diferença vs Autopilot A: inclui steps LLM (10-Categorize, 11-Synopsis) inline — pipeline genuinamente exaustivo sem depender de Batch manual. Arquivo: scripts/steps/ingestao_orientada.py; entrypoint: main.py opção I.) | 2026-05-14 (sessão 20 fix GSC round 2 — TASK-GSC-001+TASK-GSC-002: pré-filtro ofertasComPreco remove Offers sem price do JSON-LD; isbn substitui sku como ID global; PR #105) | 2026-05-10 (sessão 24 — 7 fixes via análise de 7 relatórios log_analysis (2026-05-03 a 2026-05-10): (1) autopilot.py FIX-1: batch outputs importados automaticamente no início de cada ciclo via _has_batch_outputs() + batch_import.run() — synopsis/categorize outputs nunca eram importados no ciclo A; (2) publish_listas.py FIX-2: _ensure_columns() reescrita com PRAGMA table_info — detecta colunas existentes antes de ALTER TABLE, valida colunas pós-commit, levanta RuntimeError se ainda faltarem; corrige falha silenciosa do except Exception que mascarava 'no such column: updated_at'; (3) marketplace_scraper.py FIX-3: except Exception em try_open_library agora incrementa _ol_consecutive_failures — ConnectTimeout/ReadTimeout de 112+ sessões nunca abriam o circuit breaker; (4) synopsis_import.py FIX-4: rejeições com motivo=None/vazio não atualizam status_synopsis (livro permanece pendente para retry); contador sem_motivo + alerta de massa quando >80% das rejeições sem motivo; (5) quality_gate.py FIX-5: fetch_candidates exclui NOT (is_book=0 AND editorial_score<0) — non-books com score negativo não reaparecem em cada ciclo; (6) autopilot.py FIX-6: QG_BOTTLENECK_THRESHOLD=8 — para automaticamente após 8 ciclos sem aprovação no Quality Gate, loga mensagem informativa e chama autopilot_audit.run(); (7) llm_orchestrator.py FIX-7: após cada ciclo produtivo (cycle_done>0) chama autopilot.run(manter_batch=False) para processar resultados importados via pipeline não-LLM; (8) NOVO: core/claude_usage_tracker.py — rastreia chamadas ao claude CLI (calls_today, calls_total, limit_hit_count), detecta limite de sessão via LIMIT_PATTERNS no output, aguarda CLAUDE_SESSION_RESET_MINUTES (padrão 300 min/5h) com retry automático; (9) core/claude_runner.py: integrado com tracker — record_call() após cada invoke, wait_for_reset() + 1 retry quando limite detectado; relatórios log_analysis movidos para processed_logs/) | 2026-05-03 (sessão 23 — fix crítico publish_listas.py: _ensure_columns() usava 'DATETIME DEFAULT CURRENT_TIMESTAMP' que o SQLite proíbe em ALTER TABLE ADD COLUMN — o ALTER falhava silenciosamente (except Exception: pass engolia o erro), a coluna updated_at nunca era criada, e o UPDATE subsequente estourava com 'no such column: updated_at'; fix: trocar DEFAULT para sem valor (NULL implícito), usar except sqlite3.OperationalError filtrando 'duplicate column name' e logando outros erros; adicionado import sqlite3; bug ativo desde 29/04 causou 9+ sessões com GUARDRAIL 3/3; logs 30/04, 01/05 (×2) e 02/05 movidos para processed_logs) | 2026-04-30 (sessão 22 — (1) fix crítico publish_listas.py: adicionada _ensure_columns(conn) que cria status_publish/updated_at via ALTER TABLE antes de qualquer query — corrige 'no such column: updated_at' que abortava PUBLISH_LISTAS em [001/166] e era mascarado como 'Sem progresso'; (2) guardrail autopilot.py: ciclos com erros de step não disparam mais o stop 'Sem progresso' — apenas ciclos limpos (sem exceção) sem progresso indicam bloqueio de LLM; válvula de segurança MAX_CICLOS_COM_ERRO=3 para erros permanentes; (3) count_pending() completo: adicionadas sub-queries para step 3 (offer_resolver: lookup_query NOT NULL AND offer_url IS NULL), step 4 (scraper: status_enrich=0 AND offer_url IS NOT NULL) e step 15 (autores não publicados de livros publicados) — antes o autopilot parava quando scraper/resolver tinham pendências mas count_pending não as enxergava; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — fix crítico publish_listas.py: adicionada função _ensure_columns(conn) que roda ALTER TABLE listas ADD COLUMN status_publish / updated_at antes de qualquer query em run() — o UPDATE introduzido na sessão 21 causava 'no such column: updated_at' em bancos criados antes da migration do list_composer, abortando o PUBLISH_LISTAS em [001/166] e mascarando o erro como 'Sem progresso' no autopilot; logs 28/04–29/04 movidos para processed_logs) | 2026-04-29 (sessão 21 — (1) fix publish_listas.py: fetch_listas() agora filtra WHERE status_publish=0 — antes republicava todas as 166 listas a cada ciclo do autopilot; após publicar com sucesso, marca status_publish=1 no SQLite; (2) fix autopilot.py: count_pending() agora inclui listas não publicadas (listas WHERE status_publish=0) e livros publicados com categorias pendentes (livros WHERE status_publish=1 AND status_publish_cat=0) — antes o autopilot parava prematuramente quando o pipeline básico estagnava aguardando LLM mas ainda havia listas/categorias a publicar; (3) logs de log_analysis (2026-04-26 a 2026-04-28) movidos para processed_logs/) | 2026-04-27 (sessão 20 — (1) busca de livros implementada: livros/page.tsx aceita searchParams.q, filtra via .or('titulo.ilike.%q%,autor.ilike.%q%') no Supabase, exibe contagem e mensagem de vazio; (2) publish_categorias.py: status_publish=True re-adicionado ao payload do upsert de categorias — estava ausente desde PR #40, impedindo visibilidade das categorias via cliente anon; ATENÇÃO: se PGRST204 reaparecer no step 16, rodar migration ALTER TABLE categorias ADD COLUMN IF NOT EXISTS status_publish BOOLEAN DEFAULT true; (3) menu C reformulado: menu unificado com status em tempo real (lotes pendentes + outputs disponíveis), opções fixas: 1=importar, 2=exportar 1 lote, 3=exportar 10 lotes simultâneos, 4=ver instruções; (4) autopilot.py: novo parâmetro manter_batch=True/False — quando ativo, exporta lotes no início e ao final de cada ciclo para manter batch_target inputs disponíveis (padrão 10); (5) log_analysis/: 22 arquivos de log processados movidos para processed_logs/) | 2026-04-16 (sessão 19b — melhoria qualidade sinopses: (1) fact_extractor schema expandido com personagens/ambientacao/conflito_central para suporte a ficção; (2) _run_abstract_structurer: remap corrigido — conflito_central→situacao_central, ambientacao→contexto (antes: abordagem/publico_alvo, campos corretos só para não-ficção); (3) synopsis_writer R1 relaxado: writer pode usar conhecimento geral do LLM quando 3+ campos do structured input chegam vazios (livros famosos com descricao_base escassa); (4) GENERIC_SYNOPSIS_MARKERS expandido de 9→29 marcadores com padrões identificados em auditoria; (5) _run_synopsis_validator: nova regra R7 rejeita sinopses com 3+ marcadores de abstração genérica de lista de 16 padrões) | 2026-04-16 (sessão 19a — estratégia de manutenção contínua do site sem LLM: (1) novo autopilot_manutencao.py — opção M no menu, orquestra price monitor + conectividade + listas SEO + bios de autores; (2) auditor.py: relatórios sequenciais em data/logs/ (0001_audit_connectivity.json…), novos modos list (verifica membros de listas, despublica listas vazias) e author-bios (report), validação de imagem via HEAD request; (3) offer_price_monitor.py: novo supabase_patch_oferta() — sincroniza ofertas.ativa=false quando indisponível, ativa=true + preco na reativação; (4) logger.py: logs de execução movidos para data/logs/; (5) main.py: opção M + opções 29/30 no menu de auditoria; (6) scripts/data/offer_seeds.json deletado — obsoleto, seeds residem em data/seeds/ingested_seeds/) | 2026-04-14 (sessão 18 — correções de pipeline identificadas via log_analysis + reorganização batch: (1) fix publish.py — isbn/ano_publicacao enviados como string vazia para Supabase → convertidos para None/int; (2) fix list_composer.py — NoneType.strip() em categorias NULL → AND categoria IS NOT NULL na query + guard no loop; (3) todos os arquivos de lote batch movidos para scripts/data/batch/ — exports, imports, agentes e batch_numbering.py atualizados; processed_synopsis/ e processed_categorize/ ficam dentro de batch/; agentes já usavam menor prefixo numérico — confirmado correto) | 2026-04-11 (sessão 17 — novo agente Batch log_analysis_batch: lê logs do pipeline, identifica falhas, gera JSON estruturado em scripts/data/log_analysis/ com failures, rejections, steps_summary e actionable_insights para consumo pelo Claude Code) | 2026-04-10 (sessão 16 — fix crítico: página /livros/[slug] retornava erro 500 em produção; causa: onError handler em <img> dentro de Server Component não é serializável no RSC do Next.js; solução: BookCover.tsx Client Component em app/_components/ encapsula a lógica de fallback da capa) | 2026-04-10 (sessão 14b — tag Amazon livrariaalexa-20 injetada em URLs, backfill 37 livros publicados sem oferta, 587 ofertas republicadas no Supabase, 91 listas SEO publicadas (539 membros), fix preço null na /ofertas, fix await params no click tracking, remoção mocks) | 2026-04-09 (sessão 15 — arquitetura de lotes numerados para batch: exports geram NNN_synopsis_input.json / NNN_classify_input.json (lotes de 25); imports escaneiam todos *_output.json e movem para processed_synopsis/ / processed_classify/; novo core/batch_numbering.py; prompts de agente atualizados para selecionar menor número e mover input após gerar output; menu C usa glob em vez de os.path.exists) | 2026-04-09 (sessão 14 — fix admin dashboard: migração getVercelAnalytics() para vercel.com/api/web-analytics/ com ISO dates e parâmetro type; fix JSONL seeds 173-194 em offer_seed.py) | 2026-04-07 (sessão 13 — fix publish_listas 400, fix publish_cat retrabalho com status_publish_cat, fix crash detalhe livro null guards, normalização idioma PT/pt, menu reorganizado com submenus, autopilot sem prompt de batch) | 2026-04-04 (sessão 12 — batch autopilot: agente unificado agents/batch_autopilot/prompt.md, blacklist merge nos imports, exports incluem slug, step 35 batch_export unificado; schedule pendente por erro de conexão) | 2026-04-04 (sessão 11 — agentes Claude Batch para sinopses e categorização: steps 31-34; prompt.md único por agente Batch) | 2026-04-04 (sessão 10 — agente offer_finder + step 30) | 2026-04-02 (sessão 9 — autopilot, priority scoring, author_bio.py)",
+    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1099,30 +1099,26 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-04-10",
+    "last_measured": "2026-07-25",
     "sqlite_db": "scripts/data/books.db",
-    "livros": {
-      "total": "nao medido (SQLite > 12000)",
-      "supabase_publicados": 1050,
-      "supabase_com_oferta_ativa": 999,
-      "sem_oferta_ativa": 51,
-      "nota": "Sessao 2026-05-17: 111 livros sem oferta corrigidos (supabase_id sincronizado, offer_status normalizado). 15 livros com offer_status=error corrigidos. Total 51 sem oferta (maioria indisponiveis digitalmente)."
+    "sqlite": {
+      "livros_total": 17861,
+      "publicados": 4403,
+      "com_sinopse": 4395,
+      "sinopse_pendente": 11058,
+      "categorize_pendente": 13847,
+      "autores": 8342,
+      "autores_sem_bio": 8024
     },
-    "supabase_publicados": 523,
-    "supabase_ofertas_ativas": 587,
-    "supabase_listas": 94,
-    "supabase_lista_livros": 550,
-    "nota_ofertas": "587 ofertas publicadas — todas com tags afiliado corretas (Amazon tag=livrariaalexa-20, ML matt_tool=45905535). preco=NULL em todos (price monitor ainda não rodou).",
-    "nota_listas": "91 listas geradas pelo list_composer (auto_categoria) publicadas em 2026-04-10. 539 membros de lista. Corrigido: payload precisava de campo tipo='melhores' (NOT NULL no Supabase).",
-    "gargalo_principal": "step 11 (sinopse LLM) — 12 RPM Gemini Free, ~700 sinopses/dia",
-    "gemini_usage_hoje": "variável",
-    "autopilot_features_2026_04_02": {
-      "adaptive_batching": "scraper→20, resolver→50, capas→50; demais usam base",
-      "priority_scoring": "livros.priority_score (0-1000), recalculado por ciclo",
-      "failure_triggers": "3x consecutivas sem progresso → log [⚠️ TRIGGER]",
-      "audit_on_exhaust": "autopilot_audit.run() chamado automaticamente ao parar",
-      "step2_removed": "enrich_descricao removido do loop STEPS (soft-deprecated)"
-    }
+    "supabase": {
+      "livros": 4562,
+      "ofertas_ativas": 4579,
+      "livros_com_oferta_ativa": 4562,
+      "autores": 8399,
+      "autores_com_bio": 308,
+      "listas": 667
+    },
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017)."
   },
   "validated_routes": [
     "/",
@@ -1922,6 +1918,92 @@
         "scripts/steps/publish_autores.py",
         "scripts/CLAUDE.md"
       ]
+    },
+    {
+      "id": "TASK-AUTORES-003",
+      "description": "Publicacao de autor era one-shot: bio gerada depois nunca chegava ao Supabase",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": 221,
+      "origem": "Sessao 32 - medido: 0 de 8399 autores no Supabase tinham descricao, embora 308 ja tivessem bio no SQLite.",
+      "contexto": "fetch_autores_pendentes filtra por status_publish=0, entao cada autor era enviado uma unica vez. Corrigido com a coluna local autores.status_publish_bio + _resync_bios ao final de todo publish_autores.run() (inclusive quando nao ha autor novo). O payload do resync omite created_at de proposito: com merge-duplicates o PostgREST so sobrescreve as colunas enviadas. 306 bios sincronizadas."
+    },
+    {
+      "id": "TASK-ADMIN-002",
+      "description": "Painel /admin travado em 999 ofertas por falta de paginacao (cap de 1000 do PostgREST)",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": 223,
+      "origem": "Sessao 32 - o card 'Com oferta ativa' mostrava 999 com 4579 ofertas ativas no banco.",
+      "contexto": "PostgREST corta em 1000 linhas e .limit(n>1000) e truncado silenciosamente; as agregacoes eram feitas no cliente sobre essa pagina unica. fetchAllPaged com .range() em getCatalogStats, getMarketplaceClicks e getTopLivros. Valor correto: 4562 (=100% de cobertura, nao 22%)."
+    },
+    {
+      "id": "TASK-LLM-016",
+      "description": "Modelo por agente + correcao da premissa de que o CLI usava Opus por padrao",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": "222, 226",
+      "origem": "Sessao 32 - #222 assumiu que o padrao do CLI era Opus; medicao posterior mostrou Sonnet.",
+      "contexto": "O #222 NAO trouxe ganho de throughput (sinopse/classify ja rodavam em Sonnet); serve como estabilidade contra mudanca de padrao do CLI. O efeito real foi expor que author_bio nunca teve a protecao de modelo forte que a justificativa alegava - pinado em opus no #226. Receita para reconferir o padrao apos upgrade do CLI esta em scripts/CLAUDE.md."
+    },
+    {
+      "id": "TASK-LLM-017",
+      "description": "Rotacoes de bio e categorizacao - cota fixa por ciclo, antes da sinopse",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": "227, 228",
+      "origem": "Sessao 32 - medido: 8034 autores sem bio e ZERO gerada por janela; 2620 de 4403 livros publicados (60%) sem categoria tematica.",
+      "contexto": "BIO_POR_CICLO=10 e CLASSIFY_POR_CICLO=25 (cotas de autores/livros, nao de lotes; _export_* ganharam o parametro 'limite'). Rodam no inicio do ciclo - a ordem e o mecanismo. 0 desliga. Nao resolvem o backlog (a rotacao de bio levaria ~800 ciclos); o objetivo e a fila ANDAR em vez de ficar parada em zero."
+    },
+    {
+      "id": "TASK-G-004",
+      "description": "Pre-voo de sessao do claude CLI antes da fase LLM do G",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": 229,
+      "origem": "Sessao 32 - com o token expirado, claude_available() devolvia True e o ciclo era gasto em vao.",
+      "contexto": "session_status() classifica em ok|limite|auth|erro|sem_cli. Em auth/erro/sem_cli o G pula a fase LLM e segue no nao-LLM; 'limite' NAO bloqueia. Evita o caso medido de 5 lotes orfaos de categorizacao e 40 livros presos em status_categorize=3. _AUTH_PATTERNS virou fonte unica em claude_runner."
+    },
+    {
+      "id": "TASK-CI-001",
+      "description": "CI executando scripts/tests/ a cada push/PR",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": 230,
+      "origem": "Sessao 32 - o CI so validava o build do site; os testes em scripts/tests/ nao eram executados por ninguem.",
+      "contexto": ".github/workflows/tests.yml roda compileall + todos os tests/test_*.py (glob: arquivo novo entra sem editar o YAML). Sem pip install - os testes atuais so dependem da stdlib. NOTA OPERACIONAL: o token OAuth usado pelo assistente NAO tem escopo 'workflow', entao alteracoes em .github/workflows/ precisam ser feitas pelo usuario (push proprio ou interface web)."
+    },
+    {
+      "id": "TASK-PERF-014",
+      "description": "Calibrar BATCH_SIZE_SYNOPSIS com tools/measure_batch.py",
+      "priority": "medium",
+      "status": "open",
+      "registered_on": "2026-07-25",
+      "origem": "Sessao 32 - com a premissa do modelo corrigida (o CLI ja usava Sonnet), a calibracao de lote e a unica alavanca de throughput restante.",
+      "contexto": "BATCH_SIZE_SYNOPSIS=15 esta documentado como calibrado por medicao, entao nao foi alterado no chute. Rodar 'python tools/measure_batch.py' com a quota livre e ajustar no .env se indicar lote maior. Custo: a medicao consome uma fatia da janela."
+    },
+    {
+      "id": "TASK-BATCH-004",
+      "description": "Teto de 999 na numeracao de lotes e seeds (\\d{3} em 9 pontos de parsing)",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-07-25",
+      "resolved_on": "2026-07-25",
+      "pr": 225,
+      "origem": "Sessao 32 - achado no code review do #224. offer_seeds JA estava em 999 (446 arquivos); synopsis em 764 com ~900 lotes ainda por gerar.",
+      "contexto": "Todas as falhas ao cruzar 999 eram silenciosas: next_batch_number reutilizaria \"1000\" indefinidamente (sobrescrevendo exports e deixando livros presos em status_*=3); synopsis_import/categorize_import nunca importariam o output (quota gasta, sinopse descartada); offer_seed ignoraria 1000_offer_seeds.json na ingestao. Corrigido para \\d+ em 9 pontos + ordenacao numerica em pending_batch_input. Teste: scripts/tests/test_batch_numbering.py (11 asserts, cobre rollover 999->1000->1001 e a ordem orfao-primeiro do #224)."
     }
   ],
   "qa_remediation_loop": {
@@ -1948,5 +2030,40 @@
       "R8: padronizar offer_status",
       "R9: drain oferta targeted por book_ids"
     ]
+  },
+  "llm_engine": {
+    "status": "ativo",
+    "last_updated": "2026-07-25",
+    "runner": "core/claude_runner.py (claude CLI, assinatura PRO)",
+    "auth": "Token de longa duracao via 'claude setup-token', em CLAUDE_CODE_OAUTH_TOKEN (scripts/.env). Adotado depois de a sessao OAuth expirar e derrubar a fase LLM sem aviso: 'claude auth status' reporta loggedIn=true mesmo com o token expirado, porque so le o registro local - a unica checagem confiavel e uma chamada real.",
+    "modelo_padrao_do_cli": "SONNET (medido em 2026-07-25, CLI 2.1.138, teste discriminante: sem flag e --model sonnet retornam claude-sonnet-4-6; --model opus retorna Claude Opus 4.7). NAO ha 'model' em .claude.json nem em settings.json. Nao confundir 'padrao' com 'modelo forte'.",
+    "politica_por_agente": {
+      "fonte": "core/claude_runner.AGENT_MODELS (resolvida dentro de run_agent pelo nome do diretorio do agente)",
+      "sonnet": [
+        "synopsis_batch",
+        "synopsis_jogos_batch",
+        "synopsis_infantis_batch",
+        "classify_batch"
+      ],
+      "opus": [
+        "author_bio"
+      ],
+      "padrao_do_cli": [
+        "jogos_finder_batch",
+        "title_auditor",
+        "audit_batch",
+        "consistency_review",
+        "log_analysis_batch"
+      ],
+      "env": "CLAUDE_MODEL_FAST, CLAUDE_MODEL_STRONG, CLAUDE_MODEL_<AGENTE>"
+    },
+    "rotacoes": {
+      "motivo": "Bios e categorizacao ficavam atras da sinopse na Fase A; como a sinopse nao zera numa janela de 5h (~1300 lotes), as duas filas estavam em fome permanente - zero por janela.",
+      "bio_por_ciclo": 10,
+      "classify_por_ciclo": 25,
+      "ordem": "as rotacoes rodam ANTES da sinopse - depois seria identico a nao existirem",
+      "guard_anti_giro": "Bios NAO entram em _content_backlog(), entao nao mascaram uma janela sem progresso. Categorizacao ENTRA: uma janela so-com-classify conta como progresso e o loop do G continua (correto, mas pode durar ~555 janelas com a sinopse travada)."
+    },
+    "pre_voo": "claude_runner.session_status() classifica a sessao em ok|limite|auth|erro|sem_cli antes da fase LLM do G. 'limite' NAO bloqueia (o orquestrador ja trata quota). Evita o caso medido de exports marcarem livros como status_*=3 e falharem com 401, deixando lotes orfaos."
   }
 }
