@@ -457,6 +457,23 @@ O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 3. **Persistência:** `data/claude_usage.json`.
 4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
+### Input resolvido pelo orquestrador
+
+Os prompts batch descobrem o lote sozinhos (Glob → menor número → checar se já
+existe output). São 3-5 turnos por lote para achar um arquivo que o pipeline
+acabou de escrever. `core.batch_numbering.pending_batch_input()` resolve isso em
+Python e `claude_runner.input_hint()` anexa o caminho ao prompt.
+
+**A resolução replica a regra do prompt** — menor número ainda sem
+`_output.json` correspondente — em vez de usar o path recém-exportado. A
+diferença importa: o export não sabe de **lotes órfãos** de ciclos anteriores,
+e injetar o arquivo novo faria o agente pular a fila. Com a regra replicada, os
+órfãos continuam sendo drenados primeiro.
+
+Degrada com segurança: o prompt mantém as instruções de Glob, então um agente
+que ignore o bloco chega ao **mesmo** arquivo. Ligado via `batch_prefix` em
+`_run_agent_step` (`synopsis`, `categorize`, `author_bio`).
+
 ### Eficiência (WS3)
 
 Geração em lote amortiza o overhead fixo da sessão. `BATCH_SIZE_*` é configurável

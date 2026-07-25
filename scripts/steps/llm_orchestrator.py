@@ -29,7 +29,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core.claude_runner import agent_prompt_path, claude_available, run_agent
+from core.claude_runner import agent_prompt_path, claude_available, input_hint, run_agent
 from core.claude_usage_tracker import status as claude_usage_status, is_limit_error as _is_limit_error
 
 
@@ -55,7 +55,7 @@ def _is_auth_error(output: str) -> bool:
     return any(p in lower for p in _AUTH_PATTERNS)
 
 
-from core.batch_numbering import next_batch_number
+from core.batch_numbering import next_batch_number, pending_batch_input
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
 from core.logger import log
@@ -608,7 +608,8 @@ def _git_commit_reports(glob_patterns: list[str], label: str) -> None:
 # RUN SINGLE AGENT
 # =========================
 
-def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[bool, bool]:
+def _run_agent_step(label: str, prompt_name: str, timeout: int = 600,
+                    batch_prefix: str | None = None) -> tuple[bool, bool]:
     """Invoca um agente via claude CLI — NÃO bloqueia no limite de sessão.
 
     Usa wait_on_limit=False: ao bater o limite, run_agent retorna imediatamente
@@ -616,13 +617,26 @@ def _run_agent_step(label: str, prompt_name: str, timeout: int = 600) -> tuple[b
     Autopilot A não-LLM e só então aguardar/retomar ou encerrar) — antes, a
     espera ficava escondida dentro do run_agent e o fallback A nunca rodava.
 
+    `batch_prefix` (ex: "synopsis"): resolve o lote pendente em Python e anexa
+    o caminho ao prompt, poupando os turnos de Glob/probe do agente. A regra é
+    a mesma do prompt, então lotes órfãos continuam sendo drenados primeiro.
+
     Retorna (success, limit_persists):
       - success: True se o agente concluiu sem erro.
       - limit_persists: True se o output indica limite de sessão.
     """
     prompt = agent_prompt_path(prompt_name)
+
+    extra_context = None
+    if batch_prefix:
+        pendente = pending_batch_input(str(BATCH_DIR), batch_prefix)
+        if pendente:
+            extra_context = input_hint(pendente)
+            log(f"[LLM_ORCH] {label}: lote resolvido → {os.path.basename(pendente)}")
+
     log(f"[LLM_ORCH] → {label}: invocando claude CLI…")
-    success, output = run_agent(prompt, timeout=timeout, wait_on_limit=False)
+    success, output = run_agent(prompt, timeout=timeout, wait_on_limit=False,
+                                extra_context=extra_context)
 
     if success:
         log(f"[LLM_ORCH] ✓ {label} concluído")
@@ -744,7 +758,8 @@ def _drain_synopsis(idioma: str) -> tuple[int, bool]:
         conn.close()
         if exported <= 0:
             break
-        ok, limit_persists = _run_agent_step("synopsis", "synopsis_batch", timeout=900)
+        ok, limit_persists = _run_agent_step("synopsis", "synopsis_batch", timeout=900,
+                                            batch_prefix="synopsis")
         if limit_persists:
             return done, True
         if ok:
@@ -776,7 +791,8 @@ def _drain_classify() -> tuple[int, bool]:
         conn.close()
         if exported <= 0:
             break
-        ok, limit_persists = _run_agent_step("classify", "classify_batch", timeout=900)
+        ok, limit_persists = _run_agent_step("classify", "classify_batch", timeout=900,
+                                            batch_prefix="categorize")
         if limit_persists:
             return done, True
         if ok:
@@ -801,7 +817,8 @@ def _drain_author_bio() -> tuple[int, bool]:
         conn.close()
         if exported <= 0:
             break
-        ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900)
+        ok, limit_persists = _run_agent_step("author_bio", "author_bio", timeout=900,
+                                            batch_prefix="author_bio")
         if limit_persists:
             return done, True
         if ok:

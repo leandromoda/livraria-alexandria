@@ -9,6 +9,11 @@ Sua tarefa é atribuir até 5 categorias temáticas de uma taxonomia fixa a cada
 
 ## Input
 
+> **Atalho:** se ao final deste prompt houver um bloco **"Input já resolvido pelo
+> orquestrador"**, ele traz o caminho do lote — leia esse arquivo direto com Read
+> e pule os passos 1 a 5 desta seção. O caminho foi resolvido com a mesma regra
+> descrita abaixo. Sem esse bloco, siga os passos normalmente.
+
 Use suas ferramentas de arquivo para encontrar e ler o input correto:
 
 1. **Liste os arquivos** com Glob:
