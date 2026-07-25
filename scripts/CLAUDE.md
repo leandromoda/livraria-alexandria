@@ -422,10 +422,15 @@ o provider padrão é `claude`).
 
 ### Modelo por agente
 
-Até 2026-07-25 nenhuma chamada passava `--model`: **tudo** rodava no modelo
-padrão da sessão (Opus). Como o gargalo de publicação é a quota da janela de 5h
-(publicação ≡ sinopse ≡ quota), usar o modelo mais caro nas tarefas fechadas
-reduzia diretamente quantos livros saem por janela.
+> **⚠️ O padrão do CLI é Sonnet, não Opus.** Medido em 2026-07-25 (CLI 2.1.138)
+> com teste discriminante: sem flag e `--model sonnet` retornam
+> `claude-sonnet-4-6`; `--model opus` retorna `Claude Opus 4.7`. Não há `model`
+> configurado em `.claude.json` nem em `settings.json`.
+>
+> **Não confunda "padrão" com "modelo forte".** Quem precisa de Opus tem de
+> pedir explicitamente. (O PR #222 nasceu da premissa oposta — de que tudo
+> rodava em Opus — e por isso não trouxe o ganho de throughput que prometia;
+> ele apenas fixou o que já era o padrão.)
 
 A política vive em `core/claude_runner.AGENT_MODELS` e é resolvida dentro de
 `run_agent()` a partir do nome do diretório do agente (`agents/<nome>/prompt.md`)
@@ -433,14 +438,21 @@ A política vive em `core/claude_runner.AGENT_MODELS` e é resolvida dentro de
 
 | Agente | Modelo | Por quê |
 |---|---|---|
-| `synopsis_batch`, `synopsis_jogos_batch`, `synopsis_infantis_batch` | `sonnet` | Transformação fechada: `descricao` ⇒ 90–160 palavras, proibido usar conhecimento externo |
+| `synopsis_batch`, `synopsis_jogos_batch`, `synopsis_infantis_batch` | `sonnet` | Transformação fechada: `descricao` ⇒ 90–160 palavras, proibido conhecimento externo. Pinado por **estabilidade** (não seguir mudança de padrão do CLI), não por economia |
 | `classify_batch` | `sonnet` | Escolher 3–5 slugs de taxonomia fixa; todo o critério já está no prompt |
-| `author_bio` | padrão (forte) | Fatos sobre pessoas reais — modelo menor alucina mais |
-| `jogos_finder_batch`, `title_auditor`, `audit_batch`, `consistency_review`, `log_analysis_batch` | padrão (forte) | Busca na web e julgamento aberto |
+| `author_bio` | **`opus`** | Datas, movimentos e obras de **pessoas reais** — alucinação vira conteúdo errado publicado. Último da fila do orquestrador, então o volume (e o custo de quota) é baixo |
+| `jogos_finder_batch`, `title_auditor`, `audit_batch`, `consistency_review`, `log_analysis_batch` | padrão do CLI (hoje Sonnet) | Decisão ainda não tomada — não confundir com "escolhido para ser forte" |
 
 Override por agente via env: `CLAUDE_MODEL_<AGENTE_EM_MAIÚSCULAS>` (use
-`default` para forçar o padrão do CLI). `CLAUDE_MODEL_FAST` troca o modelo
-rápido de todos de uma vez.
+`default` para forçar o padrão do CLI). `CLAUDE_MODEL_FAST` e
+`CLAUDE_MODEL_STRONG` trocam os dois grupos de uma vez.
+
+Como reconferir o padrão do CLI depois de um upgrade:
+
+```bash
+cd scripts
+python -c "import os; from core.claude_runner import _invoke; [print(m, '->', _invoke('Responda so com o nome do modelo que voce e.',90,{**os.environ},m)[1].strip()) for m in [None,'sonnet','opus']]"
+```
 
 > A sonda de quota (`_wait_and_probe`) usa o **mesmo** modelo da chamada real —
 > as quotas são por modelo, e sondar com o padrão manteria a espera mesmo com o
@@ -525,8 +537,9 @@ CLAUDE_SESSION_RESET_MINUTES=300 # janela de sessão (5h)
 LLM_PROVIDER=claude              # legado: ollama | gemini | auto (não recomendados)
 
 # Modelo por agente (ver "Modelo por agente"). Opcionais:
-CLAUDE_MODEL_FAST=sonnet         # modelo das tarefas fechadas (sinopse/categorização)
-# CLAUDE_MODEL_SYNOPSIS_BATCH=default   # força o padrão do CLI só nesse agente
+CLAUDE_MODEL_FAST=sonnet         # tarefas fechadas (sinopse/categorização)
+CLAUDE_MODEL_STRONG=opus         # tarefas com fato sobre entidade real (author_bio)
+# CLAUDE_MODEL_AUTHOR_BIO=default       # força o padrão do CLI só nesse agente
 
 # Tamanhos de lote (opcional — sobrescreve defaults calibrados)
 BATCH_SIZE_SYNOPSIS=15
