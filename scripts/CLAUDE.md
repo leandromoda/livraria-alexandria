@@ -590,9 +590,18 @@ Convenção: script de `assert` puro em `scripts/tests/`, sem pytest.
 
 ```bash
 cd scripts
-python tests/test_batch_numbering.py       # numeração + resolução de lotes
-PYTHONPATH=. python tests/test_inject_ml_affiliate.py
+PYTHONPATH=. python tests/test_batch_numbering.py     # numeração + resolução de lotes
+PYTHONPATH=. python tests/test_inject_ml_affiliate.py # tag de afiliado ML
 ```
+
+**No CI:** `.github/workflows/tests.yml` roda `compileall` + todos os
+`tests/test_*.py` a cada push/PR que toque em `scripts/**`. O workflow varre o
+diretório por glob — **um arquivo novo em `tests/` já entra automaticamente**,
+sem editar o YAML.
+
+Não há `pip install` no workflow: os testes atuais dependem só da stdlib. Um
+teste que precise de `requests`/`python-dotenv` exige adicionar o passo de
+instalação.
 
 ### Eficiência (WS3)
 
