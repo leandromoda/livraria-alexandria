@@ -420,6 +420,32 @@ o provider padrão é `claude`).
 | **Batch** (canônico) | exporta lote JSON → `run_agent` sobre `agents/*_batch/prompt.md` → importa | sinopse, categorização, bios (opção O, menu 10/11/13, ingestão guiada) |
 | **MODE 1** (estágio único) | `execute_agent` sobre `agents/<n>/{identity,rules,task}.md` | author_bio, offer_finder |
 
+### Modelo por agente
+
+Até 2026-07-25 nenhuma chamada passava `--model`: **tudo** rodava no modelo
+padrão da sessão (Opus). Como o gargalo de publicação é a quota da janela de 5h
+(publicação ≡ sinopse ≡ quota), usar o modelo mais caro nas tarefas fechadas
+reduzia diretamente quantos livros saem por janela.
+
+A política vive em `core/claude_runner.AGENT_MODELS` e é resolvida dentro de
+`run_agent()` a partir do nome do diretório do agente (`agents/<nome>/prompt.md`)
+— **todos** os call sites passam por lá, então não há flag espalhada pelos steps.
+
+| Agente | Modelo | Por quê |
+|---|---|---|
+| `synopsis_batch`, `synopsis_jogos_batch`, `synopsis_infantis_batch` | `sonnet` | Transformação fechada: `descricao` ⇒ 90–160 palavras, proibido usar conhecimento externo |
+| `classify_batch` | `sonnet` | Escolher 3–5 slugs de taxonomia fixa; todo o critério já está no prompt |
+| `author_bio` | padrão (forte) | Fatos sobre pessoas reais — modelo menor alucina mais |
+| `jogos_finder_batch`, `title_auditor`, `audit_batch`, `consistency_review`, `log_analysis_batch` | padrão (forte) | Busca na web e julgamento aberto |
+
+Override por agente via env: `CLAUDE_MODEL_<AGENTE_EM_MAIÚSCULAS>` (use
+`default` para forçar o padrão do CLI). `CLAUDE_MODEL_FAST` troca o modelo
+rápido de todos de uma vez.
+
+> A sonda de quota (`_wait_and_probe`) usa o **mesmo** modelo da chamada real —
+> as quotas são por modelo, e sondar com o padrão manteria a espera mesmo com o
+> modelo rápido já liberado.
+
 ### Controle de sessão (não tokens)
 
 O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
@@ -452,6 +478,10 @@ via env e calibrado por medição (`tools/measure_batch.py`):
 CLAUDE_BIN=                      # caminho explícito do claude.exe, se não estiver no PATH
 CLAUDE_SESSION_RESET_MINUTES=300 # janela de sessão (5h)
 LLM_PROVIDER=claude              # legado: ollama | gemini | auto (não recomendados)
+
+# Modelo por agente (ver "Modelo por agente"). Opcionais:
+CLAUDE_MODEL_FAST=sonnet         # modelo das tarefas fechadas (sinopse/categorização)
+# CLAUDE_MODEL_SYNOPSIS_BATCH=default   # força o padrão do CLI só nesse agente
 
 # Tamanhos de lote (opcional — sobrescreve defaults calibrados)
 BATCH_SIZE_SYNOPSIS=15
