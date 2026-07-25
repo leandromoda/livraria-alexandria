@@ -1,0 +1,59 @@
+name: Testes do pipeline
+
+# O CI do projeto só validava o build do site (Vercel). Os testes em
+# scripts/tests/ existiam mas ninguém os executava, então protegiam nada —
+# eram documentação executável. Este workflow os torna barreira real.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/tests.yml'
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Sem `pip install`: os testes cobrem batch_numbering e offer_resolver,
+      # que dependem só da stdlib. Se um teste futuro precisar de requests ou
+      # python-dotenv, adicione o passo de instalação aqui.
+
+      - name: Compilar os módulos do pipeline
+        working-directory: scripts
+        run: python -m compileall -q core steps *.py
+
+      - name: Rodar os testes
+        working-directory: scripts
+        # PYTHONPATH=. porque os testes importam `core.*` e `steps.*` e não há
+        # __init__.py nesses diretórios (não são pacotes instaláveis).
+        env:
+          PYTHONPATH: .
+          PYTHONIOENCODING: utf-8
+        run: |
+          falhas=0
+          for teste in tests/test_*.py; do
+            echo "───── $teste"
+            if python "$teste"; then
+              echo "  OK"
+            else
+              echo "  FALHOU"
+              falhas=$((falhas + 1))
+            fi
+          done
+          echo
+          if [ "$falhas" -gt 0 ]; then
+            echo "$falhas arquivo(s) de teste falharam."
+            exit 1
+          fi
+          echo "Todos os testes passaram."
