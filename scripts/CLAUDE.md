@@ -469,6 +469,34 @@ O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 3. **Persistência:** `data/claude_usage.json`.
 4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
+### Rotação de bios — cota fixa por ciclo
+
+**Problema (medido em 2026-07-25):** a fase de bios do `llm_orchestrator` só é
+alcançada depois de sinopse **e** categorização zerarem. Isso são ~1.300 lotes
+(11.036 sinopses + 13.872 categorizações) contra uma janela de 5h que não chega
+perto disso. Resultado prático: **8.034 autores sem bio e 0 gerada por janela** —
+fome permanente, não lentidão.
+
+**Mecanismo:** `_rotacao_author_bio(cota)` roda **no início de cada ciclo**,
+antes da sinopse, e gera até `BIO_POR_CICLO` bios (padrão **10** — autores, não
+lotes; a cota recorta abaixo do `BATCH_SIZE_AUTHOR_BIO`).
+
+> **A ordem é o mecanismo.** Rodar a rotação *depois* da sinopse seria idêntico
+> a não ter rotação: a janela acaba na sinopse e o fluxo nunca chega lá. Por isso
+> ela vem primeiro, mesmo sendo a fila de menor prioridade.
+
+O custo é 1 chamada por ciclo contra as centenas gastas em sinopse, então a
+prioridade do gargalo continua intacta. `BIO_POR_CICLO=0` desliga e restaura o
+comportamento antigo.
+
+O `_drain_author_bio()` (ilimitado) segue no fim da Fase A: quando sinopse e
+categorização realmente zerarem, as bios drenam de uma vez como antes.
+
+> **Por que isso não engana o guard anti-giro do G:** o guard compara
+> `_content_backlog()` antes/depois da janela, e essa função soma **apenas**
+> sinopse + categorização. Bios não entram na conta — uma janela que só gerou
+> bios continua sendo detectada como "sem progresso" e encerra o loop.
+
 ### Input resolvido pelo orquestrador
 
 Os prompts batch descobrem o lote sozinhos (Glob → menor número → checar se já
@@ -545,6 +573,9 @@ CLAUDE_MODEL_STRONG=opus         # tarefas com fato sobre entidade real (author_
 BATCH_SIZE_SYNOPSIS=15
 BATCH_SIZE_CLASSIFY=25
 BATCH_SIZE_AUTHOR_BIO=25
+
+# Rotação de bios (ver "Rotação de bios"). Autores por ciclo, não lotes.
+BIO_POR_CICLO=10                 # 0 desliga a rotação
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
