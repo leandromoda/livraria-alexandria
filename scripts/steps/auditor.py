@@ -169,6 +169,32 @@ def _http_head(url: str) -> tuple[int | None, int, str]:
         return None, 0, f"error: {e}"
 
 
+def _fetch_sample_oferta_id() -> str | None:
+    """Retorna o id de uma oferta real no Supabase para testar o Click API.
+
+    A rota /api/click/[id] resolve por `ofertas.id` (Supabase), NÃO por
+    `livros.id` local — usar um id de livro daria 404 sempre. Ver
+    app/(internal)/api/click/[id]/route.ts.
+    """
+    if not SUPABASE_URL:
+        return None
+    try:
+        sb_headers = _supabase_headers(use_service_key=not SUPABASE_ANON_KEY)
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/ofertas",
+            params={"select": "id", "limit": "1"},
+            headers=sb_headers,
+            timeout=REQUEST_TIMEOUT,
+        )
+        if r.ok:
+            rows = r.json()
+            if rows:
+                return rows[0].get("id")
+    except Exception as e:
+        log.warning(f"  Falha ao buscar oferta de amostra no Supabase: {e}")
+    return None
+
+
 def _save_connectivity_result(conn: sqlite3.Connection, check_type: str,
                                target: str, status_code: int | None,
                                latency_ms: int, ok: bool, detail: str) -> None:
@@ -281,21 +307,20 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
             f"{SITE_BASE_URL}/autores/{slug}",
         ))
 
-    # 3. Click API
+    # 3. Click API — a rota resolve por ofertas.id (Supabase), não por livros.id
+    #    local; testar com id de livro dá 404 sempre. Buscar um id real de oferta.
     log.info("--- Click API ---")
-    click_row = conn.execute(
-        "SELECT id FROM livros WHERE status_publish=1 AND offer_url IS NOT NULL LIMIT 1"
-    ).fetchone()
-    if click_row:
+    oferta_id = _fetch_sample_oferta_id()
+    if oferta_id:
         results.append(check(
             "Click API redirect",
             "api_click",
-            f"{SITE_BASE_URL}/api/click/{click_row[0]}",
+            f"{SITE_BASE_URL}/api/click/{oferta_id}",
             expected_status=[301, 302, 307, 308],
             allow_redirects=False,
         ))
     else:
-        log.warning("  Nenhum livro com offer_url para testar click API")
+        log.warning("  Nenhuma oferta no Supabase para testar click API")
 
     # 4. Imagens — amostra de imagem_url
     log.info("--- Images ---")
