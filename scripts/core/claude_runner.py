@@ -36,27 +36,38 @@ DEFAULT_TIMEOUT = 600  # 10 min por agente
 # MODELO POR AGENTE
 # ======================================================
 #
-# Sem --model, o CLI usa o modelo padrão da sessão (hoje Opus) para TUDO.
-# Como o gargalo de publicação é a quota da janela de 5h (publicação ≡ sinopse
-# ≡ quota — ver CLAUDE.md), rodar as tarefas fechadas no modelo mais caro reduz
-# diretamente quantos livros saem por janela.
+# MEDIDO em 2026-07-25 (teste discriminante, CLI 2.1.138): sem --model o CLI usa
+# **Sonnet**, não Opus. Sem flag e `--model sonnet` retornam claude-sonnet-4-6;
+# `--model opus` retorna Claude Opus 4.7. Não há `model` em .claude.json nem em
+# settings.json — o CLI decide sozinho.
 #
-# Vão para o modelo rápido as tarefas de transformação FECHADA, onde o prompt já
-# carrega todo o critério e o modelo não precisa de conhecimento externo:
-#   - sinopse      → descricao ⇒ 90-160 palavras, proibido usar conhecimento externo
+# Consequência: "deixar no padrão" NÃO é o mesmo que "usar o modelo forte".
+# Quem precisa de Opus tem de pedir explicitamente.
+#
+# FAST — transformação FECHADA: o prompt carrega todo o critério e o modelo não
+# precisa de conhecimento externo. Pinado por estabilidade (se o padrão do CLI
+# mudar, estas tarefas não devem mudar junto), não por economia:
+#   - sinopse       → descricao ⇒ 90-160 palavras, proibido conhecimento externo
 #   - categorização → escolher 3-5 slugs de uma taxonomia fixa, regras no prompt
 #
-# Ficam no modelo padrão (forte) as tarefas que dependem de conhecimento factual
-# ou de julgamento aberto, onde um modelo menor alucina mais:
-#   author_bio (fatos sobre pessoas reais), jogos_finder_batch (busca na web),
-#   title_auditor / audit_batch / consistency_review / log_analysis_batch.
-FAST_MODEL = os.getenv("CLAUDE_MODEL_FAST", "sonnet").strip()
+# STRONG — conhecimento factual sobre entidades reais, onde alucinação vira
+# conteúdo errado publicado:
+#   - author_bio → datas, movimentos literários e obras de pessoas reais. É o
+#     último da fila do orquestrador (só roda com sinopse e categoria zeradas),
+#     então o volume é baixo e o custo extra de quota é contido.
+#
+# Seguem no padrão do CLI (hoje Sonnet) por decisão não tomada, não por análise:
+#   jogos_finder_batch, title_auditor, audit_batch, consistency_review,
+#   log_analysis_batch.
+FAST_MODEL   = os.getenv("CLAUDE_MODEL_FAST",   "sonnet").strip()
+STRONG_MODEL = os.getenv("CLAUDE_MODEL_STRONG", "opus").strip()
 
 AGENT_MODELS = {
     "synopsis_batch":          FAST_MODEL,
     "synopsis_jogos_batch":    FAST_MODEL,
     "synopsis_infantis_batch": FAST_MODEL,
     "classify_batch":          FAST_MODEL,
+    "author_bio":              STRONG_MODEL,
 }
 
 
