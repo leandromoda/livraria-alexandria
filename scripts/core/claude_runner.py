@@ -32,6 +32,46 @@ AGENTS_DIR = REPO_ROOT / "agents"
 ALLOWED_TOOLS = "Bash,Read,Write,Glob,WebSearch,WebFetch"
 DEFAULT_TIMEOUT = 600  # 10 min por agente
 
+# ======================================================
+# MODELO POR AGENTE
+# ======================================================
+#
+# Sem --model, o CLI usa o modelo padrão da sessão (hoje Opus) para TUDO.
+# Como o gargalo de publicação é a quota da janela de 5h (publicação ≡ sinopse
+# ≡ quota — ver CLAUDE.md), rodar as tarefas fechadas no modelo mais caro reduz
+# diretamente quantos livros saem por janela.
+#
+# Vão para o modelo rápido as tarefas de transformação FECHADA, onde o prompt já
+# carrega todo o critério e o modelo não precisa de conhecimento externo:
+#   - sinopse      → descricao ⇒ 90-160 palavras, proibido usar conhecimento externo
+#   - categorização → escolher 3-5 slugs de uma taxonomia fixa, regras no prompt
+#
+# Ficam no modelo padrão (forte) as tarefas que dependem de conhecimento factual
+# ou de julgamento aberto, onde um modelo menor alucina mais:
+#   author_bio (fatos sobre pessoas reais), jogos_finder_batch (busca na web),
+#   title_auditor / audit_batch / consistency_review / log_analysis_batch.
+FAST_MODEL = os.getenv("CLAUDE_MODEL_FAST", "sonnet").strip()
+
+AGENT_MODELS = {
+    "synopsis_batch":          FAST_MODEL,
+    "synopsis_jogos_batch":    FAST_MODEL,
+    "synopsis_infantis_batch": FAST_MODEL,
+    "classify_batch":          FAST_MODEL,
+}
+
+
+def model_for_agent(agent_name: str) -> str | None:
+    """Modelo a usar para `agent_name`, ou None para o padrão da sessão.
+
+    Override por agente via env: CLAUDE_MODEL_<AGENTE_EM_MAIÚSCULAS>.
+    Valor vazio ou "default" força o padrão do CLI.
+    """
+    override = os.getenv(f"CLAUDE_MODEL_{agent_name.upper()}", "").strip()
+    if override:
+        return None if override.lower() == "default" else override
+
+    return AGENT_MODELS.get(agent_name) or None
+
 # Prompt mínimo usado para confirmar que a quota foi restaurada antes do retry real.
 _PROBE_PROMPT = "Responda apenas com: ok"
 _PROBE_TIMEOUT = 45    # segundos — suficiente para uma resposta trivial
@@ -96,12 +136,16 @@ def claude_available() -> bool:
     return _find_claude() is not None
 
 
-def _invoke(prompt_text: str, timeout: int, env: dict) -> tuple[bool, str]:
+def _invoke(prompt_text: str, timeout: int, env: dict,
+            model: str | None = None) -> tuple[bool, str]:
     """Executa claude --print uma única vez. Retorna (sucesso, output)."""
     claude_bin = _find_claude() or "claude"
+    cmd = [claude_bin, "--print", "--allowedTools", ALLOWED_TOOLS]
+    if model:
+        cmd += ["--model", model]
     try:
         result = subprocess.run(
-            [claude_bin, "--print", "--allowedTools", ALLOWED_TOOLS],
+            cmd,
             input=prompt_text,
             capture_output=True,
             text=True,
@@ -124,7 +168,7 @@ def _invoke(prompt_text: str, timeout: int, env: dict) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def _wait_and_probe(limit_output: str, env: dict) -> bool:
+def _wait_and_probe(limit_output: str, env: dict, model: str | None = None) -> bool:
     """Aguarda o reset de quota e confirma via probe antes do retry real.
 
     Não depende do SESSION_RESET_MINUTES para definir quando começar a sondar —
@@ -152,7 +196,9 @@ def _wait_and_probe(limit_output: str, env: dict) -> bool:
 
     for attempt in range(1, MAX_QUOTA_PROBES + 1):
         _log(f"[CLAUDE_RUNNER] Probe {attempt}/{MAX_QUOTA_PROBES}: verificando restauração de quota…")
-        probe_ok, probe_out = _invoke(_PROBE_PROMPT, _PROBE_TIMEOUT, env)
+        # Sonda com o MESMO modelo da chamada real: as quotas são por modelo, e
+        # sondar com o padrão manteria a espera mesmo com o modelo rápido livre.
+        probe_ok, probe_out = _invoke(_PROBE_PROMPT, _PROBE_TIMEOUT, env, model)
         probe_limit = _tracker.record_call(probe_ok, probe_out)
 
         if not probe_limit:
@@ -175,7 +221,8 @@ def _wait_and_probe(limit_output: str, env: dict) -> bool:
 
 
 def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
-              wait_on_limit: bool = True) -> tuple[bool, str]:
+              wait_on_limit: bool = True,
+              model: str | None = None) -> tuple[bool, str]:
     """
     Carrega o prompt de `prompt_path` e invoca `claude --print` via subprocess.
 
@@ -190,20 +237,32 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
         que o chamador (orquestrador) decida o fallback (ex: rodar Autopilot A
         não-LLM e só então aguardar/retomar). O limite continua registrado no
         tracker (session_window reflete o cooldown).
+
+    Modelo:
+      - `model=None` (padrão): resolvido por `model_for_agent()` a partir do nome
+        do diretório do agente (`agents/<nome>/prompt.md`). Todos os call sites
+        passam por aqui, então a política de modelo fica num lugar só.
+      - `model="..."`: força um modelo específico nesta chamada.
     """
     path = Path(prompt_path)
     if not path.is_file():
         return False, f"Prompt não encontrado: {path}"
 
+    if model is None:
+        model = model_for_agent(path.parent.name)
+
     prompt_text = path.read_text(encoding="utf-8")
     env = {**os.environ}
 
-    success, output = _invoke(prompt_text, timeout, env)
+    if model:
+        _log(f"[CLAUDE_RUNNER] {path.parent.name} → modelo: {model}")
+
+    success, output = _invoke(prompt_text, timeout, env, model)
     limit_hit = _tracker.record_call(success, output)
 
     if limit_hit and wait_on_limit:
-        if _wait_and_probe(output, env):
-            success, output = _invoke(prompt_text, timeout, env)
+        if _wait_and_probe(output, env, model):
+            success, output = _invoke(prompt_text, timeout, env, model)
             _tracker.record_call(success, output)
         else:
             # Probe falhou em todos os ciclos — mantém a saída de limite como resultado.
@@ -213,7 +272,8 @@ def run_agent(prompt_path: str | Path, timeout: int = DEFAULT_TIMEOUT,
 
 
 def run_prompt(prompt_text: str, timeout: int = 120,
-               wait_on_limit: bool = True) -> tuple[bool, str]:
+               wait_on_limit: bool = True,
+               model: str | None = None) -> tuple[bool, str]:
     """Invoca claude --print com o prompt passado diretamente via stdin.
 
     Para chamadas LLM pontuais (não baseadas em arquivo de agente).
@@ -223,12 +283,12 @@ def run_prompt(prompt_text: str, timeout: int = 120,
     Retorna (sucesso: bool, saída: str).
     """
     env = {**os.environ}
-    success, output = _invoke(prompt_text, timeout, env)
+    success, output = _invoke(prompt_text, timeout, env, model)
     limit_hit = _tracker.record_call(success, output)
 
     if limit_hit and wait_on_limit:
-        if _wait_and_probe(output, env):
-            success, output = _invoke(prompt_text, timeout, env)
+        if _wait_and_probe(output, env, model):
+            success, output = _invoke(prompt_text, timeout, env, model)
             _tracker.record_call(success, output)
         else:
             success = False
