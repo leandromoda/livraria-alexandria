@@ -1268,7 +1268,7 @@ E  → Exports
             import re as _re
 
             _BATCH_DIR = _os.path.join("data", "batch")
-            _NUM_PAT    = _re.compile(r"^(\d{3})_")
+            _NUM_PAT    = _re.compile(r"^(\d+)_")
 
             def _count_outputs():
                 return (

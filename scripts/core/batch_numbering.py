@@ -10,7 +10,11 @@ import glob
 import os
 import re
 
-NUM_PAT = re.compile(r"^(\d{3})_")
+# `\d+`, não `\d{3}`: os contadores de lote passam de 999 (synopsis já está em
+# 764 e o backlog exige ~900 lotes). Com `{3}` o nome `1000_synopsis_input.json`
+# deixava de casar, e as consequências eram silenciosas — ver o teste de
+# rollover em tests/test_batch_numbering.py.
+NUM_PAT = re.compile(r"^(\d+)_")
 
 
 def pending_batch_input(data_dir: str, prefix: str) -> str | None:
@@ -39,11 +43,13 @@ def pending_batch_input(data_dir: str, prefix: str) -> str | None:
         output = os.path.join(data_dir, f"{num}_{prefix}_output.json")
         if os.path.exists(output):
             continue  # já processado — mv falhou, mas o trabalho foi feito
-        candidatos.append((num, path))
+        candidatos.append((int(num), path))
 
     if not candidatos:
         return None
 
+    # Ordenação NUMÉRICA, não lexicográfica: com larguras mistas (999 vs 1000)
+    # a comparação por string escolheria "1000" antes de "999".
     return min(candidatos)[1]
 
 

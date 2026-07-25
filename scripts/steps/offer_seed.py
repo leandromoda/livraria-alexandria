@@ -35,7 +35,10 @@ SEEDS_DIR = os.path.join(DATA_DIR, "seeds")
 
 DB_PATH = os.path.join(DATA_DIR, "books.db")
 
-SEED_PATTERN = re.compile(r"^\d{3}_offer_seeds?\.json$")
+# `\d+`, não `\d{3}`: já existem 446 seeds e o maior é o 999 — o próximo
+# arquivo (`1000_offer_seeds.json`) deixaria de casar e seria silenciosamente
+# ignorado pela ingestão, sem erro nem log.
+SEED_PATTERN = re.compile(r"^\d+_offer_seeds?\.json$")
 
 
 # =========================

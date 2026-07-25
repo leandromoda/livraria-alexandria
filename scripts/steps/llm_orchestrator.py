@@ -90,7 +90,7 @@ LOG_ANALYSIS_EVERY_N_CYCLES    = 5
 CONSISTENCY_REVIEW_EVERY_N_CYCLES = 5
 TIMEOUT_MAINTENANCE            = 1800  # 30 min — suficiente para logs acumulados
 
-NUM_PAT = re.compile(r"^(\d{3})_")
+NUM_PAT = re.compile(r"^(\d+)_")
 
 
 # =========================
@@ -363,7 +363,7 @@ def _export_author_bio(conn) -> int:
 # =========================
 
 def _import_author_bio() -> int:
-    output_pat = re.compile(r"^(\d{3})_author_bio_output\.json$")
+    output_pat = re.compile(r"^(\d+)_author_bio_output\.json$")
     processed_dir = BATCH_DIR / "processed_author_bio"
     os.makedirs(processed_dir, exist_ok=True)
 

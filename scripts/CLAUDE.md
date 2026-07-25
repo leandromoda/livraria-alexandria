@@ -474,6 +474,34 @@ Degrada com segurança: o prompt mantém as instruções de Glob, então um agen
 que ignore o bloco chega ao **mesmo** arquivo. Ligado via `batch_prefix` em
 `_run_agent_step` (`synopsis`, `categorize`, `author_bio`).
 
+### Numeração de lotes — sem teto de 3 dígitos
+
+Os contadores (`NNN_synopsis_input.json`, `NNN_offer_seeds.json`…) usam
+`\d+`, **nunca** `\d{3}`. Motivo medido em 2026-07-25: `offer_seeds` já estava
+em **999** e `synopsis` em 764 com ~900 lotes ainda por gerar.
+
+Com `\d{3}` as falhas eram todas **silenciosas** — sem erro, sem log:
+
+| Ponto | Efeito ao passar de 999 |
+|---|---|
+| `batch_numbering.next_batch_number` | Retornava `"1000"` para sempre → cada export sobrescrevia o mesmo arquivo; os livros do lote perdido ficavam presos em `status_synopsis = 3` |
+| `synopsis_import` / `categorize_import` (`OUTPUT_PAT`) | Output do agente nunca importado — quota gasta, sinopse descartada |
+| `offer_seed.SEED_PATTERN` | `1000_offer_seeds.json` ignorado pela ingestão |
+| `batch_numbering.pending_batch_input` | Não resolvia o lote → o hint de input sumia |
+
+A ordenação de lotes é **numérica** (`int(num)`), não lexicográfica: com
+larguras mistas, `"1000" < "999"` como string.
+
+### Testes
+
+Convenção: script de `assert` puro em `scripts/tests/`, sem pytest.
+
+```bash
+cd scripts
+python tests/test_batch_numbering.py       # numeração + resolução de lotes
+PYTHONPATH=. python tests/test_inject_ml_affiliate.py
+```
+
 ### Eficiência (WS3)
 
 Geração em lote amortiza o overhead fixo da sessão. `BATCH_SIZE_*` é configurável

@@ -26,7 +26,7 @@ DATA_DIR       = os.path.join(os.path.dirname(__file__), "..", "data")
 BATCH_DIR     = os.path.join(DATA_DIR, "batch")
 PROCESSED_DIR  = os.path.join(BATCH_DIR, "processed_synopsis")
 BLACKLIST_PATH = os.path.join(DATA_DIR, "blacklist.json")
-OUTPUT_PAT     = re.compile(r"^(\d{3})_synopsis_output\.json$")
+OUTPUT_PAT     = re.compile(r"^(\d+)_synopsis_output\.json$")
 
 MIN_SYNOPSIS_LEN = 400
 
