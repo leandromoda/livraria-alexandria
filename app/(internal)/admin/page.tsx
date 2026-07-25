@@ -17,6 +17,35 @@ type SourceRow = { label: string; clicks: number; pct: number };
 type TopLivro = { titulo: string; slug: string; clicks: number };
 type RecentClick = { id: string; titulo: string; slug: string; marketplace: string; created_at: string };
 
+// ─── Paginação ────────────────────────────────────────────────────────────────
+
+/**
+ * O PostgREST corta toda resposta em 1000 linhas — `.limit(n)` com n > 1000 é
+ * silenciosamente truncado. Sem paginar, qualquer agregação feita no cliente
+ * (contagem de distintos, soma de cliques) trava nesse teto: o card "Com oferta
+ * ativa" mostrava 999 com 4.579 ofertas ativas no banco.
+ */
+const PAGE_SIZE = 1000;
+
+async function fetchAllPaged<T>(
+  makeQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null }>,
+  max = Number.MAX_SAFE_INTEGER
+): Promise<T[]> {
+  const rows: T[] = [];
+
+  for (let from = 0; from < max; from += PAGE_SIZE) {
+    const to = Math.min(from + PAGE_SIZE, max) - 1;
+    const { data } = await makeQuery(from, to);
+    const page = data ?? [];
+    rows.push(...page);
+
+    // Página incompleta = acabaram as linhas.
+    if (page.length < to - from + 1) break;
+  }
+
+  return rows;
+}
+
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 async function getCatalogStats(): Promise<CatalogStats> {
@@ -25,7 +54,7 @@ async function getCatalogStats(): Promise<CatalogStats> {
     { count: published },
     { count: blacklisted },
     { count: withCover },
-    { data: offerRows },
+    offerRows,
   ] = await Promise.all([
     supabaseAdmin.from("livros").select("*", { count: "exact", head: true }),
     supabaseAdmin
@@ -41,13 +70,16 @@ async function getCatalogStats(): Promise<CatalogStats> {
       .select("*", { count: "exact", head: true })
       .eq("is_publishable", true)
       .not("imagem_url", "is", null),
-    supabaseAdmin.from("ofertas").select("livro_id").eq("ativa", true),
+    fetchAllPaged<{ livro_id: string }>((from, to) =>
+      supabaseAdmin
+        .from("ofertas")
+        .select("livro_id")
+        .eq("ativa", true)
+        .range(from, to)
+    ),
   ]);
 
-  const withOffer = new Set(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (offerRows ?? []).map((r: any) => r.livro_id)
-  ).size;
+  const withOffer = new Set(offerRows.map((r) => r.livro_id)).size;
 
   return {
     total: total ?? 0,
@@ -59,13 +91,13 @@ async function getCatalogStats(): Promise<CatalogStats> {
 }
 
 async function getMarketplaceClicks(): Promise<SourceRow[]> {
-  const { data } = await supabaseAdmin
-    .from("oferta_clicks")
-    .select("ofertas(marketplace)");
+  const data = await fetchAllPaged((from, to) =>
+    supabaseAdmin.from("oferta_clicks").select("ofertas(marketplace)").range(from, to)
+  );
 
   const counts: Record<string, number> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (data ?? []) as any[]) {
+  for (const r of data as any[]) {
     const mkt = r.ofertas?.marketplace ?? "(sem marketplace)";
     counts[mkt] = (counts[mkt] ?? 0) + 1;
   }
@@ -85,17 +117,24 @@ function toSourceRows(counts: Record<string, number>): SourceRow[] {
 }
 
 async function getTopLivros(): Promise<TopLivro[]> {
-  const { data } = await supabaseAdmin
-    .from("oferta_clicks")
-    .select("livro_id, oferta_id, ip_hash, created_at, ofertas(livros(titulo, slug))")
-    .order("created_at", { ascending: false })
-    .limit(5000);
+  // `.limit(5000)` era truncado em 1000 pelo PostgREST. O desempate por `id`
+  // torna a paginação determinística quando há cliques no mesmo timestamp.
+  const data = await fetchAllPaged(
+    (from, to) =>
+      supabaseAdmin
+        .from("oferta_clicks")
+        .select("livro_id, oferta_id, ip_hash, created_at, ofertas(livros(titulo, slug))")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    5000
+  );
 
   const seen = new Set<string>();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const deduped: any[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const r of (data ?? []) as any[]) {
+  for (const r of data as any[]) {
     const bucket = Math.floor(new Date(r.created_at).getTime() / (30 * 60 * 1000));
     const key = `${r.ip_hash}:${r.oferta_id}:${bucket}`;
     if (!seen.has(key)) {
