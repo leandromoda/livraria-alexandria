@@ -182,6 +182,44 @@ public/                           # assets estáticos (logo, etc.)
 
 ## Convenções obrigatórias
 
+### Afirmação quantitativa leva data e método — ou não se escreve
+
+Vale para comentário de código, docstring, `CLAUDE.md`, corpo de PR e
+`project_state.json`. Se um texto afirma **quanto**, **qual é mais rápido**,
+**qual modelo**, **é seguro porque** ou **está calibrado** — precisa dizer
+**quando** e **como** foi verificado.
+
+```python
+# ERRADO — plausível, não verificado, e envelhece em silêncio
+# A camada 5/6 é segura porque o agente rejeita depois.
+BATCH_SIZE = 15   # calibrado por medição
+
+# CERTO — dá para reconferir e para saber quando expirou
+# Medido em 2026-07-25 (n=5.721): a camada sem casar título produz 24,8% de
+# rejeição contra 0% do scraping. É segura quanto a publicar errado, mas cara:
+# cada rejeição gasta uma chamada do gargalo. Ver TASK-ENRICH-001.
+BATCH_SIZE = 15   # medido 2026-07-25: ~26 s/livro (387s, 415s, 387s em 3 corridas)
+```
+
+**Por que a regra existe.** Na sessão 32, cinco premissas assim caíram quando
+alguém finalmente mediu: o CLI usar Opus por padrão (era Sonnet), `claude auth
+status` ser confiável (reporta `loggedIn` com token expirado), a camada fraca do
+`_pick_descricao` explicar o mismatch (explicava 20%), subir o limiar de
+similaridade ser a correção (destruiria mais acertos do que erros), e o
+`measure_batch` medir o tamanho pedido (media sempre o já configurado). **Duas
+delas estavam escritas no código como justificativa** e foram lidas por meses
+como fato.
+
+Regras práticas:
+
+- Sem número medido, escreva a incerteza em vez de omiti-la: *"suposto, não
+  medido"* é informação; uma afirmação seca é armadilha.
+- Registre o **método** junto (`n=`, ferramenta, comando), para dar reconferir.
+- Ao mudar o que uma medição descreve, **atualize ou remova** a afirmação — dado
+  velho sem data é pior que ausência de dado.
+- Se descobrir que uma afirmação existente é falsa, **corrija o texto no mesmo
+  PR** em que age sobre ela, e diga o que era e o que é.
+
 ### Supabase — sempre usar o cliente compartilhado
 
 ```ts
@@ -373,6 +411,9 @@ O plugin Vercel está ativo e injeta contexto Next.js/Vercel automaticamente nas
 
 ## O que NÃO fazer
 
+- Não escrever afirmação quantitativa (quanto, qual é mais rápido, "é seguro
+  porque", "calibrado") sem data e método — ver "Afirmação quantitativa leva
+  data e método"
 - Não criar `createClient(...)` inline nas páginas — usar `lib/supabase.ts`
 - Não usar cores Tailwind fora da paleta (`gray-*`, `blue-*`, etc.)
 - Não omitir `rel="noopener noreferrer"` em links externos com `target="_blank"`
