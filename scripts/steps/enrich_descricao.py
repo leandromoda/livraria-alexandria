@@ -178,9 +178,21 @@ def _pick_descricao(candidatos, titulo, autor):
       3. autor casa  + idioma PT      4. autor casa (qualquer idioma)
       5. PT (top-relevância)          6. qualquer (top-relevância — mais fraco)
 
-    A camada 5/6 (sem casar título nem autor) é segura porque o agente de sinopse
-    tem gate de coerência título×descrição: se pegar o livro errado, a sinopse é
-    rejeitada (synopsis-title-mismatch), não publicada.
+    A camada 5/6 (sem casar título nem autor) não publica conteúdo errado — o
+    agente de sinopse tem gate de coerência título×descrição e rejeita. Mas
+    "não publica errado" não é o mesmo que "sem custo", como este comentário
+    afirmava antes de alguém medir:
+
+      Medido em 2026-07-25 (n=5.721 livros já processados pelo agente):
+      descrições vindas da API produzem 24,8% de rejeição por
+      synopsis-title-mismatch, contra 0% das vindas de scraping (n=111).
+      Cada rejeição gasta uma chamada do gargalo de publicação.
+      As camadas top-rel respondem por ~20% dos rejeitados (contra 8% dos
+      aprovados) — são parte do problema, não a maior parte dele.
+
+    Por isso a saída adotada não foi filtrar e sim ORDENAR: `enrich_similaridade`
+    registra a confiança e `synopsis_export` põe o casamento exato na frente.
+    Ver "Confiança do enriquecimento" no CLAUDE.md e TASK-ENRICH-001.
 
     Retorna (descricao, camada, idioma, similaridade) ou (None, None, None, None).
     """

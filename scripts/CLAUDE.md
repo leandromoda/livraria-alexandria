@@ -709,6 +709,11 @@ GOOGLE_BOOKS_API_KEY=...
 
 ## Convenções de Código
 
+> **Afirmação quantitativa leva data e método** — regra do `CLAUDE.md` da raiz,
+> e este arquivo é onde ela mais pesa: quase todo número aqui (s/livro, taxas de
+> rejeição, tamanho de lote) veio de uma medição que pode ter expirado. Ao
+> alterar um step, confira se os números que o descrevem continuam valendo.
+
 ### Status flags
 
 Todos os campos `status_*` em `livros` são inteiros:
