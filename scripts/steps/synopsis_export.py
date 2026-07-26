@@ -47,6 +47,12 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND status_review   = 1
               AND is_book         = 1
               AND COALESCE(qa_quarantine, 0) = 0
+              -- Livro sem descricao e rejeicao GARANTIDA pelo agente ("descricao
+              -- vazia" no prompt), entao exporta-lo gasta uma chamada do gargalo
+              -- para nada. Medido em 2026-07-26: 10.041 dos 11.028 na fila (91%)
+              -- estao nesse estado. Ver TASK-SYN-016.
+              AND descricao IS NOT NULL
+              AND TRIM(descricao) <> ''
               AND id IN ({placeholders})
             ORDER BY enrich_similaridade IS NULL,        -- NULL por ultimo
                      enrich_similaridade DESC,       -- casamento exato primeiro (89% vs 56%)
@@ -61,6 +67,12 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND status_review   = 1
               AND is_book         = 1
               AND COALESCE(qa_quarantine, 0) = 0
+              -- Livro sem descricao e rejeicao GARANTIDA pelo agente ("descricao
+              -- vazia" no prompt), entao exporta-lo gasta uma chamada do gargalo
+              -- para nada. Medido em 2026-07-26: 10.041 dos 11.028 na fila (91%)
+              -- estao nesse estado. Ver TASK-SYN-016.
+              AND descricao IS NOT NULL
+              AND TRIM(descricao) <> ''
               AND idioma          = ?
             ORDER BY enrich_similaridade IS NULL,        -- NULL por ultimo
                      enrich_similaridade DESC,       -- casamento exato primeiro (89% vs 56%)

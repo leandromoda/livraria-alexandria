@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230). | 2026-07-26 (sessao 32, cont.): (9) fila de sinopse ordenada por enrich_similaridade apos isolar o mismatch no enriquecimento por API - 24,8% contra 0% do scraping (#232); (10) measure_batch corrigido: media o tamanho ja configurado e assumia o lote errado (#233).",
+    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230). | 2026-07-26 (sessao 32, cont.): (9) fila de sinopse ordenada por enrich_similaridade apos isolar o mismatch no enriquecimento por API - 24,8% contra 0% do scraping (#232); (10) measure_batch corrigido: media o tamanho ja configurado e assumia o lote errado (#233). | 2026-07-26 (cont.): (11) fila de sinopse deixa de exportar livro sem descricao — 91% da fila era rejeicao garantida (#237); re-enrich dos 10k DESCARTADO por medicao (ja tentados com o codigo pos-#180; ~10 dias de cota do Google Books).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2028,6 +2028,26 @@
       "pr": 233,
       "origem": "Sessao 32 - ao tentar calibrar o BATCH_SIZE (TASK-PERF-014), um sweep de 15/25/35 devolveu exported=15 nas tres, e o resultado parecia valido.",
       "contexto": "(1) Os exports fazem min(pacote, BATCH_SIZE), com BATCH_SIZE lido do ambiente no import do modulo - a ferramenta so media o tamanho ja configurado e nunca acima dele. Corrigido sobrescrevendo <modulo>.BATCH_SIZE antes do export. (2) _newest_input_ids assumia que o agente processa o lote recem-exportado, mas o agente pega o de MENOR numero ainda sem output - com orfaos na fila o done vinha 0 e o numero saia errado sem sinal. Agora o alvo e resolvido por pending_batch_input, injetado no prompt via input_hint, e o resultado registra 'medido'/'alvo'/'mediu_orfao'; s_per_item usa o tamanho MEDIDO."
+    },
+    {
+      "id": "TASK-SYN-016",
+      "description": "Fila de sinopse exportava livros sem descricao — rejeicao garantida gastando quota",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "pr": 237,
+      "origem": "Sessao 32 - o backfill de enrich_similaridade revelou que so 987 dos 11.028 livros da fila de sinopse (9%) tinham descricao. synopsis_export.fetch_pending nao filtrava por descricao.",
+      "contexto": "O prompt do agente marca REJECTED quando a descricao e vazia, entao cada livro sem descricao exportado era uma chamada do gargalo com rejeicao garantida. Adicionado 'descricao IS NOT NULL AND TRIM(descricao) <> \"\"' nas duas queries de fetch_pending e em _count_pending_synopsis (para o G nao esperar quota por trabalho impossivel). Novo _count_sem_descricao mantem os bloqueados visiveis, e o drain loga explicitamente que o gargalo passou a ser o enriquecimento. Efeito: o backlog exportavel cai de 11.028 para ~965 e o autopilot para mais cedo — expondo o gargalo real em vez de mascara-lo queimando quota."
+    },
+    {
+      "id": "TASK-ENRICH-002",
+      "description": "Proposta: re-enriquecer os ~10k livros sem descricao — DESCARTADA",
+      "priority": "medium",
+      "status": "rejected",
+      "registered_on": "2026-07-26",
+      "origem": "Sessao 32 - com 10.041 livros da fila de sinopse sem descricao, a saida obvia seria rodar o enrich de novo (opcao 2, retry_failed=True).",
+      "contexto": "DESCARTADA apos medicao. (1) Nao ha populacao 'nao tentada': 100% dos 10.041 estao com status_descricao=2 — o enrich ja tentou e falhou em todos. (2) O codigo atual JA foi aplicado a eles: 0 falharam antes do PR #180 (fallback multi-idioma + match por autor, mergeado 2026-07-04T11:13Z) e 10.041 depois — as 9.643 do dia 04/07 sao todas entre 14h e 18h UTC. Re-rodar aplicaria o mesmo codigo que ja os rejeitou. (3) Custo proibitivo: a cota gratuita do Google Books e de ~1.000 consultas/dia (confirmado com 429 'Quota exceeded ... Queries per day' apos ~959 consultas do backfill), entao 10.041 livros levariam ~10 dias de cota. CORRIGE expectativa anterior de que o PR #180 'destravaria ~8.300 livros': o re-enrich ja rodou em 04/07 e esses livros seguem sem descricao. Alternativa NAO avaliada (escopo novo): buscar descricao em outra fonte — scraper de marketplace (hoje 140 livros, 0% de mismatch, o melhor indice do banco), OpenLibrary, ou o agente offer_finder via WebSearch."
     }
   ],
   "qa_remediation_loop": {
