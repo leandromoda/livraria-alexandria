@@ -44,7 +44,18 @@ automaticamente ao reiniciar. Útil para deixar a máquina trabalhar sem supervi
 
 **Opção G sem confirmações**: G assume plano e LLM como SIM — não pede confirmação
 interativa. Inclui: regen sinopse (antes da fase LLM) → remediação mecânica
-(ingest+capas+reconcile) → reparo de ofertas (fix_affiliate_urls + publish_ofertas.run_repair).
+(ingest+capas+reconcile) → reparo de ofertas (**offer_price_monitor** +
+fix_affiliate_urls + publish_ofertas.run_repair).
+
+> **Monitor de preços no G (desde 2026-07-26).** Antes disso o step 17 só era
+> alcançável manualmente (menu, letra M, `qa.run("prices")`) e, como o uso é
+> autopilot por padrão, **nunca rodava**: última execução em 2026-04-20, com 2
+> linhas em `offer_price_log` e 78 livros com `preco_updated_at` — o site ficou
+> com 4.577 das 4.579 ofertas ativas sem preço. Agora roda a cada passe do G com
+> cota fixa `PRECO_POR_CICLO` (padrão **50** livros, `0` desliga), **antes** do
+> `run_repair` para o preço coletado sair republicado no mesmo ciclo. Falha do
+> monitor é capturada em `try` próprio — bloqueio de marketplace é transitório e
+> não pode derrubar o reparo de ofertas.
 
 ### Gargalo de publicação — o autopilot é o único caminho
 
@@ -349,8 +360,8 @@ imagem_url          TEXT
 idioma              TEXT      PT | EN | ES | IT | UNKNOWN
 offer_url           TEXT
 marketplace         TEXT      amazon | mercadolivre
-preco               REAL      semente
-preco_atual         REAL      monitorado (step 19)
+preco               REAL      semente (só offer_seed/db_recover escrevem)
+preco_atual         REAL      monitorado — scraper + offer_price_monitor
 offer_status        TEXT      active | unavailable
 editorial_score     INTEGER   >= 0 = publicável
 is_book             INTEGER   0 | 1
@@ -370,6 +381,16 @@ status_categorize   INTEGER
 
 reactivation_pending INTEGER  step 19: 1=revisar manualmente
 ```
+
+> **⚠️ Preço: publicar `COALESCE(preco_atual, preco)`, nunca `preco` sozinho.**
+> `preco` é a coluna SEMENTE — só `offer_seed` e `db_recover` escrevem nela.
+> Quem coleta preço de verdade (`marketplace_scraper.save_result` e
+> `offer_price_monitor`) grava em **`preco_atual`**. Até 2026-07-26
+> `publish_ofertas.fetch_pendentes` lia `preco`, e por isso publicava quase
+> sempre NULL: medido no books.db, 2 livros tinham `preco` contra 58 com
+> `preco_atual`, e dos 4.403 elegíveis à publicação **0** tinham `preco` e 57
+> tinham `preco_atual`. O pipeline de jogos já usava a regra certa
+> (`SUPABASE_PAYLOAD_COLUMNS`), só o de livros estava fora.
 
 ### Outras tabelas
 
@@ -734,6 +755,9 @@ BATCH_SIZE_AUTHOR_BIO=25
 # Rotações (ver "Rotações"). Cotas por ciclo, não lotes. 0 desliga.
 BIO_POR_CICLO=10                 # autores por ciclo
 CLASSIFY_POR_CICLO=25            # livros por ciclo
+
+# Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
+PRECO_POR_CICLO=50               # livros visitados pelo offer_price_monitor
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...

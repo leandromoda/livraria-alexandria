@@ -40,6 +40,17 @@ def fetch_pendentes(conn, pacote):
 
     cur = conn.cursor()
 
+    # `preco_atual` PRIMEIRO, `preco` só como fallback — mesma regra que o
+    # pipeline de jogos já usa (SUPABASE_PAYLOAD_COLUMNS).
+    #
+    # `preco` é a coluna SEMENTE (só o offer_seed e o db_recover escrevem nela);
+    # quem coleta preço de verdade — marketplace_scraper.save_result e
+    # offer_price_monitor — grava em `preco_atual`. Publicar `preco` significava
+    # publicar quase sempre NULL. Medido em 2026-07-26 no books.db: 2 livros com
+    # `preco`, 58 com `preco_atual`; dos 4.403 elegíveis à publicação, 0 tinham
+    # `preco` e 57 tinham `preco_atual`. No Supabase o efeito era 4.577 das 4.579
+    # ofertas ativas sem preço, e a página /ofertas exibindo "Consulte o site"
+    # em ~100% das linhas.
     cur.execute("""
         SELECT
             id,
@@ -47,7 +58,7 @@ def fetch_pendentes(conn, pacote):
             supabase_id,
             marketplace,
             offer_url,
-            preco
+            COALESCE(preco_atual, preco) AS preco
         FROM livros
         WHERE CAST(offer_status AS TEXT) IN ('1', 'active')
           AND status_publish        = 1
