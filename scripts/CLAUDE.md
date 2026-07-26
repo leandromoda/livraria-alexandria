@@ -636,7 +636,15 @@ Convenção: script de `assert` puro em `scripts/tests/`, sem pytest.
 cd scripts
 PYTHONPATH=. python tests/test_batch_numbering.py     # numeração + resolução de lotes
 PYTHONPATH=. python tests/test_inject_ml_affiliate.py # tag de afiliado ML
+PYTHONPATH=. python tests/test_project_state.py       # ids únicos no project_state
 ```
+
+> ⚠ **O workflow dispara em `paths: scripts/**`, não em `state/**`.** Um PR que
+> edite só o `state/project_state.json` — justamente o que introduz id duplicado
+> — **não roda** `test_project_state.py`. Falta acrescentar `- 'state/**'` às duas
+> listas de `paths` em `.github/workflows/tests.yml`. Alterar workflows exige o
+> escopo `workflow` no token (ver TASK-CI-001), então essa linha depende do
+> usuário.
 
 **No CI:** `.github/workflows/tests.yml` roda `compileall` + todos os
 `tests/test_*.py` a cada push/PR que toque em `scripts/**`. O workflow varre o

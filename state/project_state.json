@@ -1604,12 +1604,13 @@
       "resolution": "runtime/tmp/, **/__pycache__/ e scripts/alexandria.db já adicionados ao .gitignore — task concluída."
     },
     {
-      "id": "TASK-PIPE-010",
+      "id": "TASK-PIPE-023",
       "description": "Otimização step 2 (enrich_descricao): adicionado status_descricao flag, COALESCE no UPDATE e 1 retry de rede",
       "priority": "high",
       "status": "resolved",
       "resolved_on": "2026-03-25",
-      "resolution": "status_descricao (0/1/2) evita reprocessamento no autopilot. COALESCE preserva dados do step 4. Retry em RequestException com sleep(3)."
+      "resolution": "status_descricao (0/1/2) evita reprocessamento no autopilot. COALESCE preserva dados do step 4. Retry em RequestException com sleep(3).",
+      "nota": "Renumerada em 2026-07-26: colidia com TASK-PIPE-010 (dedup_autores, resolvida em 2026-03-24, PR #26). Sao trabalhos distintos; o id foi reusado por engano. A busca por id devolvia so a primeira, tornando esta entrada invisivel. Nenhuma referencia externa apontava para o id."
     },
     {
       "id": "TASK-INFRA-001",
