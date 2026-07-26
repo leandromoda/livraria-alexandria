@@ -1,6 +1,9 @@
 // ISR on-demand: cada livro infantil renderiza no primeiro acesso e fica em
-// cache no edge, revalidando de hora em hora (padrão de /livros/[slug]).
-export const revalidate = 3600;
+// cache no edge, revalidando a cada 24h (padrão de /livros/[slug]).
+//
+// TTL subiu de 1h para 24h em 2026-07-26 para conter a cota do free tier da
+// Vercel — rationale e medição em app/(public)/livros/[slug]/page.tsx.
+export const revalidate = 86400; // 24h
 export async function generateStaticParams() {
   return [];
 }
@@ -41,7 +44,7 @@ const getLivro = unstable_cache(
     return data;
   },
   ["infantil-detalhe"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 export async function generateMetadata({

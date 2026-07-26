@@ -1,6 +1,9 @@
 // ISR on-demand: cada jogo renderiza no primeiro acesso e fica em cache no
-// edge, revalidando de hora em hora (mesmo padrão de /livros/[slug]).
-export const revalidate = 3600;
+// edge, revalidando a cada 24h (mesmo padrão de /livros/[slug]).
+//
+// TTL subiu de 1h para 24h em 2026-07-26 para conter a cota do free tier da
+// Vercel — rationale e medição em app/(public)/livros/[slug]/page.tsx.
+export const revalidate = 86400; // 24h
 export async function generateStaticParams() {
   return [];
 }
@@ -40,7 +43,7 @@ const getJogo = unstable_cache(
     return data;
   },
   ["jogo-detalhe"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 export async function generateMetadata({
