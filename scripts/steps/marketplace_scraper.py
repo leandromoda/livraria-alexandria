@@ -11,6 +11,7 @@
 # Progresso: [SCRAPER][NNN/TTT] → titulo
 # ============================================================
 
+import os
 import random
 import re
 import time
@@ -27,13 +28,25 @@ from core import interrupt as _interrupt
 # STATS (reseta a cada run)
 # =========================
 
-_run_stats = {"http_503": 0}
+_run_stats = {"http_503": 0, "mp_ok": 0, "mp_skip": 0}
 
 # Circuit breaker para Open Library: após OL_CIRCUIT_THRESHOLD falhas
 # consecutivas, skip Open Library pelo resto do batch para não bloquear
 # o scraper inteiro em ConnectTimeout/ReadTimeout repetidos.
 _ol_consecutive_failures = 0
 OL_CIRCUIT_THRESHOLD = 3   # falhas consecutivas para abrir o circuit
+
+# Circuit breaker para o marketplace — mesma ideia, motivo diferente.
+#
+# O marketplace é tentado PRIMEIRO (é a única fonte com preço), mas é o mais
+# caro quando está sob bot wall: fetch_page faz até RETRY_MAX=3 tentativas com
+# backoff de RETRY_DELAY_503 = [5, 20] segundos, ou seja ~25s de sleep mais os
+# timeouts de leitura — por livro. Em 17 mil livros isso seria inviável. Após
+# MP_CIRCUIT_THRESHOLD falhas consecutivas o marketplace é pulado pelo resto do
+# lote e o step degrada exatamente para o comportamento anterior (só APIs).
+# Qualquer sucesso fecha o circuit.
+_mp_consecutive_failures = 0
+MP_CIRCUIT_THRESHOLD = int(os.getenv("MP_CIRCUIT_THRESHOLD", "3"))
 
 
 # =========================
@@ -447,7 +460,18 @@ def save_result(conn, livro_id, result, source="scraping"):
 
 def run(idioma=None, pacote=50):
 
+    global _mp_consecutive_failures, _ol_consecutive_failures
+
     log("Marketplace Scraper iniciado…")
+
+    # Os dois circuits são POR LOTE, como diz o comentário deles ("pelo resto
+    # do batch"). Resetar aqui importa porque o autopilot chama run() várias
+    # vezes no MESMO processo: sem isto o circuit da Open Library, uma vez
+    # aberto, nunca mais fechava — o guard retorna antes de qualquer request,
+    # então o contador jamais era zerado e a fonte ficava desligada para o
+    # resto da sessão.
+    _mp_consecutive_failures = 0
+    _ol_consecutive_failures = 0
 
     conn  = get_conn()
     rows  = fetch_pending(conn, pacote)
@@ -460,6 +484,8 @@ def run(idioma=None, pacote=50):
 
     ok = falhas = pulados = 0
     _run_stats["http_503"] = 0
+    _run_stats["mp_ok"]    = 0
+    _run_stats["mp_skip"]  = 0
 
     try:
         for i, row in enumerate(rows, start=1):
@@ -480,30 +506,63 @@ def run(idioma=None, pacote=50):
 
             result = None
             source = "scraping"
+            preco_raspado = None
 
-            # Tentativa 1: Open Library (capa em alta-res + descrição, sem preço)
-            # Usa titulo+autor, NÃO lookup_query (tem sufixo "livro" para Amazon)
-            result = try_open_library(titulo, isbn, autor)
-            if result and (result.get("cover_url") or result.get("descricao")):
-                source = "open_library"
+            # Tentativa 1: marketplace. É a ÚNICA fonte com preço — Open Library
+            # e Google Books retornam preco=None por construção — e também a de
+            # melhor qualidade de descrição: medido em 2026-07-25, scraping teve
+            # 0% de synopsis-title-mismatch em 111 livros contra 24,8% do Google
+            # Books em 5.721. Até 2026-07-26 ela era a ÚLTIMA tentativa, atrás
+            # das duas APIs, e como para livro real as APIs quase nunca falham
+            # as duas juntas, o marketplace praticamente não era alcançado:
+            # 140 de 17.861 livros (0,8%) com status_enrich=1. Resultado — preço
+            # nunca coletado no enriquecimento.
+            #
+            # O circuit breaker é o que torna essa ordem viável sob bot wall:
+            # sem ele, cada livro bloqueado custaria ~25s só de backoff de 503.
+            if _mp_consecutive_failures < MP_CIRCUIT_THRESHOLD:
+                scraped = scrape_marketplace(offer_url)
+                if scraped:
+                    _mp_consecutive_failures = 0     # sucesso — fecha o circuit
+                    _run_stats["mp_ok"] += 1
+                    preco_raspado = scraped.get("preco")
+                    if scraped.get("cover_url") or scraped.get("descricao"):
+                        result = scraped
+                        source = "scraping"
+                else:
+                    _mp_consecutive_failures += 1
+                    if _mp_consecutive_failures == MP_CIRCUIT_THRESHOLD:
+                        log(f"[SCRAPER] Circuit do marketplace ABERTO após "
+                            f"{MP_CIRCUIT_THRESHOLD} falhas seguidas — "
+                            f"seguindo só com as APIs no resto do lote.")
             else:
-                result = None
+                _run_stats["mp_skip"] += 1
 
-            # Tentativa 2: Google Books (descrição + capa, sem preço)
+            # Tentativa 2: Open Library (capa em alta-res + descrição, sem preço)
+            # Usa titulo+autor, NÃO lookup_query (tem sufixo "livro" para Amazon)
             if not result:
-                result = try_google_books(isbn, titulo, autor)
-                if result and (result.get("cover_url") or result.get("descricao")):
+                ol = try_open_library(titulo, isbn, autor)
+                if ol and (ol.get("cover_url") or ol.get("descricao")):
+                    result = ol
+                    source = "open_library"
+
+            # Tentativa 3: Google Books (descrição + capa, sem preço)
+            if not result:
+                gb = try_google_books(isbn, titulo, autor)
+                if gb and (gb.get("cover_url") or gb.get("descricao")):
+                    result = gb
                     source = "google_books"
-                else:
-                    result = None
 
-            # Tentativa 3: scraping direto (para offer_url de página de produto)
-            if not result:
-                result = scrape_marketplace(offer_url)
-                if result and (result.get("cover_url") or result.get("descricao")):
+            # O preço raspado sobrevive ao fallback. Sem isto, um produto que
+            # devolve preço mas não devolve capa nem descrição (ou cuja capa
+            # veio melhor da API) teria o preço descartado — que é exatamente
+            # o dado que só o marketplace tem.
+            if preco_raspado is not None:
+                if result is None:
+                    result = {"cover_url": None, "descricao": None}
                     source = "scraping"
-                else:
-                    result = None
+                if result.get("preco") is None:
+                    result["preco"] = preco_raspado
 
             if not result:
                 log(f"[SCRAPER] Sem dados para: {titulo}")
@@ -537,4 +596,11 @@ def run(idioma=None, pacote=50):
         f"Pulados (sem dados): {pulados} | "
         f"HTTP 503 (bloqueio Amazon): {_run_stats['http_503']} | "
         f"Total: {total}"
+    )
+    # Sem esta linha não dá para saber se o marketplace está entregando preço
+    # ou se o circuit abriu logo no começo e o lote inteiro veio só das APIs.
+    log(
+        f"[SCRAPER] Marketplace — respostas: {_run_stats['mp_ok']} | "
+        f"pulados por circuit aberto: {_run_stats['mp_skip']} | "
+        f"circuit ao fim: {'ABERTO' if _mp_consecutive_failures >= MP_CIRCUIT_THRESHOLD else 'fechado'}"
     )

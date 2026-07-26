@@ -172,7 +172,7 @@ scripts/
 | 1 | Importar Seeds | offer_seed.py | — | seeds/*.json | created |
 | 2 | Enriquecer Desc *(fallback-only)* | enrich_descricao.py | — | — | descricao preenchida |
 | 3 | Resolver Ofertas | offer_resolver.py | — | lookup_query | offer_url |
-| 4 | Scraper Marketplace | marketplace_scraper.py | — | offer_url | imagem_url, descricao, preco |
+| 4 | Scraper Marketplace | marketplace_scraper.py | — | offer_url | imagem_url, descricao, **preco** |
 | 5 | Gerar Slugs | slugify.py | — | — | status_slug=1 |
 | 6 | Slugify Autores | slugify_autores.py | — | — | autores.slug |
 | 7 | Deduplicar | dedup.py | — | — | status_dedup=1 |
@@ -542,9 +542,49 @@ livros custariam ~10 dias.
 > Isso **corrige** a expectativa registrada de que o #180 "destravaria ~8.300
 > livros": o re-enrich já rodou em 04/07 e eles seguem sem descrição.
 
-Sair daqui exige **outra fonte** de descrição — scraper de marketplace (hoje só
-140 livros, mas 0% de mismatch, o melhor índice do banco), OpenLibrary ou o
-agente `offer_finder` via WebSearch. Escopo novo, não avaliado.
+Sair daqui exige **outra fonte** de descrição — scraper de marketplace (0% de
+mismatch, o melhor índice do banco), OpenLibrary ou o agente `offer_finder` via
+WebSearch.
+
+> **Passo dado em 2026-07-26:** o marketplace deixou de ser a ÚLTIMA tentativa
+> do step 4 e passou a ser a PRIMEIRA — ver "Ordem das fontes no step 4" abaixo.
+> Os "só 140 livros" eram consequência da ordem, não do bot wall.
+
+### Ordem das fontes no step 4 — marketplace primeiro
+
+Até 2026-07-26 `marketplace_scraper.run()` tentava **Open Library → Google Books
+→ marketplace**, e o marketplace só rodava `if not result`, ou seja, quando as
+duas APIs falhavam em devolver até capa. Para livro real isso quase nunca
+acontece, então o marketplace era praticamente inalcançável: **140 de 17.861
+livros (0,8%)** com `status_enrich=1`. Como as duas APIs retornam `preco: None`
+**por construção** (está escrito no código), o efeito foi preço nunca coletado
+no enriquecimento — e a `/ofertas` com ~100% de "Consulte o site".
+
+Hoje a ordem é **marketplace → Open Library → Google Books**, pelos dois motivos
+medidos: é a única fonte com preço, e a de melhor qualidade de descrição (0% de
+`synopsis-title-mismatch` em 111 livros contra 24,8% do Google Books em 5.721).
+
+**O circuit breaker é o que torna essa ordem viável.** Sob bot wall, cada livro
+custaria até ~25 s só de backoff de 503 (`RETRY_MAX=3`, `RETRY_DELAY_503=[5,20]`)
+— inviável em 17 mil livros. Após `MP_CIRCUIT_THRESHOLD` falhas **consecutivas**
+(padrão 3, env) o marketplace é pulado pelo resto do lote e o step degrada
+exatamente para o comportamento anterior. Qualquer sucesso fecha o circuit.
+
+Dois detalhes que os testes fixam (`tests/test_marketplace_scraper_ordem.py`):
+
+- **O preço raspado sobrevive ao fallback.** Se o produto devolve preço mas não
+  devolve capa/descrição, a descrição vem da API e o preço do scrape é
+  preservado. Antes esse preço era descartado junto com o resultado.
+- **`status_enrich` reflete a origem da DESCRIÇÃO**, não do preço — é isso que
+  a ordenação da fila de sinopse usa. Preço do marketplace + descrição da OL
+  grava `status_enrich=2`, corretamente.
+
+> **Bug corrigido junto:** os dois circuits (OL e marketplace) são **por lote**,
+> mas nada os resetava entre chamadas de `run()`. Como o guard da Open Library
+> retorna *antes* de qualquer request, o contador nunca voltava a zero — uma vez
+> aberto, o circuit latchava para **todo o resto do processo**, e o autopilot
+> chama `run()` muitas vezes no mesmo processo. Agora `run()` zera os dois no
+> início.
 
 ### Confiança do enriquecimento — ordem da fila de sinopse
 
@@ -692,6 +732,7 @@ cd scripts
 PYTHONPATH=. python tests/test_batch_numbering.py     # numeração + resolução de lotes
 PYTHONPATH=. python tests/test_inject_ml_affiliate.py # tag de afiliado ML
 PYTHONPATH=. python tests/test_project_state.py       # ids únicos no project_state
+PYTHONPATH=. python tests/test_marketplace_scraper_ordem.py  # ordem das fontes + circuit
 ```
 
 > ⚠ **O workflow dispara em `paths: scripts/**`, não em `state/**`.** Um PR que
@@ -758,6 +799,9 @@ CLASSIFY_POR_CICLO=25            # livros por ciclo
 
 # Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
 PRECO_POR_CICLO=50               # livros visitados pelo offer_price_monitor
+
+# Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
+MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
