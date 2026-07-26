@@ -32,7 +32,8 @@ SCRIPTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
-from core.claude_runner import agent_prompt_path, run_agent
+from core.batch_numbering import pending_batch_input
+from core.claude_runner import agent_prompt_path, input_hint, run_agent
 from core.db import get_conn
 from core.logger import log
 
@@ -47,11 +48,13 @@ TASKS = {
         "status_col": "status_synopsis",
         "agent":      "synopsis_batch",
         "input_glob": "*_synopsis_input.json",
+        "prefix":     "synopsis",
     },
     "classify": {
         "status_col": "status_categorize",
         "agent":      "classify_batch",
         "input_glob": "*_categorize_input.json",
+        "prefix":     "categorize",
     },
 }
 
@@ -68,11 +71,21 @@ def _clear_stuck(status_col):
 
 
 def _export(task, size, idioma):
+    """Exporta um lote de EXATAMENTE `size` itens (se houver pendentes).
+
+    Os exports fazem `min(pacote, BATCH_SIZE)`, com BATCH_SIZE lido do ambiente
+    no import do módulo. Sem sobrescrever essa constante, pedir 25 ou 35 a um
+    BATCH_SIZE=15 exporta 15 — a ferramenta media sempre o tamanho já
+    configurado e nunca acima dele. Medido em 2026-07-25: um sweep de 15/25/35
+    devolveu `exported=15` nas três, e o resultado parecia válido.
+    """
     if task == "synopsis":
         from steps import synopsis_export
+        synopsis_export.BATCH_SIZE = size      # teto do min(pacote, BATCH_SIZE)
         return synopsis_export.run(idioma, size)
     else:
         from steps import categorize_export
+        categorize_export.BATCH_SIZE = size
         return categorize_export.run(size)
 
 
@@ -85,12 +98,10 @@ def _import(task):
         categorize_import.run()
 
 
-def _newest_input_ids(input_glob):
-    files = glob.glob(os.path.join(BATCH_DIR, input_glob))
-    if not files:
+def _ids_do_arquivo(path):
+    if not path or not os.path.isfile(path):
         return []
-    newest = max(files, key=os.path.getmtime)
-    with open(newest, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
     return [l["id"] for l in data.get("livros", [])]
 
@@ -121,10 +132,26 @@ def measure(task, size, idioma="PT"):
         log(f"[MEASURE] {task} size={size}: nada pendente — pulando")
         return None
 
-    ids = _newest_input_ids(cfg["input_glob"])
+    # O agente processa o lote de MENOR número ainda sem output — que pode ser
+    # um órfão de ciclo anterior, não o que acabamos de exportar. Medir os ids
+    # do recém-exportado dava done=0 com a fila suja, e o número saía errado
+    # sem nenhum sinal. Resolvemos o alvo aqui e injetamos no prompt, para que
+    # medição e execução falem do MESMO lote.
+    alvo = pending_batch_input(BATCH_DIR, cfg["prefix"])
+    ids = _ids_do_arquivo(alvo)
+    alvo_nome = os.path.basename(alvo) if alvo else None
+    mediu_orfao = bool(alvo and len(ids) != exported)
+
+    if mediu_orfao:
+        log(f"[MEASURE] ⚠ alvo é {alvo_nome} ({len(ids)} itens), não o lote "
+            f"recém-exportado ({exported}) — medindo o órfão da fila")
 
     t0 = time.monotonic()
-    success, output = run_agent(agent_prompt_path(cfg["agent"]), timeout=AGENT_TIMEOUT)
+    success, output = run_agent(
+        agent_prompt_path(cfg["agent"]),
+        timeout=AGENT_TIMEOUT,
+        extra_context=input_hint(alvo) if alvo else None,
+    )
     wall = time.monotonic() - t0
 
     timed_out = (not success) and ("timeout" in output.lower() or wall >= AGENT_TIMEOUT - 5)
@@ -134,17 +161,25 @@ def measure(task, size, idioma="PT"):
         _import(task)
         done = _count_done(status_col, ids)
 
+    medido = len(ids)
+
     result = {
-        "ts":         datetime.now(timezone.utc).isoformat(),
-        "task":       task,
-        "size":       size,
-        "exported":   exported,
-        "agent_ok":   bool(success),
-        "timed_out":  bool(timed_out),
-        "wall_s":     round(wall, 1),
-        "done":       done,
-        "s_per_item": round(wall / exported, 1) if exported else None,
-        "s_per_done": round(wall / done, 1) if done else None,
+        "ts":          datetime.now(timezone.utc).isoformat(),
+        "task":        task,
+        "size":        size,
+        "exported":    exported,
+        # `medido` é o tamanho do lote que o agente realmente processou; só
+        # coincide com `exported` quando a fila estava limpa. s_per_item usa
+        # ESTE número — usar `exported` era a origem dos valores errados.
+        "medido":      medido,
+        "alvo":        alvo_nome,
+        "mediu_orfao": mediu_orfao,
+        "agent_ok":    bool(success),
+        "timed_out":   bool(timed_out),
+        "wall_s":      round(wall, 1),
+        "done":        done,
+        "s_per_item":  round(wall / medido, 1) if medido else None,
+        "s_per_done":  round(wall / done, 1) if done else None,
         "output_tail": output[-200:] if not success else "",
     }
 
@@ -152,7 +187,8 @@ def measure(task, size, idioma="PT"):
         f.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     log(f"[MEASURE] {task} size={size} → wall={wall:.0f}s exported={exported} "
-        f"done={done} ok={success} timeout={timed_out}")
+        f"medido={medido} done={done} ok={success} timeout={timed_out}"
+        + (f" [ÓRFÃO {alvo_nome}]" if mediu_orfao else ""))
     return result
 
 

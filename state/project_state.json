@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230).",
+    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230). | 2026-07-26 (sessao 32, cont.): (9) fila de sinopse ordenada por enrich_similaridade apos isolar o mismatch no enriquecimento por API - 24,8% contra 0% do scraping (#232); (10) measure_batch corrigido: media o tamanho ja configurado e assumia o lote errado (#233).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1992,7 +1992,8 @@
       "status": "open",
       "registered_on": "2026-07-25",
       "origem": "Sessao 32 - com a premissa do modelo corrigida (o CLI ja usava Sonnet), a calibracao de lote e a unica alavanca de throughput restante.",
-      "contexto": "BATCH_SIZE_SYNOPSIS=15 esta documentado como calibrado por medicao, entao nao foi alterado no chute. Rodar 'python tools/measure_batch.py' com a quota livre e ajustar no .env se indicar lote maior. Custo: a medicao consome uma fatia da janela."
+      "contexto": "BATCH_SIZE_SYNOPSIS=15 esta documentado como calibrado por medicao, entao nao foi alterado no chute. ATENCAO: ate o PR #233 a ferramenta NAO conseguia medir acima do BATCH_SIZE configurado (um sweep 15/25/35 devolvia exported=15 nas tres). Com o #233 o sweep honra o tamanho pedido; rodar 'python tools/measure_batch.py synopsis:15,25,35' com a quota livre e ajustar o .env se indicar lote maior. Medido em 2026-07-25 no tamanho 15: ~26 s/livro (387s, 415s, 387s em tres corridas). Custo: a medicao consome uma fatia da janela.",
+      "nota": "Instrucao corrigida em 2026-07-26 — a versao anterior levava a gastar quota para nada."
     },
     {
       "id": "TASK-BATCH-004",
@@ -2004,6 +2005,28 @@
       "pr": 225,
       "origem": "Sessao 32 - achado no code review do #224. offer_seeds JA estava em 999 (446 arquivos); synopsis em 764 com ~900 lotes ainda por gerar.",
       "contexto": "Todas as falhas ao cruzar 999 eram silenciosas: next_batch_number reutilizaria \"1000\" indefinidamente (sobrescrevendo exports e deixando livros presos em status_*=3); synopsis_import/categorize_import nunca importariam o output (quota gasta, sinopse descartada); offer_seed ignoraria 1000_offer_seeds.json na ingestao. Corrigido para \\d+ em 9 pontos + ordenacao numerica em pending_batch_input. Teste: scripts/tests/test_batch_numbering.py (11 asserts, cobre rollover 999->1000->1001 e a ordem orfao-primeiro do #224)."
+    },
+    {
+      "id": "TASK-ENRICH-001",
+      "description": "Fila de sinopse ordenada por confianca do casamento do enriquecimento",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "pr": 232,
+      "origem": "Sessao 32 - ~25% das sinopses eram rejeitadas com synopsis-title-mismatch (descricao pertencia a outro livro). Investigacao isolou a origem no enriquecimento por API: status_enrich=1 (scraping) 0/111 = 0,0% de mismatch; status_enrich=2 (Google Books) 1418/5721 = 24,8%.",
+      "contexto": "Taxa de acerto por similaridade do titulo retornado: ~1.00 exato = 89%; 0.70-0.85 = 78%; 0.50-0.70 = 56%. Nova coluna livros.enrich_similaridade (0..1) e ORDER BY em synopsis_export.fetch_pending (exato primeiro, NULL por ultimo); o llm_orchestrator reusa esse fetch_pending, entao rotacao e drain herdam a ordem. NAO e filtro: subir o TITLE_SIMILARITY_THRESHOLD (0.5) foi DESCARTADO por medicao - cortar a faixa 0.50-0.70 evitaria ~681 descricoes ruins mas destruiria ~861 boas. Hipoteses testadas e REFUTADAS: seeds com titulos inventados (os titulos existem) e a camada fraca top-rel do _pick_descricao (so 20% dos rejeitados vem dela, contra 8% dos aprovados). Backfill obrigatorio para o backlog: tools/backfill_enrich_similaridade.py (sem LLM, ~65 min de Google Books, retomavel)."
+    },
+    {
+      "id": "TASK-PERF-015",
+      "description": "measure_batch.py media o tamanho errado e o lote errado",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "pr": 233,
+      "origem": "Sessao 32 - ao tentar calibrar o BATCH_SIZE (TASK-PERF-014), um sweep de 15/25/35 devolveu exported=15 nas tres, e o resultado parecia valido.",
+      "contexto": "(1) Os exports fazem min(pacote, BATCH_SIZE), com BATCH_SIZE lido do ambiente no import do modulo - a ferramenta so media o tamanho ja configurado e nunca acima dele. Corrigido sobrescrevendo <modulo>.BATCH_SIZE antes do export. (2) _newest_input_ids assumia que o agente processa o lote recem-exportado, mas o agente pega o de MENOR numero ainda sem output - com orfaos na fila o done vinha 0 e o numero saia errado sem sinal. Agora o alvo e resolvido por pending_batch_input, injetado no prompt via input_hint, e o resultado registra 'medido'/'alvo'/'mediu_orfao'; s_per_item usa o tamanho MEDIDO."
     }
   ],
   "qa_remediation_loop": {

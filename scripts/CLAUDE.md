@@ -652,9 +652,19 @@ instalação.
 Geração em lote amortiza o overhead fixo da sessão. `BATCH_SIZE_*` é configurável
 via env e calibrado por medição (`tools/measure_batch.py`):
 
+> **Dois defeitos da ferramenta, corrigidos em 2026-07-26 — leia antes de confiar
+> em medições antigas.** (1) Os exports fazem `min(pacote, BATCH_SIZE)`, então ela
+> **nunca media acima do valor já configurado**: um sweep `15,25,35` devolvia
+> `exported=15` nas três e parecia válido. Isso explica por que a calibração
+> original parou em 15 — o sweep padrão (`5,10,15`) jamais testou nada maior.
+> (2) Ela assumia que o agente processa o lote recém-exportado, mas o agente pega
+> o de **menor número sem output**; com órfãos na fila, `done` vinha 0.
+> Agora o alvo é resolvido por `pending_batch_input` e o resultado registra
+> `medido`/`alvo`/`mediu_orfao`, com `s_per_item` sobre o tamanho **medido**.
+
 | Tarefa | BATCH_SIZE | Medido |
 |--------|-----------|--------|
-| Sinopse | 15 (`BATCH_SIZE_SYNOPSIS`) | ~26 s/livro, 385 s/lote |
+| Sinopse | 15 (`BATCH_SIZE_SYNOPSIS`) | ~26 s/livro, 385 s/lote (reconfirmado em 2026-07-25: 387s, 415s, 387s) |
 | Categorização | 25 (`BATCH_SIZE_CLASSIFY`) | ~6,5 s/livro, 161 s/lote |
 | Bios de autor | 25 (`BATCH_SIZE_AUTHOR_BIO`) | — |
 
