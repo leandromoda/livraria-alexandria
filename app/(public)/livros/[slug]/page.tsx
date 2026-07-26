@@ -1,8 +1,16 @@
 // ISR on-demand: cada livro renderiza no primeiro acesso e fica em cache no
-// edge, revalidando de hora em hora. O generateStaticParams vazio habilita o
+// edge, revalidando a cada 24h. O generateStaticParams vazio habilita o
 // cache ISR sem prerenderizar os milhares de slugs no build (evita N queries
 // ao Supabase) — dynamicParams (default) gera cada página sob demanda.
-export const revalidate = 3600;
+//
+// TTL subiu de 1h para 24h em 2026-07-26 para conter a cota do free tier da
+// Vercel. Método: painel de Usage (janela de 30 dias, lido em 2026-07-26)
+// marcava 139K/200K ISR Writes e 3h09m/4h de Fluid Active CPU, com 219K edge
+// requests — ou seja, ~63% dos requests terminavam em regeneração, sintoma de
+// catálogo de cauda longa com TTL curto (página raramente revisitada dentro da
+// hora → quase toda visita de crawler era miss). Tradeoff aceito: o preço
+// exibido (que já é snapshot do scrape) fica até 24h defasado.
+export const revalidate = 86400; // 24h
 export async function generateStaticParams() {
   return [];
 }
@@ -47,7 +55,7 @@ const getLivro = unstable_cache(
     return data;
   },
   ["livro-detalhe"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 const getOfertas = unstable_cache(
@@ -60,7 +68,7 @@ const getOfertas = unstable_cache(
     return data ?? [];
   },
   ["livro-ofertas"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 const getListasDoLivro = unstable_cache(
@@ -72,7 +80,7 @@ const getListasDoLivro = unstable_cache(
     return data ?? [];
   },
   ["livro-listas"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 export async function generateMetadata({

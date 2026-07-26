@@ -1,7 +1,10 @@
 // ISR on-demand: lista editorial renderiza no primeiro acesso e fica em cache
-// no edge, revalidando de hora em hora. generateStaticParams vazio habilita o
+// no edge, revalidando a cada 24h. generateStaticParams vazio habilita o
 // ISR sem prerenderizar todos os slugs no build.
-export const revalidate = 3600;
+//
+// TTL subiu de 1h para 24h em 2026-07-26 para conter a cota do free tier da
+// Vercel — rationale e medição em app/(public)/livros/[slug]/page.tsx.
+export const revalidate = 86400; // 24h
 export async function generateStaticParams() {
   return [];
 }
@@ -31,7 +34,7 @@ const getLista = unstable_cache(
     return data;
   },
   ["lista-detalhe"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 const getLivrosDaLista = unstable_cache(
@@ -54,7 +57,7 @@ const getLivrosDaLista = unstable_cache(
     return data ?? [];
   },
   ["lista-livros"],
-  { revalidate: 3600 },
+  { revalidate: 86400 },
 );
 
 export async function generateMetadata({
