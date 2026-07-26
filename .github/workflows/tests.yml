@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/**'
+      - 'state/**'
       - '.github/workflows/tests.yml'
   pull_request:
     paths:
