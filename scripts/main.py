@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import time
 import threading
@@ -73,6 +74,29 @@ from core.run_logger import StepRun
 
 INPUT_MODE    = False
 last_activity = time.time()
+
+
+# =========================
+# COTAS POR CICLO (não-LLM)
+# =========================
+
+# Quantos livros publicados o offer_price_monitor visita a cada passe do G.
+# Mesma ideia das rotações de bio/categorização do llm_orchestrator: cota fixa
+# por ciclo, 0 desliga.
+#
+# Por que existe: até 2026-07-26 o monitor de preços NÃO era alcançável pelo
+# autopilot — só por main.py (menu), pela letra M (autopilot_manutencao) ou por
+# qa.run("prices"), todos manuais. Como o pipeline roda em autopilot por padrão,
+# na prática ele nunca rodava: última execução em 2026-04-20, com 2 linhas em
+# offer_price_log e 78 livros com preco_updated_at. O resultado no site era
+# 4.577 das 4.579 ofertas ativas sem preço.
+#
+# O padrão é baixo de propósito: o monitor faz scraping HTTP com delay por
+# livro, então é o step mais lento do passe não-LLM. Ele ordena por
+# `preco_updated_at ASC NULLS FIRST`, então cada ciclo pega quem está há mais
+# tempo sem preço — o backlog drena sozinho ao longo das janelas, sem martelar
+# o marketplace numa só.
+PRECO_POR_CICLO = int(os.getenv("PRECO_POR_CICLO", "50"))
 
 
 def log(msg):
@@ -867,6 +891,7 @@ def _run_gargalo(idioma: str):
     print(f"  {sep}")
     print(f"  Plano salvo em: scripts/data/gargalo_plan.json")
     print(f"  Fases automáticas: LLM (opcional) → QA → "
+          f"ofertas (preços + republicar) → "
           f"{len(auto_steps)} auditoria(s) → Autopilot A")
     print()
 
@@ -937,8 +962,22 @@ def _run_gargalo(idioma: str):
     # Reparo de ofertas (reusa steps existentes 27/28, não-LLM): corrige URLs
     # afiliadas no SQLite (idempotente, local) e força republicação idempotente
     # das ofertas no Supabase. Fecha o fator OFERTA do loop sem código novo.
-    log("[G] ── Reparo de ofertas (URLs afiliadas + republicar) ──")
+    #
+    # A ORDEM importa: o monitor de preços roda ANTES do run_repair para que o
+    # preço coletado nesta passagem já saia republicado no mesmo ciclo — o
+    # run_repair reseta status_publish_oferta=0 e re-upserta lendo
+    # COALESCE(preco_atual, preco). Invertido, o preço novo só chegaria ao site
+    # no ciclo seguinte.
+    log("[G] ── Reparo de ofertas (preços → URLs afiliadas → republicar) ──")
     try:
+        if PRECO_POR_CICLO > 0:
+            log(f"[G] Monitor de preços — cota do ciclo: {PRECO_POR_CICLO} livros")
+            try:
+                offer_price_monitor.run(limit=PRECO_POR_CICLO, dry_run=False)
+            except Exception as e_pm:
+                # Não deixa o scraping de preço derrubar o reparo de ofertas:
+                # bloqueio do marketplace é transitório e esperado.
+                log(f"[G] AVISO: monitor de preços falhou: {e_pm}")
         fix_affiliate_urls.run()
         publish_ofertas.run_repair()
     except Exception as e_of:
