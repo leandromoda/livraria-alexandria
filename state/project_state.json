@@ -2048,6 +2048,17 @@
       "registered_on": "2026-07-26",
       "origem": "Sessao 32 - com 10.041 livros da fila de sinopse sem descricao, a saida obvia seria rodar o enrich de novo (opcao 2, retry_failed=True).",
       "contexto": "DESCARTADA apos medicao. (1) Nao ha populacao 'nao tentada': 100% dos 10.041 estao com status_descricao=2 — o enrich ja tentou e falhou em todos. (2) O codigo atual JA foi aplicado a eles: 0 falharam antes do PR #180 (fallback multi-idioma + match por autor, mergeado 2026-07-04T11:13Z) e 10.041 depois — as 9.643 do dia 04/07 sao todas entre 14h e 18h UTC. Re-rodar aplicaria o mesmo codigo que ja os rejeitou. (3) Custo proibitivo: a cota gratuita do Google Books e de ~1.000 consultas/dia (confirmado com 429 'Quota exceeded ... Queries per day' apos ~959 consultas do backfill), entao 10.041 livros levariam ~10 dias de cota. CORRIGE expectativa anterior de que o PR #180 'destravaria ~8.300 livros': o re-enrich ja rodou em 04/07 e esses livros seguem sem descricao. Alternativa NAO avaliada (escopo novo): buscar descricao em outra fonte — scraper de marketplace (hoje 140 livros, 0% de mismatch, o melhor indice do banco), OpenLibrary, ou o agente offer_finder via WebSearch."
+    },
+    {
+      "id": "TASK-SYN-017",
+      "description": "Painel de status contradizia o orquestrador apos o filtro de descricao",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "pr": 238,
+      "origem": "Sessao 32 - code review do diff #232-#237. pipeline_status.py usava query propria sem o filtro do #237: o painel dizia 11.028 pendentes de sinopse enquanto o autopilot parava apos ~965, sem nada ligando os dois numeros.",
+      "contexto": "O painel agora quebra o total em exportaveis / BLOQUEADOS sem descricao, e o planejador de steps (n_syn) conta so os exportaveis para nao planejar um step LLM incapaz de progredir. synopsis.run passa a distinguir \"fila vazia\" de \"bloqueado por falta de descricao\" no caminho book_ids (ingestao guiada), onde \"Nada pendente\" mandava o usuario procurar problema no lugar errado. Novo tests/test_synopsis_queue.py cobre o filtro (NULL, vazia, so espacos), a ordem por enrich_similaridade, o caminho book_ids e o LIMIT — em SQLite na memoria, sem rede nem LLM. Regressao comprovada: removendo o filtro, o teste falha."
     }
   ],
   "qa_remediation_loop": {
