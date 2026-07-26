@@ -491,6 +491,40 @@ O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 3. **Persistência:** `data/claude_usage.json`.
 4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
+### O gargalo real é o enriquecimento, não a quota
+
+**Medido em 2026-07-26.** Da fila de sinopse (11.028 livros):
+
+| | Livros | |
+|---|---|---|
+| **Com** descrição | 987 | 9% — únicos exportáveis |
+| **Sem** descrição | 10.041 | **91%** — rejeição garantida |
+
+`synopsis_export.fetch_pending` não filtrava por descrição, e o prompt marca
+`REJECTED` quando ela é vazia — então cada um desses era **uma chamada do
+gargalo para nada**. Hoje o filtro existe (e em `_count_pending_synopsis`, para
+o G não esperar quota por trabalho impossível). `_count_sem_descricao` mantém os
+bloqueados visíveis, e o drain loga o motivo ao esvaziar.
+
+> **Consequência esperada:** o backlog exportável cai de 11.028 para ~965 e o
+> autopilot para bem mais cedo. Isso é o comportamento correto — expõe o gargalo
+> em vez de mascará-lo queimando quota.
+
+**Re-enriquecer esses 10 mil não resolve** (avaliado e descartado — TASK-ENRICH-002):
+100% já estão com `status_descricao=2`, e **todos** falharam *depois* do PR #180
+(fallback multi-idioma + match por autor, 2026-07-04T11:13Z) — as 9.643 do dia 04
+são todas de 14h-18h UTC. Re-rodar aplica o mesmo código que já os rejeitou. Além
+disso, a cota gratuita do Google Books é de **~1.000 consultas/dia** (confirmado
+com `429 Quota exceeded ... Queries per day` após ~959 consultas), então 10.041
+livros custariam ~10 dias.
+
+> Isso **corrige** a expectativa registrada de que o #180 "destravaria ~8.300
+> livros": o re-enrich já rodou em 04/07 e eles seguem sem descrição.
+
+Sair daqui exige **outra fonte** de descrição — scraper de marketplace (hoje só
+140 livros, mas 0% de mismatch, o melhor índice do banco), OpenLibrary ou o
+agente `offer_finder` via WebSearch. Escopo novo, não avaliado.
+
 ### Confiança do enriquecimento — ordem da fila de sinopse
 
 **Fato medido (2026-07-25).** ~25% das sinopses eram rejeitadas com

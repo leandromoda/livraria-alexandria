@@ -104,6 +104,13 @@ NUM_PAT = re.compile(r"^(\d+)_")
 # =========================
 
 def _count_pending_synopsis(conn, idioma: str) -> int:
+    """Pendentes EXPORTÁVEIS — só os que têm descrição.
+
+    Livro sem descrição é rejeição garantida pelo agente, então contá-lo aqui
+    faria o orquestrador esperar quota para um trabalho impossível: o G ficaria
+    em loop multijanela achando que há 11 mil sinopses a fazer. Use
+    `_count_sem_descricao` para enxergar os excluídos.
+    """
     cur = conn.cursor()
     cur.execute("""
         SELECT COUNT(*) FROM livros
@@ -111,6 +118,28 @@ def _count_pending_synopsis(conn, idioma: str) -> int:
           AND status_review   = 1
           AND is_book         = 1
           AND idioma          = ?
+          AND descricao IS NOT NULL
+          AND TRIM(descricao) <> ''
+    """, (idioma,))
+    return cur.fetchone()[0]
+
+
+def _count_sem_descricao(conn, idioma: str) -> int:
+    """Pendentes de sinopse BLOQUEADOS por falta de descrição.
+
+    Medido em 2026-07-26: 10.041 de 11.028 (91%). Todos com status_descricao=2
+    (o enrich já tentou e falhou) e todos processados DEPOIS do PR #180, que
+    trouxe fallback multi-idioma e match por autor — ou seja, re-enriquecer com
+    o código atual não os recupera. Ver TASK-SYN-016 e TASK-ENRICH-002.
+    """
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(*) FROM livros
+        WHERE status_synopsis = 0
+          AND status_review   = 1
+          AND is_book         = 1
+          AND idioma          = ?
+          AND (descricao IS NULL OR TRIM(descricao) = '')
     """, (idioma,))
     return cur.fetchone()[0]
 
@@ -765,9 +794,16 @@ def _drain_synopsis(idioma: str) -> tuple[int, bool]:
         conn = get_conn()
         n = _count_pending_synopsis(conn, idioma)
         if n <= 0:
+            bloqueados = _count_sem_descricao(conn, idioma)
             conn.close()
+            if bloqueados:
+                # Sem isto o relatório diria "nenhum pendente" com 10 mil livros
+                # parados — o gargalo ficaria invisível justamente ao ser atingido.
+                log(f"[LLM_ORCH] synopsis: 0 exportáveis, mas {bloqueados:,} livro(s) "
+                    f"bloqueado(s) por falta de descrição — o gargalo é o "
+                    f"enriquecimento, não a quota. Ver TASK-SYN-016.")
             break
-        log(f"[LLM_ORCH] synopsis: {n} pendentes")
+        log(f"[LLM_ORCH] synopsis: {n} pendentes exportáveis")
         exported = _export_synopsis(conn, idioma)
         conn.close()
         if exported <= 0:
