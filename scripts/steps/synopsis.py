@@ -34,6 +34,26 @@ def run(idioma, pacote, book_ids=None):
 
     exported = synopsis_export.run(idioma, pacote, book_ids=book_ids)
     if not exported:
+        # Distinguir "fila vazia" de "bloqueado por falta de descrição": na
+        # ingestão guiada o usuário pediu UM livro específico, e "nada pendente"
+        # o mandaria procurar problema no lugar errado. O export não emite livro
+        # sem descrição porque a rejeição seria garantida (TASK-SYN-016).
+        if book_ids:
+            from core.db import get_conn as _get_conn
+            _c = _get_conn()
+            try:
+                ph = ",".join("?" * len(book_ids))
+                sem_desc = _c.execute(
+                    f"""SELECT COUNT(*) FROM livros
+                        WHERE id IN ({ph})
+                          AND (descricao IS NULL OR TRIM(descricao) = '')""",
+                    tuple(book_ids)).fetchone()[0]
+            finally:
+                _c.close()
+            if sem_desc:
+                log(f"[SYNOPSIS] {sem_desc} livro(s) sem descrição — não exportado(s): "
+                    f"sinopse exige descrição de origem. Rode o enriquecimento antes.")
+                return
         log("[SYNOPSIS] Nada pendente.")
         return
 

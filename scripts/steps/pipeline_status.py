@@ -488,9 +488,13 @@ def build_gargalo_plan(conn, idioma="PT"):
             "SELECT COUNT(*) FROM livros WHERE status_categorize = 0 AND status_review = 1"
         )
         n_cat = cur.fetchone()[0]
-        cur.execute(
-            "SELECT COUNT(*) FROM livros WHERE status_synopsis = 0 AND status_review = 1"
-        )
+        # Só os EXPORTÁVEIS: livro sem descrição não vira sinopse (TASK-SYN-016),
+        # então incluí-lo aqui planejaria um step LLM incapaz de progredir.
+        cur.execute("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_synopsis = 0 AND status_review = 1
+              AND descricao IS NOT NULL AND TRIM(descricao) <> ''
+        """)
         n_syn = cur.fetchone()[0]
 
         if n_cat > 0:
@@ -592,6 +596,16 @@ def run():
 
     # Pendentes (gargalos)
     revisados_sem_sinopse  = q(conn, "SELECT COUNT(*) FROM livros WHERE status_review = 1 AND status_synopsis = 0")
+    # Quebra do número acima. Sem ela o painel dizia "11.028 sem sinopse" enquanto
+    # o autopilot parava após ~965 — dois números sem nada os ligando. O export
+    # (TASK-SYN-016) só emite livro COM descrição, porque sem ela a rejeição é
+    # garantida. Medido em 2026-07-26: 91% da fila estava bloqueada.
+    sinopse_exportavel     = q(conn, """
+        SELECT COUNT(*) FROM livros
+        WHERE status_review = 1 AND status_synopsis = 0
+          AND descricao IS NOT NULL AND TRIM(descricao) <> ''
+    """)
+    sinopse_sem_descricao  = revisados_sem_sinopse - sinopse_exportavel
     com_sinopse_sem_gate   = q(conn, "SELECT COUNT(*) FROM livros WHERE status_synopsis = 1 AND (is_publishable IS NULL OR is_publishable = 0)")
     publicaveis_nao_pub    = q(conn, "SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0")
     pub_sem_oferta         = q(conn, "SELECT COUNT(*) FROM livros WHERE status_publish = 1 AND status_publish_oferta = 0 AND offer_url IS NOT NULL")
@@ -667,6 +681,10 @@ def run():
     gargalos = []
     if revisados_sem_sinopse > 0:
         gargalos.append(f"Step 11 (Sinopses):         {revisados_sem_sinopse:>5,} com review mas sem sinopse")
+        if sinopse_sem_descricao > 0:
+            gargalos.append(f"  └ exportáveis (com descrição): {sinopse_exportavel:>5,}")
+            gargalos.append(f"  └ BLOQUEADOS sem descrição:    {sinopse_sem_descricao:>5,} "
+                            f"— o LLM não os alcança; gargalo é o enriquecimento")
     if com_sinopse_sem_gate > 0:
         gargalos.append(f"Step 13 (Quality Gate):     {com_sinopse_sem_gate:>5,} com sinopse mas não publicáveis")
     if publicaveis_nao_pub > 0:
