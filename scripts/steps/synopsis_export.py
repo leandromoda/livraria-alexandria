@@ -48,7 +48,9 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND is_book         = 1
               AND COALESCE(qa_quarantine, 0) = 0
               AND id IN ({placeholders})
-            ORDER BY priority_score DESC, created_at ASC
+            ORDER BY enrich_similaridade IS NULL,        -- NULL por ultimo
+                     enrich_similaridade DESC,       -- casamento exato primeiro (89% vs 56%)
+                     priority_score DESC, created_at ASC
             LIMIT ?
         """, (*book_ids, limit))
     else:
@@ -60,7 +62,9 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
               AND is_book         = 1
               AND COALESCE(qa_quarantine, 0) = 0
               AND idioma          = ?
-            ORDER BY priority_score DESC, created_at ASC
+            ORDER BY enrich_similaridade IS NULL,        -- NULL por ultimo
+                     enrich_similaridade DESC,       -- casamento exato primeiro (89% vs 56%)
+                     priority_score DESC, created_at ASC
             LIMIT ?
         """, (idioma, limit))
 

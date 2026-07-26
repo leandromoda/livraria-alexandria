@@ -121,6 +121,13 @@ def ensure_schema(conn):
         ("status_categorize",     "INTEGER DEFAULT 0"),
         ("editorial_score",       "INTEGER DEFAULT 0"),
         ("sinopse",               "TEXT"),
+        # Similaridade (0..1) entre o titulo buscado e o titulo do registro do
+        # Google Books de onde veio a `descricao`. NULL = enriquecido antes desta
+        # coluna existir, ou descricao de outra fonte (scraping).
+        # Usada para ORDENAR a fila de sinopse: medido em 2026-07-25, casamento
+        # exato acerta 89% contra 56% na faixa 0.50-0.70. Ver "Confianca do
+        # enriquecimento" no CLAUDE.md.
+        ("enrich_similaridade",   "REAL"),
         ("is_book",               "INTEGER DEFAULT 1"),
         ("is_publishable",        "INTEGER DEFAULT 0"),
         ("offer_url",             "TEXT"),
