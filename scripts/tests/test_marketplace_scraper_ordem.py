@@ -24,6 +24,34 @@ SCRIPTS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SCRIPTS_ROOT not in sys.path:
     sys.path.insert(0, SCRIPTS_ROOT)
 
+# marketplace_scraper faz `import requests` no topo, mas o workflow de CI não
+# roda `pip install` — os testes do projeto dependem só da stdlib. Como este
+# teste troca as três fontes por stubs, nenhuma chamada HTTP acontece: basta
+# que o nome exista para o import do step passar.
+#
+# O stub só entra se `requests` REALMENTE não estiver instalado. Localmente,
+# onde ele existe, o import real continua sendo exercitado — o teste não passa
+# a validar um ambiente que ninguém usa.
+try:
+    import requests  # noqa: F401
+except ModuleNotFoundError:  # pragma: no cover — só no CI
+    import types
+
+    _fake = types.ModuleType("requests")
+    _fake.utils = types.SimpleNamespace(quote=lambda s, safe="/": s)
+    _fake.exceptions = types.SimpleNamespace(
+        ReadTimeout=type("ReadTimeout", (Exception,), {}),
+        RequestException=type("RequestException", (Exception,), {}),
+    )
+
+    def _boom(*_a, **_k):
+        raise AssertionError(
+            "requests.get foi chamado — o teste deveria ter feito stub da fonte"
+        )
+
+    _fake.get = _boom
+    sys.modules["requests"] = _fake
+
 from steps import marketplace_scraper as ms
 
 
