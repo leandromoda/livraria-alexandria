@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-25 (sessao 32 - PRs #221-#230): (1) publicacao de autor era one-shot (fetch por status_publish=0), entao a bio gerada depois nunca chegava ao Supabase - 0 de 8399 autores tinham bio; corrigido com autores.status_publish_bio + resync em publish_autores.run() (#221), 306 bios sincronizadas. (2) Modelo por agente em claude_runner.AGENT_MODELS (#222) - a premissa de que o CLI usava Opus por padrao estava ERRADA: medido, o padrao e Sonnet; author_bio passou a ser pinado em opus explicitamente (#226). (3) Painel /admin travado em 999 por falta de paginacao (cap de 1000 do PostgREST) - 4562 e o valor real (#223). (4) Lote batch resolvido em Python em vez de Glob no agente (#224). (5) Teto de 999 na numeracao de lotes/seeds removido em 9 pontos - offer_seeds JA estava em 999 (#225). (6) Rotacoes de bio e categorizacao com cota fixa por ciclo, antes da sinopse (#227, #228). (7) Pre-voo de sessao do claude CLI antes da fase LLM do G (#229). (8) CI executando scripts/tests/ a cada push/PR (#230). | 2026-07-26 (sessao 32, cont.): (9) fila de sinopse ordenada por enrich_similaridade apos isolar o mismatch no enriquecimento por API - 24,8% contra 0% do scraping (#232); (10) measure_batch corrigido: media o tamanho ja configurado e assumia o lote errado (#233). | 2026-07-26 (cont.): (11) fila de sinopse deixa de exportar livro sem descricao — 91% da fila era rejeicao garantida (#237); re-enrich dos 10k DESCARTADO por medicao (ja tentados com o codigo pos-#180; ~10 dias de cota do Google Books).",
+    "last_updated": "2026-07-26 (sessao 33 - PRs #239-#242): (1) Aviso de teto do free tier da Vercel; favicon dinamico (ImageResponse por pageview, sem cache) virou PNG estatico e TTL de ISR das rotas [slug] subiu de 1h para 24h em ambas as camadas (#239). (2) /ofertas caiu de 1,40 MB para 0,149 MB - 95,5% era payload RSC de um client component recebendo 4.500 ofertas como props (#240). (3) Diagnostico de precos: das 4.579 ofertas ativas so 2 tinham preco; tres defeitos independentes - ordem das fontes no marketplace_scraper, publish_ofertas lendo a coluna semente 'preco' em vez de 'preco_atual', e offer_price_monitor fora do autopilot G (ultima execucao 2026-04-20). Corrigidos em #241 e #242, com circuit breaker no scraper e 5 testes novos. (4) Seed de teste com imagem em example.com removido da producao. Pendentes: re-medir a cota da Vercel em 2026-08-02 e confirmar os precos numa execucao real do G.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1099,7 +1099,7 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-07-25",
+    "last_measured": "2026-07-26",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
@@ -1108,7 +1108,9 @@
       "sinopse_pendente": 11058,
       "categorize_pendente": 13847,
       "autores": 8342,
-      "autores_sem_bio": 8024
+      "autores_sem_bio": 8024,
+      "livros_com_preco_atual": 58,
+      "livros_status_enrich_scraping": 140
     },
     "supabase": {
       "livros": 4562,
@@ -1116,9 +1118,19 @@
       "livros_com_oferta_ativa": 4562,
       "autores": 8399,
       "autores_com_bio": 308,
-      "listas": 667
+      "listas": 667,
+      "ofertas_com_preco": 2
     },
-    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017)."
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002).",
+    "vercel_free_tier": {
+      "medido_em": "2026-07-26",
+      "janela": "30 dias",
+      "fluid_active_cpu": "3h09m / 4h (79%)",
+      "isr_writes": "139K / 200K (70%)",
+      "image_optimization": "4,4K / 5K (88%) - ja resolvido no #213, sai do contador ~2026-08-12",
+      "edge_requests": "219K / 1M (22%)",
+      "nota": "Estourar o teto PAUSA os projetos. Re-medir em 2026-08-02 contra esta baseline (ver TASK-PERF-016)."
+    }
   },
   "validated_routes": [
     "/",
@@ -2059,6 +2071,74 @@
       "pr": 238,
       "origem": "Sessao 32 - code review do diff #232-#237. pipeline_status.py usava query propria sem o filtro do #237: o painel dizia 11.028 pendentes de sinopse enquanto o autopilot parava apos ~965, sem nada ligando os dois numeros.",
       "contexto": "O painel agora quebra o total em exportaveis / BLOQUEADOS sem descricao, e o planejador de steps (n_syn) conta so os exportaveis para nao planejar um step LLM incapaz de progredir. synopsis.run passa a distinguir \"fila vazia\" de \"bloqueado por falta de descricao\" no caminho book_ids (ingestao guiada), onde \"Nada pendente\" mandava o usuario procurar problema no lugar errado. Novo tests/test_synopsis_queue.py cobre o filtro (NULL, vazia, so espacos), a ordem por enrich_similaridade, o caminho book_ids e o LIMIT — em SQLite na memoria, sem rede nem LLM. Regressao comprovada: removendo o filtro, o teste falha."
+    },
+    {
+      "id": "TASK-OFERTAS-002",
+      "title": "Ofertas publicadas sem preço: 3 defeitos independentes no pipeline",
+      "status": "resolved",
+      "priority": "high",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "branch": "fix/precos-ofertas-autopilot + fix/scraper-ordem-fontes",
+      "description": "Medido em 2026-07-26 (PostgREST + books.db): das 4.579 ofertas ativas no Supabase, exatamente 2 tinham preço; 4.577 com preco NULL. A /ofertas (superfície de monetização) exibia 'Consulte o site' em ~100% das linhas e o schema:ItemList lido pelo Google tinha 2 produtos. Três defeitos independentes, os três necessários para um preço chegar ao site: (#1) marketplace_scraper.run tentava Open Library -> Google Books -> marketplace, e o marketplace só rodava 'if not result', quando as DUAS APIs falhavam em devolver até capa; como para livro real isso quase nunca acontece, o marketplace era inalcançável (140 de 17.861 livros = 0,8% com status_enrich=1) e as duas APIs retornam preco=None por construção. (#2) publish_ofertas.fetch_pendentes lia livros.preco (coluna SEMENTE, só offer_seed/db_recover escrevem: 2 linhas) em vez de preco_atual (a coletada por scraper e price monitor: 58 linhas). (#3) offer_price_monitor não era alcançável pelo autopilot: só main.py (menu), letra M (autopilot_manutencao) e qa.run('prices'), todos manuais; _run_gargalo nunca o chamava. Última execução em 2026-04-20, com 2 linhas em offer_price_log e 78 livros com preco_updated_at.",
+      "resolution": "PR #241 (#2 e #3): fetch_pendentes passou a ler COALESCE(preco_atual, preco) — no universo do run_repair (4.403 publicados) a query antiga achava 0 com preço e a nova acha 57; e offer_price_monitor entrou no _run_gargalo com cota PRECO_POR_CICLO (padrão 50, 0 desliga), ANTES do run_repair para o preço sair republicado no mesmo ciclo, em try próprio (bloqueio de marketplace é transitório e não pode derrubar o reparo). PR #242 (#1): ordem invertida para marketplace -> OL -> Google Books, viável graças a um circuit breaker (MP_CIRCUIT_THRESHOLD, padrão 3 falhas consecutivas) — sem ele, sob bot wall cada livro custaria ~25s só de backoff de 503 (RETRY_MAX=3, RETRY_DELAY_503=[5,20]), inviável em 17 mil livros; com ele, o step degrada exatamente para o comportamento anterior. O preço raspado sobrevive ao fallback (antes, produto com preço mas sem capa/descrição tinha o resultado inteiro descartado) e status_enrich continua refletindo a origem da DESCRIÇÃO, que é o que a ordenação da fila de sinopse usa. Bug latente corrigido junto: os circuits (OL e marketplace) são por lote mas nada os resetava entre chamadas de run(); como o guard da OL retorna antes de qualquer request, o contador nunca zerava e o circuit latchava para todo o resto do processo — e o autopilot chama run() muitas vezes no mesmo processo. Testes: scripts/tests/test_marketplace_scraper_ordem.py (5 casos, sqlite temporário + monkeypatch, sem rede).",
+      "pendente": "Confirmar o efeito numa execução real do G — nenhuma rodou desde o merge, então o Supabase segue com 2 ofertas com preço. O log de fim de lote do scraper agora informa respostas do marketplace, pulados por circuit aberto e se o circuit terminou aberto: é o que distingue 'marketplace não tem preço' de 'o circuit abriu no terceiro livro'.",
+      "files": [
+        "scripts/steps/publish_ofertas.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/main.py",
+        "scripts/tests/test_marketplace_scraper_ordem.py"
+      ]
+    },
+    {
+      "id": "TASK-OFERTAS-003",
+      "title": "Seed de teste com imagem em example.com servido em produção",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "description": "O livro 'Pai Rico, Pai Pobre' (slug pai-rico-pai-pobre, Supabase id bc28b073-c4f1-4f88-863c-905faa5d20e8, criado em 2026-01-31) estava em produção com imagem_url = https://example.com/capas/pai-rico-pai-pobre.jpg. Agravante: era 1 dos 2 únicos itens do schema:ItemList da /ofertas lido pelo Google, porque o schema filtra por preco > 0 e só 2 ofertas tinham preço. O resto do registro é real (ISBN, autor, ano, descrição, URL da Amazon com tag de afiliado, preço 39,90) — só a imagem era fabricada.",
+      "resolution": "imagem_url zerada no Supabase via PATCH com service role (1 linha afetada). NULL foi a escolha certa e não uma degradação: o books.db local JÁ tinha imagem_url = None para esse livro, então a correção alinhou o Supabase à fonte de verdade em vez de criar nova divergência. Tentou-se antes buscar capa real pelo ISBN 9788576849943 — Open Library retornou 0 docs e Google Books deu 429 (cota diária esgotada, o mesmo teto de ~1.000 consultas/dia já registrado). Com imagem_url NULL o site renderiza o fallback desenhado (quadrado burgundy com 'A') e o Product schema omite o campo image (image: imagem_url || undefined), permanecendo válido. Varredura pós-correção: 0 ocorrências de example.com em livros, ofertas, autores, listas e categorias.",
+      "files": [
+        "state/project_state.json"
+      ]
+    },
+    {
+      "id": "TASK-PERF-016",
+      "title": "Cota do free tier da Vercel: favicon dinâmico, TTL de ISR e payload da /ofertas",
+      "status": "resolved",
+      "priority": "high",
+      "registered_on": "2026-07-26",
+      "resolved_on": "2026-07-26",
+      "branch": "perf/reduzir-cota-vercel + perf/ofertas-payload",
+      "description": "Aviso 'Approaching your limits' da Vercel em 2026-07-25 — estourar o teto PAUSA os projetos automaticamente. Painel de Usage lido em 2026-07-26 (janela de 30 dias): Image Optimization 4,4K/5K (88%), Fluid Active CPU 3h09m/4h (79%), ISR Writes 139K/200K (70%), Edge Requests 219K/1M (22%). Sinal de diagnóstico mais útil: 139K ISR writes para 219K edge requests = ~63% dos requests terminando em regeneração, sintoma de catálogo de cauda longa com TTL curto. Image Optimization NÃO precisou de ação: já resolvido no #213 (2026-07-15), os 4,4K queimaram na janela de ~3 dias desde o #200 e saem do contador por volta de 2026-08-12.",
+      "resolution": "PR #239: (a) app/icon.tsx gerava o favicon 32x32 por request via ImageResponse (satori), com Cache-Control max-age=0 must-revalidate, x-vercel-cache MISS em 3/3 requests e sem ETag — uma invocação de compute por pageview para 634 bytes idênticos, já que o <link rel=icon> é emitido em toda página; virou app/icon.png estático (bytes idênticos, sha256 conferido em produção), Cache-Control passou a max-age=14400 com HIT e 'f /icon' saiu da tabela do build virando 'o /icon.png'. (b) revalidate 3600 -> 86400 nas 6 rotas [slug], no route export E em todos os unstable_cache (17 valores) — mexer só no export deixaria o Data Cache expirando de hora em hora. Índices e home ficam em 1h de propósito (poucas páginas, superfície de descoberta). PR #240: /ofertas servia 1,40 MB, dos quais 1,33 MB (95,5%) era payload RSC — OfertasList era client component recebendo as ~4.500 ofertas como props para paginar com useState, e o React serializa o array todo para hidratar mesmo renderizando 48. Passou a renderizar no servidor um recorte de 48 (LIMITE), filtro is_publishable descido para o PostgREST via livros!inner, ordem preco desc nullslast e ItemList descrevendo só a página: 1,40 MB -> 0,149 MB (-89%) medido em produção, com a rota seguindo estática.",
+      "decisao": "Paginação server-side via searchParams resolveria o peso da /ofertas do mesmo jeito, mas tornaria a rota dinâmica (f) — passando a gastar invocação por request, o oposto do objetivo. Por isso o recorte server-side em rota estática, aceitando perder o 'carregar mais' e linkando /livros para o catálogo completo.",
+      "pendente": "RE-MEDIR o painel de Usage em 2026-08-02 contra a baseline 3h09m / 139K. O ganho do TTL não é 24x garantido: depende da distribuição de crawl, que não temos por rota (média de 4.633 writes/dia sobre ~8K páginas = 0,58/página/dia sugere cauda onde o ganho é menor). Se ISR Writes não cair, obter o breakdown por rota (autorizar o MCP da Vercel ou instalar o CLI) antes de mexer em mais TTLs às cegas.",
+      "files": [
+        "app/icon.png",
+        "app/(public)/ofertas/page.tsx",
+        "app/(public)/livros/[slug]/page.tsx",
+        "next.config.ts"
+      ]
+    },
+    {
+      "id": "TASK-BUG-014",
+      "title": "Divergência local<->Supabase: livro servido em produção com status_publish=0 no books.db",
+      "status": "open",
+      "priority": "medium",
+      "registered_on": "2026-07-26",
+      "description": "Encontrado ao limpar o seed do example.com (TASK-OFERTAS-003). O livro 'Pai Rico, Pai Pobre' (local id 58335ceb-9b79-4fd4-b421-e7c2a294c898) está no books.db com status_publish=0, is_publishable=0 e status_synopsis=0, mas no Supabase está com is_publishable=true, status='publish' e é servido pelo site — inclusive com oferta ativa e preço. O publish_blockers no Supabase ainda diz 'missing_synopsis'. Além disso o id local é UUID (58335ceb-...) em vez do hex(randomblob(12)) de 24 chars usado pelo resto da base, indicando registro de inserção manual/early (created_at 2026-01-31). Há também duplicata: existem 'pai-rico-pai-pobre' e 'pai-rico-pai-pobre-2', ambos 'Pai Rico, Pai Pobre', o segundo vindo do pipeline real e com capa do Google Books. Efeito colateral já observado: como status_enrich=1, o scraper nunca revisita o registro, então a imagem_url nula não será preenchida por si.",
+      "plano": [
+        "Levantar quantos registros do Supabase não têm contrapartida coerente no books.db (id fora do padrão, status_publish divergente).",
+        "Decidir a fonte de verdade para esses casos: despublicar do Supabase ou reconciliar o estado local.",
+        "Avaliar a duplicata pai-rico-pai-pobre vs pai-rico-pai-pobre-2 (dedup não pegou porque um dos dois é registro manual).",
+        "Ver se consistency_check (step 51) já cobre esse tipo de drift; se não, incorporar."
+      ],
+      "files": [
+        "scripts/steps/consistency_check.py",
+        "scripts/steps/publish.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
