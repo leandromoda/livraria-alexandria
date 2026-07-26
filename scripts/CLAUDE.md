@@ -491,6 +491,50 @@ O limite relevante é a **janela rotativa de 5h** da sessão PRO, não RPM/RPD:
 3. **Persistência:** `data/claude_usage.json`.
 4. O painel de Status (opção S) e o relatório da opção G exibem a janela atual.
 
+### Confiança do enriquecimento — ordem da fila de sinopse
+
+**Fato medido (2026-07-25).** ~25% das sinopses eram rejeitadas com
+`synopsis-title-mismatch`: a `descricao` pertencia a outro livro. A origem é o
+enriquecimento por API — não o modelo:
+
+| Origem da descrição | Processados | Mismatch |
+|---|---|---|
+| `status_enrich=1` (scraping) | 111 | **0 (0%)** |
+| `status_enrich=2` (Google Books) | 5.721 | 1.418 (**24,8%**) |
+
+A taxa de acerto depende fortemente de quanto o título retornado casa com o
+buscado:
+
+| Similaridade do título | Taxa de sucesso |
+|---|---|
+| ~1.00 (exato) | **89%** |
+| 0.70–0.85 | 78% |
+| 0.50–0.70 | **56%** |
+
+`livros.enrich_similaridade` (0..1) registra essa confiança, e
+`synopsis_export.fetch_pending` ordena por ela — **casamento exato primeiro**.
+Como sinopse é o gargalo, a mesma quota rende mais publicações por janela.
+
+> **Não é filtro, é ordem.** Subir o `TITLE_SIMILARITY_THRESHOLD` (hoje `0.5`)
+> parece a correção óbvia e foi **descartado por medição**: cortar a faixa
+> 0.50–0.70 evitaria ~681 descrições ruins mas destruiria ~861 boas — a faixa é
+> suja, porém ainda majoritariamente acerto. Nada é descartado; o de baixa
+> confiança apenas vai para o fim da fila.
+
+**Backfill (obrigatório para o backlog existente):** livros enriquecidos antes
+da coluna ficam com `NULL` e empatam no fim — sem backfill, a ordenação não muda
+nada. Sem LLM, só Google Books:
+
+```bash
+cd scripts
+python tools/backfill_enrich_similaridade.py            # fila de sinopse (~65 min)
+python tools/backfill_enrich_similaridade.py --limit 200
+```
+
+Retomável (pula quem já tem valor) e interrompível com Ctrl+C. Ele
+**reconstrói** a decisão consultando de novo — o título do registro original não
+foi persistido —, o que basta como proxy de confiança para ordenar.
+
 ### Rotações — cotas fixas por ciclo
 
 Duas filas ficavam atrás da sinopse na Fase A e, como ela não zera numa janela
