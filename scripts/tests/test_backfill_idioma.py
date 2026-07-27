@@ -108,7 +108,8 @@ def _rows(path):
     c = sqlite3.connect(path)
     c.row_factory = sqlite3.Row
     out = [dict(r) for r in c.execute(
-        "SELECT titulo, idioma, idioma_checado_em FROM livros ORDER BY id")]
+        "SELECT titulo, idioma, idioma_checado_em, idioma_fonte "
+        "FROM livros ORDER BY id")]
     c.close()
     return out
 
@@ -133,7 +134,41 @@ def test_grava_idioma_quando_titulo_casa():
     r = _rows(path)[0]
     assert r["idioma"] == "EN", r
     assert r["idioma_checado_em"], "deve marcar como checado"
+    assert r["idioma_fonte"] == bi.FONTE_GOOGLE, r
     print("OK  grava idioma quando o titulo casa")
+
+
+def test_idioma_fora_do_mapa_vira_unknown():
+    """'de'/'fr' nao cabem no dominio, mas sao prova FORTE de que nao e PT.
+
+    Na 1a execucao (2026-07-27) esses caiam em 'sem resposta' e FICAVAM PT —
+    e por isso 'Die protestantische Ethik' e 'La conquete du pain' seguiram
+    marcados como portugues.
+    """
+    path = _db([("Die protestantische Ethik", "Max Weber", None)])
+    with _Patch(path, lambda t, a, i: ("de", "Die protestantische Ethik")):
+        bi.run(escopo="travados")
+    r = _rows(path)[0]
+    assert r["idioma"] == "UNKNOWN", "alemao tem de reprovar no QG: %r" % r
+    assert r["idioma_fonte"].startswith(bi.FONTE_NAO_MAPEADO), r
+    assert r["idioma_fonte"].endswith("de"), "guarda o codigo bruto: %r" % r
+    print("OK  idioma fora do mapa vira UNKNOWN (nao fica PT)")
+
+
+def test_fonte_distingue_confirmado_de_nao_resolvido():
+    """O bloqueio da 1a execucao: PT confirmado e PT por omissao eram iguais."""
+    path = _db([("Dom Casmurro", "Machado", None), ("Obscuro", None, None)])
+    respostas = {"Dom Casmurro": ("pt", "Dom Casmurro"), "Obscuro": (None, None)}
+    with _Patch(path, lambda t, a, i: respostas[t]):
+        bi.run(escopo="travados")
+    r = {x["titulo"]: x for x in _rows(path)}
+    assert r["Dom Casmurro"]["idioma"] == "PT"
+    assert r["Dom Casmurro"]["idioma_fonte"] == bi.FONTE_GOOGLE
+    assert r["Obscuro"]["idioma"] == "PT"
+    assert r["Obscuro"]["idioma_fonte"] == bi.FONTE_SEM_RESPOSTA
+    assert r["Dom Casmurro"]["idioma_fonte"] != r["Obscuro"]["idioma_fonte"], \
+        "os dois PT precisam ser distinguiveis"
+    print("OK  idioma_fonte distingue PT confirmado de PT por omissao")
 
 
 def test_casamento_fraco_nao_altera():
@@ -143,6 +178,7 @@ def test_casamento_fraco_nao_altera():
         bi.run(escopo="travados")
     r = _rows(path)[0]
     assert r["idioma"] == "PT", "casamento fraco nao pode sobrescrever: %r" % r
+    assert r["idioma_fonte"] == bi.FONTE_FRACO, r
     print("OK  casamento fraco de titulo nao altera o idioma")
 
 
@@ -194,6 +230,8 @@ def test_429_interrompe_sem_marcar():
 if __name__ == "__main__":
     test_mapeia_bcp47()
     test_grava_idioma_quando_titulo_casa()
+    test_idioma_fora_do_mapa_vira_unknown()
+    test_fonte_distingue_confirmado_de_nao_resolvido()
     test_casamento_fraco_nao_altera()
     test_isbn_dispensa_casamento_de_titulo()
     test_sem_resposta_marca_checado()
