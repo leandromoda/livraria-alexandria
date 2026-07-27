@@ -68,6 +68,15 @@ SIM_MINIMA = 0.75
 # PT|EN|ES|IT|UNKNOWN (ver "Tabela livros" no scripts/CLAUDE.md).
 MAPA_IDIOMA = {"pt": "PT", "en": "EN", "es": "ES", "it": "IT"}
 
+# Procedencia gravada em livros.idioma_fonte. Sem ela, "PT confirmado pelo
+# Google" e "nao consegui resolver, ficou PT" sao indistinguiveis no banco —
+# foi o que travou o passo seguinte na 1a execucao (2026-07-27): preencher
+# lookup_query nos 235 "PT" resolveria oferta para livro alemao e ingles.
+FONTE_GOOGLE = "google"          # respondeu e o idioma esta no dominio
+FONTE_NAO_MAPEADO = "nao_mapeado"  # respondeu de/fr/... -> idioma vira UNKNOWN
+FONTE_FRACO = "fraco"            # titulo casou abaixo de SIM_MINIMA
+FONTE_SEM_RESPOSTA = "sem_resposta"
+
 ESCOPOS = {
     # Os travados: status_enrich=0 sem offer_url. Sao 368 (2026-07-26), todos
     # sem lookup_query, e o alvo original deste backfill.
@@ -85,12 +94,14 @@ def mapear_idioma(code):
 
 
 def garantir_coluna(conn):
-    """Cria idioma_checado_em se faltar — e o que torna o backfill retomavel."""
+    """idioma_checado_em torna o backfill retomavel; idioma_fonte registra a
+    procedencia, sem a qual nao da para saber em quem confiar depois."""
     cols = [r[1] for r in conn.execute("PRAGMA table_info(livros)")]
-    if "idioma_checado_em" not in cols:
-        conn.execute("ALTER TABLE livros ADD COLUMN idioma_checado_em TEXT")
-        conn.commit()
-        log("[IDIOMA] coluna idioma_checado_em criada")
+    for nome in ("idioma_checado_em", "idioma_fonte"):
+        if nome not in cols:
+            conn.execute("ALTER TABLE livros ADD COLUMN %s TEXT" % nome)
+            conn.commit()
+            log("[IDIOMA] coluna %s criada" % nome)
 
 
 def consultar(titulo, autor, isbn):
@@ -158,7 +169,8 @@ def run(escopo="travados", limite=None, dry_run=False):
         conn.close()
         return
 
-    n_ok = n_mudou = n_sem = n_fraco = 0
+    tot = {FONTE_GOOGLE: 0, FONTE_NAO_MAPEADO: 0, FONTE_FRACO: 0,
+           FONTE_SEM_RESPOSTA: 0, "alterado": 0}
     agora = datetime.utcnow().isoformat()
 
     try:
@@ -173,47 +185,61 @@ def run(escopo="travados", limite=None, dry_run=False):
                 break
 
             novo = mapear_idioma(code)
+            fonte = FONTE_SEM_RESPOSTA
 
-            if novo and titulo_ret is not None:
+            # Casamento fraco: o volume pode ser outro livro, entao o idioma
+            # dele nao vale. Mantem o que estava.
+            if code and titulo_ret is not None:
                 sim = _similaridade_titulo(titulo or "", titulo_ret)
                 if sim < SIM_MINIMA:
-                    n_fraco += 1
-                    log("[IDIOMA][%d/%d] casamento fraco (%.2f) — mantido: %s"
-                        % (i, len(rows), sim, str(titulo)[:44]))
-                    novo = None
+                    tot[FONTE_FRACO] += 1
+                    if not dry_run:
+                        cur.execute(
+                            "UPDATE livros SET idioma_checado_em=?, idioma_fonte=? "
+                            "WHERE id=?", (agora, FONTE_FRACO, livro_id))
+                        conn.commit()
+                    continue
 
-            if not novo:
-                n_sem += 1
+            if code and not novo:
+                # Google respondeu 'de'/'fr'/... — dominio do pipeline nao
+                # representa, mas e informacao FORTE de que nao e PT. UNKNOWN
+                # reprova no check_language do quality_gate, que e o desejado.
+                novo = "UNKNOWN"
+                fonte = "%s:%s" % (FONTE_NAO_MAPEADO, str(code).lower()[:8])
+                tot[FONTE_NAO_MAPEADO] += 1
+            elif novo:
+                fonte = FONTE_GOOGLE
+                tot[FONTE_GOOGLE] += 1
+            else:
+                tot[FONTE_SEM_RESPOSTA] += 1
                 if not dry_run:
                     # Marca como checado mesmo sem resposta: sem isto o tool
                     # re-consulta os mesmos livros a cada execucao e queima a
                     # cota diaria sem avancar.
                     cur.execute(
-                        "UPDATE livros SET idioma_checado_em=? WHERE id=?",
-                        (agora, livro_id),
-                    )
+                        "UPDATE livros SET idioma_checado_em=?, idioma_fonte=? "
+                        "WHERE id=?", (agora, FONTE_SEM_RESPOSTA, livro_id))
                     conn.commit()
                 continue
 
-            n_ok += 1
-            mudou = novo != (idioma_atual or "")
-            if mudou:
-                n_mudou += 1
-                log("[IDIOMA][%d/%d] %s -> %s | %s"
-                    % (i, len(rows), idioma_atual, novo, str(titulo)[:44]))
+            if novo != (idioma_atual or ""):
+                tot["alterado"] += 1
+                log("[IDIOMA][%d/%d] %s -> %s (%s) | %s"
+                    % (i, len(rows), idioma_atual, novo, fonte, str(titulo)[:40]))
             if not dry_run:
                 cur.execute(
-                    "UPDATE livros SET idioma=?, idioma_checado_em=?, "
+                    "UPDATE livros SET idioma=?, idioma_checado_em=?, idioma_fonte=?, "
                     "updated_at=CURRENT_TIMESTAMP WHERE id=?",
-                    (novo, agora, livro_id),
-                )
+                    (novo, agora, fonte, livro_id))
                 conn.commit()
     except KeyboardInterrupt:
         log("[IDIOMA] interrompido — progresso salvo.")
 
     conn.close()
-    log("[IDIOMA] resolvidos: %d | idioma alterado: %d | sem resposta: %d | "
-        "casamento fraco: %d" % (n_ok, n_mudou, n_sem, n_fraco))
+    log("[IDIOMA] google: %d | nao mapeado (->UNKNOWN): %d | casamento fraco: %d "
+        "| sem resposta: %d | idioma alterado: %d"
+        % (tot[FONTE_GOOGLE], tot[FONTE_NAO_MAPEADO], tot[FONTE_FRACO],
+           tot[FONTE_SEM_RESPOSTA], tot["alterado"]))
 
 
 if __name__ == "__main__":
