@@ -20,15 +20,14 @@ SCRIPTS_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if SCRIPTS_ROOT not in sys.path:
     sys.path.insert(0, SCRIPTS_ROOT)
 
-# O tool importa requests no topo (via enrich_descricao) e o CI nao roda
-# pip install. Como os testes trocam `consultar` por stub, nenhuma chamada
-# HTTP acontece — basta o nome existir. Stub so quando o real esta ausente.
-try:
-    import requests  # noqa: F401
-except ModuleNotFoundError:  # pragma: no cover — so no CI
-    _fake = types.ModuleType("requests")
-    _fake.utils = types.SimpleNamespace(quote=lambda s, safe="/": s)
-    _fake.exceptions = types.SimpleNamespace(
+# O tool importa requests E dotenv no topo (via enrich_descricao) e o CI nao
+# roda pip install. Como os testes trocam `consultar` por stub, nenhuma chamada
+# HTTP acontece — basta o nome existir. Stub so quando o real esta ausente,
+# para que localmente o import de verdade continue sendo exercitado.
+def _stub_requests():
+    m = types.ModuleType("requests")
+    m.utils = types.SimpleNamespace(quote=lambda s, safe="/": s)
+    m.exceptions = types.SimpleNamespace(
         ReadTimeout=type("ReadTimeout", (Exception,), {}),
         RequestException=type("RequestException", (Exception,), {}),
     )
@@ -36,8 +35,22 @@ except ModuleNotFoundError:  # pragma: no cover — so no CI
     def _boom(*_a, **_k):
         raise AssertionError("requests.get chamado — o teste deveria ter feito stub")
 
-    _fake.get = _boom
-    sys.modules["requests"] = _fake
+    m.get = _boom
+    return m
+
+
+def _stub_dotenv():
+    m = types.ModuleType("dotenv")
+    m.load_dotenv = lambda *_a, **_k: False
+    m.find_dotenv = lambda *_a, **_k: ""
+    return m
+
+
+for _nome, _fab in (("requests", _stub_requests), ("dotenv", _stub_dotenv)):
+    try:
+        __import__(_nome)
+    except ModuleNotFoundError:  # pragma: no cover — so no CI
+        sys.modules[_nome] = _fab()
 
 from tools import backfill_idioma as bi
 
