@@ -751,15 +751,17 @@ Não há `pip install` no workflow: os testes atuais dependem só da stdlib. Um
 teste que precise de `requests`/`python-dotenv` exige adicionar o passo de
 instalação.
 
-> **Testar um step que importa `requests` sem mexer no workflow.** Vários steps
-> fazem `import requests` no topo, então só importar o módulo já quebra no CI
-> com `ModuleNotFoundError` (aconteceu no PR #242). Se o teste faz stub das
-> funções que usariam rede, basta o **nome** existir: instale um módulo falso em
-> `sys.modules["requests"]` **antes** de importar o step — e só quando o real
-> estiver ausente, para que localmente o import de verdade continue sendo
-> exercitado. Exemplo em `tests/test_marketplace_scraper_ordem.py`. O stub
-> define `get` como uma função que levanta `AssertionError`, então um teste que
-> esqueça de trocar alguma fonte falha alto em vez de sair pela rede.
+> **Testar um step que importa `requests`/`dotenv` sem mexer no workflow.**
+> Vários steps fazem `import requests` no topo e `enrich_descricao` também
+> importa `dotenv`, então só importar o módulo já quebra no CI com
+> `ModuleNotFoundError` (aconteceu duas vezes: `requests` no PR #242, `dotenv`
+> no #244 — **confira a cadeia inteira de imports, não só o arquivo alvo**).
+> Se o teste faz stub das funções que usariam rede, basta o **nome** existir:
+> instale módulos falsos em `sys.modules` **antes** de importar o step — e só
+> quando o real estiver ausente, para que localmente o import de verdade
+> continue sendo exercitado. Exemplo em `tests/test_backfill_idioma.py`. O stub
+> de `requests` define `get` como função que levanta `AssertionError`, então um
+> teste que esqueça de trocar alguma fonte falha alto em vez de sair pela rede.
 
 ### Eficiência (WS3)
 
