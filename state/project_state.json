@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-26 (sessao 33 - PRs #239-#242): (1) Aviso de teto do free tier da Vercel; favicon dinamico (ImageResponse por pageview, sem cache) virou PNG estatico e TTL de ISR das rotas [slug] subiu de 1h para 24h em ambas as camadas (#239). (2) /ofertas caiu de 1,40 MB para 0,149 MB - 95,5% era payload RSC de um client component recebendo 4.500 ofertas como props (#240). (3) Diagnostico de precos: das 4.579 ofertas ativas so 2 tinham preco; tres defeitos independentes - ordem das fontes no marketplace_scraper, publish_ofertas lendo a coluna semente 'preco' em vez de 'preco_atual', e offer_price_monitor fora do autopilot G (ultima execucao 2026-04-20). Corrigidos em #241 e #242, com circuit breaker no scraper e 5 testes novos. (4) Seed de teste com imagem em example.com removido da producao. Pendentes: re-medir a cota da Vercel em 2026-08-02 e confirmar os precos numa execucao real do G.",
+    "last_updated": "2026-07-28 (sessao 33, cont. - PRs #244-#246): (1) Descoberto que os 17.727 livros estavam TODOS com idioma='PT', tornando o check_language do quality_gate um no-op em todo o catalogo (196 titulos ingleses ja publicados). Criado tools/backfill_idioma.py usando volumeInfo.language do Google Books; duas heuristicas (descricao e titulo) foram medidas e descartadas — a da descricao classificaria 45% dos publicados como ingles. (2) Coluna livros.idioma_fonte registra a procedencia, sem a qual 'PT confirmado' e 'PT por omissao' sao indistinguiveis. (3) Os 368 livros travados estavam sem lookup_query, insumo do step 3 — 159 preenchidos (so os PT confirmados) e a fila do step 3 saiu de 0 para 159, o que finalmente dara trabalho ao circuit breaker do #242. Pendentes: rodar o backfill de idioma nos ~4.500 publicados (cota de ~1.000/dia do Google Books) e re-medir a cota da Vercel em 2026-08-02.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1099,7 +1099,7 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-07-26",
+    "last_measured": "2026-07-28",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
@@ -1110,7 +1110,9 @@
       "autores": 8342,
       "autores_sem_bio": 8024,
       "livros_com_preco_atual": 58,
-      "livros_status_enrich_scraping": 140
+      "livros_status_enrich_scraping": 140,
+      "idioma_todos_PT_antes_do_backfill": 17727,
+      "fila_step3_lookup_query": 159
     },
     "supabase": {
       "livros": 4562,
@@ -1121,7 +1123,7 @@
       "listas": 667,
       "ofertas_com_preco": 2
     },
-    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002).",
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3.",
     "vercel_free_tier": {
       "medido_em": "2026-07-26",
       "janela": "30 dias",
@@ -2138,6 +2140,53 @@
       "files": [
         "scripts/steps/consistency_check.py",
         "scripts/steps/publish.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-024",
+      "title": "check_language do quality_gate e no-op: catalogo inteiro estava com idioma='PT'",
+      "status": "resolved",
+      "priority": "high",
+      "registered_on": "2026-07-28",
+      "resolved_on": "2026-07-28",
+      "branch": "feat/backfill-idioma + feat/idioma-fonte",
+      "description": "Medido em 2026-07-27: os 17.727 livros do books.db estavam TODOS com idioma='PT' (nenhum EN/ES/IT). Como quality_gate.check_language compara o CAMPO idioma com idioma_base='PT', ele nunca reprovou nada em todo o catalogo — nao e protecao, e no-op. Consequencia visivel: 196 titulos claramente ingleses ja publicados (ex.: 'The Economics of Collective Bargaining', 'Principles of Political Economy', 'The Girl with the Dragon Tattoo'). O campo idioma nunca foi detectado: vem dos seeds, e nenhum step do pipeline o escreve.",
+      "resolution": "Criado scripts/tools/backfill_idioma.py, que le volumeInfo.language do Google Books (METADADO do volume, nao heuristica). Nao usa LLM. Resultado nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. Coluna nova livros.idioma_fonte guarda a procedencia (google | nao_mapeado:<code> | fraco | sem_resposta) — sem ela, 'PT confirmado pelo Google' e 'nao resolvi, ficou PT' sao indistinguiveis, o que travou a 1a execucao (dos 235 que ficaram PT, 160 eram confirmados e 75 nao). Idioma fora do dominio PT/EN/ES/IT (de/ru/fr/el/ta/id) grava UNKNOWN, que o check_language reprova — nao e chute, o Google afirmou positivamente que nao e portugues. SIM_MINIMA=0.75, acima do 0.5 do enrich, porque aqui o erro tira o livro da publicacao em definitivo. Rodar em livro ja publicado e seguro: quality_gate.fetch_candidates filtra WHERE status_publish=0, entao nao despublica pagina viva.",
+      "descartado": "DUAS heuristicas foram medidas e descartadas — nao repetir. (1) Detectar pelo texto da `descricao` NAO funciona: 45% dos ja publicados (2.037 de 4.512) saem como ingles, incluindo 'Diario de um Banana', 'Estrategia Competitiva' e '1984', porque o enrich usa descricao EN quando nao ha PT — mede o idioma do TEXTO, nao do LIVRO; aplicar despublicaria ~2 mil livros reais. (2) Detectar pelo TITULO com stopwords fica 65% inconclusivo (242 dos 368) e subdetecta, perdendo 'Routledge Handbook of Macroeconomic Methodology'.",
+      "pendente": "Rodar --escopo publicados nos ~4.500 ja publicados (iniciado em 2026-07-28). A cota gratuita do Google Books e ~1.000 consultas/dia, entao exige varias execucoes; o tool e retomavel por idioma_checado_em e para limpo no 429 sem marcar nada.",
+      "files": [
+        "scripts/tools/backfill_idioma.py",
+        "scripts/tests/test_backfill_idioma.py",
+        "scripts/steps/quality_gate.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-025",
+      "title": "368 livros travados sem lookup_query — beco antes do step 3",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-07-28",
+      "resolved_on": "2026-07-28",
+      "branch": "feat/backfill-lookup-query",
+      "description": "Investigado em 2026-07-27 a partir da fila vazia do step 4 (o scraper iniciou 94 vezes num log de 9h50 e saiu na hora todas elas com 'Nenhum livro pendente de enriquecimento'). Causa: 368 livros com status_enrich=0 estavam TODOS sem lookup_query, e offer_resolver.fetch_pending filtra por `lookup_query IS NOT NULL` — entao o step 3 nunca os pegava, nunca gerava offer_url, e o step 4 (que exige offer_url) tambem os pulava. Beco permanente, nao atraso. Todos com seed_id NULL e criados entre 2026-02-13 e 2026-02-16: carga em massa do inicio do projeto, nao do offer_seed (que rejeita seed sem lookup_query). Correcao de premissa: NAO era a oferta que os impedia de publicar — o quality_gate nao exige oferta; o unico bloqueio de QG era status_synopsis=0. O custo real era publicarem sem link de monetizacao.",
+      "resolution": "scripts/tools/backfill_lookup_query.py monta '<titulo> <autor> livro' (padrao ja usado no catalogo), sem rede e sem LLM. Escopo padrao pt_confirmado (idioma='PT' AND idioma_fonte='google') — a restricao e o ponto: 62 dos 221 PT ficaram com fonte 'fraco'/'sem_resposta' (idioma nunca verificado, entre eles 'The Great Gatsby' e 'Northanger Abbey'), e resolver oferta para esses gastaria requisicao no marketplace por livro que o QG vai reprovar depois. Aplicado: 159 preenchidos, 0 pulados; a fila do step 3 saiu de 0 para 159. Ficaram de fora 132 EN, 62 PT nao verificados, 12 UNKNOWN e 3 ES. Idempotente.",
+      "files": [
+        "scripts/tools/backfill_lookup_query.py",
+        "scripts/tests/test_backfill_lookup_query.py"
+      ]
+    },
+    {
+      "id": "TASK-CI-002",
+      "title": "Testes que importam steps quebram no CI: nao ha pip install",
+      "status": "resolved",
+      "priority": "low",
+      "registered_on": "2026-07-28",
+      "resolved_on": "2026-07-28",
+      "description": "O workflow roda os testes sem instalar dependencias — os testes do projeto sao stdlib-only. Um teste que importe um step puxa `requests` (quase todos) e, via enrich_descricao, tambem `dotenv`, e quebra com ModuleNotFoundError. Aconteceu duas vezes seguidas: requests no PR #242 e dotenv no #244, porque na 1a correcao eu olhei so o arquivo alvo e nao a cadeia inteira de imports.",
+      "resolution": "Padrao adotado: instalar modulos falsos em sys.modules ANTES de importar o step, e SO quando o real esta ausente — assim localmente o import de verdade continua sendo exercitado. O stub de requests define get() levantando AssertionError, entao um teste que esqueca de trocar alguma fonte falha alto em vez de sair pela rede. Exemplo em tests/test_backfill_idioma.py. Documentado na secao de Testes do scripts/CLAUDE.md, com o aviso de conferir a cadeia inteira de imports.",
+      "files": [
+        "scripts/CLAUDE.md",
+        "scripts/tests/test_backfill_idioma.py"
       ]
     }
   ],
