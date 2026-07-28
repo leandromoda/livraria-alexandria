@@ -209,9 +209,22 @@ QUANTIDADE_MINIMA = NÃO EXISTE
 
 Por que 40 e não 60: o filtro passou a ser TEMA + IDADE + TIPO, muito
 mais estreito que só TEMA (uma idade específica corta ~1/4 da faixa, e o
-formato físico corta de novo). 40 é estimativa de projeto para essa
-granularidade — NÃO é número medido. Se na prática as combinações
-entregarem consistentemente acima ou abaixo disso, recalibrar aqui.
+formato físico corta de novo).
+
+MEDIDO em 2026-07-28 (n=5, seeds 002-006, primeiro lote real via Cowork):
+a entrega foi de 6, 6, 6, 8 e 12 itens — média 7,6, nenhuma chegando
+perto de 40. Ou seja, nessas combinações o ALVO nunca é o limite: o
+limite é o universo real, e ele é MUITO menor que 40.
+
+Cuidado ao extrapolar: as 5 combinações medidas caíram todas no canto
+mais escasso do catálogo (idades de 0 a 3 anos, formatos de bebê — pano,
+plástico, cartonado, capa dura, capa comum). Combinações de leitores
+maiores ("aventuras" + "9 a 12 anos" + "capa comum") devem render muito
+mais. Não há medição delas ainda.
+
+O ALVO fica em 40 de propósito: baixá-lo para perto da média medida faria
+o agente parar cedo justamente nas combinações ricas, que são as que
+ainda não foram medidas. Ele é teto, não meta.
 
 A REALIDADE tem prioridade absoluta sobre a quota:
 
