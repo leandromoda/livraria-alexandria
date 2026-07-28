@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-28 (sessao 33, cont. - PRs #244-#246): (1) Descoberto que os 17.727 livros estavam TODOS com idioma='PT', tornando o check_language do quality_gate um no-op em todo o catalogo (196 titulos ingleses ja publicados). Criado tools/backfill_idioma.py usando volumeInfo.language do Google Books; duas heuristicas (descricao e titulo) foram medidas e descartadas — a da descricao classificaria 45% dos publicados como ingles. (2) Coluna livros.idioma_fonte registra a procedencia, sem a qual 'PT confirmado' e 'PT por omissao' sao indistinguiveis. (3) Os 368 livros travados estavam sem lookup_query, insumo do step 3 — 159 preenchidos (so os PT confirmados) e a fila do step 3 saiu de 0 para 159, o que finalmente dara trabalho ao circuit breaker do #242. Pendentes: rodar o backfill de idioma nos ~4.500 publicados (cota de ~1.000/dia do Google Books) e re-medir a cota da Vercel em 2026-08-02.",
+    "last_updated": "2026-07-28 (sessao 33, cont. - PR #248): Seeder Infantis via Cowork - agente orquestrador (agents/seeder_infantis_cowork/) + atalho /seeds_infantis que escolhe a combinacao TEMA+IDADE+TIPO ainda nao usada, dirige o ChatGPT, valida o JSON e grava NNN_infantis_seeds.json com ledger de cobertura em infantis_temas.json (v2). Politica: sem quantidade minima - seed pequeno vale mais que combinacao rejeitada. Ver TASK-INFANTIS-002.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2188,6 +2188,29 @@
         "scripts/CLAUDE.md",
         "scripts/tests/test_backfill_idioma.py"
       ]
+    },
+    {
+      "id": "TASK-INFANTIS-002",
+      "title": "Seeder Infantis via Cowork: geracao de seeds orquestrada com ChatGPT",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-07-28",
+      "resolved_on": "2026-07-28",
+      "description": "A geracao de seeds infantis era manual ponta a ponta: abrir o ChatGPT, colar o prompt do seeder, escolher um tema de cabeca, copiar o JSON e salvar como NNN_infantis_seeds.json. Sem controle de cobertura (quais temas ja foram usados) nem de numeracao (o pipeline move o seed ingerido para ingested_seeds/, entao o proximo numero livre so aparece varrendo os dois diretorios).",
+      "solucao": [
+        "agents/seeder_infantis_cowork/prompt.md (novo) - orquestrador: descobre o proximo NNN varrendo seeds/ E ingested_seeds/, escolhe a combinacao TEMA+IDADE+TIPO ainda nao usada, dirige o ChatGPT no Chrome, valida o JSON, grava o seed e atualiza o ledger.",
+        ".claude/commands/seeds_infantis.md (novo) - atalho /seeds_infantis <N>, N = combinacoes por execucao (default 3), no molde de /curador.",
+        "agents/seeder_agent - infantis theme driven.txt (v2) - recebe o bloco TEMA/IDADE/TIPO em vez de perguntar tema livre; mapeia as 10 idades finas para os 4 valores fixos de faixa_etaria; quotas por idade (>=80%) e formato (>=60%).",
+        "scripts/data/seeds/infantis_temas.json (v2, gitignored) - 74 temas numerados (T001-T074, duplicata de 'astronautas' removida), 10 idades (I01-I10) mapeadas para as 4 faixa_etaria, 20 tipos (P01-P20) com faixa de idade compativel, e o ledger combinacoes_geradas."
+      ],
+      "decisoes": [
+        "SEM quantidade minima: um seed com 4 titulos reais rende 4 paginas publicadas; combinacao rejeitada rende zero e ainda queima a cobertura. INSUFICIENTE vale so para universo vazio, e ai o orquestrador manda RELAXAR TIPO antes de desistir. Pelo mesmo motivo o teto anti-colapso (3/autor, 2/serie) sobe para 6/6 abaixo de 15 itens.",
+        "QUANTIDADE_ALVO 60 -> 40 porque TEMA+IDADE+TIPO e filtro muito mais estreito que so TEMA. E ESTIMATIVA DE PROJETO, NAO MEDICAO - recalibrar depois das primeiras execucoes reais.",
+        "Selecao da combinacao por rodizio nas TRES dimensoes (menos usado, empate pelo menor n). Simulado em 2026-07-28: a regra ingenua (sempre o menor id) empilha as 5 primeiras execucoes em '0 a 6 meses' + 'livro de pano', o canto mais escasso do catalogo."
+      ],
+      "escopo": "O agente NAO commita e NAO roda o pipeline: a ingestao (opcao I do scripts/main.py) continua sendo do usuario. scripts/data/seeds/ e gitignored, entao seeds e ledger nao entram em PR.",
+      "pendente": "Teste de ponta a ponta ainda nao feito: rodar /seeds_infantis 1 e conferir o 002_infantis_seeds.json gerado + o ledger atualizado. Publicar o que for ingerido depende de TASK-INFANTIS-001 (migracao do Supabase).",
+      "pr": "#248"
     }
   ],
   "qa_remediation_loop": {
