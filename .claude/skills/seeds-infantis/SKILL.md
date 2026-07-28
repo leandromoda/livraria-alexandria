@@ -1,6 +1,6 @@
 ---
-name: seeds_infantis
-description: Gera seeds de livros infantis via ChatGPT. Escolhe a combinação TEMA+IDADE+TIPO ainda não usada no catálogo, dirige a conversa no ChatGPT pelo Chrome, valida o JSON devolvido, grava scripts/data/seeds/NNN_infantis_seeds.json com a numeração correta e atualiza o ledger de cobertura. Esta skill deve ser usada quando o usuário pedir seeds infantis, novos livros para a seção Infantis, ou invocar /seeds_infantis.
+name: seeds-infantis
+description: Gera seeds de livros infantis via ChatGPT. Escolhe a combinação TEMA+IDADE+TIPO ainda não usada no catálogo, dirige a conversa no ChatGPT pelo Chrome, valida o JSON devolvido, grava scripts/data/seeds/NNN_infantis_seeds.json com a numeração correta e atualiza o ledger de cobertura. Esta skill deve ser usada quando o usuário pedir seeds infantis, novos livros para a seção Infantis, gerar seeds para a seção Infantis, ou invocar /seeds-infantis.
 ---
 
 # Seeds Infantis — geração assistida via ChatGPT
@@ -39,10 +39,15 @@ As fontes que o agente consome (ele mesmo as lê, na ordem que precisar):
 
 ## Argumento
 
-`/seeds_infantis <N>` — quantas combinações processar nesta execução.
+`N` = quantas combinações processar nesta execução. Vem do argumento
+(`/seeds-infantis <N>`) ou do texto do pedido ("gere 5 seeds infantis").
 
-- Sem argumento: **N = 3**.
-- Argumento não numérico ou ≤ 0: tratar como N = 3 e avisar em **uma linha**.
+- Sem número no pedido: **N = 3**.
+- Número inválido ou ≤ 0: tratar como N = 3 e avisar em **uma linha**.
+
+O nome canônico é **kebab-case** (`seeds-infantis`): a biblioteca de skills da
+conta normaliza underscore para hífen no upload, e o nome com underscore não
+resolve.
 
 ## Autonomia
 
