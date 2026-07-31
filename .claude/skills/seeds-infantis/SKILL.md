@@ -42,8 +42,14 @@ As fontes que o agente consome (ele mesmo as lê, na ordem que precisar):
 `N` = quantas combinações processar nesta execução. Vem do argumento
 (`/seeds-infantis <N>`) ou do texto do pedido ("gere 5 seeds infantis").
 
-- Sem número no pedido: **N = 3**.
-- Número inválido ou ≤ 0: tratar como N = 3 e avisar em **uma linha**.
+- Sem número no pedido: **N = 1**.
+- Número inválido ou ≤ 0: tratar como N = 1 e avisar em **uma linha**.
+
+**N alto sai caro de forma não-linear** — as combinações compartilham a mesma
+sessão, e o custo por turno cresce com o tamanho dela. Medido em 2026-07-28
+(5 seeds numa sessão, 232 turnos): o último quinto custou 3,1× o primeiro pelo
+mesmo trabalho. Cinco execuções de `N = 1` custam cerca de metade de uma
+execução de `N = 5`. O `prompt.md` traz a medição e as regras de economia.
 
 O nome canônico é **kebab-case** (`seeds-infantis`): a biblioteca de skills da
 conta normaliza underscore para hífen no upload, e o nome com underscore não

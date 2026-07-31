@@ -52,15 +52,60 @@ rate limit, `infantis_temas.json` ilegível, ou o mesmo erro repetido 3 vezes.
   reprovado volta para o ChatGPT corrigir.
 - **Não** visitar outro site além do `chatgpt.com`, não digitar credencial.
 - **Não** sobrescrever um `NNN_infantis_seeds.json` existente.
+- **Não** usar ferramenta de lista de tarefas (`TaskCreate`, `TaskUpdate` e
+  similares). O procedimento tem 10 passos fixos; rastreá-los custa turnos e
+  não informa nada que o relatório final já não diga.
+
+---
+
+## Economia de contexto (leia antes de começar)
+
+Cada turno seu relê a conversa inteira. O custo por turno **cresce com o
+tamanho da conversa**, então turno desperdiçado no começo fica caro no fim.
+
+Medido em 2026-07-28 (n=1 sessão, 5 seeds, 232 turnos, 39,4 M tokens):
+
+- o último quinto da sessão custou **3,1×** o primeiro quinto pelo mesmo
+  trabalho — 241 k tokens/turno contra 78 k;
+- **35% dos turnos (81 de 232) não chamaram ferramenta nenhuma** — eram só
+  texto narrando o que viria a seguir;
+- a extração da resposta do ChatGPT gastou **48 chamadas de JavaScript** para
+  5 arquivos (~10 por seed, sondando o DOM em vez de ler de uma vez);
+- 21 chamadas de arquivo para 10 operações reais.
+
+Quatro regras seguem disso:
+
+1. **Não narre.** Nada de "agora vou abrir o ChatGPT", "deixa eu verificar",
+   "perfeito, funcionou". Aja e siga. Texto só no relatório final (passo 10) e
+   quando precisar avisar de erro que exige decisão do usuário.
+2. **Uma chamada por objetivo.** Extraia a resposta do ChatGPT com **uma**
+   chamada de JavaScript (o snippet do passo 5), não com uma sequência de
+   sondagens. Agrupe ações de navegador em lote quando a ferramenta permitir.
+3. **Grave arquivo de uma vez.** O seed e o ledger saem em **um `Write` cada**
+   — o ledger é reescrito inteiro, não remendado com vários `Edit`.
+4. **Não releia o que já leu.** `infantis_temas.json` e o prompt do seeder são
+   lidos **uma vez** no início da execução; guarde o conteúdo e trabalhe em
+   cima dele.
 
 ---
 
 ## Argumento
 
-`N` = quantas combinações processar nesta execução. Sem argumento, **N = 3**.
+`N` = quantas combinações processar nesta execução. Sem argumento, **N = 1**.
+
 Processe uma combinação por vez, do início ao fim, antes de começar a próxima —
 cada uma em uma **conversa nova** do ChatGPT (o contexto anterior contamina a
 seleção de títulos).
+
+**N alto sai caro de forma não-linear.** As combinações compartilham a mesma
+sessão sua, então a 5ª paga ~3× o custo por turno da 1ª (medição na seção
+anterior). Rodar `/seeds-infantis 1` cinco vezes custa cerca de **metade** de
+`/seeds-infantis 5` — mesmo trabalho, mesma quantidade de seeds. Só use N > 1
+quando conveniência valer mais que quota; nesse caso, N = 3 é um teto
+razoável.
+
+Ao terminar uma combinação, **não recapitule** o que fez — vá direto ao passo 0
+da próxima. Só o relatório final (passo 10) produz texto.
 
 ---
 
@@ -148,17 +193,32 @@ Use o texto literal dos campos `tema`, `idade` e `tipo` do
 
 ### Passo 5 — Extrair a resposta
 
-Em ordem de preferência:
+**Uma única chamada de JavaScript.** Não sonde o DOM em etapas, não tire
+screenshot, não leia visualmente: a resposta tem dezenas de itens acentuados e
+o erro de transcrição é silencioso.
 
-1. Botão **Copiar** da mensagem do ChatGPT + ler a área de transferência.
-2. Fallback: extrair via JavaScript o `textContent` da última mensagem do
-   assistente.
+Espere a resposta terminar (o botão de parar geração some), depois rode uma vez:
 
-**Nunca** reconstrua o JSON a partir de screenshot ou de leitura visual — a
-resposta tem dezenas de itens acentuados e o erro é silencioso.
+```js
+(() => {
+  const t = document.querySelectorAll('[data-message-author-role="assistant"]');
+  if (!t.length) return { erro: 'nenhuma mensagem do assistente' };
+  const txt = t[t.length - 1].innerText.trim();
+  return { fim: txt.slice(-1), inicio: txt.slice(0, 1), chars: txt.length, txt };
+})()
+```
 
-Respostas longas podem vir truncadas. Se o texto não terminar em `]`, envie
-`CONTINUE` e concatene — verificando que a emenda não duplica nem corta item.
+O retorno já traz o que você precisa para decidir: `inicio`/`fim` dizem se é
+JSON puro, `chars` denuncia truncamento, `txt` é o conteúdo. Uma chamada,
+três respostas.
+
+Se o seletor não casar (o ChatGPT muda de marcação de tempos em tempos), aí sim
+inspecione a página — mas ajuste o seletor e volte para a chamada única, não
+entre em modo de sondagem repetida.
+
+Se `fim` não for `]`, a resposta veio truncada: envie `CONTINUE`, extraia de
+novo com a mesma chamada e concatene, conferindo que a emenda não duplica nem
+corta item.
 
 ### Passo 6 — Validar
 
@@ -221,9 +281,10 @@ Em `scripts/data/seeds/infantis_temas.json`:
 3. Atualize `controle.proximo_seed` para o próximo número livre.
 4. Atualize `atualizado_em` com a data de hoje (AAAA-MM-DD).
 
-Reescreva o arquivo inteiro preservando a ordem das chaves e **releia** para
-confirmar que continua sendo JSON válido. Ledger corrompido cega o controle de
-cobertura inteiro.
+Reescreva o arquivo **inteiro, com um único `Write`** — não remende com vários
+`Edit`. Preserve a ordem das chaves e **releia uma vez** para confirmar que
+continua sendo JSON válido. Ledger corrompido cega o controle de cobertura
+inteiro.
 
 ### Passo 10 — Relatório
 
