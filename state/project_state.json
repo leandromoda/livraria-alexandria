@@ -2211,6 +2211,41 @@
       "escopo": "O agente NAO commita e NAO roda o pipeline: a ingestao (opcao I do scripts/main.py) continua sendo do usuario. scripts/data/seeds/ e gitignored, entao seeds e ledger nao entram em PR.",
       "pendente": "Teste de ponta a ponta ainda nao feito: rodar /seeds_infantis 1 e conferir o 002_infantis_seeds.json gerado + o ledger atualizado. Publicar o que for ingerido depende de TASK-INFANTIS-001 (migracao do Supabase).",
       "pr": "#248"
+    },
+    {
+      "id": "TASK-PIPE-026",
+      "title": "Espera produtiva do G re-invocava o autopilot indefinidamente com o nao-LLM seco",
+      "status": "resolved",
+      "priority": "high",
+      "registered_on": "2026-08-01",
+      "resolved_on": "2026-08-01",
+      "branch": "fix/g-espera-produtiva-churn",
+      "description": "Encontrado pela analise de logs (/analise-logs) da fila de 72 logs em 2026-08-01. Em _run_gargalo (main.py), a espera produtiva do loop multijanela chamava autopilot.run() a cada <=5 min durante todo o cooldown de ~5h da sessao PRO. O autopilot.run() JA roda ate exaurir por conta propria, mas cada invocacao NOVA zera os guards internos (step_sem_progresso, ciclos_sem_qg_avanco, ciclos_com_erro_sem_progresso), entao eles nunca acumulavam entre chamadas e nunca encurtavam a repeticao. Cada passe refazia list_composer (124 categorias + 127 tematicas + ~430 listas de autor) e quality_gate (100-1000 livros), ambos no-ops conhecidos quando nao ha sinopse nova.",
+      "medicao": "n=469.695 linhas nos 5 logs substanciais de 2026-07-23 a 07-30; contagem por 'List Composer finalizado' / 'QUALITY GATE END' / '[AUTOPILOT] Ciclo 1'. 93 invocacoes do autopilot produziram 732 passes de list_composer para 21 listas criadas (97% dos passes sem saida) e 320 passes de quality_gate. LISTAS+QUALITY somaram 430.072 linhas = 91,6% de tudo que foi escrito. Caso mais limpo: pipeline_2026-07-30_15-35-57 (3h50) com 16 invocacoes, 168 passes de list_composer, 0 listas criadas e 0 livros aprovados. Efeito colateral do churn: logs de 7,6 a 15,7 MB por execucao.",
+      "resolution": "O dreno so repete se a invocacao anterior reduziu count_pending. Seco, o G apenas dorme o cooldown e re-checa a cada 30 min (DRENO_SAFETY_S) para cobrir trabalho que apareca no meio da espera - mesma ideia do REPAIR_SAFETY_EVERY ja usado no steps/autopilot.py para o reparo de relacoes. A logica saiu de dentro do _run_gargalo para core/drain_loop.py, com todas as dependencias (relogio, sono, autopilot, janela de sessao) injetadas por parametro: main.py importa ~40 steps (e com eles requests/dotenv), o que tornaria um teste de CI fragil - o modulo novo e stdlib-only. Simulacao do cooldown seco de 5h: 50 -> 10 invocacoes.",
+      "escopo": "NAO altera o comportamento quando ha trabalho real: o teste 2 fixa que um backlog de 200 continua sendo drenado ate zero, e o teste 3 que trabalho surgido no meio da espera e pego pela rede de seguranca. As rejeicoes por 'Sinopse pendente' (98.867 linhas na fila analisada) seguem sendo o teto da quota LLM, por design - nao sao bug e nao foram tocadas.",
+      "files": [
+        "scripts/core/drain_loop.py",
+        "scripts/tests/test_drain_loop.py",
+        "scripts/main.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-027",
+      "title": "backfill_enrich_similaridade nao parava ao esgotar a cota diaria do Google Books",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-01",
+      "resolved_on": "2026-08-01",
+      "branch": "fix/g-espera-produtiva-churn",
+      "description": "_similaridade_remota colapsava todo status != 200 em None, indistinguivel de 'consulta feita, sem match'. O HTTP 429 (cota diaria de ~1.000 consultas do Google Books) virava 'falha' do livro e o loop seguia consultando ate o fim da fila, gastando tempo e marcando como falha itens que so precisavam de cota.",
+      "medicao": "Log pipeline_2026-07-26_08-08-10 (959 livros): taxa de falha estavel em ~5% ate o item 800 e explosiva depois - 68 falhas em 800, 102 em 850, 138 em 900, 171 em 950. ~103 das 179 falhas totais vieram dos ultimos 159 itens.",
+      "resolution": "O 429 devolve a sentinela QUOTA_ESGOTADA (distinta de None), o loop encerra com mensagem clara e loga o total restante. O script ja era retomavel (pula quem tem valor), entao parar preserva a fila para o dia seguinte.",
+      "files": [
+        "scripts/tools/backfill_enrich_similaridade.py",
+        "scripts/CLAUDE.md"
+      ]
     }
   ],
   "qa_remediation_loop": {
