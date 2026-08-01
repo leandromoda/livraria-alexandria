@@ -75,6 +75,23 @@ necessárias, até o backlog de conteúdo (sinopse+categoria) zerar, uma janela 
 progredir (guard anti-giro) ou o usuário dar Ctrl+C. Assim, **quanto mais longa a
 seção, mais publicações**, sem re-execução manual. (`_run_gargalo` em `main.py`.)
 
+> **A espera produtiva suspende o dreno quando o não-LLM seca (desde 2026-07-31).**
+> `autopilot.run()` já roda até exaurir sozinho, mas a espera produtiva o
+> re-invocava a cada ≤5 min durante todo o cooldown de ~5h — e **cada invocação
+> nova zera os guards internos** (`step_sem_progresso`, `ciclos_sem_qg_avanco`),
+> então eles nunca acumulavam entre chamadas. Medido nos 5 logs substanciais de
+> 2026-07-23..07-30 (n=469.695 linhas; contagem por `List Composer finalizado` /
+> `QUALITY GATE END` / `[AUTOPILOT] Ciclo 1`): **93 invocações do autopilot,
+> 732 passes de `list_composer` para 21 listas criadas (97% sem saída)** e 320
+> passes de `quality_gate`; só LISTAS+QUALITY somaram **430.072 linhas = 91,6%**
+> de tudo que foi escrito. O caso mais limpo é
+> `pipeline_2026-07-30_15-35-57` (3h50): 16 invocações, 168 passes de
+> `list_composer`, **0 listas criadas e 0 livros aprovados**. Hoje o dreno só
+> repete se a invocação anterior reduziu `count_pending`; seco, o G apenas dorme
+> o cooldown e re-checa a cada 30 min (`DRENO_SAFETY_S`), mesma ideia do
+> `REPAIR_SAFETY_EVERY`. Lógica em `core/drain_loop.py` (isolada de imports
+> pesados para ser testável), testes em `tests/test_drain_loop.py`.
+
 > **Regra ao diagnosticar gargalos operacionais:** o uso do pipeline é, por
 > padrão, **autopilot (G, com fallbacks não-LLM)**. **Nunca** oriente o usuário a
 > "rodar o step X" / "rodar a opção N" como solução — isso é atalho manual. Se um
@@ -629,6 +646,16 @@ python tools/backfill_enrich_similaridade.py --limit 200
 Retomável (pula quem já tem valor) e interrompível com Ctrl+C. Ele
 **reconstrói** a decisão consultando de novo — o título do registro original não
 foi persistido —, o que basta como proxy de confiança para ordenar.
+
+> **Ele para sozinho ao esgotar a cota diária do Google Books (desde
+> 2026-07-31).** Antes, `_similaridade_remota` colapsava todo status != 200 em
+> `None`, indistinguível de "consulta feita, sem match" — então o 429 virava
+> "falha" e o script seguia consultando à toa. Medido no
+> `pipeline_2026-07-26_08-08-10` (959 livros): a taxa de falha ficou em ~5% até
+> o item 800 e explodiu depois (68 falhas em 800, 102 em 850, 138 em 900, 171 em
+> 950) — **~103 das 179 falhas vieram dos últimos 159 itens**, todas por cota.
+> Hoje o 429 devolve a sentinela `QUOTA_ESGOTADA`, o loop encerra com o total
+> restante no log e a fila fica preservada para o dia seguinte.
 
 ### Rotações — cotas fixas por ciclo
 

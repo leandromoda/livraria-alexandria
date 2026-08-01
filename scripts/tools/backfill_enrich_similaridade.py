@@ -39,12 +39,19 @@ from steps.enrich_descricao import (
 )
 
 
+# Sentinela: cota diária do Google Books esgotada. Distinta de None ("consulta
+# feita, sem match"), porque exige PARAR o backfill em vez de contar como falha.
+QUOTA_ESGOTADA = object()
+
+
 def _similaridade_remota(titulo, autor):
     """Re-consulta o Google Books e devolve a similaridade que o enrich daria.
 
     Reconstrói a decisão em vez de recuperá-la: o título do registro original
     não foi persistido. Para ORDENAR a fila isso basta — é um proxy de
     confiança, não uma auditoria do que foi gravado no passado.
+
+    Devolve `QUOTA_ESGOTADA` quando a cota diária acaba — ver `run()`.
     """
     params = {"q": f"{titulo} {autor}".strip(), "maxResults": 5}
     if GOOGLE_BOOKS_API_KEY:
@@ -54,6 +61,11 @@ def _similaridade_remota(titulo, autor):
         res = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=15)
     except requests.RequestException:
         return None
+
+    # 429 = cota diária estourada (~1.000 consultas/dia na cota pública). Não é
+    # falha do livro: é o fim do que dá para fazer hoje.
+    if res.status_code == 429:
+        return QUOTA_ESGOTADA
 
     if res.status_code != 200:
         return None
@@ -105,10 +117,25 @@ def run(limit=None, todos=False):
         f"(~{total * REQUEST_DELAY / 60:.0f} min de API)")
 
     ok = falhas = 0
+    quota_estourou = False
     try:
         for i, r in enumerate(rows, 1):
             time.sleep(REQUEST_DELAY)
             sim = _similaridade_remota(r["titulo"], r["autor"])
+
+            # Cota diária esgotada: continuar só produz falhas. Medido no log
+            # pipeline_2026-07-26_08-08-10 (959 livros): a taxa de falha ficou
+            # em ~5% até o item 800 e explodiu depois (68 falhas em 800, 102 em
+            # 850, 138 em 900, 171 em 950) — ~103 das 179 falhas totais vieram
+            # dos últimos 159 itens, todas por cota, nenhuma por dado. O script
+            # é retomável (pula quem já tem valor), então parar aqui preserva a
+            # fila para o dia seguinte.
+            if sim is QUOTA_ESGOTADA:
+                quota_estourou = True
+                log(f"[BACKFILL_SIM] Cota diária do Google Books esgotada no "
+                    f"item {i}/{total} (HTTP 429). Encerrando — rode de novo "
+                    f"amanhã para continuar de onde parou.")
+                break
 
             if sim is None:
                 falhas += 1
@@ -128,7 +155,9 @@ def run(limit=None, todos=False):
         conn.commit()
         conn.close()
 
-    log(f"[BACKFILL_SIM] Finalizado | OK: {ok} | Falhas: {falhas} | Total: {total}")
+    restantes = f" | Restantes: {total - ok - falhas}" if quota_estourou else ""
+    log(f"[BACKFILL_SIM] Finalizado{' (cota esgotada)' if quota_estourou else ''} "
+        f"| OK: {ok} | Falhas: {falhas} | Total: {total}{restantes}")
 
 
 if __name__ == "__main__":

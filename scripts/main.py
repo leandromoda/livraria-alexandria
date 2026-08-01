@@ -1044,6 +1044,7 @@ def _run_gargalo(idioma: str):
         # interromper (Ctrl+C). Assim, quanto maior a seção, mais publicações —
         # o autopilot atravessa quantas janelas de 5h forem necessárias.
         from core.claude_usage_tracker import session_window
+        from core import drain_loop
         import time as _time
         log("[G] Fase LLM esgotou a sessão — entrando em loop multijanela "
             "(drena não-LLM → aguarda reset → retoma LLM) até drenar o conteúdo.")
@@ -1051,18 +1052,25 @@ def _run_gargalo(idioma: str):
             while True:
                 # 1) Espera produtiva: drena/publica o não-LLM enquanto a sessão
                 #    PRO está em cooldown; sai quando a quota é restaurada.
-                while True:
+                #    Lógica (e a medição que a motivou) em core/drain_loop.py.
+                def _drenar_uma_vez():
                     autopilot.run(idioma, 100, manter_batch=False)
-                    w = session_window()
-                    if not w.get("in_cooldown"):
-                        break                                    # quota restaurada
-                    secs = max(0, int(w.get("seconds_until_reset", 0)))
-                    nap = min(300, secs)                          # re-checa a cada ≤5 min
-                    if nap <= 0:
-                        break
-                    log(f"[G] Backlog não-LLM drenado; aguardando reset da sessão "
-                        f"(~{secs // 60} min restantes)…")
-                    _time.sleep(nap)
+
+                def _pendente():
+                    conn_d = get_conn()
+                    try:
+                        return autopilot.count_pending(conn_d)
+                    finally:
+                        conn_d.close()
+
+                drain_loop.drenar_ate_reset(
+                    autopilot_run=_drenar_uma_vez,
+                    count_pending=_pendente,
+                    session_window=session_window,
+                    log=log,
+                    sleep=_time.sleep,
+                    monotonic=_time.monotonic,
+                )
 
                 if session_window().get("in_cooldown"):
                     log("[G] Sessão ainda em cooldown — encerrando loop multijanela.")
