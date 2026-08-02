@@ -187,6 +187,19 @@ de permissão. Quem libera comando sem prompt é `permissions.allow` em
 `.claude/settings.local.json` (gitignored, só sua máquina). Comando novo que
 aparecer com frequência e for de baixo risco deve ser acrescentado lá, não aqui.
 
+> **⚠️ Comando composto anula o allowlist.** O padrão casa contra a **string
+> inteira** do comando. Prefixar tudo com `$env:GIT_PAGER='cat'; cd "C:\…"; …`
+> transforma cada chamada numa string única que **nenhuma regra alcança** — foi
+> o que aconteceu em 2026-08-02: mesmo com `gh pr checks` liberado, o comando
+> pedia autorização por causa do prefixo. Regras:
+> - **Não prefixar com `cd`/`Set-Location`** — o diretório de trabalho da
+>   ferramenta já é a raiz do projeto.
+> - **Um comando por chamada** quando ele for do allowlist; encadear com `;` só
+>   quando os passos realmente dependem um do outro e o prompt não importa.
+> - Precisa de env var recorrente (ex.: `GIT_PAGER`)? Prefira `git --no-pager`
+>   no próprio comando, ou ponha a variável em `env` no `settings.json`, em vez
+>   de repeti-la inline a cada chamada.
+
 ---
 
 ## Estrutura de arquivos (site)

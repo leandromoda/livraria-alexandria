@@ -115,7 +115,28 @@
       "PowerShell(gh pr create*)",
       "PowerShell(gh pr merge*)",
       "Bash(gh pr create*)",
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+
+      "PowerShell(gh pr checks*)",
+      "PowerShell(gh pr list*)",
+      "PowerShell(gh pr view*)",
+      "PowerShell(gh pr diff*)",
+      "PowerShell(gh run list*)",
+      "PowerShell(gh run view*)",
+      "Bash(gh pr checks*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr diff*)",
+
+      "PowerShell(git status*)",
+      "PowerShell(git --no-pager *)",
+      "PowerShell(git log*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git show*)",
+      "PowerShell(git branch*)",
+      "PowerShell(git rev-list*)",
+      "PowerShell(git rev-parse*)",
+      "PowerShell(git check-ignore*)"
     ]
   }
 }
