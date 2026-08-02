@@ -1109,6 +1109,19 @@ def _run_gargalo(idioma: str):
     # enriquecimento, capas) não consome quota nenhuma.
     _run_secoes_paralelas()
 
+    # ── Poda final de data/logs/ ──────────────────────────────
+    # A poda já roda no início do passe (via remediate_mechanical), mas os
+    # relatórios NNNN_audit_*.json são gerados DEPOIS dela — o autopilot emite
+    # um a cada saída. Sem esta segunda passada eles ficam na pasta até o passe
+    # SEGUINTE: medido em 2026-08-01, 19 relatórios acumulados, 16 deles de
+    # integridade de uma única execução de 2026-07-30. Arquivar aqui fecha o
+    # ciclo dentro do próprio passe. É idempotente e conservadora (mantém o
+    # mais recente de cada modo de revisão em logs/).
+    try:
+        qa.run(mode="ingest_audit", dry_run=False)
+    except Exception as e_pod:
+        log(f"[G] AVISO: poda final de relatórios falhou: {e_pod}")
+
     # ── Relatório final (WS6/WS7): janela de sessão + backlog ──
     _print_gargalo_report(idioma)
 

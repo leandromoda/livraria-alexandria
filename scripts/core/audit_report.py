@@ -40,17 +40,62 @@ def _next_sequence(log_dir: Path) -> int:
     return max(int(f.name[:4]) for f in all_files) + 1
 
 
-def save_audit_report(data: dict, mode: str | None = None) -> str:
+# Campos que mudam a cada gravação e NÃO distinguem um relatório de outro —
+# ignorados ao comparar conteúdo para deduplicar.
+_VOLATILE_KEYS = ("generated_at", "timestamp")
+
+
+def _payload_fingerprint(data: dict) -> str:
+    corpo = {k: v for k, v in data.items() if k not in _VOLATILE_KEYS}
+    return json.dumps(corpo, sort_keys=True, ensure_ascii=False, default=str)
+
+
+def _pending_latest(log_dir: Path, mode: str) -> Path | None:
+    """Relatório mais recente deste modo AINDA na fila (logs/), ou None.
+
+    Compara só contra a fila pendente, de propósito: se o homônimo já foi
+    arquivado, `logs/` não representa mais o estado atual e o relatório novo
+    precisa ser escrito, mesmo idêntico.
+    """
+    candidatos = list(log_dir.glob(f"[0-9][0-9][0-9][0-9]_audit_{mode}.json"))
+    if not candidatos:
+        return None
+    return max(candidatos, key=lambda f: int(f.name[:4]))
+
+
+def save_audit_report(data: dict, mode: str | None = None,
+                      dedupe: bool = True) -> str:
     """Grava um relatório de auditoria padronizado e retorna o caminho (str).
 
     - `mode`: usado no nome do arquivo. Se omitido, usa `data["mode"]`.
     - Acrescenta `mode` e `generated_at` ao payload se ausentes (não sobrescreve).
     - Nome: `NNNN_audit_<mode>.json`, com NNNN sequencial por diretório.
+    - `dedupe`: se o relatório mais recente do mesmo modo AINDA na fila tem
+      conteúdo idêntico (ignorando `_VOLATILE_KEYS`), não grava nada e devolve o
+      caminho do existente.
+
+    Por que deduplicar: `autopilot_audit.run()` grava um relatório de integridade
+    a cada saída do autopilot, e o autopilot é reinvocado várias vezes por passe
+    do G. Medido em 2026-08-01 nos arquivos de 2026-07-30 (15:37→19:24):
+    **16 relatórios de integridade, apenas 6 com conteúdo distinto — 11
+    byte-idênticos** ignorando o timestamp, incluindo o primeiro e o último.
+    Relatório repetido não informa nada e ainda empurra a numeração NNNN.
     """
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     mode = mode or data.get("mode", "audit")
     data.setdefault("mode", mode)
     data.setdefault("generated_at", datetime.now(timezone.utc).isoformat())
+
+    if dedupe:
+        anterior = _pending_latest(REPORT_DIR, mode)
+        if anterior is not None:
+            try:
+                previo = json.loads(anterior.read_text(encoding="utf-8"))
+                if _payload_fingerprint(previo) == _payload_fingerprint(data):
+                    return str(anterior)
+            except Exception:
+                pass  # ilegível/corrompido: grava o novo normalmente
+
     seq = _next_sequence(REPORT_DIR)
     path = REPORT_DIR / f"{seq:04d}_audit_{mode}.json"
     with open(path, "w", encoding="utf-8") as f:
