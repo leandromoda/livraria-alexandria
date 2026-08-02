@@ -80,7 +80,42 @@
       "PowerShell(python -m py_compile*)",
       "PowerShell(python *scratchpad*)",
       "Bash(python -c *)",
-      "Bash(python -m py_compile*)"
+      "Bash(python -m py_compile*)",
+
+      "PowerShell(Get-ChildItem*)",
+      "PowerShell(Test-Path*)",
+      "PowerShell(Get-Content*)",
+      "PowerShell(Select-String*)",
+      "PowerShell(Compare-Object*)",
+      "PowerShell(Get-Command*)",
+
+      "PowerShell(python -m compileall*)",
+      "Bash(python -m compileall*)",
+      "PowerShell(python tests/test_*.py)",
+      "Bash(python tests/test_*.py)",
+      "PowerShell(npm run lint*)",
+      "Bash(npm run lint*)",
+
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git checkout -b *)",
+      "PowerShell(git checkout main*)",
+      "PowerShell(git fetch*)",
+      "PowerShell(git pull --ff-only*)",
+      "PowerShell(git push -u origin *)",
+      "PowerShell(git branch -d *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout -b *)",
+      "Bash(git fetch*)",
+      "Bash(git pull --ff-only*)",
+      "Bash(git push -u origin *)",
+      "Bash(git branch -d *)",
+
+      "PowerShell(gh pr create*)",
+      "PowerShell(gh pr merge*)",
+      "Bash(gh pr create*)",
+      "Bash(gh pr merge*)"
     ]
   }
 }
