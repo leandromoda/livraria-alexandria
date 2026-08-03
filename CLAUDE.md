@@ -139,8 +139,66 @@ continuar.
 
 > Resumo: `verificar PRs abertos → main atualizado → branch → validar → commit →
 > push → PR → revisar → merge (squash, delete) → pull main → apagar branch local`.
-> Commit/PR só acontecem quando o usuário pede a alteração; este fluxo é o
-> **como**, não um gatilho automático.
+
+### Autorização permanente — não perguntar a cada vez
+
+Concedida por Leandro em **2026-07-10** e reafirmada em **2026-08-02**. Uma vez
+que a alteração de código foi pedida, **o ciclo inteiro roda sozinho**, sem
+parar para confirmar cada etapa:
+
+- commitar e fazer push em branch de feature (**nunca** direto no `main`);
+- abrir PR (`gh pr create`);
+- **mergear com `--squash --delete-branch` depois do CI verde**;
+- fechar o ciclo local (`pull --ff-only` + apagar o branch).
+
+Não pergunte "quer que eu abra o PR?" nem "posso mergear?" — execute e relate o
+que foi feito. O acompanhamento é pelos eventos de CI e pelo resumo final.
+
+**Continuam exigindo confirmação explícita:** `git push --force`, `reset --hard`,
+`branch -D`, apagar dados, mergear com check falhando, mudanças de escopo maior
+no produto, e o que as regras de segurança já proíbem (credenciais, pagamentos).
+
+> Isto **substitui** a regra anterior ("commit/PR só acontecem quando o usuário
+> pede"), que contradizia a autorização de 2026-07-10 e fazia o assistente parar
+> a cada PR para pedir algo já concedido. O gatilho continua sendo o pedido de
+> alteração; o que não se pede mais é permissão para **publicá-la**.
+
+### Armadilhas de shell no Windows (medidas em 2026-08-02)
+
+- **O pager do `git` trava a sessão não-interativa.** `git show` / `git log` sem
+  `--no-pager` penduram até o timeout de 2 min: o comando executa, mas o pager
+  nunca devolve o terminal. Use `git --no-pager <cmd>` ou `$env:GIT_PAGER='cat'`.
+  Cuidado ao diagnosticar: num caso o `git commit` funcionou e só o `git show`
+  seguinte pendurou — parece falha do commit, e não é.
+- **`git commit -m @'…'@` quebra com aspas duplas dentro.** A here-string do
+  PowerShell é repassada de forma que o git lê pedaços da mensagem como
+  *pathspec* (`error: pathspec '…' did not match any file(s)`). Escreva a
+  mensagem num arquivo e use `git commit -F <arquivo>`.
+- **O `gh` CLI funciona** — a observação antiga de que "qualquer comando `gh`
+  pendura" não se sustentou (2026-08-02: `pr list`, `pr create`, `pr checks
+  --watch` e `pr merge` rodaram inteiros). Trate hang do `gh` como intermitente,
+  não como fato; só caia para a API REST se ele realmente pendurar.
+
+### Pré-autorização de comandos fica em `.claude/settings.json`
+
+`CLAUDE.md` é instrução para o assistente — o harness **não** o lê como política
+de permissão. Quem libera comando sem prompt é `permissions.allow` em
+`.claude/settings.json` (versionado, vale para o time) ou
+`.claude/settings.local.json` (gitignored, só sua máquina). Comando novo que
+aparecer com frequência e for de baixo risco deve ser acrescentado lá, não aqui.
+
+> **⚠️ Comando composto anula o allowlist.** O padrão casa contra a **string
+> inteira** do comando. Prefixar tudo com `$env:GIT_PAGER='cat'; cd "C:\…"; …`
+> transforma cada chamada numa string única que **nenhuma regra alcança** — foi
+> o que aconteceu em 2026-08-02: mesmo com `gh pr checks` liberado, o comando
+> pedia autorização por causa do prefixo. Regras:
+> - **Não prefixar com `cd`/`Set-Location`** — o diretório de trabalho da
+>   ferramenta já é a raiz do projeto.
+> - **Um comando por chamada** quando ele for do allowlist; encadear com `;` só
+>   quando os passos realmente dependem um do outro e o prompt não importa.
+> - Precisa de env var recorrente (ex.: `GIT_PAGER`)? Prefira `git --no-pager`
+>   no próprio comando, ou ponha a variável em `env` no `settings.json`, em vez
+>   de repeti-la inline a cada chamada.
 
 ---
 
