@@ -2246,6 +2246,42 @@
         "scripts/tools/backfill_enrich_similaridade.py",
         "scripts/CLAUDE.md"
       ]
+    },
+    {
+      "id": "TASK-PIPE-028",
+      "title": "Log da sessao nascia no import: 39% da fila do /analise-logs era arquivo vazio",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-02",
+      "resolved_on": "2026-08-02",
+      "branch": "fix/testes-nao-poluem-fila-de-logs",
+      "pr": "#255",
+      "description": "core/logger.py abria pipeline_YYYY-MM-DD_HH-MM-SS.log na linha de topo do modulo, entao qualquer processo que apenas IMPORTASSE core.logger ja deixava um log vazio na fila do /analise-logs: abrir o menu e sair, um tool que nao loga nada, um teste que importa um step. Alem disso a suite de testes escrevia na fila REAL, porque exercita steps de verdade, que logam de verdade.",
+      "medicao": "Fila de 72 logs analisada em 2026-08-01: 28 tinham 0 byte (39%). Rodar scripts/tests/ criava 4 arquivos pipeline_*.log (0 a 3.133 bytes) indistinguiveis de execucao real - IDIOMA (test_backfill_idioma), LOOKUP (test_backfill_lookup_query), SCRAPER (test_marketplace_scraper_ordem) e um vazio.",
+      "resolution": "Arquivo criado na primeira escrita real (_ensure_file, com lock porque o heartbeat roda em thread propria); log_path() devolve None enquanto nada foi escrito. Script cujo entry point esta em scripts/tests/ grava em diretorio temporario - a deteccao e por argv[0], e nao por env var, para que um teste NOVO nao precise lembrar de configurar nada. PIPELINE_LOG_DIR continua vencendo tudo, como escape hatch explicito. Verificado: rodar a suite inteira deixa a contagem de pipeline_*.log inalterada (5 -> 5); antes somava 4.",
+      "escopo": "Mexe SO no log da sessao. Os relatorios NNNN_audit_<mode>.json moram no mesmo data/logs/ mas tem escritor proprio (core/audit_report.REPORT_DIR) e nao passam pelo core.logger.",
+      "files": [
+        "scripts/core/logger.py",
+        "scripts/tests/test_logger_log_dir.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-029",
+      "title": "Relatorios de auditoria identicos se acumulavam em data/logs/",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-02",
+      "resolved_on": "2026-08-02",
+      "branch": "fix/audit-reports-duplicados",
+      "pr": "#256",
+      "description": "autopilot_audit.run() grava um relatorio de integridade a CADA saida do autopilot, e o autopilot e reinvocado varias vezes por passe do G (ver TASK-PIPE-026). Relatorio repetido nao informa nada e ainda empurra a numeracao NNNN. Somava-se a isso um atraso de poda: archive_processed_reports() rodava so no INICIO do passe (via remediate_mechanical), enquanto os relatorios sao gerados DURANTE ele - entao ficavam na pasta ate o passe seguinte.",
+      "medicao": "Arquivos de 2026-07-30 (15:37 -> 19:24), medidos em 2026-08-01: 16 relatorios de integridade com apenas 6 conteudos distintos - 11 byte-identicos ignorando o timestamp, incluindo o primeiro e o ultimo. A janela bate com o log pipeline_2026-07-30_15-35-57, o mesmo passe improdutivo da TASK-PIPE-026. No total havia 19 relatorios acumulados.",
+      "resolution": "save_audit_report compara o payload (ignorando generated_at/timestamp) com o relatorio mais recente do mesmo modo AINDA NA FILA; se igual, nao grava e devolve o caminho do existente. A comparacao e so contra a fila pendente, de proposito: se o homonimo ja foi arquivado, logs/ nao representa mais o estado atual e o novo precisa ser escrito. dedupe=False permite opt-out. Como core/audit_report.py e o escritor unico de todos os produtores (auditor, autopilot_audit, consistency_check, offer_price_monitor), vale para todo modo. O G passou a podar tambem no FIM do passe. Replay dos 16 relatorios reais pela nova logica: 16 -> 7 gravados, 9 evitados; os 7 mantidos sao transicoes reais de estado (registros_afetados 3321, 6926, 6126, 5326, 4526, 3726, 3321). Poda executada em 2026-08-03: 17 arquivados, 6 remediacoes enfileiradas, sobraram os 2 corretos (mais recente de cada modo de revisao).",
+      "files": [
+        "scripts/core/audit_report.py",
+        "scripts/tests/test_audit_report_dedupe.py",
+        "scripts/main.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
