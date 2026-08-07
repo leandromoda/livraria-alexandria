@@ -168,14 +168,31 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
 **duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
 
-**O culpado provável tem nome: as ferramentas Node deste projeto.** `next build`
-(4,7 mil páginas) e `eslint` sobre a árvore inteira são processos de memória
-alta; rodar um deles enquanto qualquer outra coisa está aberta é o que derruba a
-máquina. Medições individuais do mesmo dia: `npm run lint` estourou **5 min** de
-timeout em primeiro plano e **7 min** numa segunda tentativa (`npx eslint` em
-2 arquivos), sem nunca produzir saída; `git credential fill` pendurou **2 min**;
-`git rev-list` com refs remotas e `git log`, **40–90 s**; `curl` para
-`api.github.com`, **60 s** — todos com a saída vazia.
+**A causa é CPU, não memória** — medido no Gerenciador de Tarefas e via
+`Get-Process` em 2026-08-06, durante um dos travamentos: **CPU 100%, memória 30%,
+disco 0%**. Os fatos:
+
+- A máquina tem **4 núcleos lógicos** (`Win32_ComputerSystem`). É pouco.
+- **O Claude Code é o maior consumidor em repouso**: 5–6 processos `claude`
+  somando **~10% de CPU contínuos**; num deles, 1.121 s de CPU acumulados em
+  ~59 min de relógio. Esse é o *baseline* antes de qualquer comando.
+- `next build` sobe **3 workers** (aparece no próprio log: "Generating static
+  pages using 3 workers") — com 4 núcleos, isso mais o baseline ocupa a máquina
+  inteira.
+- `eslint` sem cache prende um núcleo por mais de 7 min sem terminar.
+
+**Consequência que confunde o diagnóstico:** com a CPU saturada, `git` e `gh`
+ficam sem fatia e estouram timeout. Isso *parece* hang de rede e **não é** — é
+inanição de CPU. Foi o que aconteceu em 2026-08-06: `npm run lint` estourou
+**5 min** e depois **7 min** (`npx eslint` em 2 arquivos); `git credential fill`
+pendurou **2 min**; `git rev-list`/`git log`, **40–90 s**; `gh pr create`,
+**4 min**; `curl` para `api.github.com`, **60 s** — todos com saída vazia,
+enquanto `git status` (instantâneo) nunca falhou. A regra prática que sai daí:
+**comando curto passa mesmo sob carga; comando longo só passa com a máquina
+livre.**
+
+Antes de rodar qualquer coisa pesada, vale **fechar as sessões do Claude Code
+que não estão em uso** — cada uma carrega processos que somam no baseline.
 
 ⚠️ **`npm run lint` não roda nesta máquina.** Não é flake: falhou nas duas
 tentativas e a segunda derrubou o sistema. **Não tentar de novo** — validar com
@@ -232,10 +249,17 @@ Regras (dentro de uma sessão):
   PowerShell é repassada de forma que o git lê pedaços da mensagem como
   *pathspec* (`error: pathspec '…' did not match any file(s)`). Escreva a
   mensagem num arquivo e use `git commit -F <arquivo>`.
-- **O `gh` CLI funciona** — a observação antiga de que "qualquer comando `gh`
-  pendura" não se sustentou (2026-08-02: `pr list`, `pr create`, `pr checks
-  --watch` e `pr merge` rodaram inteiros). Trate hang do `gh` como intermitente,
-  não como fato; só caia para a API REST se ele realmente pendurar.
+- **O `gh` CLI é intermitente — não conte com ele.** Em 2026-08-02 rodou inteiro
+  (`pr list`, `pr create`, `pr checks --watch`, `pr merge`), o que derrubou a
+  afirmação de 2026-07-24 de que "qualquer comando `gh` pendura". Mas em
+  **2026-08-06 pendurou de novo**: `gh pr create --body-file` estourou **4 min**
+  e `gh pr list --json` estourou **75 s**, ambos sem saída, logo após um
+  `git push` bem-sucedido no mesmo branch. Ou seja: as duas afirmações
+  absolutas ("funciona" / "sempre trava") estão erradas — é intermitente.
+  Tratamento: tentar **uma vez**; se pendurar, **não repetir** — abrir o PR pela
+  URL que o próprio `git push` imprime, ou cair para a API REST.
+- **`git push` sobre HTTPS funcionou** mesmo nas sessões em que `gh` pendurou
+  (2026-08-06). Não presuma que a rede inteira está fora quando o `gh` trava.
 
 ### Pré-autorização de comandos fica em `.claude/settings.json`
 
