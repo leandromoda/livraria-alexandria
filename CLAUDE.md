@@ -163,6 +163,44 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 > a cada PR para pedir algo já concedido. O gatilho continua sendo o pedido de
 > alteração; o que não se pede mais é permissão para **publicá-la**.
 
+### ⚠️ Subprocesso trava a máquina — um comando por vez (medido em 2026-08-06)
+
+Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
+**duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
+
+**O culpado provável tem nome: as ferramentas Node deste projeto.** `next build`
+(4,7 mil páginas) e `eslint` sobre a árvore inteira são processos de memória
+alta; rodar um deles enquanto qualquer outra coisa está aberta é o que derruba a
+máquina. Medições individuais do mesmo dia: `npm run lint` estourou **5 min** de
+timeout em primeiro plano e **7 min** numa segunda tentativa (`npx eslint` em
+2 arquivos), sem nunca produzir saída; `git credential fill` pendurou **2 min**;
+`git rev-list` com refs remotas e `git log`, **40–90 s**; `curl` para
+`api.github.com`, **60 s** — todos com a saída vazia.
+
+⚠️ **`npm run lint` não roda nesta máquina.** Não é flake: falhou nas duas
+tentativas e a segunda derrubou o sistema. **Não tentar de novo** — validar com
+`npm run build` (que já faz o type-check) e deixar o ESLint para o CI da Vercel,
+dizendo isso no relato e no corpo do PR.
+
+Nota de fluxo: `git status --short`, `git add` e `git commit` são leves e
+funcionaram o tempo todo, inclusive logo após o reboot (o índice sobrevive).
+O que pendura é comando com **rede** (`push`, `gh`, `curl` externo) ou **pager**.
+
+Regras:
+
+- **Um comando de shell por vez.** Não disparar várias chamadas `Bash`/
+  `PowerShell` no mesmo bloco de resposta, mesmo quando são independentes — a
+  orientação geral de paralelizar chamadas **não vale para shell aqui**.
+- **Não acumular `run_in_background`.** No máximo um de cada vez, e só para
+  comando realmente longo (`npm run build`). Nunca deixar dois rodando juntos.
+- **Agrupar leituras num único script** em vez de um comando por consulta
+  (ex.: um `bash` que faz os N `curl` em sequência, não N chamadas da ferramenta).
+- Preferir as ferramentas dedicadas (`Read`, `Grep`, `Glob`) a `cat`/`grep`/
+  `find` via shell — não abrem subprocesso pesado.
+- Hang é **intermitente**: repetir uma vez é aceitável, insistir não. Se um
+  comando pendurou duas vezes, seguir sem ele e **dizer isso no relato**, em vez
+  de continuar tentando.
+
 ### Armadilhas de shell no Windows (medidas em 2026-08-02)
 
 - **O pager do `git` trava a sessão não-interativa.** `git show` / `git log` sem

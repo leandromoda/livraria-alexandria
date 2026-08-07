@@ -43,6 +43,29 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 ## Insights / decisões (não repetir análise)
 
+- **⚠️ Filtro por coluna inexistente no Supabase NÃO quebra o build — vira seção
+  vazia em silêncio.** Foi assim que o sitemap chegou a 2026-08-06 anunciando
+  0 autores e 0 listas (duração do defeito não apurada):
+  `.eq("status_publish", true)` em `autores`/`listas` (colunas que não
+  existem) devolve erro 400, e o `?? []` do `sitemap.ts` transformava o erro numa
+  lista vazia. Build verde, deploy verde, seção sumida.
+  **Ao auditar SEO, conferir a _contagem por seção_ do `sitemap.xml` contra o
+  banco — não basta o arquivo existir e o build passar.** Comando:
+  ```bash
+  curl -s https://livrariaalexandria.com.br/sitemap.xml | grep -o "<loc>[^<]*</loc>" \
+    | sed 's|<loc>https://livrariaalexandria.com.br||;s|</loc>||' \
+    | awk -F/ '{print ($2==""?"(home)":$2)}' | sort | uniq -c | sort -rn
+  ```
+- **Teto de 1.000 linhas do PostgREST vale para o sitemap também.** Toda query de
+  sitemap precisa de `.range()` paginado — as páginas de índice já faziam isso
+  (`autores/page.tsx`, `listas/page.tsx`), só o sitemap tinha ficado para trás.
+- **Sitemap e `noindex` não podem se contradizer.** `/jogos` e `/infantis` emitem
+  `robots: noindex` quando a seção está vazia; enquanto vazias, não podem entrar
+  no sitemap. Origem do alerta de 2026-07-28. Hoje entram condicionalmente.
+- **Critério de publicação do livro é `is_publishable`, não `status="publish"`.**
+  A página usa `is_publishable` para o `notFound()`; o sitemap usava `status`.
+  As duas colunas divergem em alguns registros (4.691 vs 4.686 em 2026-08-06) —
+  e a diferença virava 404 anunciado no sitemap.
 - **Middleware de normalização de slug: criado e REMOVIDO** (PR #197). Googlebot
   manda URL percent-encoded (`%C3%B3`), formato em que o regex de marcas
   combinantes não dispara → já cai em 404 limpo; com acento cru dava 500.
@@ -70,6 +93,8 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-08-06 | sitemap | **Cobertura: 1.144 → 7.708 URLs.** Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.139 e 0 → 697); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #PR |
+| 2026-08-06 | dados estruturados | `livros/[slug]`: emitir `gtin13` quando o ISBN tem 13 dígitos e parar de emitir `"sku": null`. Atende parcialmente o aviso não crítico de Listagens do comerciante | #PR |
 | 2026-07-19 | dados estruturados | `jogos/[slug]`: JSON-LD `Product` era renderizado **incondicionalmente** e saía sem `offers` (10 de 11 jogos com `preco_atual` nulo) → erro crítico "Especifique offers/review/aggregateRating". Guard no render, igual a `livros/[slug]` | #216 |
 | 2026-07-13 | canônica | `metadataBase` → apex sem-www (`app/layout.tsx`); canonical relativa não resolve mais para o domínio que redireciona | #209 |
 | 2026-07-10 | domínio | Redirect www→apex 308 (Vercel Domains); apex vira Production | — (config) |
@@ -85,6 +110,17 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 ## Itens em aberto
 
+- **ISBN ausente em ~99% dos livros** (amostra de 300 publicados em 2026-08-06:
+  297 sem `isbn`; só 3 com ISBN de 13 dígitos). É a causa raiz do aviso
+  **"Listagens do comerciante: nenhum identificador global (GTIN, marca)"**
+  (e-mails de 2026-07-30 e 31). O fix de código já emite `gtin13` quando há
+  ISBN — o aviso só some de verdade quando o pipeline preencher a coluna.
+  **Lacuna de dados do pipeline, não tarefa de SEO** — mesmo padrão do
+  `preco_atual` de jogos. Não reabrir como bug do site.
+- **Validar no GSC após o deploy do #PR**: submeter "Validar correção" em
+  *Excluída pela tag "noindex"* e reenviar o `sitemap.xml`. Acompanhar se
+  "Detectada, mas não indexada" sobe (esperado e temporário: 6,5 mil URLs novas
+  entraram na fila de crawl de uma vez).
 - **`agents/audit/prompt.md` ainda referencia URLs `www`** — o agente de auditoria
   crawleia `https://www.livrariaalexandria.com.br` (segue o 308 p/ o apex, então
   funciona). Cleanup menor: apontar direto p/ o apex. Baixa prioridade.
@@ -107,8 +143,21 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|
+| 2026-08-06 | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 |
+
+**Seção 2026-08-06 — sem números do relatório.** A extensão do Chrome não estava
+conectada (`list_connected_browsers` → `[]`), então o relatório de indexação não
+foi aberto e **as contagens por categoria não foram coletadas**. A seção rodou a
+partir do Gmail (`from:sc-noreply@google.com`) + auditoria direta do
+`sitemap.xml` contra o banco. Repor os números na próxima seção com o Chrome
+conectado — sem isso não dá para ler tendência de 07-19 para cá.
+
+Cobertura do sitemap medida nesta seção (por contagem do XML vs. `count=exact`
+no PostgREST): **antes 1.144 URLs → depois 7.708**. Detalhe: livros 1.000 →
+4.727, autores 0 → 2.139, listas 0 → 697, categorias 125 (inalterado),
+jogos 11 (inalterado), infantis 0 → 1.
 
 **Seção 2026-07-19** — indexadas **5,65 mil** / não indexadas **4,21 mil** (12 motivos).
 Categorias fora da tabela acima: Página com redirecionamento **1.147**,
