@@ -186,7 +186,27 @@ Nota de fluxo: `git status --short`, `git add` e `git commit` são leves e
 funcionaram o tempo todo, inclusive logo após o reboot (o índice sobrevive).
 O que pendura é comando com **rede** (`push`, `gh`, `curl` externo) ou **pager**.
 
-Regras:
+#### ⚠️ A regra abaixo é POR SESSÃO — ela não protege contra várias sessões
+
+"Um comando por vez" governa o que **um** assistente dispara. Duas sessões do
+Claude Code abertas ao mesmo tempo, cada uma obedecendo a regra, ainda colocam
+**dois `next build` concorrentes** na máquina — que é exatamente o cenário que a
+derruba. Nenhuma sessão enxerga a outra, então **isto não se resolve sozinho**:
+
+- **`npm run build` é exclusivo da máquina inteira**, não da sessão. Se houver
+  outra sessão do Claude Code (ou um `npm run dev`, ou o pipeline Python
+  rodando), **não iniciar o build** — perguntar ao Leandro antes.
+- **Trabalho de código em uma sessão por vez.** É a mesma razão do "um PR por
+  vez" e do "GitHub Desktop fechado": sessões concorrentes compartilham um único
+  working tree. Em 2026-08-06 isso foi **observado**: arquivos modificados em
+  `scripts/` e `state/` sumiram do working tree no meio da sessão sem que o
+  assistente os tocasse. Sessão paralela pode usar o repo em modo leitura
+  (`Read`/`Grep`/análise), mas não deve editar, commitar nem buildar.
+- Se o assistente suspeitar de sessão paralela — working tree mudando sozinho,
+  branch trocando, arquivo que ele não editou aparecendo staged — **parar e
+  avisar**, em vez de seguir e commitar por cima.
+
+Regras (dentro de uma sessão):
 
 - **Um comando de shell por vez.** Não disparar várias chamadas `Bash`/
   `PowerShell` no mesmo bloco de resposta, mesmo quando são independentes — a
