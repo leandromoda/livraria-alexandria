@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-28 (sessao 33, cont. - PR #248): Seeder Infantis via Cowork - agente orquestrador (agents/seeder_infantis_cowork/) + atalho /seeds_infantis que escolhe a combinacao TEMA+IDADE+TIPO ainda nao usada, dirige o ChatGPT, valida o JSON e grava NNN_infantis_seeds.json com ledger de cobertura em infantis_temas.json (v2). Politica: sem quantidade minima - seed pequeno vale mais que combinacao rejeitada. Ver TASK-INFANTIS-002.",
+    "last_updated": "2026-07-28 (sessao 33, cont. - PRs #264-#265): Seeder Jogos via Cowork (agents/seeder_jogos_cowork/ + /seeds-jogos) espelhando a secao Infantis, e padronizacao do contrato de seed dos TRES pipelines - os tres prompts agora exigem JSON puro e os tres loaders toleram BOM/cerca/JSONL, com paridade fixada em tests/test_seed_loaders.py. Ver TASK-JOGOS-002.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2282,6 +2282,29 @@
         "scripts/tests/test_audit_report_dedupe.py",
         "scripts/main.py"
       ]
+    },
+    {
+      "id": "TASK-JOGOS-002",
+      "title": "Seeder Jogos via Cowork + padronizacao dos tres seeders",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-07-28",
+      "resolved_on": "2026-07-28",
+      "description": "Replica na secao Jogos o agente Cowork da secao Infantis (TASK-INFANTIS-002) e padroniza o contrato de seed dos TRES pipelines paralelos.",
+      "solucao": [
+        "agents/seeder_jogos_cowork/prompt.md (novo) - orquestrador: descobre o proximo NNN varrendo seeds/ E ingested_seeds/, escolhe a combinacao TEMA+CATEGORIA+MECANICA por rodizio nas tres dimensoes, dirige o ChatGPT, valida o JSON, grava o seed e atualiza o ledger.",
+        ".claude/skills/seeds-jogos/SKILL.md (novo) - atalho /seeds-jogos <N>, default N=1.",
+        "scripts/data/seeds/jogos_temas.json (v2, gitignored) - 52 temas, 3 categorias (valores fixos do schema) e 30 mecanicas com as categorias compativeis. 1.992 combinacoes possiveis, 0 pares tema+categoria sem mecanica. Ledger com os 8 seeds legados.",
+        "seeder_agent - jogos theme driven.txt (v2) - recebe TEMA/CATEGORIA/MECANICA, exige JSON puro, sem quantidade minima, INSUFICIENTE so para universo vazio, RELAXAR MECANICA, ALVO 60 -> 30."
+      ],
+      "defeitos_encontrados": [
+        "jogos_temas.json NAO era catalogo de temas: era copia byte-identica de XXX_jogos_seeds.json (mesmo MD5, 58 seeds). A secao Jogos nunca teve controle de combinacao.",
+        "Contrato de seed divergente nos TRES pipelines: livros e jogos mandavam o ChatGPT entregar em bloco de codigo, e os dois loaders NAO removiam cerca de markdown nem toleravam BOM (so o infantil tolerava). Seed cercado nao quebrava o pipeline (import_seeds captura) mas era logado como ERRO e ficava parado em seeds/ para sempre - falha silenciosa. Corrigido nos dois lados: loaders tolerantes + os tres prompts exigindo JSON puro.",
+        "seeder de jogos: secao EXPANSAO SEMANTICA LIMITROFE autorizava o modelo a afrouxar a mecanica sozinho, contradizendo o comando RELAXAR MECANICA do orquestrador. Reescrita para expandir so o tema."
+      ],
+      "testes": "scripts/tests/test_seed_loaders.py (renomeado de test_jogos_load_seeds.py) roda o MESMO arquivo nos tres loaders: 7 formatos x 3 = 21 combinacoes. Paridade virou coisa testada, nao convencao.",
+      "pendente": "Teste de ponta a ponta: rodar /seeds-jogos 1 e conferir o 009_jogos_seeds.json + ledger. Depois, recalibrar QUANTIDADE_ALVO com a entrega real (hoje 30 e estimativa, NAO medicao) - mesmo procedimento do PR #252 para a Infantis.",
+      "prs": "#264 (agente), #265 (padronizacao)"
     }
   ],
   "qa_remediation_loop": {
