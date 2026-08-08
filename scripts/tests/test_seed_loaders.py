@@ -1,13 +1,22 @@
 """
-Tolerancia do loader de seeds de jogos (assert puro, sem pytest, sem rede).
+Tolerancia dos TRES loaders de seed (assert puro, sem pytest, sem rede).
 
-    PYTHONPATH=. python tests/test_jogos_load_seeds.py
+    PYTHONPATH=. python tests/test_seed_loaders.py
 
-Contexto: ate 2026-07-28 `jogos_pipeline._load_seeds` nao removia cerca de
-markdown nem tolerava BOM, enquanto o prompt do seeder de jogos mandava
-entregar "dentro de bloco de codigo". O arquivo cercado nao quebrava o
-pipeline (import_seeds captura a excecao), mas era logado como ERRO e ficava
-parado em seeds/ para sempre. O infantil ja tolerava as duas coisas.
+Contexto (2026-07-28): os tres pipelines paralelos liam seed de tres jeitos
+diferentes, e dois dos tres loaders NAO aceitavam o formato que o proprio
+prompt do seeder mandava produzir:
+
+    pipeline   loader                        BOM  cerca  prompt pedia
+    livros     offer_seed.load_seeds         nao  nao    bloco de codigo
+    jogos      jogos_pipeline._load_seeds    nao  nao    bloco de codigo
+    infantis   infantis_pipeline._load_seeds sim  sim    JSON puro
+
+Um seed cercado nao quebrava o pipeline (import_seeds captura a excecao), mas
+era logado como ERRO e ficava parado em seeds/ para sempre — falha silenciosa.
+Os tres prompts passaram a exigir JSON puro e os tres loaders passaram a
+tolerar as tres deformacoes. Este teste fixa a paridade: o que um aceita,
+todos aceitam.
 """
 
 import json
@@ -52,7 +61,15 @@ try:
 except ImportError:
     _stub_requests()
 
-from steps.jogos_pipeline import _load_seeds  # noqa: E402
+from steps.infantis_pipeline import _load_seeds as load_infantis  # noqa: E402
+from steps.jogos_pipeline import _load_seeds as load_jogos  # noqa: E402
+from steps.offer_seed import load_seeds as load_livros  # noqa: E402
+
+LOADERS = [
+    ("livros   (offer_seed.load_seeds)", load_livros),
+    ("jogos    (jogos_pipeline)", load_jogos),
+    ("infantis (infantis_pipeline)", load_infantis),
+]
 
 ITENS = [
     {
@@ -85,9 +102,11 @@ def _escrever(texto, encoding="utf-8"):
 
 
 def _checar(path, rotulo):
+    """Roda o MESMO arquivo nos tres loaders — paridade e o que se testa."""
     try:
-        seeds = _load_seeds(path)
-        assert seeds == ITENS, f"{rotulo}: conteudo divergente -> {seeds!r}"
+        for nome, loader in LOADERS:
+            seeds = loader(path)
+            assert seeds == ITENS, f"{rotulo} / {nome}: divergente -> {seeds!r}"
         print(f"  OK  {rotulo}")
     finally:
         os.unlink(path)
@@ -96,7 +115,7 @@ def _checar(path, rotulo):
 def main():
     puro = json.dumps(ITENS, ensure_ascii=False, indent=2)
 
-    print("teste: _load_seeds de jogos tolera as tres deformacoes conhecidas")
+    print("teste: os 3 loaders de seed toleram as mesmas deformacoes")
 
     _checar(_escrever(puro), "JSON puro (caso normal)")
     _checar(_escrever("\n" + puro + "\n\n"), "JSON com espaco em volta")
@@ -109,7 +128,7 @@ def main():
         "JSONL (um objeto por linha)",
     )
 
-    print("\nOK: 7 formatos aceitos")
+    print(f"\nOK: 7 formatos x {len(LOADERS)} loaders = {7 * len(LOADERS)} combinacoes")
 
 
 if __name__ == "__main__":

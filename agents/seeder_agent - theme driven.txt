@@ -275,8 +275,8 @@ Se não atingir → continuar geração automaticamente.
 # FORMATO FINAL DE ENTREGA
 # ============================================================
 
-- Entregar SOMENTE o JSON
-- Dentro de bloco de código
+- Entregar SOMENTE o array JSON
+- Sem bloco de código
 - Sem texto antes
 - Sem texto depois
 - Sem comentários

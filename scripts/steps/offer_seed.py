@@ -303,9 +303,19 @@ def move_to_ingested(filepath, filename):
 # =========================
 
 def load_seeds(filepath):
+    """Le o seed tolerando o que o agente costuma errar: BOM, cerca de markdown
+    (```json) e JSONL. Mesma tolerancia dos pipelines de jogos e infantis
+    (_load_seeds la) — padronizado em 2026-07-28, quando se descobriu que os
+    tres seeders pediam formatos diferentes e dois dos tres loaders nao
+    aceitavam o que o proprio prompt mandava produzir. Paridade fixada em
+    tests/test_seed_loaders.py."""
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         text = f.read().strip()
+
+    if text.startswith("```"):
+        linhas = [l for l in text.splitlines() if not l.strip().startswith("```")]
+        text = "\n".join(linhas).strip()
 
     # Tenta JSON padrão (array ou objeto)
     try:
