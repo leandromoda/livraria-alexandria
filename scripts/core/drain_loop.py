@@ -16,7 +16,7 @@ NAP_MAX_S = 300                # 5 min
 
 
 def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
-                     log, sleep, monotonic,
+                     log, sleep, monotonic, prefixo="[G]",
                      dreno_safety_s=DRENO_SAFETY_S, nap_max_s=NAP_MAX_S):
     """Drena o não-LLM enquanto a sessão PRO está em cooldown.
 
@@ -39,6 +39,17 @@ def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
     `count_pending()`. Seco, apenas dormimos o cooldown, re-checando a cada
     `dreno_safety_s`.
 
+    ⚠ ESCOPO — o que esta função NÃO resolve (medido em 2026-08-08). Ela cumpre
+    o que promete: nos 3 logs seguintes (2026-08-04/05/06, ~11h cada) o dreno
+    suspende de verdade — no de 08-04, depois de o não-LLM secar às 00:38, o
+    autopilot cai na cadência de ~31 min (00:43:56 → 01:15:23 → 01:46:58). Mas
+    LISTAS+QUALITY continuaram em 89,2% / 89,2% / 89,6% das linhas, contra os
+    91,6% de antes. Motivo: `quality_gate` e `list_composer` estão na lista
+    `STEPS` de `autopilot.run()`, executada a cada volta do laço de ciclos —
+    também na fase produtiva, que este guard não toca (nem deve). O giro
+    restante foi atacado dentro dos próprios steps (log agregado + guard de
+    cadência do `list_composer`), não aqui.
+
     Devolve o motivo da saída: "quota_restaurada" ou "reset_atingido".
     """
     drenar = True
@@ -53,7 +64,7 @@ def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
             if pend_pos >= pend_pre:
                 drenar = False
                 proxima_checagem = monotonic() + dreno_safety_s
-                log(f"[G] Não-LLM seco (pendente {pend_pre:,} → {pend_pos:,}); "
+                log(f"{prefixo} Não-LLM seco (pendente {pend_pre:,} → {pend_pos:,}); "
                     f"suspendendo o dreno e apenas aguardando o reset "
                     f"(re-checagem em {dreno_safety_s // 60} min).")
         elif monotonic() >= proxima_checagem:
@@ -69,6 +80,6 @@ def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
         if nap <= 0:
             return "reset_atingido"
 
-        log(f"[G] Backlog não-LLM drenado; aguardando reset da sessão "
+        log(f"{prefixo} Backlog não-LLM drenado; aguardando reset da sessão "
             f"(~{secs // 60} min restantes)…")
         sleep(nap)

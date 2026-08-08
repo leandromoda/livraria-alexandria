@@ -28,6 +28,7 @@ from core.db import get_conn
 from core.logger import log
 from core.run_logger import StepRun
 from core import interrupt as _interrupt
+from core import step_cadence
 
 from steps import (
     offer_seed,
@@ -644,6 +645,31 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
     conn.close()
     ciclos_sem_repair = 0
 
+    # Listas SEO: mesma ideia do REPAIR acima, pelo mesmo motivo. A ENTRADA do
+    # list_composer só muda quando um livro é publicado — e o step "14 Publicar
+    # Livros" roda ANTES de "18 Listas SEO" na mesma volta, então um livro
+    # publicado neste ciclo já é visto pelo composer neste ciclo. Sem o guard,
+    # ele varre ~128 categorias + ~129 temáticas + ~430 autores a cada ciclo
+    # para reencontrar listas que já existem.
+    #
+    # Medido nos 3 logs de ~11h de 2026-08-04/05/06 (contagem por
+    # `List Composer iniciado` e `Lista (temática )?criada`): 52 / 51 / 52
+    # passes produziram 2 / 5 / 5 listas — 0,07 lista por passe.
+    #
+    # SEED: parte da contagem atual de publicados, então o composer não roda
+    # "de graça" logo na abertura; ele dispara na primeira publicação. Rede de
+    # segurança a cada LISTAS_SAFETY_EVERY ciclos, para pegar lista que se torne
+    # elegível sem publicação nova (ex.: dedup de autores, ou livro que passou a
+    # ter categoria temática). A decisão em si é pura e vive em
+    # core/step_cadence.py, para ser testável sem arrastar os imports daqui.
+    LISTAS_SAFETY_EVERY = step_cadence.LISTAS_SAFETY_EVERY
+    conn = get_conn()
+    publicados_no_ultimo_listas = conn.execute(
+        "SELECT COUNT(*) FROM livros WHERE status_publish = 1"
+    ).fetchone()[0]
+    conn.close()
+    ciclos_sem_listas = 0
+
     ciclo = 0
     try:
         while True:
@@ -674,6 +700,20 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
             conn.close()
 
             for nome, step_fn in STEPS:
+                if nome == "18 Listas SEO":
+                    conn = get_conn()
+                    publicados_agora = conn.execute(
+                        "SELECT COUNT(*) FROM livros WHERE status_publish = 1"
+                    ).fetchone()[0]
+                    conn.close()
+                    if not step_cadence.deve_rodar_listas(
+                            publicados_agora, publicados_no_ultimo_listas,
+                            ciclos_sem_listas, LISTAS_SAFETY_EVERY):
+                        ciclos_sem_listas += 1
+                        continue
+                    publicados_no_ultimo_listas = publicados_agora
+                    ciclos_sem_listas = 0
+
                 pacote_efetivo = STEP_PACOTES.get(nome, lambda p: p)(pacote)
                 log(f"[AUTOPILOT] -- {nome} (pacote={pacote_efetivo}) --")
 
