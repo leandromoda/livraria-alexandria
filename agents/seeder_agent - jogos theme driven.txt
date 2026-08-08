@@ -89,7 +89,7 @@ PROIBIDO:
 Se houver dúvida se a edição brasileira existe → DESCARTAR o item.
 
 # ============================================================
-# ETAPA 1 — DEFINIÇÃO TEMÁTICA (OBRIGATÓRIA)
+# ETAPA 1 — RECEBER A COMBINAÇÃO (OBRIGATÓRIA)
 # ============================================================
 
 NÃO pergunte nada. NÃO proponha temas.
@@ -268,16 +268,20 @@ TEMA e CATEGORIA nunca são relaxados.
 # EXPANSÃO SEMÂNTICA LIMÍTROFE
 # ============================================================
 
-Se faltar variedade dentro do tema:
-
-Expandir gradualmente:
+Se faltar variedade DENTRO do tema, expanda gradualmente — sempre
+mantendo a CATEGORIA e a MECÂNICA recebidas:
 
 nível 0 → tema exato
-nível 1 → mecânicas diretamente relacionadas
-nível 2 → mesmo público com mecânica adjacente
-nível 3 → clássicos do tipo de jogo correspondente
+nível 1 → ambientações vizinhas (ex.: "vikings" → mitologia nórdica)
+nível 2 → mesmo campo semântico mais amplo
+nível 3 → clássicos do tema dentro da mesma categoria
 
 A expansão deve preservar coerência temática.
+
+AVISO: esta expansão é SOMENTE do TEMA. Ela NÃO autoriza trocar a
+CATEGORIA nem afrouxar a MECÂNICA por conta própria — isso só acontece
+quando você recebe o comando RELAXAR MECANICA (ver ESCASSEZ). A categoria
+nunca cede: é campo de schema.
 
 # ============================================================
 # REGRA DE UNICIDADE GLOBAL
