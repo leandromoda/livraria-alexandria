@@ -165,10 +165,11 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 
 ### ⚠️ Subprocesso trava a máquina — um comando por vez (medido em 2026-08-06)
 
-> **Estado em 2026-08-08:** a causa principal foi removida (Avira desinstalado,
-> ver o ✅ abaixo). As regras desta seção **continuam valendo** — a máquina tem
-> 4 núcleos e o efeito do Defender sob carga ainda não foi medido. Reavaliar
-> depois de um `npm run build` completo com a nova configuração.
+> **Estado em 2026-08-08:** causa principal removida (Avira desinstalado) e o
+> ganho **confirmado por medição** — `npm run build` completo em 127,7 s, com
+> pico de 68,7% de CPU, contra 100% e travamento antes (tabela abaixo).
+> As regras desta seção **continuam valendo em espírito** — a máquina tem só
+> 4 núcleos e satura fácil —, mas o build deixou de ser uma operação de risco.
 
 Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
 **duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
@@ -205,10 +206,28 @@ memória 26–30%, disco 0–6%**. Os fatos:
   exatamente onde um ataque de supply chain em dependência npm apareceria. O
   mitigador é o conteúdo vir de `package-lock.json` e ser reinstalável. Excluir
   essas quatro pastas — nunca o repositório inteiro, o disco ou Downloads.
-- **Ainda não medido:** o efeito do Defender sob carga real (`npm run build`)
-  nesta máquina. Se o travamento voltar, o próximo suspeito é o **Componente de
-  Segurança Bradesco** (Warsaw/Topaz, do internet banking), que continua
-  residente — aparecia com uso baixo nos dois travamentos, mas não foi isolado.
+- ✅ **Medido em 2026-08-08 — `npm run build` completo, sem Avira e ainda SEM
+  exclusões no Defender:** terminou em **127,7 s** (exit 0), contra um build
+  que antes travava a máquina. Comparação das métricas internas do próprio
+  Next, mesmo working tree:
+
+  | Fase | Com Avira | Sem Avira |
+  |---|---|---|
+  | Compilação | 82 s | **51 s** |
+  | Geração de 21 páginas estáticas | 14,4 s | **3,8 s** |
+  | Pico de CPU da máquina | 100% | **68,7%** |
+  | Maior consumidor no pico | Avira 92,6% | `node` 46,8% |
+
+  ⚠️ **Limites desta medição:** n=1 por número, e parte do ganho de compilação
+  pode vir de cache do Next entre execuções — não foi isolado. O dado forte não
+  é o cronômetro, é o **perfil de CPU**: o topo deixou de ser varredura de
+  antivírus e passou a ser o `node` fazendo o trabalho, com folga sobrando.
+- **Consequência prática:** o build voltou a ser seguro nesta máquina mesmo sem
+  as exclusões do Defender. As exclusões seguem valendo a pena, mas deixaram de
+  ser pré-requisito para trabalhar.
+- **Se o travamento voltar**, o próximo suspeito é o **Componente de Segurança
+  Bradesco** (Warsaw/Topaz, do internet banking), que continua residente —
+  aparecia com uso baixo nos dois travamentos, mas não foi isolado.
 - `next build` sobe **3 workers** (aparece no próprio log: "Generating static
   pages using 3 workers") — com 4 núcleos, isso mais o baseline ocupa a máquina
   inteira.
@@ -227,10 +246,15 @@ livre.**
 Antes de rodar qualquer coisa pesada, vale **fechar as sessões do Claude Code
 que não estão em uso** — cada uma carrega processos que somam no baseline.
 
-⚠️ **`npm run lint` não roda nesta máquina.** Não é flake: falhou nas duas
-tentativas e a segunda derrubou o sistema. **Não tentar de novo** — validar com
-`npm run build` (que já faz o type-check) e deixar o ESLint para o CI da Vercel,
-dizendo isso no relato e no corpo do PR.
+✅ **`npm run lint` voltou a funcionar depois que o Avira saiu** (medido
+2026-08-08): `npx eslint app/sitemap.ts` terminou com **exit 0 em 133 s**.
+Antes, no mesmo dia e mesma árvore, não terminava — estourou 5 min e depois
+7 min sem saída, e a segunda tentativa derrubou o sistema. **Isto substitui a
+regra anterior de "não tentar de novo".**
+
+Continua sendo **lento** (133 s para *um* arquivo), então: rodar o ESLint
+apontando para os arquivos alterados, não para a árvore inteira, e nunca junto
+de um `npm run build`.
 
 Nota de fluxo: `git status --short`, `git add` e `git commit` são leves e
 funcionaram o tempo todo, inclusive logo após o reboot (o índice sobrevive).
