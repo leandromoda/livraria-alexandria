@@ -92,6 +92,35 @@ seção, mais publicações**, sem re-execução manual. (`_run_gargalo` em `mai
 > `REPAIR_SAFETY_EVERY`. Lógica em `core/drain_loop.py` (isolada de imports
 > pesados para ser testável), testes em `tests/test_drain_loop.py`.
 
+> ⚠ **Corrigindo a expectativa acima — o fix de 2026-07-31 funcionou, e mesmo
+> assim o volume de log quase não caiu.** Medido em 2026-08-08 nos 3 logs
+> substanciais seguintes (`pipeline_2026-08-04_21-21-31`, `…08-05_21-12-07`,
+> `…08-06_21-17-39`; ~11h cada, n=93.827 / 91.714 / 94.695 linhas; mesma
+> contagem por `List Composer iniciado` / `QUALITY GATE END | Aprovados=N
+> Reprovados=N` / `Lista (temática )?criada`):
+>
+> | | 08-04 | 08-05 | 08-06 |
+> |---|---|---|---|
+> | LISTAS+QUALITY | 89,2% | 89,2% | **89,6%** |
+> | passes de `list_composer` | 52 | 51 | 52 |
+> | listas criadas | 2 | 5 | 5 |
+> | passes de `quality_gate` | 59 | 57 | 59 |
+> | livros aprovados (soma) | 15 | 28 | 37 |
+>
+> **O dreno de fato suspende** — no log de 08-04, depois que o não-LLM seca às
+> 00:38, o autopilot passa à cadência de ~31 min (00:43:56 → 01:15:23 →
+> 01:46:58), exatamente o `DRENO_SAFETY_S`. O que os 91,6% mediam não era só o
+> giro da espera: `quality_gate` e `list_composer` estão na lista `STEPS` do
+> `autopilot.run()` (`steps/autopilot.py`), executada inteira **a cada volta do
+> laço de ciclos** — inclusive na fase produtiva, quando o dreno está
+> legitimamente publicando. Por isso 91,6% → 89,2%.
+>
+> Atacado em duas frentes, sem mexer no `drain_loop`: (1) **verbosidade** — o
+> log por item virou contador agregado em `list_composer` e `quality_gate`
+> (reprovação só por falta de sinopse é o teto de quota, não informação nova);
+> (2) **cadência** — guard para não re-rodar `list_composer` sem publicação
+> nova. Ver os comentários no topo dos dois steps.
+
 > **Regra ao diagnosticar gargalos operacionais:** o uso do pipeline é, por
 > padrão, **autopilot (G, com fallbacks não-LLM)**. **Nunca** oriente o usuário a
 > "rodar o step X" / "rodar a opção N" como solução — isso é atalho manual. Se um

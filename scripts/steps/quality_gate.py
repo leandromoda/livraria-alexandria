@@ -5,6 +5,19 @@
 # Valida sinopse (não descricao) para publicação.
 # ============================================================
 
+# Reprovação por falta de sinopse é o TETO DE QUOTA LLM, não informação nova:
+# o livro está na fila do gargalo e será reprovado de novo em todo passe até o
+# claude CLI gerar a sinopse. O autopilot roda o gate a cada ciclo, então cada
+# um desses livros vira uma linha por passe. Medido nos 3 logs de ~11h de
+# 2026-08-04/05/06: 59, 57 e 59 passes do gate produziram 12.185, 11.072 e
+# 12.163 linhas de REPROVADO — contra 15, 28 e 37 aprovações. Somado ao LISTAS,
+# 89,2% / 89,2% / 89,6% de cada log.
+#
+# Reprovado SÓ por esses motivos entra no contador do resumo e não gera linha.
+# Qualquer outro motivo (slug, review, capa, idioma, score, título) continua
+# logado por item — esses indicam problema real de dados, não espera de quota.
+MOTIVOS_TETO_LLM = {"Sinopse pendente", "Sinopse curta ou ausente"}
+
 import os
 import sqlite3
 from core.db import get_conn
@@ -204,6 +217,7 @@ def run(idioma_base="PT", pacote=20, book_ids=None):
 
     aprovados  = 0
     reprovados = 0
+    reprovados_teto_llm = 0
     total      = len(rows)
 
     log("QUALITY GATE START")
@@ -256,7 +270,10 @@ def run(idioma_base="PT", pacote=20, book_ids=None):
         if motivos:
             set_publishable(conn, book_id, 0)
             reprovados += 1
-            log(f"[QUALITY][{i:03d}/{total:03d}] REPROVADO → {titulo} | " + " | ".join(motivos))
+            if set(motivos) <= MOTIVOS_TETO_LLM:
+                reprovados_teto_llm += 1
+            else:
+                log(f"[QUALITY][{i:03d}/{total:03d}] REPROVADO → {titulo} | " + " | ".join(motivos))
         else:
             set_publishable(conn, book_id, 1)
             aprovados += 1
@@ -264,7 +281,8 @@ def run(idioma_base="PT", pacote=20, book_ids=None):
 
     conn.close()
 
-    log(f"QUALITY GATE END | Aprovados={aprovados} Reprovados={reprovados}")
+    log(f"QUALITY GATE END | Aprovados={aprovados} Reprovados={reprovados}"
+        f" (aguardando sinopse: {reprovados_teto_llm})")
 
 
 # =========================

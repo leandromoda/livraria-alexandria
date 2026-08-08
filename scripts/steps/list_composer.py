@@ -10,6 +10,17 @@
 # - limites de geração
 # - usa editorial_score
 # - filtro anti thin-content
+#
+# LOG AGREGADO, NÃO POR ITEM (2026-08-08). Cada passe varre ~128 categorias +
+# ~129 temáticas + ~430 autores e, na esmagadora maioria, só reencontra listas
+# que já existem. Antes isso rendia duas linhas por item (`[LISTAS][n/N] … → x`
+# e `[LISTAS] Já existe → slug`), ~1.375 linhas por passe. Medido nos 3 logs de
+# ~11h de 2026-08-04/05/06 (n=94k, 92k e 95k linhas): LISTAS sozinho foi
+# 71.498 / 70.732 / 72.639 linhas — 76% de cada log — para 2 / 5 / 5 listas
+# criadas. Junto com o QUALITY, 89,2% / 89,2% / 89,6% de tudo que foi escrito.
+# Hoje só se loga o que MUDA (lista criada) mais as linhas de resumo, que já
+# carregam criadas/já existiam/elegíveis. O passe leva ~7 s, então não há o que
+# acompanhar por item.
 # ============================================================
 
 from core.db import get_conn
@@ -479,21 +490,18 @@ def _gerar_listas_tematicas(listas_ja_criadas):
     skipped_tematicas  = 0
     total_tematicas    = len(categorias)
 
-    for k, row in enumerate(categorias, start=1):
+    for row in categorias:
 
         categoria_slug = row[0]
 
         if listas_ja_criadas + listas_tematicas >= MAX_LISTAS_EXEC:
             break
 
-        log(f"[LISTAS][{k:03d}/{total_tematicas:03d}] temática → {categoria_slug}")
-
         slug = f"melhores-livros-de-{categoria_slug}"
 
         # Dedup: não criar lista se slug idêntico já existir
         if lista_existe(slug):
             skipped_tematicas += 1
-            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_tematica(categoria_slug)
@@ -539,7 +547,7 @@ def run():
     skipped_cat     = 0
     total_categorias = len(categorias)
 
-    for i, row in enumerate(categorias, start=1):
+    for row in categorias:
 
         categoria = row[0]
 
@@ -549,13 +557,10 @@ def run():
         if listas_criadas >= MAX_LISTAS_EXEC:
             break
 
-        log(f"[LISTAS][{i:03d}/{total_categorias:03d}] categoria → {categoria}")
-
         slug = slug_categoria(categoria)
 
         if lista_existe(slug):
             skipped_cat += 1
-            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_categoria(categoria)
@@ -598,7 +603,7 @@ def run():
     skipped_autor = 0
     total_autores = len(autores)
 
-    for j, autor_row in enumerate(autores, start=1):
+    for autor_row in autores:
 
         if listas_criadas + listas_autor >= MAX_LISTAS_EXEC:
             break
@@ -607,13 +612,10 @@ def run():
         autor_nome = autor_row[1]
         autor_slug = autor_row[2]
 
-        log(f"[LISTAS][{j:03d}/{total_autores:03d}] autor → {autor_nome}")
-
         slug = slug_autor(autor_slug)
 
         if lista_existe(slug):
             skipped_autor += 1
-            log(f"[LISTAS] Já existe → {slug}")
             continue
 
         livros = fetch_livros_autor(autor_id)

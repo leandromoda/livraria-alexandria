@@ -64,6 +64,7 @@ from steps import db_restore
 from steps import db_recover
 
 from core.db import get_conn
+from core.logger import log
 from core.version import get_version
 from core.run_logger import StepRun
 
@@ -99,9 +100,17 @@ last_activity = time.time()
 PRECO_POR_CICLO = int(os.getenv("PRECO_POR_CICLO", "50"))
 
 
-def log(msg):
-    now = time.strftime("%H:%M:%S")
-    print(f"[{now}] {msg}")
+# `log` vem de core.logger (import no topo), que escreve no console E no
+# `data/logs/pipeline_*.log`. Até 2026-08-08 este arquivo definia um `log()`
+# local que só fazia `print()` e sombreava o do core — então NENHUMA linha `[G]`
+# chegava ao arquivo. Medido nos 3 logs de ~11h de 2026-08-04/05/06 (n=94k
+# linhas cada): 0 ocorrências de `[G]`, embora os três sejam execuções
+# inequívocas do `_run_gargalo`. Perdiam-se o plano do G, o relatório final, as
+# decisões do loop multijanela e — pior — a linha `[G] Não-LLM seco (…)` que o
+# `core/drain_loop.py` emite através do `log=log` passado em `_run_gargalo`,
+# escrita em 2026-07-31 justamente para tornar essa decisão auditável. Sem ela,
+# a única forma de conferir se o dreno havia suspendido era inferir pela
+# cadência de ~31 min dos `[AUTOPILOT] Ciclo 1`.
 
 
 # =========================
@@ -109,12 +118,19 @@ def log(msg):
 # =========================
 
 def heartbeat():
+    """Sinal de vida no console — de propósito NÃO vai para o arquivo.
+
+    São 2 linhas/min; numa seção de 11h isso são ~1.300 linhas de log que não
+    dizem nada sobre o pipeline. O heartbeat serve para quem está olhando o
+    terminal, não para a análise posterior.
+    """
     global INPUT_MODE
 
     while True:
         if not INPUT_MODE:
             elapsed = int(time.time() - last_activity)
-            log(f"Script ativo… último evento há {elapsed}s")
+            now = time.strftime("%H:%M:%S")
+            print(f"[{now}] Script ativo… último evento há {elapsed}s")
         time.sleep(30)
 
 

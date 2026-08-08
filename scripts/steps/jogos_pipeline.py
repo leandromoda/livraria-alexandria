@@ -39,6 +39,7 @@ from pathlib import Path
 
 import requests
 
+from core import drain_loop
 from core.logger import log
 
 
@@ -1433,6 +1434,36 @@ def _drain_non_llm():
     gen_slugs()
 
 
+def _drenar_publicar_jogos():
+    """Uma rodada da espera produtiva: drena o não-LLM, reavalia e publica.
+
+    É o `autopilot_run` que o `core/drain_loop.py` invoca — o loop decide se
+    vale repetir, comparando `_pendentes_publicacao()` antes e depois.
+    """
+    _drain_non_llm()
+    quality_gate()
+    publish()
+
+
+def _pendentes_publicacao(conn=None) -> int:
+    """Jogos ainda não publicados — a medida de progresso da espera produtiva.
+
+    Análogo do `autopilot.count_pending` dos livros: é exatamente o conjunto que
+    o `quality_gate()` relê e que `publish()` pode reduzir. Nos 3 logs de
+    2026-08-04/05/06 esse número ficou cravado em 319 por ~5h, que é o sinal de
+    que a repetição não estava produzindo nada.
+    """
+    own = conn is None
+    if own:
+        conn = get_conn()
+    n = conn.execute(
+        "SELECT COUNT(*) FROM jogos WHERE status_publish = 0"
+    ).fetchone()[0]
+    if own:
+        conn.close()
+    return n
+
+
 def autopilot(max_lotes_llm=10):
     """Passe único (opção A do jogos.py): seeds -> resolver -> scraper ->
     slugs -> sinopses (lotes LLM até drenar/limite) -> QG -> publicar."""
@@ -1504,20 +1535,23 @@ def autopilot_j():
             while True:
                 # 1) Espera produtiva: drena/publica o não-LLM enquanto a
                 #    sessão PRO está em cooldown; sai quando a quota volta.
-                while True:
-                    _drain_non_llm()
-                    quality_gate()
-                    publish()
-                    w = session_window()
-                    if not w.get("in_cooldown"):
-                        break                                # quota restaurada
-                    secs = max(0, int(w.get("seconds_until_reset", 0)))
-                    nap = min(300, secs)                     # re-checa a cada <=5 min
-                    if nap <= 0:
-                        break
-                    log(f"[J] Não-LLM drenado; aguardando reset da sessão "
-                        f"(~{secs // 60} min restantes)…")
-                    time.sleep(nap)
+                #    Reusa core/drain_loop.py — o mesmo guard que o G usa desde
+                #    2026-07-31 (ele é agnóstico ao domínio de propósito: tudo
+                #    entra por parâmetro). Sem ele, este laço re-rodava
+                #    `quality_gate()` a cada soneca de ≤5 min durante todo o
+                #    cooldown de ~5h. Medido nos 3 logs de ~11h de
+                #    2026-08-04/05/06: 61, 60 e 62 passes de JOGOS_QG, TODOS com
+                #    "Aprovados: 0 | Bloqueados: 319" — zero progresso, cada
+                #    passe relendo os 319 jogos não publicados.
+                drain_loop.drenar_ate_reset(
+                    autopilot_run=_drenar_publicar_jogos,
+                    count_pending=_pendentes_publicacao,
+                    session_window=session_window,
+                    log=log,
+                    sleep=time.sleep,
+                    monotonic=time.monotonic,
+                    prefixo="[J]",
+                )
 
                 if session_window().get("in_cooldown"):
                     log("[J] Sessão ainda em cooldown — encerrando loop multijanela.")

@@ -103,4 +103,18 @@ f = Fake(cooldown_s=3600, pendente=0, custo_passe_s=0)
 assert f.rodar() == "quota_restaurada"
 assert f.invocacoes <= 12, f"busy-spin: {f.invocacoes} invocações"
 
+# ── 7. `prefixo` etiqueta as linhas do chamador ──────────────────────────────
+# A seção Jogos reusa este loop desde 2026-08-08 (antes ela tinha um laço
+# próprio que re-rodava o quality gate a cada ≤5 min: 61/60/62 passes com
+# "Aprovados: 0 | Bloqueados: 319" nos logs de 08-04/05/06). As linhas dela
+# precisam sair como [J], não [G], senão o log mente sobre quem drenou.
+f = Fake(cooldown_s=5 * 3600, pendente=0)
+f.rodar(prefixo="[J]")
+assert f.logs, "esperava alguma linha de log"
+assert all(m.startswith("[J]") for m in f.logs), f"prefixo ignorado: {f.logs[:3]}"
+
+f = Fake(cooldown_s=5 * 3600, pendente=0)
+f.rodar()
+assert all(m.startswith("[G]") for m in f.logs), f"padrão devia ser [G]: {f.logs[:3]}"
+
 print("test_drain_loop OK")
