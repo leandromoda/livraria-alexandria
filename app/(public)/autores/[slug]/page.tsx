@@ -37,12 +37,18 @@ const getAutor = unstable_cache(
   { revalidate: 86400 },
 );
 
+// Devolve `null` quando a QUERY FALHA e `[]` quando o autor realmente nao tem
+// livro. A distincao existe porque a pagina 404a autor sem livro: engolir o
+// erro como lista vazia (o antigo `data ?? []`) faria uma falha transitoria do
+// Supabase virar um 404 — e, com revalidate de 24h, esse 404 ficaria CACHEADO
+// por um dia numa pagina de autor legitima.
 const getLivrosDoAutor = unstable_cache(
   async (autorId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("livros_autores")
       .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
       .eq("autor_id", autorId);
+    if (error) return null;
     return data ?? [];
   },
   ["autor-livros"],
@@ -88,6 +94,18 @@ export default async function AutorPage({ params }: PageProps) {
     .map((l: any) => l.livros)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((l: any) => l?.is_publishable === true);
+
+  // Autor sem nenhum livro publicavel nao tem pagina: 404.
+  //
+  // Antes isto respondia 200 com `robots: noindex`. Mas noindex desindexa e NAO
+  // impede o crawl — o Google segue buscando a URL justamente para reler o
+  // noindex, e cada busca dessas e uma regeneracao ISR. Sao 6.248 dos 8.399
+  // autores sem livro nenhum (medido em 2026-08-07), ja fora do sitemap e do
+  // indice /autores; o 404 fecha a ultima porta de crawl.
+  //
+  // `livrosPivot === null` significa QUERY FALHA, nao ausencia de livro — nesse
+  // caso nao 404a, para nao cachear um 404 de 24h em cima de erro transitorio.
+  if (livrosPivot !== null && livros.length === 0) return notFound();
 
   return (
     <div className="space-y-10">
