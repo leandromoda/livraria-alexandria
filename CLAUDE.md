@@ -165,6 +165,11 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 
 ### ⚠️ Subprocesso trava a máquina — um comando por vez (medido em 2026-08-06)
 
+> **Estado em 2026-08-08:** a causa principal foi removida (Avira desinstalado,
+> ver o ✅ abaixo). As regras desta seção **continuam valendo** — a máquina tem
+> 4 núcleos e o efeito do Defender sob carga ainda não foi medido. Reavaliar
+> depois de um `npm run build` completo com a nova configuração.
+
 Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
 **duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
 
@@ -185,11 +190,25 @@ memória 26–30%, disco 0–6%**. Os fatos:
   escrito aqui que "o Claude Code é o maior consumidor (~10%)". Aquilo foi
   medido com a **máquina ociosa** e não se sustenta sob carga. Medição em
   repouso não serve para achar culpado de travamento — tem que ser durante.
-- **A ação que resolve** (é do Leandro, não do assistente — mexer em config de
-  antivírus está fora do que o assistente faz): adicionar **exclusões no Avira
-  Security** para a pasta do projeto, sobretudo `node_modules/`, `.next/` e
-  `.git/`. Sem isso o problema volta em todo build. Fechar sessões do Claude
-  ajuda pouco: ataca os 3,7%, não os 92,6%.
+- ✅ **RESOLVIDO em 2026-08-08: o Avira foi desinstalado.** Medição logo após a
+  remoção: **nenhum processo `avira`/`endpointprotection` vivo**, e o topo de
+  CPU passou a ser o próprio Claude (~24% somados, 29,7% no total da máquina)
+  — os 92,6% sumiram. O Microsoft Defender reassume sozinho quando o antivírus
+  de terceiro sai.
+- **O que ainda falta configurar** (é do Leandro, não do assistente — mexer em
+  config de antivírus está fora do que o assistente faz): as **exclusões do
+  Defender** em *Segurança do Windows → Proteção contra vírus e ameaças →
+  Exclusões*, para `node_modules/`, `.next/`, `.git/` e `venv/` do projeto,
+  mais o processo `node.exe`. O Defender **também** varre em tempo real; trocar
+  de antivírus sem excluir essas pastas não garante o ganho.
+  ⚠️ Custo real da exclusão, para decidir com o dado à vista: `node_modules/` é
+  exatamente onde um ataque de supply chain em dependência npm apareceria. O
+  mitigador é o conteúdo vir de `package-lock.json` e ser reinstalável. Excluir
+  essas quatro pastas — nunca o repositório inteiro, o disco ou Downloads.
+- **Ainda não medido:** o efeito do Defender sob carga real (`npm run build`)
+  nesta máquina. Se o travamento voltar, o próximo suspeito é o **Componente de
+  Segurança Bradesco** (Warsaw/Topaz, do internet banking), que continua
+  residente — aparecia com uso baixo nos dois travamentos, mas não foi isolado.
 - `next build` sobe **3 workers** (aparece no próprio log: "Generating static
   pages using 3 workers") — com 4 núcleos, isso mais o baseline ocupa a máquina
   inteira.
