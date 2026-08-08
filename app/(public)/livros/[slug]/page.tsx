@@ -150,6 +150,18 @@ export default async function LivroPage({ params }: PageProps) {
   /**
    * Schema.org
    */
+
+  // Um ISBN-13 é um GTIN-13 válido, e `gtin13` é o identificador global que o
+  // relatório "Listagens do comerciante" do Search Console pede (avisos de
+  // 2026-07-30 e 31: "nenhum identificador global fornecido"). O aviso é não
+  // crítico e não bloqueia rich result.
+  //
+  // Só resolve os poucos livros que têm ISBN: numa amostra de 300 livros
+  // publicados em 2026-08-06, 297 estavam SEM isbn no banco. O resto é lacuna
+  // de dado do pipeline, não do site.
+  const isbnDigitos = (livro.isbn ?? "").replace(/\D/g, "");
+  const gtin13 = isbnDigitos.length === 13 ? isbnDigitos : undefined;
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -157,8 +169,9 @@ export default async function LivroPage({ params }: PageProps) {
     url: `${process.env.NEXT_PUBLIC_SITE_URL}/livros/${slug}`,
     description: livro.descricao ?? undefined,
     image: livro.imagem_url || undefined,
-    sku: livro.isbn,
-    isbn: livro.isbn || undefined,
+    // Condicionais: sem isbn, `sku: livro.isbn` emitia `"sku": null` no JSON-LD.
+    ...(livro.isbn ? { sku: livro.isbn, isbn: livro.isbn } : {}),
+    ...(gtin13 ? { gtin13 } : {}),
     ...(livro.autor?.trim() ? { brand: { "@type": "Brand", name: livro.autor.trim().substring(0, 70) } } : {}),
     additionalProperty: [
       {

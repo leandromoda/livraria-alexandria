@@ -163,6 +163,95 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 > a cada PR para pedir algo já concedido. O gatilho continua sendo o pedido de
 > alteração; o que não se pede mais é permissão para **publicá-la**.
 
+### ⚠️ Subprocesso trava a máquina — um comando por vez (medido em 2026-08-06)
+
+Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
+**duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
+
+**A causa é o antivírus varrendo os arquivos do projeto, e o gargalo é CPU —
+não memória.** Medido em 2026-08-06 durante os travamentos: **CPU 100%,
+memória 26–30%, disco 0–6%**. Os fatos:
+
+- A máquina tem **4 núcleos lógicos** (`Win32_ComputerSystem`). É pouco.
+- **O culpado é o antivírus.** Com o Gerenciador ordenado **por CPU**, durante
+  um travamento: **Endpoint Protection Service (Avira) = 92,6%**, contra 3,7%
+  do Claude (14 processos) e <2% de todo o resto.
+- **Por que os comandos deste projeto disparam isso:** o Avira varre em tempo
+  real **cada arquivo aberto**. `npm run build`, `npm run lint` e o `git`
+  percorrem dezenas de milhares de arquivos (`node_modules/`, `.next/`,
+  `.git/`) — cada um vira uma varredura. Não é o Node que come a CPU: é o
+  antivírus reagindo ao Node.
+- ⚠️ **Correção de um diagnóstico anterior desta mesma sessão:** chegou a ficar
+  escrito aqui que "o Claude Code é o maior consumidor (~10%)". Aquilo foi
+  medido com a **máquina ociosa** e não se sustenta sob carga. Medição em
+  repouso não serve para achar culpado de travamento — tem que ser durante.
+- **A ação que resolve** (é do Leandro, não do assistente — mexer em config de
+  antivírus está fora do que o assistente faz): adicionar **exclusões no Avira
+  Security** para a pasta do projeto, sobretudo `node_modules/`, `.next/` e
+  `.git/`. Sem isso o problema volta em todo build. Fechar sessões do Claude
+  ajuda pouco: ataca os 3,7%, não os 92,6%.
+- `next build` sobe **3 workers** (aparece no próprio log: "Generating static
+  pages using 3 workers") — com 4 núcleos, isso mais o baseline ocupa a máquina
+  inteira.
+- `eslint` sem cache prende um núcleo por mais de 7 min sem terminar.
+
+**Consequência que confunde o diagnóstico:** com a CPU saturada, `git` e `gh`
+ficam sem fatia e estouram timeout. Isso *parece* hang de rede e **não é** — é
+inanição de CPU. Foi o que aconteceu em 2026-08-06: `npm run lint` estourou
+**5 min** e depois **7 min** (`npx eslint` em 2 arquivos); `git credential fill`
+pendurou **2 min**; `git rev-list`/`git log`, **40–90 s**; `gh pr create`,
+**4 min**; `curl` para `api.github.com`, **60 s** — todos com saída vazia,
+enquanto `git status` (instantâneo) nunca falhou. A regra prática que sai daí:
+**comando curto passa mesmo sob carga; comando longo só passa com a máquina
+livre.**
+
+Antes de rodar qualquer coisa pesada, vale **fechar as sessões do Claude Code
+que não estão em uso** — cada uma carrega processos que somam no baseline.
+
+⚠️ **`npm run lint` não roda nesta máquina.** Não é flake: falhou nas duas
+tentativas e a segunda derrubou o sistema. **Não tentar de novo** — validar com
+`npm run build` (que já faz o type-check) e deixar o ESLint para o CI da Vercel,
+dizendo isso no relato e no corpo do PR.
+
+Nota de fluxo: `git status --short`, `git add` e `git commit` são leves e
+funcionaram o tempo todo, inclusive logo após o reboot (o índice sobrevive).
+O que pendura é comando com **rede** (`push`, `gh`, `curl` externo) ou **pager**.
+
+#### ⚠️ A regra abaixo é POR SESSÃO — ela não protege contra várias sessões
+
+"Um comando por vez" governa o que **um** assistente dispara. Duas sessões do
+Claude Code abertas ao mesmo tempo, cada uma obedecendo a regra, ainda colocam
+**dois `next build` concorrentes** na máquina — que é exatamente o cenário que a
+derruba. Nenhuma sessão enxerga a outra, então **isto não se resolve sozinho**:
+
+- **`npm run build` é exclusivo da máquina inteira**, não da sessão. Se houver
+  outra sessão do Claude Code (ou um `npm run dev`, ou o pipeline Python
+  rodando), **não iniciar o build** — perguntar ao Leandro antes.
+- **Trabalho de código em uma sessão por vez.** É a mesma razão do "um PR por
+  vez" e do "GitHub Desktop fechado": sessões concorrentes compartilham um único
+  working tree. Em 2026-08-06 isso foi **observado**: arquivos modificados em
+  `scripts/` e `state/` sumiram do working tree no meio da sessão sem que o
+  assistente os tocasse. Sessão paralela pode usar o repo em modo leitura
+  (`Read`/`Grep`/análise), mas não deve editar, commitar nem buildar.
+- Se o assistente suspeitar de sessão paralela — working tree mudando sozinho,
+  branch trocando, arquivo que ele não editou aparecendo staged — **parar e
+  avisar**, em vez de seguir e commitar por cima.
+
+Regras (dentro de uma sessão):
+
+- **Um comando de shell por vez.** Não disparar várias chamadas `Bash`/
+  `PowerShell` no mesmo bloco de resposta, mesmo quando são independentes — a
+  orientação geral de paralelizar chamadas **não vale para shell aqui**.
+- **Não acumular `run_in_background`.** No máximo um de cada vez, e só para
+  comando realmente longo (`npm run build`). Nunca deixar dois rodando juntos.
+- **Agrupar leituras num único script** em vez de um comando por consulta
+  (ex.: um `bash` que faz os N `curl` em sequência, não N chamadas da ferramenta).
+- Preferir as ferramentas dedicadas (`Read`, `Grep`, `Glob`) a `cat`/`grep`/
+  `find` via shell — não abrem subprocesso pesado.
+- Hang é **intermitente**: repetir uma vez é aceitável, insistir não. Se um
+  comando pendurou duas vezes, seguir sem ele e **dizer isso no relato**, em vez
+  de continuar tentando.
+
 ### Armadilhas de shell no Windows (medidas em 2026-08-02)
 
 - **O pager do `git` trava a sessão não-interativa.** `git show` / `git log` sem
@@ -174,10 +263,17 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
   PowerShell é repassada de forma que o git lê pedaços da mensagem como
   *pathspec* (`error: pathspec '…' did not match any file(s)`). Escreva a
   mensagem num arquivo e use `git commit -F <arquivo>`.
-- **O `gh` CLI funciona** — a observação antiga de que "qualquer comando `gh`
-  pendura" não se sustentou (2026-08-02: `pr list`, `pr create`, `pr checks
-  --watch` e `pr merge` rodaram inteiros). Trate hang do `gh` como intermitente,
-  não como fato; só caia para a API REST se ele realmente pendurar.
+- **O `gh` CLI é intermitente — não conte com ele.** Em 2026-08-02 rodou inteiro
+  (`pr list`, `pr create`, `pr checks --watch`, `pr merge`), o que derrubou a
+  afirmação de 2026-07-24 de que "qualquer comando `gh` pendura". Mas em
+  **2026-08-06 pendurou de novo**: `gh pr create --body-file` estourou **4 min**
+  e `gh pr list --json` estourou **75 s**, ambos sem saída, logo após um
+  `git push` bem-sucedido no mesmo branch. Ou seja: as duas afirmações
+  absolutas ("funciona" / "sempre trava") estão erradas — é intermitente.
+  Tratamento: tentar **uma vez**; se pendurar, **não repetir** — abrir o PR pela
+  URL que o próprio `git push` imprime, ou cair para a API REST.
+- **`git push` sobre HTTPS funcionou** mesmo nas sessões em que `gh` pendurou
+  (2026-08-06). Não presuma que a rede inteira está fora quando o `gh` trava.
 
 ### Pré-autorização de comandos fica em `.claude/settings.json`
 
