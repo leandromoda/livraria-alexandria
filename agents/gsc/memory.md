@@ -93,8 +93,8 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
-| 2026-08-06 | sitemap | **Cobertura: 1.144 → 7.708 URLs.** Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.139 e 0 → 697); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #PR |
-| 2026-08-06 | dados estruturados | `livros/[slug]`: emitir `gtin13` quando o ISBN tem 13 dígitos e parar de emitir `"sku": null`. Atende parcialmente o aviso não crítico de Listagens do comerciante | #PR |
+| 2026-08-08 | sitemap | **Cobertura: 1.144 → 7.762 URLs — confirmado pelo próprio GSC** ("Páginas encontradas" 1.145 → 7.762, processado no mesmo dia). Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.152 e 0 → 703); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #259 |
+| 2026-08-08 | dados estruturados | `livros/[slug]`: emitir `gtin13` quando o ISBN tem 13 dígitos e parar de emitir `"sku": null`. Atende parcialmente o aviso não crítico de Listagens do comerciante | #259 |
 | 2026-07-19 | dados estruturados | `jogos/[slug]`: JSON-LD `Product` era renderizado **incondicionalmente** e saía sem `offers` (10 de 11 jogos com `preco_atual` nulo) → erro crítico "Especifique offers/review/aggregateRating". Guard no render, igual a `livros/[slug]` | #216 |
 | 2026-07-13 | canônica | `metadataBase` → apex sem-www (`app/layout.tsx`); canonical relativa não resolve mais para o domínio que redireciona | #209 |
 | 2026-07-10 | domínio | Redirect www→apex 308 (Vercel Domains); apex vira Production | — (config) |
@@ -117,10 +117,13 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   ISBN — o aviso só some de verdade quando o pipeline preencher a coluna.
   **Lacuna de dados do pipeline, não tarefa de SEO** — mesmo padrão do
   `preco_atual` de jogos. Não reabrir como bug do site.
-- **Validar no GSC após o deploy do #PR**: submeter "Validar correção" em
-  *Excluída pela tag "noindex"* e reenviar o `sitemap.xml`. Acompanhar se
-  "Detectada, mas não indexada" sobe (esperado e temporário: 6,5 mil URLs novas
-  entraram na fila de crawl de uma vez).
+- **Acompanhar "Detectada, mas não indexada"** nas próximas semanas: deve subir,
+  e isso é **esperado e temporário** — 6,6 mil URLs novas entraram na fila de
+  crawl de uma vez com o #259. Não tratar como regressão.
+- **Validação de "Excluída pela tag noindex" submetida em 2026-08-08.** Antes de
+  submeter foi conferido que `/infantis`, `/jogos` e `/infantis/elmer` respondem
+  **200 sem `meta robots`**. Se o Google devolver falha, a causa é **outra URL**
+  que não a `/infantis` — investigar qual antes de resubmeter.
 - **`agents/audit/prompt.md` ainda referencia URLs `www`** — o agente de auditoria
   crawleia `https://www.livrariaalexandria.com.br` (segue o 308 p/ o apex, então
   funciona). Cleanup menor: apontar direto p/ o apex. Baixa prioridade.
@@ -143,21 +146,28 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|
-| 2026-08-06 | — | — | — | — | — | — | — |
+| 2026-08-08 | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 |
 
-**Seção 2026-08-06 — sem números do relatório.** A extensão do Chrome não estava
+**Seção 2026-08-08 — sem números do relatório.** A extensão do Chrome não estava
 conectada (`list_connected_browsers` → `[]`), então o relatório de indexação não
 foi aberto e **as contagens por categoria não foram coletadas**. A seção rodou a
 partir do Gmail (`from:sc-noreply@google.com`) + auditoria direta do
 `sitemap.xml` contra o banco. Repor os números na próxima seção com o Chrome
 conectado — sem isso não dá para ler tendência de 07-19 para cá.
 
-Cobertura do sitemap medida nesta seção (por contagem do XML vs. `count=exact`
-no PostgREST): **antes 1.144 URLs → depois 7.708**. Detalhe: livros 1.000 →
-4.727, autores 0 → 2.139, listas 0 → 697, categorias 125 (inalterado),
-jogos 11 (inalterado), infantis 0 → 1.
+**Cobertura do sitemap — confirmada pelo GSC, não só medida localmente:**
+"Páginas encontradas" saiu de **1.145 para 7.762**, com o sitemap reenviado e
+processado **no mesmo dia** (o prazo previsto de "dias" estava errado; foram
+~30 min). Detalhe por seção: livros 1.000 → 4.765, autores 0 → 2.152,
+listas 0 → 703, categorias 125 e jogos 11 (inalterados), infantis 0 → 1.
+
+⚠️ **Registrar sempre a URL do sitemap no apex.** O registro antigo apontava
+para `https://www.livrariaalexandria.com.br/sitemap.xml` (funciona, mas via
+308). E em propriedade de **domínio** (`sc-domain:`) o GSC **recusa caminho
+relativo** — digitar `sitemap.xml` dá "Endereço do sitemap inválido"; tem que
+ser a URL completa `https://livrariaalexandria.com.br/sitemap.xml`.
 
 **Seção 2026-07-19** — indexadas **5,65 mil** / não indexadas **4,21 mil** (12 motivos).
 Categorias fora da tabela acima: Página com redirecionamento **1.147**,
