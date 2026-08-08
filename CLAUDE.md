@@ -168,14 +168,28 @@ no produto, e o que as regras de segurança já proíbem (credenciais, pagamento
 Esta máquina **engasga com subprocessos concorrentes**. Em 2026-08-06 travou
 **duas vezes** na mesma sessão — a segunda exigiu **reiniciar a máquina**.
 
-**A causa é CPU, não memória** — medido no Gerenciador de Tarefas e via
-`Get-Process` em 2026-08-06, durante um dos travamentos: **CPU 100%, memória 30%,
-disco 0%**. Os fatos:
+**A causa é o antivírus varrendo os arquivos do projeto, e o gargalo é CPU —
+não memória.** Medido em 2026-08-06 durante os travamentos: **CPU 100%,
+memória 26–30%, disco 0–6%**. Os fatos:
 
 - A máquina tem **4 núcleos lógicos** (`Win32_ComputerSystem`). É pouco.
-- **O Claude Code é o maior consumidor em repouso**: 5–6 processos `claude`
-  somando **~10% de CPU contínuos**; num deles, 1.121 s de CPU acumulados em
-  ~59 min de relógio. Esse é o *baseline* antes de qualquer comando.
+- **O culpado é o antivírus.** Com o Gerenciador ordenado **por CPU**, durante
+  um travamento: **Endpoint Protection Service (Avira) = 92,6%**, contra 3,7%
+  do Claude (14 processos) e <2% de todo o resto.
+- **Por que os comandos deste projeto disparam isso:** o Avira varre em tempo
+  real **cada arquivo aberto**. `npm run build`, `npm run lint` e o `git`
+  percorrem dezenas de milhares de arquivos (`node_modules/`, `.next/`,
+  `.git/`) — cada um vira uma varredura. Não é o Node que come a CPU: é o
+  antivírus reagindo ao Node.
+- ⚠️ **Correção de um diagnóstico anterior desta mesma sessão:** chegou a ficar
+  escrito aqui que "o Claude Code é o maior consumidor (~10%)". Aquilo foi
+  medido com a **máquina ociosa** e não se sustenta sob carga. Medição em
+  repouso não serve para achar culpado de travamento — tem que ser durante.
+- **A ação que resolve** (é do Leandro, não do assistente — mexer em config de
+  antivírus está fora do que o assistente faz): adicionar **exclusões no Avira
+  Security** para a pasta do projeto, sobretudo `node_modules/`, `.next/` e
+  `.git/`. Sem isso o problema volta em todo build. Fechar sessões do Claude
+  ajuda pouco: ataca os 3,7%, não os 92,6%.
 - `next build` sobe **3 workers** (aparece no próprio log: "Generating static
   pages using 3 workers") — com 4 núcleos, isso mais o baseline ocupa a máquina
   inteira.
