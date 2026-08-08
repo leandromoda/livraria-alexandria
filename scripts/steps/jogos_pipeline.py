@@ -214,8 +214,21 @@ def discover_seed_files():
 
 
 def _load_seeds(filepath):
-    with open(filepath, "r", encoding="utf-8") as f:
+    """Le o seed tolerando o que o agente costuma errar: BOM, cerca de markdown
+    (```json) e JSONL. Mesma tolerancia do pipeline infantil (_load_seeds em
+    infantis_pipeline) — ate 2026-07-28 este loader nao tinha nenhuma das duas
+    primeiras, enquanto o proprio prompt do seeder de jogos mandava entregar
+    "dentro de bloco de codigo". O arquivo cercado nao explodia o pipeline
+    (import_seeds captura), mas era logado como ERRO e ficava parado em seeds/
+    para sempre. O prompt passou a exigir JSON puro no mesmo PR; esta tolerancia
+    e a rede de seguranca."""
+    with open(filepath, "r", encoding="utf-8-sig") as f:
         text = f.read().strip()
+
+    if text.startswith("```"):
+        linhas = [l for l in text.splitlines() if not l.strip().startswith("```")]
+        text = "\n".join(linhas).strip()
+
     try:
         return json.loads(text)
     except json.JSONDecodeError:
