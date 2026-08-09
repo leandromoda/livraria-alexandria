@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-07 (sessao 34 - PR #263): (1) ISR Writes ESTOUROU (100% de 200K em 05/08) e Fluid Active CPU esta em 75%. O diagnostico de 26/07 estava errado no driver: nao era 'cauda longa com TTL curto' — o TTL de 24h funciona (Age de 15,6h com HIT), mas o volume vem de 7.800 paginas linkadas x 69 deploys em 30 dias, porque cada merge no main invalida o cache ISR inteiro. A alavanca e reduzir deploys (TASK-PERF-017). (2) Levantado nos docs o que acontece ao estourar no Hobby: bloqueio por FEATURE e janela deslizante de 30 dias, sem reset no dia 1; observado que NAO pausou. O alarme que assusta e o de ISR, mas o que nao pode estourar e o de CPU, que derruba /api/click e o caminho de receita (TASK-PERF-018). (3) Autor sem livro publicavel passou a responder 404 em vez de 200+noindex, fechando a ultima porta de crawl dos 6.248 autores vazios (#263). (4) Backfill de idioma nos publicados em 2.025/4.683: 38% dos resolvidos nao sao portugues, projetando ~1.780 paginas nao-PT no ar (TASK-PIPE-030).",
+    "last_updated": "2026-08-07 (sessao 34 - PR #263): (1) ISR Writes ESTOUROU (100% de 200K em 05/08) e Fluid Active CPU esta em 75%. O diagnostico de 26/07 estava errado no driver: nao era 'cauda longa com TTL curto' — o TTL de 24h funciona (Age de 15,6h com HIT), mas o volume vem de 7.800 paginas linkadas x 69 deploys em 30 dias, porque cada merge no main invalida o cache ISR inteiro. A alavanca e reduzir deploys (TASK-PERF-017). (2) Levantado nos docs o que acontece ao estourar no Hobby: bloqueio por FEATURE e janela deslizante de 30 dias, sem reset no dia 1; observado que NAO pausou. O alarme que assusta e o de ISR, mas o que nao pode estourar e o de CPU, que derruba /api/click e o caminho de receita (TASK-PERF-018). (3) Autor sem livro publicavel passou a responder 404 em vez de 200+noindex, fechando a ultima porta de crawl dos 6.248 autores vazios (#263). (4) Backfill de idioma nos publicados em 2.025/4.683: 38% dos resolvidos nao sao portugues, projetando ~1.780 paginas nao-PT no ar (TASK-PIPE-030). (5) PR #270: vercel.json com ignoreCommand — 78% dos deploys (scripts/, state/, docs) deixam de gerar deployment, atacando a causa dominante do estouro de ISR Writes. Efeito a medir na proxima janela.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1137,7 +1137,8 @@
       "conta_do_volume": "7.800 paginas linkadas x 69 deploys x ~30% de cobertura de crawl = ~161K writes. Cada merge no main invalida o cache ISR inteiro; nenhum TTL protege contra isso.",
       "ao_estourar": "Docs do Hobby: espera 30 dias para usar A FEATURE de novo (bloqueio por recurso, nao pelo projeto). Observado em 07/08, 2 dias apos o ISR bater 100%: site inteiro em 200 e ISR ainda regenerando — nao pausou.",
       "qual_cota_dói": "ISR esgotado = conteudo velho (reversivel). Active CPU esgotado = morrem as rotas dinamicas e o /api/click, que e o redirect de afiliado — o caminho de receita. CPU e a que nao pode estourar.",
-      "baseline_anterior": "2026-07-26: CPU 3h09m/4h (79%), ISR Writes 139K/200K (70%), Image Optimization 4,4K/5K, Edge Requests 219K/1M"
+      "baseline_anterior": "2026-07-26: CPU 3h09m/4h (79%), ISR Writes 139K/200K (70%), Image Optimization 4,4K/5K, Edge Requests 219K/1M",
+      "deploys_que_nao_tocam_o_site": "63 de 80 merges na janela de 30 dias (78%) — so scripts/, state/ e docs. Mitigado pelo ignoreCommand do PR #270."
     }
   },
   "validated_routes": [
@@ -2323,14 +2324,17 @@
       "registered_on": "2026-08-07",
       "description": "Em 2026-08-05 a Vercel avisou 100% de ISR Writes (200.000) — estourou, nao 'se aproximando'. Em 2026-08-07 chegou outro aviso, 75% de Fluid Active CPU. CORRIGE o diagnostico da TASK-PERF-016 (2026-07-26), que atribuiu o volume a 'cauda longa com TTL curto' e subiu o TTL das rotas [slug] de 1h para 24h. O TTL FUNCIONA — verificado em producao: Age de 56.238s (15,6h) com x-vercel-cache HIT, o que com 1h ja teria regenerado 15 vezes —, mas nao e o driver dominante. A conta que fecha o volume: 14.047 paginas ISR no total (livros 4.764 + autores 8.399 + listas 703 + categorias 169 + jogos 11 + infantis 1), das quais ~7.800 sao efetivamente linkadas (sitemap + indices), vezes 69 DEPLOYS em producao na janela de 30 dias. Cada merge no main invalida o cache ISR INTEIRO, e nenhum TTL protege contra isso: 7.800 x 69 x ~30% de cobertura de crawl = ~161K writes. O perfil dos deploys confirma a origem: 12 em 25/07, 13 em 26/07 e 7 em 28/07 — dias de trabalho de desenvolvimento, incluindo os proprios PRs que shipamos para reduzir ISR Writes. Tambem CORRIGE a estimativa de universo da TASK-PERF-016 ('~8K paginas'): sao 14.047, porque autores sao 8.399 e nao os ~2.400 supostos.",
       "plano": [
-        "Reduzir a frequencia de deploy em producao — e a unica alavanca com a ordem de grandeza certa. 69/mes para ~20 cortaria ISR Writes na mesma proporcao. Agrupar PRs em vez de mergear um a um.",
-        "Avaliar reduzir o universo linkado: 1.329 autores tem exatamente 1 livro e valor SEO marginal.",
+        "FEITO (#270): ignoreCommand no vercel.json — ataca os 78% de deploys que nao tocam o site.",
+        "MEDIR na proxima janela: ISR Writes deve cair na proporcao dos deploys evitados. Comparar com a baseline de 2026-08-07 em pipeline_metrics.vercel_free_tier.",
+        "Agrupar PRs continua valendo para os 22% que SAO do site, mas virou ajuste fino.",
         "NAO insistir em subir TTL: ja esta em 24h e nao protege contra invalidacao por deploy."
       ],
       "files": [
         "app/(public)/livros/[slug]/page.tsx",
         "app/(public)/autores/[slug]/page.tsx"
-      ]
+      ],
+      "mitigacao": "PR #270 (2026-08-07): vercel.json com ignoreCommand pulando o build quando o commit nao toca app/, lib/, public/ nem as configs do frontend. Medido: 63 dos 80 merges da janela (78%) nao mudam uma linha do site — sao scripts/, state/ e docs — mas todos geravam deployment e cada deployment invalida o cache ISR inteiro. Semantica da Vercel, dos docs: exit 1 continua o build, exit 0 ignora; `git diff --quiet` sai 0 justamente quando nao ha diferenca. Simulado contra os 12 ultimos merges antes de subir: 10 pulariam, e os 2 que tocaram o site (404 dos autores em app/, correcao do sitemap em app/sitemap.ts) buildam. Esperado: ~69 deploys/mes para ~15.",
+      "modo_de_falha": "Se a lista de caminhos do ignoreCommand ficar incompleta, uma mudanca real do site NAO sobe — sem erro, so nao acontece nada. Revisar a lista se surgir pasta nova do frontend. Se HEAD^ nao existir, o git diff erra e sai nao-zero, entao o build ACONTECE: a falha e para o lado seguro. Para forcar deploy sem mexer no site, usar commit vazio ou redeploy pelo painel."
     },
     {
       "id": "TASK-PERF-018",
