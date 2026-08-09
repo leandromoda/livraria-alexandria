@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-07-28 (sessao 33, cont. - PR #267): TASK-INFANTIS-001 fechada - a migracao Supabase da secao Infantis JA estava aplicada (verify_supabase confirma as 2 tabelas). O bloqueio da publicacao infantil nao e a migracao: e falta de descricao (47 de 48 livros sem), que trava a sinopse no Quality Gate.",
+    "last_updated": "2026-08-07 (sessao 34 - PR #263): (1) ISR Writes ESTOUROU (100% de 200K em 05/08) e Fluid Active CPU esta em 75%. O diagnostico de 26/07 estava errado no driver: nao era 'cauda longa com TTL curto' — o TTL de 24h funciona (Age de 15,6h com HIT), mas o volume vem de 7.800 paginas linkadas x 69 deploys em 30 dias, porque cada merge no main invalida o cache ISR inteiro. A alavanca e reduzir deploys (TASK-PERF-017). (2) Levantado nos docs o que acontece ao estourar no Hobby: bloqueio por FEATURE e janela deslizante de 30 dias, sem reset no dia 1; observado que NAO pausou. O alarme que assusta e o de ISR, mas o que nao pode estourar e o de CPU, que derruba /api/click e o caminho de receita (TASK-PERF-018). (3) Autor sem livro publicavel passou a responder 404 em vez de 200+noindex, fechando a ultima porta de crawl dos 6.248 autores vazios (#263). (4) Backfill de idioma nos publicados em 2.025/4.683: 38% dos resolvidos nao sao portugues, projetando ~1.780 paginas nao-PT no ar (TASK-PIPE-030).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1099,7 +1099,7 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-07-28",
+    "last_measured": "2026-08-07",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
@@ -1121,17 +1121,23 @@
       "autores": 8399,
       "autores_com_bio": 308,
       "listas": 667,
-      "ofertas_com_preco": 2
+      "ofertas_com_preco": 2,
+      "autores_sem_livro": 6248,
+      "autores_com_livro": 2151
     },
-    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3.",
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. | 2026-08-07: ISR Writes estourou (100% de 200K). O driver e deploy x paginas, nao TTL — ver TASK-PERF-017. 6.248 dos 8.399 autores nao tem livro nenhum.",
     "vercel_free_tier": {
-      "medido_em": "2026-07-26",
-      "janela": "30 dias",
-      "fluid_active_cpu": "3h09m / 4h (79%)",
-      "isr_writes": "139K / 200K (70%)",
-      "image_optimization": "4,4K / 5K (88%) - ja resolvido no #213, sai do contador ~2026-08-12",
-      "edge_requests": "219K / 1M (22%)",
-      "nota": "Estourar o teto PAUSA os projetos. Re-medir em 2026-08-02 contra esta baseline (ver TASK-PERF-016)."
+      "medido_em": "2026-08-07",
+      "janela": "30 dias DESLIZANTES — o Hobby nao tem ciclo de faturamento, entao nao ha reset no dia 1",
+      "isr_writes": "ESTOUROU: 100% de 200K em 2026-08-05",
+      "fluid_active_cpu": "75% de 4 CPU-hrs em 2026-08-07",
+      "paginas_isr_total": 14047,
+      "paginas_isr_linkadas": 7800,
+      "deploys_producao_30d": 69,
+      "conta_do_volume": "7.800 paginas linkadas x 69 deploys x ~30% de cobertura de crawl = ~161K writes. Cada merge no main invalida o cache ISR inteiro; nenhum TTL protege contra isso.",
+      "ao_estourar": "Docs do Hobby: espera 30 dias para usar A FEATURE de novo (bloqueio por recurso, nao pelo projeto). Observado em 07/08, 2 dias apos o ISR bater 100%: site inteiro em 200 e ISR ainda regenerando — nao pausou.",
+      "qual_cota_dói": "ISR esgotado = conteudo velho (reversivel). Active CPU esgotado = morrem as rotas dinamicas e o /api/click, que e o redirect de afiliado — o caminho de receita. CPU e a que nao pode estourar.",
+      "baseline_anterior": "2026-07-26: CPU 3h09m/4h (79%), ISR Writes 139K/200K (70%), Image Optimization 4,4K/5K, Edge Requests 219K/1M"
     }
   },
   "validated_routes": [
@@ -2308,6 +2314,64 @@
       "testes": "scripts/tests/test_seed_loaders.py (renomeado de test_jogos_load_seeds.py) roda o MESMO arquivo nos tres loaders: 7 formatos x 3 = 21 combinacoes. Paridade virou coisa testada, nao convencao.",
       "pendente": "Teste de ponta a ponta: rodar /seeds-jogos 1 e conferir o 009_jogos_seeds.json + ledger. Depois, recalibrar QUANTIDADE_ALVO com a entrega real (hoje 30 e estimativa, NAO medicao) - mesmo procedimento do PR #252 para a Infantis.",
       "prs": "#264 (agente), #265 (padronizacao)"
+    },
+    {
+      "id": "TASK-PERF-017",
+      "title": "ISR Writes estourou (100% de 200K): o driver e frequencia de deploy, nao TTL",
+      "status": "open",
+      "priority": "high",
+      "registered_on": "2026-08-07",
+      "description": "Em 2026-08-05 a Vercel avisou 100% de ISR Writes (200.000) — estourou, nao 'se aproximando'. Em 2026-08-07 chegou outro aviso, 75% de Fluid Active CPU. CORRIGE o diagnostico da TASK-PERF-016 (2026-07-26), que atribuiu o volume a 'cauda longa com TTL curto' e subiu o TTL das rotas [slug] de 1h para 24h. O TTL FUNCIONA — verificado em producao: Age de 56.238s (15,6h) com x-vercel-cache HIT, o que com 1h ja teria regenerado 15 vezes —, mas nao e o driver dominante. A conta que fecha o volume: 14.047 paginas ISR no total (livros 4.764 + autores 8.399 + listas 703 + categorias 169 + jogos 11 + infantis 1), das quais ~7.800 sao efetivamente linkadas (sitemap + indices), vezes 69 DEPLOYS em producao na janela de 30 dias. Cada merge no main invalida o cache ISR INTEIRO, e nenhum TTL protege contra isso: 7.800 x 69 x ~30% de cobertura de crawl = ~161K writes. O perfil dos deploys confirma a origem: 12 em 25/07, 13 em 26/07 e 7 em 28/07 — dias de trabalho de desenvolvimento, incluindo os proprios PRs que shipamos para reduzir ISR Writes. Tambem CORRIGE a estimativa de universo da TASK-PERF-016 ('~8K paginas'): sao 14.047, porque autores sao 8.399 e nao os ~2.400 supostos.",
+      "plano": [
+        "Reduzir a frequencia de deploy em producao — e a unica alavanca com a ordem de grandeza certa. 69/mes para ~20 cortaria ISR Writes na mesma proporcao. Agrupar PRs em vez de mergear um a um.",
+        "Avaliar reduzir o universo linkado: 1.329 autores tem exatamente 1 livro e valor SEO marginal.",
+        "NAO insistir em subir TTL: ja esta em 24h e nao protege contra invalidacao por deploy."
+      ],
+      "files": [
+        "app/(public)/livros/[slug]/page.tsx",
+        "app/(public)/autores/[slug]/page.tsx"
+      ]
+    },
+    {
+      "id": "TASK-PERF-018",
+      "title": "O que acontece ao estourar cota no Hobby — e qual cota realmente importa",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-07",
+      "resolved_on": "2026-08-07",
+      "description": "Levantado nos docs da Vercel (/docs/plans/hobby, lido em 2026-08-07) porque o e-mail de aviso e mais alarmante que o comportamento real.",
+      "resolution": "DOCS: 'if you exceed your usage limits on the Hobby plan, you will have to wait until 30 days have passed before you can use the feature again' — o bloqueio e por RECURSO ('the feature'), nao pelo projeto. E 'there are no billing cycles': nao existe reset no dia 1, e janela DESLIZANTE de 30 dias, entao o estouro de 05/08 so sai da conta por volta de 04/09. O e-mail diz outra coisa ('projects will be automatically paused'). OBSERVADO em 2026-08-07, dois dias apos os ISR Writes baterem 100%: /, /livros, /ofertas e pagina de autor todas respondendo 200, e paginas ISR ainda regenerando (Age=0 em 5 paginas de livro) — ou seja NAO pausou e o ISR seguiu escrevendo. IMPLICACAO PRATICA, que inverte a prioridade sugerida pelos e-mails: ISR Writes esgotado = paginas param de regenerar e servem conteudo velho (livro novo nao aparece), chato mas reversivel e invisivel para leitor; Active CPU esgotado (hoje em 75%) = morrem as rotas dinamicas /livros, /autores, /categorias, /listas, /busca E o /api/click, que e o redirect de afiliado — o caminho de receita do site. O alarme que assusta e o de ISR; o que nao pode estourar e o de CPU.",
+      "files": []
+    },
+    {
+      "id": "TASK-SEO-012",
+      "title": "Autor sem livro publicavel: 404 em vez de 200 + noindex",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-07",
+      "resolved_on": "2026-08-07",
+      "branch": "fix/autor-sem-livro-404",
+      "description": "A pagina de autor sem nenhum livro publicavel respondia 200 com robots:noindex. noindex DESINDEXA mas nao impede o CRAWL — o Google segue buscando a URL justamente para reler o noindex, e numa rota ISR cada busca dessas e uma regeneracao, ou seja uma ISR write. Medido em 2026-08-07: 6.248 dos 8.399 autores (74%) nao tem livro nenhum. Eles ja estavam fora do sitemap (filtro livros_autores > 0) e fora do indice /autores (livros_autores!inner) — trabalho anterior —, entao o 404 fecha a ultima porta de crawl. Isso tambem CORRIGE uma superestimativa minha da mesma sessao: cheguei a dizer que autores eram '44% do universo ISR atacavel', mas como as paginas vazias ja estavam suprimidas, o universo linkado e ~7.800 e nao 14.047, e o ganho deste PR e modesto.",
+      "resolution": "PR #263. `if (livrosPivot !== null && livros.length === 0) return notFound()`. Verificado em producao: william-p-young (sem livro) responde 404 e tres autores do sitemap seguem 200. Correcao que o 404 tornou necessaria: getLivrosDoAutor fazia `data ?? []`, engolindo erro como lista vazia — com o 404 isso viraria bug serio, porque uma falha transitoria do Supabase produziria 404 numa pagina legitima e, com revalidate de 24h, esse 404 ficaria CACHEADO por um dia; agora devolve null em erro e [] em ausencia real. Nota: a condicao do 404 (livros PUBLICAVEIS == 0) e mais estrita que a do noindex antigo, que olhava autor.livros_autores.length sem filtrar is_publishable — autor com vinculo mas sem livro publicavel renderizava pagina vazia E indexavel.",
+      "files": [
+        "app/(public)/autores/[slug]/page.tsx"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-030",
+      "title": "Idioma dos publicados: 38% do catalogo no ar nao e portugues",
+      "status": "open",
+      "priority": "high",
+      "registered_on": "2026-08-07",
+      "description": "Backfill de idioma (tools/backfill_idioma.py, ver TASK-PIPE-024) rodado no escopo `publicados`. Parcial em 2026-08-07: 2.025 de 4.683 checados, em 3 execucoes interrompidas pelo 429 da cota diaria (~1.000 consultas/dia do Google Books). Distribuicao acumulada dos checados: PT 1.441 (71%), EN 507 (25%), ES 29, UNKNOWN 19, IT 4. Procedencia: google 1.421, fraco 383, sem_resposta 202, nao_mapeado 19. O numero que importa e sobre os EFETIVAMENTE RESOLVIDOS pelo Google (1.421): 881 PT contra 540 nao-PT, ou seja 38% nao-PT. A proporcao subiu de 30% (amostra de 818) para 38% (amostra de 1.421) — esta estabilizando MAIS ALTA, nao mais baixa. Projetado nos 4.683 publicados: ~1.780 paginas no ar que nao sao em portugues.",
+      "plano": [
+        "Terminar o backfill: faltam 2.658, ~2-3 rodadas de cota diaria.",
+        "So entao decidir o que fazer com os nao-PT: despublicar tem custo de SEO, manter tem custo de qualidade editorial numa livraria PT.",
+        "Nada foi despublicado — o backfill so corrige metadado. quality_gate.fetch_candidates filtra WHERE status_publish=0, entao mudar idioma de livro ja publicado nao dispara despublicacao."
+      ],
+      "files": [
+        "scripts/tools/backfill_idioma.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
