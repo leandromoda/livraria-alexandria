@@ -239,7 +239,7 @@ export default async function OfertasPage() {
                 <a
                   href={`/api/click/${o.id}`}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow sponsored"
                   className="inline-block px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-xs font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
                 >
                   Ver oferta →

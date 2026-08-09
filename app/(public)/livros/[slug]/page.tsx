@@ -310,7 +310,7 @@ export default async function LivroPage({ params }: PageProps) {
               <a
                 href={`/api/click/${ofertas[0].id}`}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer nofollow sponsored"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
               >
                 {(() => {
@@ -387,7 +387,7 @@ export default async function LivroPage({ params }: PageProps) {
                 <a
                   href={`/api/click/${o.id}`}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noopener noreferrer nofollow sponsored"
                   className="px-4 py-2 bg-[#C9A84C] text-[#4A1628] text-sm font-semibold rounded-lg hover:bg-[#e0bc5e] transition-colors"
                 >
                   Ver oferta →
