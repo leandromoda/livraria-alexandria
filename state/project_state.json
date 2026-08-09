@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-07 (sessao 34 - PR #263): (1) ISR Writes ESTOUROU (100% de 200K em 05/08) e Fluid Active CPU esta em 75%. O diagnostico de 26/07 estava errado no driver: nao era 'cauda longa com TTL curto' — o TTL de 24h funciona (Age de 15,6h com HIT), mas o volume vem de 7.800 paginas linkadas x 69 deploys em 30 dias, porque cada merge no main invalida o cache ISR inteiro. A alavanca e reduzir deploys (TASK-PERF-017). (2) Levantado nos docs o que acontece ao estourar no Hobby: bloqueio por FEATURE e janela deslizante de 30 dias, sem reset no dia 1; observado que NAO pausou. O alarme que assusta e o de ISR, mas o que nao pode estourar e o de CPU, que derruba /api/click e o caminho de receita (TASK-PERF-018). (3) Autor sem livro publicavel passou a responder 404 em vez de 200+noindex, fechando a ultima porta de crawl dos 6.248 autores vazios (#263). (4) Backfill de idioma nos publicados em 2.025/4.683: 38% dos resolvidos nao sao portugues, projetando ~1.780 paginas nao-PT no ar (TASK-PIPE-030). (5) PR #270: vercel.json com ignoreCommand — 78% dos deploys (scripts/, state/, docs) deixam de gerar deployment, atacando a causa dominante do estouro de ISR Writes. Efeito a medir na proxima janela.",
+    "last_updated": "2026-08-09 (sessao 35 - PR #272, /analise_gsc): (1) Linha de base do Search Console reposta — a secao de 08-08 rodou sem o Chrome conectado e ficou sem contagens. Numeros de 2026-08-09: bloqueada por robots 3.926, redirecionamento 1.654, canonica alternativa 1.260, excluida por noindex 580, 404 278, copia com canonica diferente 270, indexada-mas-bloqueada 107, rastreada nao indexada 74, 5xx 23. (2) UNICO bug real da secao: as 107 URLs de 'Indexada, mas bloqueada pelo robots.txt' sao 100% /api/click/*, porque os 3 links de livros/ofertas nao tinham rel=nofollow sponsored (jogos e infantis ja tinham). Corrigido no #272 e verificado em producao (TASK-SEO-013). (3) CORRIGE uma premissa registrada em 08-08: o alerta de 'Excluida pela tag noindex' NAO era do /infantis — 572 das 580 URLs sao /autores/*, populacao que a TASK-SEO-012 (#263) ja resolveu trocando 200+noindex por 404. Sao dados de crawl de 2 a 4 de ago, anteriores ao fix; migram sozinhos para o bucket 404. Licao de metodo: conferir URL que a gente supoe nao e amostrar a populacao — abrir o drilldown e agrupar por secao antes de concluir a causa. (4) Hipotese DESCARTADA por medicao: 'o sitemap anuncia URLs que 404'. O sitemap escolhe autores/categorias por inner join no pivot enquanto a pagina filtra por is_publishable — divergencia plausivel no papel, mas amostra de 30 URLs deu 30x HTTP 200, 0 falhas. Nao abrir tarefa sem medir de novo. (5) Registrado que o robots.txt de producao tem um bloco injetado pelo Cloudflare antes do nosso. (6) E-mail 'produtos nao estao no separador Compras' dispensado: promocional, exige Merchant Center e so suporta Shopify/WooCommerce.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -313,7 +313,10 @@
       "implemented_on": "2026-03-24",
       "file": "app/robots.ts",
       "rules": "Allow: / | Disallow: /admin, /api/",
-      "bug_fix": "2026-04-01 PR #32 — URL do sitemap no robots.ts corrigida para www"
+      "bug_fix": "2026-04-01 PR #32 — URL do sitemap no robots.ts corrigida para www",
+      "rules_current": "app/robots.ts: Allow: / | Disallow: /admin, /api/ | Sitemap no apex sem-www (o bug_fix de 2026-04-01 apontava para www; hoje e apex)",
+      "cloudflare_managed_block": "MEDIDO 2026-08-09 (curl no robots.txt de producao): o arquivo servido NAO e so o de app/robots.ts. O Cloudflare injeta um bloco gerenciado ANTES do nosso, com Content-Signal e Disallow: / para ClaudeBot, GPTBot, Google-Extended, CCBot, Bytespider e outros. Isso cria dois grupos 'User-agent: *' no mesmo arquivo — nao quebra o Disallow: /api/ porque a REP manda mesclar grupos do mesmo user-agent, mas quem editar robots.ts precisa saber que nao controla o arquivo inteiro. Detalhe que confunde: curl -I devolve Content-Length de 112 (o arquivo de origem), enquanto o corpo do GET vem bem maior, ja com o bloco.",
+      "blocking_is_not_deindexing": "TASK-SEO-013 (2026-08-09): bloquear no robots.txt nao impede a indexacao quando a URL e descoberta por link interno seguivel — o Google indexa a URL sem conteudo e reporta 'Indexada, mas bloqueada pelo robots.txt'. Todo link para rota bloqueada precisa de rel='nofollow sponsored'."
     },
     "generateMetadata": {
       "status": "implemented_all_dynamic_routes",
@@ -2375,6 +2378,37 @@
       ],
       "files": [
         "scripts/tools/backfill_idioma.py"
+      ]
+    },
+    {
+      "id": "TASK-SEO-013",
+      "title": "Links de /api/click sem nofollow: 107 URLs de tracking indexadas",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-09",
+      "resolved_on": "2026-08-09",
+      "branch": "fix/click-links-nofollow-sponsored",
+      "description": "O Search Console abriu em 2026-08-08 a categoria 'Indexada, mas bloqueada pelo robots.txt'. Drilldown lido em 2026-08-09: 107 URLs, e 100% delas sao /api/click/<uuid> (104 no apex + 6 em www). Bloquear o crawl NAO impede a indexacao: quando o Google descobre a URL por link interno seguivel, ele indexa so a URL, sem conteudo. app/robots.ts ja bloqueia /api/, e era exatamente esse o efeito. A causa estava numa assimetria do proprio codigo: jogos/[slug] e infantis/[slug] ja usavam rel='nofollow sponsored' nos links de oferta, mas livros/[slug] (2 links) e ofertas/page.tsx tinham so 'noopener noreferrer'. Confere com o observado: so /api/click/ aparece no bucket, /api/click-jogo/ e /api/click-infantil/ nao.",
+      "resolution": "PR #272. Os 3 links passam a rel='noopener noreferrer nofollow sponsored'. Verificado em producao apos o deploy: /ofertas com 48 links e /livros/o-hobbit com 2, todos com o rel novo; nenhum /api/click/ restou com o rel antigo. NAO foi adotada a correcao 'oficial' do Google (liberar /api/ no robots.txt + X-Robots-Tag: noindex) porque abriria milhares de redirects 302 ao crawl e faria o Googlebot seguir ate os destinos afiliados. Vale por um segundo motivo, independente do alerta: rel='sponsored' e exigencia da politica de links afiliados do Google, e os links de livros estavam fora de conformidade. Nao submeter validacao no GSC: o bucket drena sozinho conforme o Google recrawleia e deixa de achar link seguivel.",
+      "files": [
+        "app/(public)/livros/[slug]/page.tsx",
+        "app/(public)/ofertas/page.tsx",
+        "agents/gsc/memory.md"
+      ]
+    },
+    {
+      "id": "TASK-SEO-014",
+      "title": "Categoria sem livro publicavel ainda responde 200 + noindex",
+      "status": "open",
+      "priority": "low",
+      "registered_on": "2026-08-09",
+      "description": "Autor sem livro passou a responder 404 na TASK-SEO-012 (#263) porque noindex desindexa mas nao impede o crawl, e em rota ISR cada crawl e uma regeneracao. O mesmo rationale vale para categorias, que seguem em 200 + noindex (app/(public)/categorias/[slug]/page.tsx, generateMetadata). Impacto medido em 2026-08-09: apenas 4 URLs no bucket 'Excluida pela tag noindex' do GSC, contra 572 de autores. Baixa prioridade justamente por isso.",
+      "plano": [
+        "Antes de 404ar: getCategoriaConteudo engole erro de query como lista vazia (`livrosPivot ?? []`). 404ar direto faria uma falha transitoria do Supabase virar 404 CACHEADO por 24h — a mesma armadilha que a TASK-SEO-012 evitou com o `livrosPivot !== null`. Corrigir a distincao erro-vs-vazio primeiro.",
+        "Notar que generateMetadata usa a contagem do pivot sem filtrar is_publishable, enquanto o corpo da pagina filtra — categoria com vinculo mas sem livro publicavel renderiza pagina vazia E indexavel."
+      ],
+      "files": [
+        "app/(public)/categorias/[slug]/page.tsx"
       ]
     }
   ],
