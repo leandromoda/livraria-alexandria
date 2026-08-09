@@ -38,6 +38,8 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 | **"Página alternativa com tag canônica adequada"** | Estado **bom**: o Google achou e aceitou a canônica do apex. Subiu junto com o fix de `metadataBase` (#209). Não é problema. |
 | **"Cópia sem página canônica selecionada pelo usuário"** — URLs `www.*` | Artefato transitório da migração www→apex: www crawleado antes do 308 virar efetivo. Resolve sozinho no recrawl. |
 | 404 de `/livros/<slug>` cujo registro está com `status: "blacklisted"` no banco | Livro despublicado de propósito. Já foi indexado antes; 404 é o correto. **Conferir no banco antes de tratar 404 de livro como bug.** |
+| **"Cópia, o Google e o usuário selecionaram uma canônica diferente"** — URLs `www.*` | Mesma origem da linha acima de "Cópia sem canônica": o Google crawleou `www` e escolheu o apex. Em 2026-08-09 eram **265 de 270** (livros 197, autores 35, listas 27, categorias 6). Resolve no recrawl. |
+| E-mail **"Os seus produtos não se encontram no separador Compras"** (2026-08-08, [WNC-20286279]) | Promocional, **não é apontamento**. Exige Google Merchant Center e, pelo próprio texto, "apenas suportado para Shopify e WooCommerce". O site é afiliado, não loja. **Não aplicável — não reabrir.** |
 
 ---
 
@@ -83,6 +85,38 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   página que emite `Product`: **só renderizar o `<script ld+json>` quando houver
   `offers`**, nunca emitir o Product "pelado". Ver `livros/[slug]` e
   `jogos/[slug]`.
+- **⚠️ CORRIGIDO 2026-08-09 — a população de "Excluída pela tag noindex" era
+  `/autores/*`, NÃO `/infantis`.** Em 08-08 registrou-se aqui que a validação
+  submetida era sobre `/infantis`, com base em conferir 3 URLs que respondiam
+  200 sem `meta robots`. O drilldown de 08-09 mostrou a população real: **572
+  das 580 URLs são `/autores/*`** (490 apex + 82 `www`), 4 são `/categorias/*`,
+  1 é `/infantis` e 3 são `/api/click/*`. **Lição de método: conferir URL que a
+  gente supõe não é amostrar a população — abrir o drilldown e agrupar por
+  seção antes de concluir qual é a causa.**
+- **"Excluída por noindex" pode ser dado obsoleto, não bug vivo.** As 572 URLs
+  de autor foram rastreadas entre 2 e 4 de ago; o #263 (merge em 2026-08-08)
+  trocou 200+`noindex` por **404** em autor sem livro publicável. Conferido por
+  `curl` em 2026-08-09: `/autores/bo-mou`, `/balys-sruoga`,
+  `/clark-ashton-smith`, `/bruno-bettelheim` → **404**. Elas migram sozinhas
+  para o bucket 404 no recrawl. **Antes de diagnosticar, comparar a data do
+  "último rastreamento" da coluna do GSC com a data do fix.**
+- **⚠️ O `robots.txt` de produção NÃO é só o de `app/robots.ts`.** O Cloudflare
+  injeta um bloco gerenciado ANTES do nosso (medido 2026-08-09 com
+  `curl https://livrariaalexandria.com.br/robots.txt`), com `Content-Signal` e
+  `Disallow: /` para ClaudeBot, GPTBot, Google-Extended, CCBot, Bytespider etc.
+  Isso cria **dois grupos `User-agent: *`** no mesmo arquivo — não quebra o
+  `Disallow: /api/` porque a REP manda mesclar grupos do mesmo user-agent, mas
+  quem editar `robots.ts` precisa saber que não controla o arquivo inteiro.
+  (Curiosidade que confunde: `curl -I` devolve `Content-Length: 112`, o tamanho
+  do arquivo de origem; o corpo do `GET` vem bem maior, já com o bloco.)
+- **Medido e DESCARTADO em 2026-08-09 — "o sitemap anuncia URLs que 404".**
+  `app/sitemap.ts` escolhe autores/categorias por *inner join* no pivot (≥1
+  vínculo) enquanto a página filtra por `is_publishable` — divergência da mesma
+  classe do bug `status` vs `is_publishable` do #259, e plausível no papel.
+  Amostra de **30 URLs** do sitemap (20 autores + 10 categorias) → **30× HTTP
+  200, 0 falhas**; e as 4 URLs de exemplo do bucket `noindex` **não estão** no
+  sitemap. É divergência teórica, não material. **Não abrir tarefa sem medir de
+  novo.**
 - **UI do GSC congela o renderer**: `screenshot` e `get_page_text` dão timeout
   (o GSC nunca dispara `document_idle`). Extrair com `javascript_tool`. Detalhes
   e snippets prontos na memória de usuário `feedback-chrome-extension-gsc`.
@@ -93,6 +127,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-08-09 | robots/links | **"Indexada, mas bloqueada pelo robots.txt" (107 URLs, 100% `/api/click/*`)**: bloquear o crawl não impede a indexação quando a URL é descoberta por link interno seguível. Os 3 links de `/api/click/` (`livros/[slug]` ×2, `ofertas`) tinham só `noopener noreferrer`, enquanto `jogos` e `infantis` já usavam `nofollow sponsored` — daí só `/api/click/` aparecer no bucket. Agora os 5 links de oferta usam `nofollow sponsored`. Também fecha uma não conformidade com a política de links afiliados do Google | #272 |
 | 2026-08-08 | sitemap | **Cobertura: 1.144 → 7.762 URLs — confirmado pelo próprio GSC** ("Páginas encontradas" 1.145 → 7.762, processado no mesmo dia). Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.152 e 0 → 703); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #259 |
 | 2026-08-08 | dados estruturados | `livros/[slug]`: emitir `gtin13` quando o ISBN tem 13 dígitos e parar de emitir `"sku": null`. Atende parcialmente o aviso não crítico de Listagens do comerciante | #259 |
 | 2026-07-19 | dados estruturados | `jogos/[slug]`: JSON-LD `Product` era renderizado **incondicionalmente** e saía sem `offers` (10 de 11 jogos com `preco_atual` nulo) → erro crítico "Especifique offers/review/aggregateRating". Guard no render, igual a `livros/[slug]` | #216 |
@@ -120,10 +155,28 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 - **Acompanhar "Detectada, mas não indexada"** nas próximas semanas: deve subir,
   e isso é **esperado e temporário** — 6,6 mil URLs novas entraram na fila de
   crawl de uma vez com o #259. Não tratar como regressão.
-- **Validação de "Excluída pela tag noindex" submetida em 2026-08-08.** Antes de
-  submeter foi conferido que `/infantis`, `/jogos` e `/infantis/elmer` respondem
-  **200 sem `meta robots`**. Se o Google devolver falha, a causa é **outra URL**
-  que não a `/infantis` — investigar qual antes de resubmeter.
+- **Validação de "Excluída pela tag noindex" — "Iniciado" desde 2026-08-08, NÃO
+  resubmeter.** A causa real (o `noindex` das páginas de autor) foi removida
+  pelo #263 e as URLs já respondem 404, então a validação deve passar. O que
+  muda é o destino: as ~572 URLs migram para o bucket **"Não encontrado (404)"**
+  — isso é o comportamento correto, não regressão. Conferir na próxima seção.
+- **"Indexada, mas bloqueada pelo robots.txt" (107) — não submeter validação.**
+  O bucket drena sozinho conforme o Google recrawleia e deixa de achar link
+  seguível para `/api/click/*` (fix #272). Só reconferir a contagem.
+- **Inconsistência menor: categoria sem livro devolve 200 + `noindex`**, enquanto
+  autor sem livro passou a devolver **404** no #263. O rationale do #263 (o
+  `noindex` desindexa mas não impede o crawl, e cada crawl é uma regeneração
+  ISR) vale igual para categorias. Eram só **4 URLs** no bucket de 2026-08-09 —
+  baixa prioridade, fora do escopo daquela seção por decisão do Leandro.
+  ⚠️ Se for fazer: `getCategoriaConteudo` engole erro de query como lista vazia
+  (`livrosPivot ?? []`), então 404ar direto faria uma falha transitória do
+  Supabase virar **404 cacheado por 24h** — a mesma armadilha que o #263 evitou
+  com o `livrosPivot !== null`. Corrigir a distinção erro-vs-vazio primeiro.
+- **5 livros no apex em "Cópia c/ canônica diferente"** (`cuentos`,
+  `por-quien-doblan-las-campanas`, `lonely-planet-south-africa`,
+  `the-virginian`, `poetica-2`, rastreados 21–26 jul). São quase-duplicatas do
+  catálogo — **lacuna do dedup do pipeline, não bug de site**. 5 em ~4.700; só
+  agir se crescer.
 - **`agents/audit/prompt.md` ainda referencia URLs `www`** — o agente de auditoria
   crawleia `https://www.livrariaalexandria.com.br` (segue o 308 p/ o apex, então
   funciona). Cleanup menor: apontar direto p/ o apex. Baixa prioridade.
@@ -144,18 +197,30 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
-| Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada |
-|------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|
-| 2026-08-08 | — | — | — | — | — | — | — |
-| 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 |
-| 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 |
+| Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
+|------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-08-09 | 3.926 | 1.260 | 278 | 23 | 2 | 74 | 15 | 580 | 107 |
+| 2026-08-08 | — | — | — | — | — | — | — | — | — |
+| 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
+| 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+Colunas fora da tabela em 2026-08-09: Página com redirecionamento **1.654**,
+Cópia sem canônica do usuário **35**, Cópia c/ canônica diferente **270**,
+Erro de redirecionamento **1**. Método: `javascript_tool` no drilldown de cada
+categoria (a UI congela `screenshot`/`get_page_text`), agrupando as URLs de
+exemplo por seção.
 
 **Seção 2026-08-08 — sem números do relatório.** A extensão do Chrome não estava
 conectada (`list_connected_browsers` → `[]`), então o relatório de indexação não
-foi aberto e **as contagens por categoria não foram coletadas**. A seção rodou a
-partir do Gmail (`from:sc-noreply@google.com`) + auditoria direta do
-`sitemap.xml` contra o banco. Repor os números na próxima seção com o Chrome
-conectado — sem isso não dá para ler tendência de 07-19 para cá.
+foi aberto. A seção rodou a partir do Gmail + auditoria do `sitemap.xml` contra
+o banco. **Reposto em 2026-08-09.**
+
+**Leitura da variação 07-19 → 08-09.** As altas de "Bloq. robots" (+2.200),
+"Página com redirecionamento" (+507) e "Canônica dup." (+501) seguem sendo
+consequência esperada do crescimento de ofertas + recrawl de `www`. As três
+novidades reais foram: **"Indexada, mas bloqueada" (107)** — bug real, corrigido
+nesta seção; **"Excluída por noindex" (580)** — dado obsoleto, ver abaixo; e
+**"Cópia c/ canônica diferente" (270)** — 265 são `www.*`, esperado.
 
 **Cobertura do sitemap — confirmada pelo GSC, não só medida localmente:**
 "Páginas encontradas" saiu de **1.145 para 7.762**, com o sitemap reenviado e
