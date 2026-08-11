@@ -126,11 +126,27 @@ CLASSIFY_POR_CICLO = int(os.getenv("CLASSIFY_POR_CICLO", "25"))
 # 0 restaura o comportamento antigo (as duas rotações fixas, 2 chamadas).
 SLOT_SECUNDARIO = int(os.getenv("SLOT_SECUNDARIO", "1"))
 
-# Teto de itens quando uma auditoria LLM ocupa o slot. Ela custa ~17-20% DA
-# JANELA em que dispara; só é barata porque o gate de staleness a faz disparar
-# ~1 vez a cada 9,6 janelas (~2% amortizado). Removendo o gate e deixando só
-# esta cota, o custo volta aos 17-20% por janela. 0 desliga as auditorias LLM.
-AUDIT_LLM_POR_CICLO = int(os.getenv("AUDIT_LLM_POR_CICLO", "25"))
+# ⚠ ESTE NÚMERO É EM CHAMADAS DO CLAUDE CLI, NÃO EM ITENS DE LOTE.
+#
+# Diferente de synopsis/classify/author_bio, a auditoria NÃO é um agente batch:
+# `auditor._audit_content` itera livro a livro e faz um `_call_llm` por volta
+# (steps/auditor.py, ~linha 516 e 552). Logo `limit=N` custa N CHAMADAS.
+#
+# MEDIDO em 2026-08-11, rodando o G de verdade: com o default anterior de 25, o
+# `claude_usage_tracker` foi de 5 para 30 chamadas no dia — 25 chamadas, 13m45s
+# de relógio, num único slot. A janela da sessão PRO comporta 5-6 chamadas de
+# lote (medido 2026-08-09, n=3), então aquele default gastava 4-5 JANELAS numa
+# auditoria só.
+#
+# O default anterior nasceu de uma premissa não verificada — a de que auditoria
+# custava 1 chamada, como as outras rotações. O gate de staleness continua
+# certo e a conta amortizada dele também; o que estava errado era a unidade.
+#
+# 3 chamadas ≈ metade de uma janela quando o gate dispara (~1 vez a cada 9,6
+# janelas). Subir isto é subir custo LINEARMENTE em chamadas — ver TASK-LLM-019,
+# que propõe tornar a auditoria batch e só então permitir cotas maiores.
+# 0 desliga as auditorias LLM.
+AUDIT_LLM_POR_CICLO = int(os.getenv("AUDIT_LLM_POR_CICLO", "3"))
 
 # Ordem do rodízio e chave do cursor persistido. O cursor PRECISA sobreviver ao
 # processo: em memória ele reiniciaria a cada `python main.py` e, como o limite
@@ -957,6 +973,9 @@ def _rodar_auditoria_llm(label: str, modo: str, cota: int) -> tuple[int, bool]:
     e contá-la como progresso enganaria o guard anti-giro do G — uma janela que
     só auditou seria lida como janela produtiva, e o loop multijanela seguiria
     girando sem publicar nada.
+
+    ⚠ `cota` é em CHAMADAS: a auditoria não é batch, faz um `_call_llm` por
+    livro. Ver o comentário de AUDIT_LLM_POR_CICLO no topo do módulo.
     """
     from steps import qa
     log(f"[LLM_ORCH] auditoria LLM '{label}' vencida — ocupando o slot "

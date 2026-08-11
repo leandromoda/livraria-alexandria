@@ -719,15 +719,32 @@ Desde 2026-08-09, as duas rotações fixas deram lugar a **um slot só**
 
 O **gate de staleness é o mecanismo**, não a cota: os limiares vivem em
 `pipeline_status._AUDIT_STEPS` (fonte única, lida via `audit_stale`). Com ~4,8
-janelas/dia a auditoria reivindica ~13,5% dos slots — **~2% das chamadas**.
-Quando dispara, custa ~17–20% *daquela* janela; sem o gate, custaria isso em
-**toda** janela.
+janelas/dia a auditoria reivindica ~13,5% dos slots.
+
+> ⚠ **`AUDIT_LLM_POR_CICLO` conta CHAMADAS, não itens de lote — corrigido em
+> 2026-08-11.** A auditoria **não é** um agente batch: `auditor._audit_content`
+> itera livro a livro e faz um `_call_llm` por volta (`steps/auditor.py`). O
+> default original (25) veio da premissa não verificada de que ela custaria 1
+> chamada, como as outras rotações.
+>
+> **Medido rodando o G de verdade em 2026-08-11:** o `claude_usage_tracker` foi
+> de 5 para **30 chamadas** no dia — 25 chamadas em 13m45s, num único slot.
+> Como a janela comporta 5–6 chamadas de lote, aquele default gastava **4–5
+> janelas** numa auditoria só. Default hoje: **3**.
+>
+> Subir esse número é subir custo **linearmente em chamadas**. Ver
+> **TASK-LLM-019** (tornar a auditoria batch e só então permitir cotas maiores).
+>
+> Lição de método: a medição da janela estava certa e foi aplicada com a
+> unidade errada ao caso novo. Número medido ao lado de número suposto, os dois
+> escritos com a mesma confiança — é o que a regra de "afirmação quantitativa
+> leva data e método" existe para impedir.
 
 | | Antes | Depois |
 |---|---|---|
 | Chamadas secundárias/janela | 2 | **1** |
 | `synopsis`/janela | 3–4 | **4–5** |
-| Auditoria LLM | `nunca executado` | ~2% das chamadas |
+| Auditoria LLM | `nunca executado` | roda sob gate (ver aviso acima) |
 
 Ganho esperado de ~15 livros publicados por janela **e** as auditorias LLM
 passam a existir. Contrapartida: bio e classify drenam ~2× mais devagar — as

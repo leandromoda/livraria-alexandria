@@ -2425,6 +2425,22 @@
         "Alternativa mais barata: trocar `content_left == 0` por um limiar de staleness proprio (ex.: rodar log_analysis se houver relatorio pendente ha >72h), sem tocar no rodizio."
       ],
       "contexto": "Descoberto ao incorporar as auditorias LLM ao autopilot (PR do slot secundario, 2026-08-09), a partir do apontamento de que 'NENHUM STEP deve ficar fora do autopilot'. A mensagem em main.py que mandava executar o agente consistency_review a mao foi corrigida no mesmo PR — ela violava a regra do scripts/CLAUDE.md e ainda apontava para um caminho automatico morto."
+    },
+    {
+      "id": "TASK-LLM-019",
+      "title": "Auditoria de conteudo nao e batch: 1 chamada do claude CLI por livro",
+      "status": "open",
+      "priority": "medium",
+      "registered_on": "2026-08-11",
+      "description": "auditor._audit_content (scripts/steps/auditor.py, ~linha 516) itera livro a livro e chama _call_llm(prompt) por volta (~linha 552). O mesmo vale para o modo title-verify. Sao os unicos consumidores de LLM do pipeline que NAO usam o motor batch (synopsis_batch, classify_batch, author_bio) — herdaram o caminho MODE 1 do markdown_executor. Consequencia: `limit=N` custa N CHAMADAS, nao 1.\n\nMEDIDO em 2026-08-11 rodando o G de verdade: com AUDIT_LLM_POR_CICLO=25, o claude_usage_tracker foi de calls_today=5 para 30 — 25 chamadas em 13m45s, num unico slot secundario. Como a janela da sessao PRO comporta 5-6 chamadas de lote (medido 2026-08-09, n=3), aquele default gastava 4-5 JANELAS numa auditoria so.\n\nMitigado no mesmo dia baixando o default para 3, o que limita o estrago mas nao resolve: 3 chamadas ainda e ~metade de uma janela, e a auditoria cobre 25 livros por vez no maximo antes de a cota apertar. Com 4.751 publicados, auditar o catalogo a 3/slot e inviavel.",
+      "plano": [
+        "Criar agents/audit_batch/prompt.md nos moldes de agents/synopsis_batch — o nome audit_batch ja aparece na tabela AGENT_MODELS do scripts/CLAUDE.md, entao a intencao de batch ja existia e nunca foi implementada.",
+        "Exportar lote JSON (N livros: slug, titulo, autor, sinopse, texto renderizado), chamar run_agent uma vez, importar o output — mesmo ciclo export/agente/import dos outros steps, com core.batch_numbering para a numeracao.",
+        "Atencao ao insumo: o audit atual busca o HTML renderizado do site por livro (SITE_BASE_URL/livros/<slug>) ANTES de chamar o LLM. Esse fetch e por livro e nao-LLM; ele pode continuar em loop, o que vira batch e so a chamada do modelo.",
+        "So depois de batch, reavaliar AUDIT_LLM_POR_CICLO — com 1 chamada por lote, um valor como 25 volta a fazer sentido e a auditoria passa a cobrir o catalogo em tempo util.",
+        "Fazer o mesmo para o modo title-verify (agente title_auditor), que tem a mesma forma."
+      ],
+      "contexto": "Descoberto ao rodar o G para verificar o PR #274 (slot secundario). O PR foi desenhado sobre uma medicao correta da janela (5-6 chamadas, n=3) mas aplicou a unidade errada ao caso novo, supondo que auditoria custaria 1 chamada como as demais rotacoes. O gate de staleness e o slot funcionaram como previsto; o que estava errado era o dimensionamento. Registro de metodo: numero medido e numero suposto foram escritos com a mesma confianca no PR — exatamente o que a regra 'afirmacao quantitativa leva data e metodo' do CLAUDE.md existe para impedir."
     }
   ],
   "qa_remediation_loop": {
