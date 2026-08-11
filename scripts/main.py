@@ -854,11 +854,22 @@ def _run_gargalo(idioma: str):
     info_steps     = []    # manuais / LLM informativos (NÃO auto)
     blacklist_pend = None  # entrada de blacklist — coberta pela fase QA (não duplicar)
 
+    llm_steps      = []    # sinopse/categorização — COBERTOS pela fase 1
+
     for s in plan["steps"]:
         t = s["type"]
         if t == "autopilot":
             continue                       # fase final fixa, exibida abaixo
-        if not s.get("auto"):
+        if t in ("llm", "audit_llm"):
+            # Cobertos pela fase 1 (llm_orchestrator.run): sinopse/categorização
+            # nos drenos, e as auditorias LLM no slot secundário (desde
+            # 2026-08-09). Até então os dois caíam em info_steps, impressos sob
+            # "rode manualmente" — no caso dos `llm` a própria linha já dizia
+            # "coberto pela fase LLM do G", contradizendo o rótulo; no caso dos
+            # `audit_llm` a cobertura não existia mesmo. O scripts/CLAUDE.md
+            # proíbe mandar o usuário rodar step à mão: o certo é incorporar.
+            llm_steps.append(s)
+        elif not s.get("auto"):
             info_steps.append(s)
         elif t == "pipeline":
             pipeline_steps.append(s)
@@ -875,6 +886,10 @@ def _run_gargalo(idioma: str):
     n += 1
     print(f"\n  {n}. [LLM ⚠     ] Fase de geração LLM (sinopses/categorias)")
     print(f"      !  Condicional: só se o claude CLI existir e você confirmar — consome a sessão PRO")
+    for s in llm_steps:
+        print(f"      •  {s['label']}{_pend(s)}")
+    print(f"      •  1 slot secundário por ciclo: auditoria LLM vencida, "
+          f"senão rodízio bios ↔ categorização")
 
     # Fase 2 — QA / remediação (sempre)
     n += 1
@@ -896,10 +911,12 @@ def _run_gargalo(idioma: str):
         for s in pipeline_steps:
             print(f"           • {s['label']}{_pend(s)}")
 
-    # Manuais / LLM — NÃO executados automaticamente pelo G
+    # Steps sem executor no G. Deve ficar VAZIO: o scripts/CLAUDE.md exige que
+    # step não coberto seja incorporado ao autopilot, não delegado ao usuário.
+    # Se algo aparecer aqui, é lacuna de cobertura a corrigir no pipeline.
     if info_steps:
         print(f"\n  {sep}")
-        print(f"  NÃO executados automaticamente (rode manualmente):")
+        print(f"  ⚠ SEM EXECUTOR NO AUTOPILOT — lacuna de cobertura a corrigir:")
         for s in info_steps:
             print(f"      · [{s['type']}] {s['label']}{_pend(s)} — {s['reason']}")
 
@@ -1024,7 +1041,14 @@ def _run_gargalo(idioma: str):
                 out = consistency_check.run()
                 if out:
                     log(f"[G] Relatório gerado: {out.name}")
-                    log("[G] Execute o agente consistency_review no Claude Code após o plano.")
+                    # Não mandar o usuário rodar o agente (scripts/CLAUDE.md).
+                    # O executor automático existe — `consistency_review` na
+                    # FASE B do llm_orchestrator —, mas a Fase B é gated em
+                    # `_content_backlog() == 0` e o backlog medido em
+                    # 2026-08-09 é 13.737, então ela nunca é alcançada.
+                    # Ver TASK-LLM-018 no state/project_state.json.
+                    log("[G] Consumo do relatório: agente consistency_review "
+                        "(fase B do orquestrador, hoje inalcançável — TASK-LLM-018).")
 
             elif key == "apply_blacklist":
                 log("[G] Aplicando blacklist.json…")
@@ -1032,7 +1056,13 @@ def _run_gargalo(idioma: str):
                     apply_blacklist.run(dry_run=False)
 
             else:
-                log(f"[G] Step '{key}' não tem execução automática. Pule manualmente.")
+                # Não é "rode à mão": é bug de configuração. A key entrou em
+                # _AUTO_KEY (pipeline_status) sem ganhar um elif aqui, então o
+                # step foi PLANEJADO como automático e não executa. Foi assim
+                # que as auditorias LLM passaram despercebidas até 2026-08-09.
+                log(f"[G] ⚠ BUG: step '{key}' está no plano como automático mas "
+                    f"não tem executor em _run_gargalo — acrescente o elif "
+                    f"correspondente em main.py.")
 
         except KeyboardInterrupt:
             log("[G] Interrompido pelo usuário.")
