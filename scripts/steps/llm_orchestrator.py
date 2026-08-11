@@ -48,6 +48,7 @@ from core.claude_runner import is_auth_error as _is_auth_error
 
 
 from core.batch_numbering import next_batch_number, pending_batch_input
+from core import kv_state
 from core.db import get_conn
 from core.export_for_audit import run as _run_export_audit
 from core.logger import log
@@ -88,6 +89,63 @@ BIO_POR_CICLO = int(os.getenv("BIO_POR_CICLO", "10"))
 # barata (~6,5 s/livro contra ~26 s/livro da sinopse), então a cota padrão é
 # um lote cheio. 0 desliga.
 CLASSIFY_POR_CICLO = int(os.getenv("CLASSIFY_POR_CICLO", "25"))
+
+# ── SLOT SECUNDÁRIO ──────────────────────────────────────────────────────
+# MEDIÇÃO QUE ORIGINOU ISTO (2026-08-09, n=3 — logs pipeline_2026-08-04_21-21-31,
+# _08-05_21-12-07 e _08-06_21-17-39; contagem dos pares "→ <agente>: invocando
+# claude CLI" / "✓ <agente> concluído" até "limite de uso persistente"):
+#
+#   janela          | chamadas | author_bio | classify | synopsis
+#   08-04 (20m19s)  |    5     |     1      |    1     |    3
+#   08-05 (25m51s)  |    6     |     1      |    1     |    4
+#   08-06 (26m32s)  |    6     |     1      |    1     |    4
+#
+# Uma janela de 5h comporta 5-6 chamadas, não centenas — e o limite bate ~30 min
+# depois do início, no Ciclo 1 dos três logs (ou seja: 1 ciclo ≈ 1 janela, e
+# "cota por ciclo" é na prática "cota por janela"). As duas rotações fixas
+# consumiam 2 dessas 5-6 chamadas = 33-40% da janela, TODA janela.
+#
+# ⚠ Isto corrige a justificativa escrita em `_rotacao_author_bio` e no
+# scripts/CLAUDE.md ("1 chamada por ciclo contra as centenas gastas em
+# sinopse"). Não são centenas: são 3-4.
+#
+# O slot troca as 2 chamadas fixas por UMA, disputada por prioridade:
+#   1º  auditoria LLM vencida (limiar em pipeline_status._AUDIT_STEPS:
+#       content 48h, title-verify 168h) — rara por construção;
+#   2º  senão, rodízio author_bio ↔ classify, com cursor persistido.
+#
+# Efeito: sobra 1 chamada por janela para a sinopse (3-4 → 4-5, ~+15 livros
+# publicados por janela) E as auditorias LLM passam a rodar — antes disso elas
+# estavam em "nunca executado" e o plano do G mandava o usuário rodá-las à mão,
+# o que o scripts/CLAUDE.md proíbe.
+#
+# Contrapartida: bio e classify drenam ~2× mais devagar. As duas filas já eram
+# inalcançáveis no ritmo anterior (13.571 classify a ~120/dia = 113 dias), e a
+# sinopse é o hard-block do Quality Gate — a troca segue a prioridade do gargalo.
+#
+# 0 restaura o comportamento antigo (as duas rotações fixas, 2 chamadas).
+SLOT_SECUNDARIO = int(os.getenv("SLOT_SECUNDARIO", "1"))
+
+# Teto de itens quando uma auditoria LLM ocupa o slot. Ela custa ~17-20% DA
+# JANELA em que dispara; só é barata porque o gate de staleness a faz disparar
+# ~1 vez a cada 9,6 janelas (~2% amortizado). Removendo o gate e deixando só
+# esta cota, o custo volta aos 17-20% por janela. 0 desliga as auditorias LLM.
+AUDIT_LLM_POR_CICLO = int(os.getenv("AUDIT_LLM_POR_CICLO", "25"))
+
+# Ordem do rodízio e chave do cursor persistido. O cursor PRECISA sobreviver ao
+# processo: em memória ele reiniciaria a cada `python main.py` e, como o limite
+# bate no Ciclo 1, o primeiro da lista ganharia o slot SEMPRE e o segundo nunca
+# rodaria. Mesma armadilha do seed de `repair_synced_ids` (steps/autopilot.py) e
+# dos guards zerados a cada re-invocação (core/drain_loop.py).
+_RODIZIO_SLOT = ("author_bio", "classify")
+_CURSOR_KEY   = "slot_secundario.cursor"
+
+# (label em pipeline_status._AUDIT_STEPS, modo de steps/qa.py)
+_AUDITORIAS_LLM = (
+    ("22 Conteúdo (LLM)", "content"),
+    ("31 Título Verac.",  "titles"),
+)
+
 PACOTE_AUTOPILOT      = 100  # pacote do autopilot não-LLM após cada ciclo
 MAX_TEXT_LEN          = 800
 
@@ -878,6 +936,102 @@ def _drain_author_bio() -> tuple[int, bool]:
     return done, False
 
 
+def _auditoria_llm_vencida(conn):
+    """Primeira auditoria LLM com o limiar estourado, ou None.
+
+    O limiar vem de `pipeline_status._AUDIT_STEPS` via `audit_stale` — fonte
+    única. Duplicá-lo aqui faria o painel de Status ("ok (<48h)") divergir do
+    que o orquestrador gasta.
+    """
+    from steps import pipeline_status
+    for label, modo in _AUDITORIAS_LLM:
+        if pipeline_status.audit_stale(conn, label):
+            return label, modo
+    return None
+
+
+def _rodar_auditoria_llm(label: str, modo: str, cota: int) -> tuple[int, bool]:
+    """Roda UMA auditoria LLM no slot do ciclo. Retorna (0, limit_hit).
+
+    Devolve 0 em `feitos` de propósito: auditoria não drena backlog de conteúdo,
+    e contá-la como progresso enganaria o guard anti-giro do G — uma janela que
+    só auditou seria lida como janela produtiva, e o loop multijanela seguiria
+    girando sem publicar nada.
+    """
+    from steps import qa
+    log(f"[LLM_ORCH] auditoria LLM '{label}' vencida — ocupando o slot "
+        f"deste ciclo (modo={modo}, limit={cota})")
+    try:
+        qa.run(mode=modo, limit=cota, dry_run=False)
+    except Exception as e:
+        # Auditoria é diagnóstico: falha dela não pode derrubar o ciclo que
+        # ainda vai gerar sinopse (o trabalho que de fato publica).
+        log(f"[LLM_ORCH] AVISO: auditoria '{modo}' falhou: {e}")
+    return 0, False
+
+
+def _slot_secundario() -> tuple[int, bool]:
+    """Resolve e executa o ÚNICO trabalho secundário do ciclo.
+
+    Ver o bloco SLOT SECUNDÁRIO no topo do módulo para a medição que motivou
+    trocar as duas rotações fixas por um slot só.
+
+    Só gasta o slot em quem tem trabalho: se o dono da vez está sem pendências,
+    passa a vez sem consumir chamada. O cursor avança ANTES de executar — se a
+    chamada falhar, o slot foi gasto do mesmo jeito e a vez é do próximo.
+    """
+    if not SLOT_SECUNDARIO:
+        # Comportamento anterior: as duas rotações fixas, 2 chamadas por ciclo.
+        bio, hit = _rotacao_author_bio(BIO_POR_CICLO)
+        if hit:
+            return bio, True
+        cls, hit = _rotacao_classify(CLASSIFY_POR_CICLO)
+        return bio + cls, hit
+
+    conn = get_conn()
+    try:
+        if AUDIT_LLM_POR_CICLO > 0:
+            venc = _auditoria_llm_vencida(conn)
+            if venc:
+                label, modo = venc
+                return _rodar_auditoria_llm(label, modo, AUDIT_LLM_POR_CICLO)
+
+        pendentes = {
+            "author_bio": _count_pending_author_bio(conn),
+            "classify":   _count_pending_classify(conn),
+        }
+    finally:
+        conn.close()
+
+    cursor = 0
+    try:
+        cursor = int(kv_state.get(_CURSOR_KEY, "0") or 0) % len(_RODIZIO_SLOT)
+    except (TypeError, ValueError):
+        cursor = 0
+
+    for i in range(len(_RODIZIO_SLOT)):
+        nome = _RODIZIO_SLOT[(cursor + i) % len(_RODIZIO_SLOT)]
+        if pendentes.get(nome, 0) <= 0:
+            continue                       # sem trabalho: não gasta o slot
+        kv_state.set(_CURSOR_KEY, (cursor + i + 1) % len(_RODIZIO_SLOT))
+
+        if nome == "author_bio":
+            feitos, hit = _rotacao_author_bio(BIO_POR_CICLO)
+            if feitos:
+                log(f"[LLM_ORCH] author_bio (slot): {feitos} bio(s) geradas neste ciclo")
+            return feitos, hit
+
+        feitos, hit = _rotacao_classify(CLASSIFY_POR_CICLO)
+        if feitos:
+            # "enviados", não "categorizados": o lote processado pode ser um
+            # órfão anterior, não o que acabou de ser exportado.
+            log(f"[LLM_ORCH] classify (slot): {feitos} livro(s) enviados ao classificador")
+        return feitos, hit
+
+    log("[LLM_ORCH] slot secundário: nada pendente (bios e categorização) — skip")
+    return 0, False
+
+
 def _rotacao_author_bio(cota: int) -> tuple[int, bool]:
     """Gera até `cota` bios — UM lote — no início do ciclo. Retorna (feitas, limit_hit).
 
@@ -889,9 +1043,13 @@ def _rotacao_author_bio(cota: int) -> tuple[int, bool]:
     A rotação roda ANTES da sinopse de propósito. Rodar depois seria idêntico
     a não rodar: a janela acaba na sinopse e o fluxo nunca chega aqui.
 
-    O custo é explícito e limitado: 1 chamada por ciclo, `cota` autores. Com
-    a cota padrão (10) isso é ~1 lote contra as centenas gastas em sinopse —
-    a prioridade do gargalo continua intacta.
+    ⚠ CORREÇÃO (2026-08-09): estava escrito aqui que a cota padrão é "~1 lote
+    contra as centenas gastas em sinopse". **Não são centenas: são 3-4.** Medido
+    nos logs de 2026-08-04/05/06 (n=3), uma janela da sessão PRO comporta 5-6
+    chamadas no total. Esta rotação custava, sozinha, ~17-20% da janela — e
+    junto com a de classify, 33-40%. Por isso deixou de ser chamada
+    incondicionalmente: hoje ela disputa o slot único (`_slot_secundario`), que
+    é onde a conta de custo vive.
     """
     if cota <= 0:
         return 0, False
@@ -929,8 +1087,11 @@ def _rotacao_classify(cota: int) -> tuple[int, bool]:
     4.403 livros publicados (60%, medido em 2026-07-25) estão no site sem
     categoria temática, fora das páginas de categoria e das listas.
 
-    Categorização é barata (~6,5 s/livro contra ~26 s/livro da sinopse), então
-    a cota padrão é um lote cheio.
+    Categorização é barata em TEMPO (~6,5 s/livro contra ~26 s/livro da
+    sinopse), mas não em CHAMADAS — e a chamada é a unidade que a sessão PRO
+    limita. Medido em 2026-08-09: a janela tem 5-6 chamadas, então este lote
+    cheio custa ~17-20% dela. Por isso a rotação passou a disputar o slot único
+    (`_slot_secundario`) em vez de rodar em todo ciclo.
 
     ⚠ Diferença em relação à rotação de bios: categorização **entra** em
     `_content_backlog()`, que é o que o guard anti-giro do G compara entre
@@ -1095,20 +1256,14 @@ def run(idioma: str, wait_for_reset: bool = True):
         # categorização, depois bios — cada um drenado em vários lotes.
         # ClaudeAuthError aborta imediatamente: sessão inativa, aguardar não ajuda.
         try:
-            # Rotações: cotas fixas ANTES da sinopse. Depois seria o mesmo que
-            # não rodar — a janela acaba na sinopse e nunca chega aqui.
-            bio_rot, cycle_limit_hit = _rotacao_author_bio(BIO_POR_CICLO)
-            cycle_done += bio_rot
-            if bio_rot:
-                log(f"[LLM_ORCH] author_bio (rotação): {bio_rot} bio(s) geradas neste ciclo")
-
-            if not cycle_limit_hit:
-                cls_rot, cycle_limit_hit = _rotacao_classify(CLASSIFY_POR_CICLO)
-                cycle_done += cls_rot
-                if cls_rot:
-                    # "enviados", não "categorizados": o lote processado pode ser
-                    # um órfão anterior, não o que acabou de ser exportado.
-                    log(f"[LLM_ORCH] classify (rotação): {cls_rot} livro(s) enviados ao classificador")
+            # UM slot secundário ANTES da sinopse. A posição é o mecanismo:
+            # depois seria o mesmo que não rodar, porque a janela acaba na
+            # sinopse e o fluxo nunca chega aqui. O que mudou em 2026-08-09 foi
+            # a LARGURA — eram 2 chamadas fixas (bio + classify) de uma janela
+            # que só tem 5-6; agora é 1, disputada por auditoria vencida ou pelo
+            # rodízio. Ver o bloco SLOT SECUNDÁRIO no topo do módulo.
+            slot_done, cycle_limit_hit = _slot_secundario()
+            cycle_done += slot_done
 
             if not cycle_limit_hit:
                 syn_done, cycle_limit_hit = _drain_synopsis(idioma)

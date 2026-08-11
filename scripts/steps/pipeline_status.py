@@ -198,6 +198,36 @@ def _last_run_db(conn, step_names):
     return None, None
 
 
+def audit_stale(conn, label: str, now=None) -> bool:
+    """A auditoria `label` está vencida? Fonte única do limiar: `_AUDIT_STEPS`.
+
+    Público de propósito: o `llm_orchestrator` decide por aqui se uma auditoria
+    LLM reivindica o slot secundário do ciclo. Duplicar o limiar lá faria os dois
+    divergirem — o painel diria "ok (<48h)" enquanto o orquestrador gastaria a
+    chamada, ou o contrário.
+
+    `label` desconhecido devolve False: não gastar quota com o que não se sabe
+    medir. Nunca levanta — decisão de agendamento não pode derrubar o ciclo.
+    """
+    try:
+        entry = next((e for e in _AUDIT_STEPS if e[0] == label), None)
+        if entry is None:
+            return False
+        _, step_names, log_pattern, max_age_h = entry
+
+        dt_db, _ = _last_run_db(conn, step_names)
+        dt_file  = _last_file_time(log_pattern) if log_pattern else None
+        candidates = [d for d in (dt_db, dt_file) if d is not None]
+        if not candidates:
+            return True                      # nunca executado
+
+        dt = max(candidates)
+        now = now or datetime.now(timezone.utc)
+        return (now - dt).total_seconds() / 3600 > max_age_h
+    except Exception:
+        return False
+
+
 def _last_file_time(glob_pattern):
     """Retorna mtime do arquivo mais recente que bate com glob_pattern em _LOGS_DIR."""
     if not _LOGS_DIR.exists():
@@ -411,13 +441,17 @@ def build_gargalo_plan(conn, idioma="PT"):
                 "auto":   True,
             })
         else:
-            num = label.split()[0]
+            # Cobertas pelo slot secundário do llm_orchestrator desde
+            # 2026-08-09 (antes o reason dizia "rode no menu 5 → NN", que o
+            # scripts/CLAUDE.md proíbe, e nada as executava: as duas estavam em
+            # "nunca executado"). `auto` segue False porque o executor não é a
+            # fase de auditorias do G, e sim a fase LLM.
             steps.append({
                 "order":  order,
                 "type":   "audit_llm",
                 "key":    _LLM_KEY.get(label, label),
                 "label":  label,
-                "reason": f"{reason} — requer LLM (menu 5 → {num})",
+                "reason": f"{reason} — coberta pelo slot secundário da fase LLM do G",
                 "auto":   False,
             })
         order += 1
@@ -504,7 +538,7 @@ def build_gargalo_plan(conn, idioma="PT"):
                 "key":     "categorize",
                 "label":   "10 Categorizar",
                 "pending": n_cat,
-                "reason":  f"{n_cat} livros aguardando categorização LLM (coberto pela fase LLM do G; ou rode O/C)",
+                "reason":  f"{n_cat} livros aguardando categorização LLM (coberto pela fase LLM do G)",
                 "auto":    False,
             })
             order += 1
@@ -516,7 +550,7 @@ def build_gargalo_plan(conn, idioma="PT"):
                 "key":     "synopsis",
                 "label":   "11 Sinopses",
                 "pending": n_syn,
-                "reason":  f"{n_syn} livros aguardando sinopse LLM (coberto pela fase LLM do G; ou rode O/C)",
+                "reason":  f"{n_syn} livros aguardando sinopse LLM (coberto pela fase LLM do G)",
                 "auto":    False,
             })
             order += 1

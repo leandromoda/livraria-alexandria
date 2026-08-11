@@ -686,7 +686,69 @@ foi persistido —, o que basta como proxy de confiança para ordenar.
 > Hoje o 429 devolve a sentinela `QUOTA_ESGOTADA`, o loop encerra com o total
 > restante no log e a fila fica preservada para o dia seguinte.
 
+### ⚠ A janela da sessão PRO tem 5–6 chamadas — não centenas
+
+**Medido em 2026-08-09** nos 3 logs substanciais de 2026-08-04/05/06 (contagem
+dos pares `→ <agente>: invocando claude CLI` / `✓ <agente> concluído` até
+`limite de uso persistente`):
+
+| Janela | Chamadas | Tempo de LLM | bio / classify / synopsis |
+|---|---|---|---|
+| 08-04 | 5 | 20m19s | 1 / 1 / 3 |
+| 08-05 | 6 | 25m51s | 1 / 1 / 4 |
+| 08-06 | 6 | 26m32s | 1 / 1 / 4 |
+
+O limite bate ~30 min depois do início, **no Ciclo 1 dos três logs** — ou seja,
+1 ciclo ≈ 1 janela, e "cota por ciclo" é na prática "cota por janela".
+
+Isto **corrige** a justificativa que estava escrita abaixo e no docstring de
+`_rotacao_author_bio`: *"1 chamada por ciclo contra as centenas gastas em
+sinopse"*. Não há centenas — são 3–4. As duas rotações fixas consumiam **2 das
+5–6 chamadas, 33–40% de toda janela**, antes de a sinopse receber qualquer
+coisa. A conta que autorizava as duas rotações nunca foi verificada.
+
+### Slot secundário — UMA chamada por ciclo, disputada
+
+Desde 2026-08-09, as duas rotações fixas deram lugar a **um slot só**
+(`llm_orchestrator._slot_secundario`), decidido a cada ciclo:
+
+```
+1º  auditoria LLM VENCIDA  → content (>48h), senão title-verify (>168h)
+2º  senão, rodízio         → author_bio ↔ classify, alternando
+```
+
+O **gate de staleness é o mecanismo**, não a cota: os limiares vivem em
+`pipeline_status._AUDIT_STEPS` (fonte única, lida via `audit_stale`). Com ~4,8
+janelas/dia a auditoria reivindica ~13,5% dos slots — **~2% das chamadas**.
+Quando dispara, custa ~17–20% *daquela* janela; sem o gate, custaria isso em
+**toda** janela.
+
+| | Antes | Depois |
+|---|---|---|
+| Chamadas secundárias/janela | 2 | **1** |
+| `synopsis`/janela | 3–4 | **4–5** |
+| Auditoria LLM | `nunca executado` | ~2% das chamadas |
+
+Ganho esperado de ~15 livros publicados por janela **e** as auditorias LLM
+passam a existir. Contrapartida: bio e classify drenam ~2× mais devagar — as
+duas filas já eram inalcançáveis no ritmo anterior (13.571 classify a ~120/dia
+= 113 dias), e a sinopse é o hard-block do Quality Gate.
+
+> **O cursor do rodízio é persistido** em `pipeline_state` (via
+> `core/kv_state.py`). Em memória ele reiniciaria a cada `python main.py` e,
+> como o limite bate no Ciclo 1, `author_bio` ganharia o slot **sempre** e
+> `classify` nunca rodaria — a mesma armadilha do seed de `repair_synced_ids` e
+> dos guards zerados a cada re-invocação (`core/drain_loop.py`).
+
+`SLOT_SECUNDARIO=0` restaura as duas rotações fixas; `AUDIT_LLM_POR_CICLO=0`
+desliga só as auditorias. Testes em `tests/test_slot_secundario.py`.
+
 ### Rotações — cotas fixas por ciclo
+
+> ⚠ Histórico: a partir de 2026-08-09 as duas rotações abaixo **não rodam mais
+> as duas por ciclo** — elas alternam no slot único descrito acima. As cotas
+> (`BIO_POR_CICLO`, `CLASSIFY_POR_CICLO`) continuam valendo como tamanho do
+> lote de quem ocupa o slot.
 
 Duas filas ficavam atrás da sinopse na Fase A e, como ela não zera numa janela
 de 5h, **nunca eram alcançadas**. A correção é a mesma nas duas: uma cota fixa
@@ -724,17 +786,21 @@ alcançada depois de sinopse **e** categorização zerarem. Isso são ~1.300 lot
 perto disso. Resultado prático: **8.034 autores sem bio e 0 gerada por janela** —
 fome permanente, não lentidão.
 
-**Mecanismo:** `_rotacao_author_bio(cota)` roda **no início de cada ciclo**,
-antes da sinopse, e gera até `BIO_POR_CICLO` bios (padrão **10** — autores, não
-lotes; a cota recorta abaixo do `BATCH_SIZE_AUTHOR_BIO`).
+**Mecanismo:** `_rotacao_author_bio(cota)` gera até `BIO_POR_CICLO` bios (padrão
+**10** — autores, não lotes; a cota recorta abaixo do `BATCH_SIZE_AUTHOR_BIO`).
+Desde 2026-08-09 ela roda **quando ganha o slot secundário** (a cada ~2 ciclos),
+não em todo ciclo — ver "Slot secundário" acima.
 
 > **A ordem é o mecanismo.** Rodar a rotação *depois* da sinopse seria idêntico
 > a não ter rotação: a janela acaba na sinopse e o fluxo nunca chega lá. Por isso
 > ela vem primeiro, mesmo sendo a fila de menor prioridade.
 
-O custo é 1 chamada por ciclo contra as centenas gastas em sinopse, então a
-prioridade do gargalo continua intacta. `BIO_POR_CICLO=0` desliga e restaura o
-comportamento antigo.
+⚠ **A frase que estava aqui — "o custo é 1 chamada por ciclo contra as centenas
+gastas em sinopse" — é falsa** (medido 2026-08-09, n=3): a janela tem 5–6
+chamadas no total, das quais 3–4 vão para sinopse. A chamada da rotação custava
+~17–20% da janela, não uma fração desprezível. É por isso que ela deixou de
+rodar em todo ciclo e passou a disputar o slot secundário. `BIO_POR_CICLO=0`
+desliga; `SLOT_SECUNDARIO=0` restaura o comportamento de duas rotações fixas.
 
 O `_drain_author_bio()` (ilimitado) segue no fim da Fase A: quando sinopse e
 categorização realmente zerarem, as bios drenam de uma vez como antes.

@@ -2410,6 +2410,21 @@
       "files": [
         "app/(public)/categorias/[slug]/page.tsx"
       ]
+    },
+    {
+      "id": "TASK-LLM-018",
+      "title": "Fase B do llm_orchestrator e inalcancavel (log_analysis e consistency_review nunca rodam)",
+      "status": "open",
+      "priority": "medium",
+      "registered_on": "2026-08-09",
+      "description": "A FASE B do llm_orchestrator (scripts/steps/llm_orchestrator.py) e gated em `run_non_critical = (not cycle_limit_hit) and content_left == 0`, onde content_left e `_content_backlog(idioma)` = sinopse + categorizacao pendentes. Medido em 2026-08-09: _content_backlog('PT') = 13.737. A condicao == 0 nunca e satisfeita, entao TUDO na fase B e codigo morto na pratica: o agente log_analysis (LOG_ANALYSIS_EVERY_N_CYCLES=5), o agente consistency_review (CONSISTENCY_REVIEW_EVERY_N_CYCLES=5) e o commit automatico dos relatorios. Confirmado no painel de Status, que mostra 'LLM Orchestrator: nunca' e 'Batch Import: nunca'. As auditorias 22 Conteudo e 31 Titulo Verac. tinham o mesmo sintoma e foram resolvidas por outro caminho — o slot secundario da FASE A (_slot_secundario), que roda sob gate de staleness em vez de esperar backlog zero.",
+      "plano": [
+        "Decidir o gate certo. content_left == 0 e inatingivel por construcao: 10.041 dos livros nao tem descricao e por isso nunca viram sinopse (ver 'O gargalo real e o enriquecimento, nao a quota' em scripts/CLAUDE.md). Esperar zero e esperar para sempre.",
+        "Candidato: mover log_analysis e consistency_review para o mesmo slot secundario da fase A, como mais dois participantes do rodizio sob gate de staleness. Custo medido de cada participante: ~17-20% de UMA janela quando ocupa o slot (a janela tem 5-6 chamadas, medido 2026-08-09 com n=3).",
+        "Contrapartida a medir antes: cada participante novo no rodizio dilui bio e classify. Com 2 participantes cada um roda a cada ~2 ciclos; com 4, a cada ~4.",
+        "Alternativa mais barata: trocar `content_left == 0` por um limiar de staleness proprio (ex.: rodar log_analysis se houver relatorio pendente ha >72h), sem tocar no rodizio."
+      ],
+      "contexto": "Descoberto ao incorporar as auditorias LLM ao autopilot (PR do slot secundario, 2026-08-09), a partir do apontamento de que 'NENHUM STEP deve ficar fora do autopilot'. A mensagem em main.py que mandava executar o agente consistency_review a mao foi corrigida no mesmo PR — ela violava a regra do scripts/CLAUDE.md e ainda apontava para um caminho automatico morto."
     }
   ],
   "qa_remediation_loop": {
