@@ -37,7 +37,7 @@ if SCRIPTS_ROOT not in sys.path:
 
 from core.db import get_connection
 from core.logger import log as _core_log
-from core.markdown_executor import _call_llm
+from core.claude_runner import run_prompt
 from core.markdown_memory import save_memory, load_memory
 
 
@@ -353,39 +353,104 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
 # MODO 2: --content (LLM)
 # ---------------------------------------------------------------------------
 
-AUDIT_PROMPT_TEMPLATE = """Você é um auditor editorial rigoroso de uma livraria online.
+# Quantos livros por CHAMADA do claude CLI.
+#
+# POR QUE ISTO EXISTE (medido em 2026-08-11, rodando o G de verdade): até esta
+# data `run_content_audit` e `run_title_verify` chamavam o LLM UMA VEZ POR
+# LIVRO. Com AUDIT_LLM_POR_CICLO=25, o claude_usage_tracker foi de
+# calls_today=5 para 30 — 25 chamadas em 13m45s, num único slot secundário do
+# orquestrador. Como a janela da sessão PRO comporta 5-6 chamadas de lote
+# (medido 2026-08-09, n=3), aquilo gastava 4-5 JANELAS numa auditoria só.
+#
+# Eram os dois últimos consumidores de LLM do pipeline fora do motor de lote —
+# herdaram o caminho MODE 1 do `markdown_executor`. Agora `limit=N` custa
+# ceil(N / AUDIT_BATCH_SIZE) chamadas.
+AUDIT_BATCH_SIZE = int(os.getenv("AUDIT_BATCH_SIZE", "10"))
 
-Analise os dados do livro abaixo e determine se a SINOPSE é coerente com o título e autor.
+# Timeout base + folga por livro do lote: um lote de 10 pede bem mais que a
+# chamada unitária de 120 s do caminho por-livro anterior.
+AUDIT_BATCH_TIMEOUT_BASE = 120
+AUDIT_BATCH_TIMEOUT_POR_LIVRO = 60
 
-TÍTULO: {titulo}
-AUTOR: {autor}
-ANO: {ano}
-SINOPSE:
-{sinopse}
+AUDIT_BATCH_PROMPT_TEMPLATE = """Você é um auditor editorial rigoroso de uma livraria online.
 
-CONTEÚDO RENDERIZADO NA PÁGINA (extraído do site):
-{rendered_text}
+Analise os {n} livros abaixo. Para CADA UM, determine se a SINOPSE é coerente
+com o título e o autor, e se o conteúdo renderizado na página bate com os dados
+cadastrados.
 
-TAREFA:
+{blocos}
+
+TAREFA (para cada livro):
 1. A sinopse é coerente com o título e o autor? (sem alucinações, sem contradições, sem informações implausíveis)
 2. O conteúdo renderizado na página bate com os dados cadastrados?
 3. Há outros problemas editoriais graves? (sinopse vaga demais, fora do contexto literário, etc.)
 
-Responda SOMENTE com JSON válido, sem markdown, sem explicações fora do JSON:
+Responda SOMENTE com um ARRAY JSON válido, sem markdown, sem explicações fora do JSON.
+Um objeto por livro, na mesma ordem, e SEMPRE com o campo "slug" copiado do bloco:
 
-{{
-  "coherent": true|false,
-  "severity": "none"|"low"|"medium"|"high",
-  "issues": ["lista de problemas encontrados, vazia se nenhum"],
-  "summary": "resumo curto do diagnóstico (máx 1 frase)"
-}}
+[
+  {{
+    "slug": "<slug exato do bloco>",
+    "coherent": true|false,
+    "severity": "none"|"low"|"medium"|"high",
+    "issues": ["lista de problemas encontrados, vazia se nenhum"],
+    "summary": "resumo curto do diagnóstico (máx 1 frase)"
+  }}
+]
 
 severity:
   none   = tudo ok
   low    = problema menor, não compromete
   medium = problema relevante, merece revisão
   high   = sinopse absurda, errada ou alucinada — despublicação necessária
+
+Devolva EXATAMENTE {n} objetos. Não omita nenhum livro.
 """
+
+
+def _bloco_livro_para_batch(i, slug, titulo, autor, ano, sinopse, rendered_text):
+    return (
+        f"--- LIVRO {i} ---\n"
+        f"SLUG: {slug}\n"
+        f"TÍTULO: {titulo or '(sem título)'}\n"
+        f"AUTOR: {autor or '(sem autor)'}\n"
+        f"ANO: {ano or 'N/A'}\n"
+        f"SINOPSE:\n{sinopse or '(sem sinopse)'}\n"
+        f"CONTEÚDO RENDERIZADO NA PÁGINA:\n{rendered_text}\n"
+    )
+
+
+def _parse_llm_audit_batch(raw: str) -> dict:
+    """Extrai o array JSON do lote e indexa por slug.
+
+    Devolve {slug: {coherent, severity, issues, summary}}. Livro ausente da
+    resposta NÃO entra no dicionário — o chamador o trata como não auditado e o
+    deixa para a próxima rodada, em vez de gravar um `audit_log` "sem problema"
+    que ninguém verificou.
+    """
+    cleaned = (raw or "").strip()
+    if cleaned.startswith("```"):
+        linhas = cleaned.split("\n")
+        cleaned = "\n".join(linhas[1:-1] if len(linhas) > 2 else linhas)
+    # O modelo às vezes emite texto antes/depois do array; recorta pelo par
+    # externo de colchetes.
+    ini, fim = cleaned.find("["), cleaned.rfind("]")
+    if ini != -1 and fim > ini:
+        cleaned = cleaned[ini:fim + 1]
+    try:
+        dados = json.loads(cleaned)
+    except Exception as e:
+        log.warning(f"   Resposta do lote não é JSON válido: {e}")
+        return {}
+    if not isinstance(dados, list):
+        log.warning("   Resposta do lote não é um array JSON.")
+        return {}
+
+    por_slug = {}
+    for item in dados:
+        if isinstance(item, dict) and item.get("slug"):
+            por_slug[str(item["slug"])] = item
+    return por_slug
 
 
 def _fetch_rendered_page(url: str) -> str:
@@ -412,24 +477,6 @@ def _fetch_rendered_page(url: str) -> str:
         return text[:2000]
     except Exception as e:
         return f"[erro ao buscar página: {e}]"
-
-
-def _parse_llm_audit_response(raw: str) -> dict:
-    """Extrai JSON da resposta do LLM com fallback seguro."""
-    try:
-        # Remove possíveis blocos markdown
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            cleaned = "\n".join(lines[1:-1])
-        return json.loads(cleaned)
-    except Exception:
-        return {
-            "coherent": False,
-            "severity": "low",
-            "issues": ["LLM retornou resposta não parseável"],
-            "summary": "Falha no parse da resposta LLM",
-        }
 
 
 def _despublish_sqlite(conn: sqlite3.Connection, livro_id: str, slug: str) -> None:
@@ -512,16 +559,19 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
 
     results = []
     despublished = []
+    nao_auditados = []
 
+    # ── FASE 1 — coleta NÃO-LLM (fetch da página, diff, imagem) ──────────
+    # Fica em laço de propósito: é HTTP, não consome quota. Só a chamada do
+    # modelo precisava sair do laço.
+    preparados = []
     for livro_id, slug, titulo, autor, ano, sinopse, descricao in rows:
-        log.info(f"\n→ Auditando: {titulo} ({slug})")
+        log.info(f"\n→ Preparando: {titulo} ({slug})")
 
-        # 1. Busca conteúdo renderizado
         page_url = f"{SITE_BASE_URL}/livros/{slug}"
         rendered_text = _fetch_rendered_page(page_url)
         log.info(f"   Página extraída: {len(rendered_text)} chars")
 
-        # 2. Diff simples: sinopse do DB vs texto da página
         sinopse_in_page = sinopse[:80].strip() in rendered_text if sinopse else False
         diff_issues = []
         if not sinopse_in_page:
@@ -529,7 +579,6 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
         if titulo and titulo.lower() not in rendered_text.lower():
             diff_issues.append("Título do DB não encontrado na página")
 
-        # 2b. Validação de imagem
         imagem_url_row = conn.execute(
             "SELECT imagem_url FROM livros WHERE id=?", (livro_id,)
         ).fetchone()
@@ -540,61 +589,96 @@ def run_content_audit(conn: sqlite3.Connection, limit: int = 20,
                 diff_issues.append(f"Imagem inválida ou inacessível (HTTP {img_status}): {imagem_url}")
                 log.warning(f"   Imagem FALHOU: {img_status}")
 
-        # 3. Auditoria LLM
-        prompt = AUDIT_PROMPT_TEMPLATE.format(
-            titulo=titulo or "(sem título)",
-            autor=autor or "(sem autor)",
-            ano=ano or "N/A",
-            sinopse=sinopse or "(sem sinopse)",
-            rendered_text=rendered_text,
+        preparados.append({
+            "livro_id": livro_id, "slug": slug, "titulo": titulo,
+            "autor": autor, "ano": ano, "sinopse": sinopse,
+            "rendered_text": rendered_text, "diff_issues": diff_issues,
+            "page_url": page_url,
+        })
+
+    # ── FASE 2 — auditoria LLM EM LOTE ───────────────────────────────────
+    lotes = [preparados[i:i + AUDIT_BATCH_SIZE]
+             for i in range(0, len(preparados), AUDIT_BATCH_SIZE)]
+    log.info(f"\n{len(preparados)} livro(s) em {len(lotes)} chamada(s) do claude CLI "
+             f"(AUDIT_BATCH_SIZE={AUDIT_BATCH_SIZE})")
+
+    auditorias = {}
+    for n_lote, lote in enumerate(lotes, start=1):
+        blocos = "\n".join(
+            _bloco_livro_para_batch(i, p["slug"], p["titulo"], p["autor"],
+                                    p["ano"], p["sinopse"], p["rendered_text"])
+            for i, p in enumerate(lote, start=1)
         )
+        prompt = AUDIT_BATCH_PROMPT_TEMPLATE.format(n=len(lote), blocos=blocos)
+        timeout = AUDIT_BATCH_TIMEOUT_BASE + AUDIT_BATCH_TIMEOUT_POR_LIVRO * len(lote)
 
-        raw_response = _call_llm(prompt)
-        audit = _parse_llm_audit_response(raw_response)
+        log.info(f"   → lote {n_lote}/{len(lotes)}: {len(lote)} livro(s), "
+                 f"timeout={timeout}s")
+        ok, raw = run_prompt(prompt, timeout=timeout)
+        if not ok:
+            # Falha do lote não pode derrubar a auditoria inteira nem gravar
+            # audit_log de quem não foi auditado: os livros do lote ficam para
+            # a próxima rodada (a query já exclui os auditados na janela).
+            log.warning(f"   Lote {n_lote} falhou: {str(raw)[:200]}")
+            nao_auditados.extend(p["slug"] for p in lote)
+            continue
+        auditorias.update(_parse_llm_audit_batch(raw))
 
-        # Merge issues de diff + LLM
-        all_issues = diff_issues + audit.get("issues", [])
+    # ── FASE 3 — merge, ação e persistência (NÃO-LLM) ────────────────────
+    for p in preparados:
+        slug = p["slug"]
+        if slug in nao_auditados:
+            continue
+        audit = auditorias.get(slug)
+        if audit is None:
+            log.warning(f"   {slug}: ausente da resposta do lote — fica para a "
+                        f"próxima rodada (não gravado no audit_log)")
+            nao_auditados.append(slug)
+            continue
+
+        all_issues = p["diff_issues"] + (audit.get("issues") or [])
         severity = audit.get("severity", "low")
-
-        # Eleva severity se há diff crítico
-        if diff_issues and severity == "none":
+        if p["diff_issues"] and severity == "none":
             severity = "low"
 
-        log.info(f"   Severity: {severity} | Issues: {all_issues}")
-        log.info(f"   LLM summary: {audit.get('summary', '')}")
+        log.info(f"   {slug} → severity: {severity} | Issues: {all_issues}")
 
-        # 4. Ação
         action = "none"
         if severity in SEVERITY_UNPUBLISH:
             if dry_run:
                 action = "would_despublish"
                 log.info(f"   [DRY-RUN] Despublicação não aplicada")
             else:
-                _despublish_sqlite(conn, livro_id, slug)
+                _despublish_sqlite(conn, p["livro_id"], slug)
                 sup_ok = _despublish_supabase(slug)
                 action = "despublished" if sup_ok else "despublished_sqlite_only"
                 despublished.append(slug)
 
-        # 5. Salva no audit_log
         if not dry_run:
-            _save_audit_entry(conn, livro_id, slug, severity, all_issues, action)
+            _save_audit_entry(conn, p["livro_id"], slug, severity, all_issues, action)
 
         results.append({
             "slug": slug,
-            "titulo": titulo,
+            "titulo": p["titulo"],
             "severity": severity,
             "issues": all_issues,
             "summary": audit.get("summary", ""),
             "action": action,
-            "page_url": page_url,
+            "page_url": p["page_url"],
         })
 
-    log.info(f"\nAuditoria concluída: {len(rows)} livros | "
-             f"Despublicados: {len(despublished)}")
+    if nao_auditados:
+        log.warning(f"\n{len(nao_auditados)} livro(s) não auditados nesta rodada "
+                    f"(lote falhou ou ausente da resposta): {nao_auditados[:10]}")
+
+    log.info(f"\nAuditoria concluída: {len(results)} livros auditados em "
+             f"{len(lotes)} chamada(s) | Despublicados: {len(despublished)}")
 
     return {
         "mode": "content",
-        "audited": len(rows),
+        "audited": len(results),
+        "llm_calls": len(lotes),
+        "not_audited": len(nao_auditados),
         "despublished": len(despublished),
         "despublished_slugs": despublished,
         "results": results,
@@ -779,24 +863,6 @@ def check_author_bios(conn: sqlite3.Connection) -> dict:
 # MODO 5: --title-verify  (Google Books API + LLM)
 # ---------------------------------------------------------------------------
 
-TITLE_VERIFY_PROMPT = """Você é um auditor bibliográfico especializado.
-Avalie se o livro abaixo corresponde a uma obra real e publicada.
-
-Título: {titulo}
-Autor: {autor}
-Descrição disponível: {descricao}
-
-Responda SOMENTE com JSON válido, sem markdown:
-
-{{"real": true|false, "confidence": "high"|"medium"|"low", "reason": "motivo em 1 frase"}}
-
-Critérios:
-- real=true: título e autor formam uma combinação que corresponde a livro real publicado
-- real=false: combinação improvável, incoerente ou claramente inventada
-- confidence: quão seguro você está da avaliação
-"""
-
-
 def _google_books_lookup(titulo: str, autor: str) -> str:
     """
     Consulta Google Books API e retorna nível de correspondência:
@@ -853,29 +919,66 @@ def _google_books_lookup(titulo: str, autor: str) -> str:
         return "api_unavailable"
 
 
-def _llm_verify_title(titulo: str, autor: str, descricao: str) -> dict:
-    """Usa LLM para verificar veracidade do par título+autor. Retorna dict com real/confidence/reason."""
-    descricao_curta = (descricao or "")[:400]
-    prompt = TITLE_VERIFY_PROMPT.format(
-        titulo=titulo or "(sem título)",
-        autor=autor or "(sem autor)",
-        descricao=descricao_curta or "(sem descrição)",
-    )
-    try:
-        raw = _call_llm(prompt)
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            lines = cleaned.split("\n")
-            cleaned = "\n".join(lines[1:-1])
-        data = json.loads(cleaned)
-        return {
-            "real":       bool(data.get("real", True)),
-            "confidence": str(data.get("confidence", "low")),
-            "reason":     str(data.get("reason", "")),
-        }
-    except Exception as e:
-        log.warning(f"  LLM title verify falhou: {e}")
-        return {"real": True, "confidence": "low", "reason": "llm_error"}
+TITLE_VERIFY_BATCH_PROMPT = """Você é um auditor bibliográfico especializado.
+Avalie, para CADA um dos {n} livros abaixo, se corresponde a uma obra real e publicada.
+
+{blocos}
+
+Responda SOMENTE com um ARRAY JSON válido, sem markdown, um objeto por livro,
+na mesma ordem, e SEMPRE com o campo "slug" copiado do bloco:
+
+[
+  {{"slug": "<slug exato do bloco>", "real": true|false, "confidence": "high"|"medium"|"low", "reason": "motivo em 1 frase"}}
+]
+
+Critérios:
+- real=true: título e autor formam uma combinação que corresponde a livro real publicado
+- real=false: combinação improvável, incoerente ou claramente inventada
+- confidence: quão seguro você está da avaliação
+
+Devolva EXATAMENTE {n} objetos. Não omita nenhum livro.
+"""
+
+def _verify_titles_batch(itens: list) -> dict:
+    """Verifica N títulos em UMA chamada por lote. Devolve {slug: {...}}.
+
+    `itens`: lista de (slug, titulo, autor, descricao). Slug ausente da resposta
+    fica de fora — o chamador o deixa para a próxima rodada em vez de gravar
+    `audit_log` com um veredito que ninguém deu.
+    """
+    resultados = {}
+    lotes = [itens[i:i + AUDIT_BATCH_SIZE]
+             for i in range(0, len(itens), AUDIT_BATCH_SIZE)]
+    log.info(f"\n{len(itens)} título(s) em {len(lotes)} chamada(s) do claude CLI "
+             f"(AUDIT_BATCH_SIZE={AUDIT_BATCH_SIZE})")
+
+    for n_lote, lote in enumerate(lotes, start=1):
+        blocos = "\n".join(
+            f"--- LIVRO {i} ---\n"
+            f"SLUG: {slug}\n"
+            f"Título: {titulo or '(sem título)'}\n"
+            f"Autor: {autor or '(sem autor)'}\n"
+            f"Descrição disponível: {(descricao or '')[:400] or '(sem descrição)'}\n"
+            for i, (slug, titulo, autor, descricao) in enumerate(lote, start=1)
+        )
+        prompt = TITLE_VERIFY_BATCH_PROMPT.format(n=len(lote), blocos=blocos)
+        timeout = AUDIT_BATCH_TIMEOUT_BASE + AUDIT_BATCH_TIMEOUT_POR_LIVRO * len(lote)
+
+        log.info(f"   → lote {n_lote}/{len(lotes)}: {len(lote)} livro(s), timeout={timeout}s")
+        ok, raw = run_prompt(prompt, timeout=timeout)
+        if not ok:
+            log.warning(f"   Lote {n_lote} falhou: {str(raw)[:200]}")
+            continue
+
+        for slug, item in _parse_llm_audit_batch(raw).items():
+            resultados[slug] = {
+                "real":       bool(item.get("real", True)),
+                "confidence": str(item.get("confidence", "low")),
+                "reason":     str(item.get("reason", "")),
+            }
+    return resultados
+
+
 
 
 def _combine_title_severity(api_match: str, llm_real: bool, llm_confidence: str) -> str:
@@ -990,18 +1093,32 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
     results      = []
     blocked      = []
     despublished = []
+    nao_verificados = []
 
+    # ── FASE 1 — Google Books por livro (NÃO-LLM, com delay de API) ──────
+    api_por_slug = {}
     for livro_id, slug, titulo, autor, descricao, status_publish, is_publishable in rows:
         log.info(f"\n→ {titulo} / {autor or '(sem autor)'} [{slug}]")
-
-        # 1. Google Books API
-        api_match = _google_books_lookup(titulo or "", autor or "")
-        log.info(f"   API match: {api_match}")
+        api_por_slug[slug] = _google_books_lookup(titulo or "", autor or "")
+        log.info(f"   API match: {api_por_slug[slug]}")
         time.sleep(TITLE_VERIFY_API_DELAY)
 
-        # 2. LLM
-        llm = _llm_verify_title(titulo or "", autor or "", descricao or "")
-        log.info(f"   LLM: real={llm['real']} confidence={llm['confidence']} → {llm['reason']}")
+    # ── FASE 2 — LLM EM LOTE ─────────────────────────────────────────────
+    llm_por_slug = _verify_titles_batch(
+        [(slug, titulo, autor, descricao)
+         for _, slug, titulo, autor, descricao, _, _ in rows]
+    )
+
+    # ── FASE 3 — severidade, ação e persistência (NÃO-LLM) ───────────────
+    for livro_id, slug, titulo, autor, descricao, status_publish, is_publishable in rows:
+        api_match = api_por_slug.get(slug, "api_unavailable")
+        llm = llm_por_slug.get(slug)
+        if llm is None:
+            log.warning(f"   {slug}: ausente da resposta do lote — fica para a "
+                        f"próxima rodada (não gravado no audit_log)")
+            nao_verificados.append(slug)
+            continue
+        log.info(f"   {slug} → LLM: real={llm['real']} confidence={llm['confidence']} → {llm['reason']}")
 
         # 3. Severity
         severity = _combine_title_severity(api_match, llm["real"], llm["confidence"])
@@ -1050,6 +1167,10 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
     sus_count = sum(1 for r in results if r["severity"] == "medium")
     hal_count = sum(1 for r in results if r["severity"] == "high")
 
+    if nao_verificados:
+        log.warning(f"\n{len(nao_verificados)} livro(s) não verificados nesta rodada "
+                    f"(lote falhou ou ausente da resposta): {nao_verificados[:10]}")
+
     log.info(
         f"\nTitle verify concluído: {len(results)} livros | "
         f"OK/baixo={ok_count} | Suspeito={sus_count} | Alucinação={hal_count} | "
@@ -1060,6 +1181,7 @@ def run_title_verify(conn: sqlite3.Connection, limit: int = 50,
         "mode":               "title_verify",
         "scope":              scope,
         "verified":           len(results),
+        "not_verified":       len(nao_verificados),
         "ok_low":             ok_count,
         "suspicious":         sus_count,
         "hallucinated":       hal_count,

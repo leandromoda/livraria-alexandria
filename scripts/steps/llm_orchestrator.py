@@ -126,27 +126,22 @@ CLASSIFY_POR_CICLO = int(os.getenv("CLASSIFY_POR_CICLO", "25"))
 # 0 restaura o comportamento antigo (as duas rotações fixas, 2 chamadas).
 SLOT_SECUNDARIO = int(os.getenv("SLOT_SECUNDARIO", "1"))
 
-# ⚠ ESTE NÚMERO É EM CHAMADAS DO CLAUDE CLI, NÃO EM ITENS DE LOTE.
+# Quantos LIVROS a auditoria audita quando ocupa o slot.
 #
-# Diferente de synopsis/classify/author_bio, a auditoria NÃO é um agente batch:
-# `auditor._audit_content` itera livro a livro e faz um `_call_llm` por volta
-# (steps/auditor.py, ~linha 516 e 552). Logo `limit=N` custa N CHAMADAS.
+# HISTÓRICO DA UNIDADE — importante para não regredir. Até 2026-08-11 a
+# auditoria chamava o LLM uma vez POR LIVRO, então este número era, na prática,
+# um número de CHAMADAS. Medido rodando o G: com 25, o `claude_usage_tracker`
+# foi de 5 para 30 chamadas no dia (25 chamadas, 13m45s, num slot só) — contra
+# uma janela que comporta 5-6 chamadas de lote (medido 2026-08-09, n=3). Ou
+# seja, gastava 4-5 janelas numa auditoria.
 #
-# MEDIDO em 2026-08-11, rodando o G de verdade: com o default anterior de 25, o
-# `claude_usage_tracker` foi de 5 para 30 chamadas no dia — 25 chamadas, 13m45s
-# de relógio, num único slot. A janela da sessão PRO comporta 5-6 chamadas de
-# lote (medido 2026-08-09, n=3), então aquele default gastava 4-5 JANELAS numa
-# auditoria só.
+# Hoje a auditoria é BATCH (`auditor.AUDIT_BATCH_SIZE`, padrão 10 livros por
+# chamada), então este valor custa ceil(N / AUDIT_BATCH_SIZE) chamadas: com 10,
+# **1 chamada**, o mesmo que qualquer outro ocupante do slot. Subir daqui só
+# multiplica em passos de AUDIT_BATCH_SIZE.
 #
-# O default anterior nasceu de uma premissa não verificada — a de que auditoria
-# custava 1 chamada, como as outras rotações. O gate de staleness continua
-# certo e a conta amortizada dele também; o que estava errado era a unidade.
-#
-# 3 chamadas ≈ metade de uma janela quando o gate dispara (~1 vez a cada 9,6
-# janelas). Subir isto é subir custo LINEARMENTE em chamadas — ver TASK-LLM-019,
-# que propõe tornar a auditoria batch e só então permitir cotas maiores.
 # 0 desliga as auditorias LLM.
-AUDIT_LLM_POR_CICLO = int(os.getenv("AUDIT_LLM_POR_CICLO", "3"))
+AUDIT_LLM_POR_CICLO = int(os.getenv("AUDIT_LLM_POR_CICLO", "10"))
 
 # Ordem do rodízio e chave do cursor persistido. O cursor PRECISA sobreviver ao
 # processo: em memória ele reiniciaria a cada `python main.py` e, como o limite
@@ -974,8 +969,9 @@ def _rodar_auditoria_llm(label: str, modo: str, cota: int) -> tuple[int, bool]:
     só auditou seria lida como janela produtiva, e o loop multijanela seguiria
     girando sem publicar nada.
 
-    ⚠ `cota` é em CHAMADAS: a auditoria não é batch, faz um `_call_llm` por
-    livro. Ver o comentário de AUDIT_LLM_POR_CICLO no topo do módulo.
+    `cota` é em LIVROS. Desde 2026-08-11 a auditoria é batch
+    (`auditor.AUDIT_BATCH_SIZE`), então custa ceil(cota / AUDIT_BATCH_SIZE)
+    chamadas — com os padrões, 1. Ver AUDIT_LLM_POR_CICLO no topo do módulo.
     """
     from steps import qa
     log(f"[LLM_ORCH] auditoria LLM '{label}' vencida — ocupando o slot "
