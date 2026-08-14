@@ -91,7 +91,17 @@ def log(msg):
     now  = datetime.now().strftime("%H:%M:%S")
     line = f"[{now}] {msg}"
 
-    print(line)
+    try:
+        print(line)
+    except UnicodeEncodeError:
+        # Console cp1252 (padrão no Windows) não encoda "→", "—" nem emoji, e
+        # os logs deste projeto usam os três. O `main.py` faz
+        # sys.stdout.reconfigure(encoding="utf-8") na inicialização e mascara o
+        # problema, mas qualquer step chamado fora dele — teste, tools/, `python
+        # -c` — morria com UnicodeEncodeError NA LINHA DE LOG, não no trabalho.
+        # Degrada só o console; o arquivo continua utf-8 e íntegro.
+        print(line.encode("ascii", "replace").decode("ascii"))
+
     _write(line)
 
     last_activity = time.time()

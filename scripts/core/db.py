@@ -144,6 +144,10 @@ def ensure_schema(conn):
         ("blacklist_severity",    "TEXT"),          # medium | high
         ("qa_retry",              "INTEGER DEFAULT 0"),   # tentativas de reprocessamento já feitas
         ("qa_quarantine",         "INTEGER DEFAULT 0"),   # 1 = quarentena definitiva (não reentra na fila)
+        # Hash do último payload de oferta publicado no Supabase. É o que
+        # permite ao publish_ofertas.run_repair republicar SÓ o que mudou, em
+        # vez do catálogo inteiro. Ver publish_ofertas._payload_hash.
+        ("oferta_payload_hash",   "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
