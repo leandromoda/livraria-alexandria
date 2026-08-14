@@ -14,10 +14,17 @@ DRENO_SAFETY_S = 1800          # 30 min
 # Teto de cada soneca — mantém a re-checagem da janela de sessão responsiva.
 NAP_MAX_S = 300                # 5 min
 
+# Válvula de segurança: teto absoluto de espera por um reset. A janela da
+# assinatura é de 5 h, então 6 h já cobre qualquer atraso legítimo; passar disso
+# significa que `in_cooldown` não está limpando e insistir seria girar para
+# sempre.
+ESPERA_MAX_S = 6 * 3600
+
 
 def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
                      log, sleep, monotonic, prefixo="[G]",
-                     dreno_safety_s=DRENO_SAFETY_S, nap_max_s=NAP_MAX_S):
+                     dreno_safety_s=DRENO_SAFETY_S, nap_max_s=NAP_MAX_S,
+                     espera_max_s=ESPERA_MAX_S):
     """Drena o não-LLM enquanto a sessão PRO está em cooldown.
 
     `autopilot_run()` JÁ roda até exaurir por conta própria (guards de
@@ -50,10 +57,18 @@ def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
     restante foi atacado dentro dos próprios steps (log agregado + guard de
     cadência do `list_composer`), não aqui.
 
-    Devolve o motivo da saída: "quota_restaurada" ou "reset_atingido".
+    Devolve o motivo da saída:
+      - "quota_restaurada": a janela saiu do cooldown — o chamador DEVE seguir
+        para a próxima janela LLM;
+      - "reset_atingido": desistiu após `espera_max_s` com a janela ainda em
+        cooldown (válvula de segurança).
+
+    O chamador deve decidir pelo MOTIVO, não reconsultando `session_window()`:
+    reconsultar reintroduz a corrida de fronteira descrita em `nap` abaixo.
     """
     drenar = True
     proxima_checagem = 0.0
+    inicio = monotonic()
 
     while True:
         if drenar:
@@ -75,10 +90,25 @@ def drenar_ate_reset(*, autopilot_run, count_pending, session_window,
         if not w.get("in_cooldown"):
             return "quota_restaurada"
 
-        secs = max(0, int(w.get("seconds_until_reset", 0)))
-        nap = min(nap_max_s, secs)
-        if nap <= 0:
+        if monotonic() - inicio > espera_max_s:
+            log(f"{prefixo} ⚠ Esperando o reset há mais de "
+                f"{espera_max_s // 3600} h e a janela segue em cooldown — "
+                f"desistindo da espera.")
             return "reset_atingido"
+
+        secs = max(0, int(w.get("seconds_until_reset", 0)))
+
+        # `max(1, ...)`: enquanto a janela disser in_cooldown, NUNCA dormir 0.
+        # `seconds_until_reset` vem truncado por int() no claude_usage_tracker,
+        # então faltando 119,7 s ele devolve 119 — dormir exatamente isso acorda
+        # uma fração de segundo ANTES do reset, com in_cooldown ainda True e
+        # secs=0. Antes de 2026-08-14 isso devolvia "reset_atingido" e o chamador
+        # encerrava o loop multijanela justamente no instante em que a quota
+        # voltava. Medido no pipeline_2026-08-12_19-03-07 (35h27): "~1 min
+        # restantes" às 00:45:52 e "encerrando loop multijanela" às 00:47:49 —
+        # o G usou 2 janelas LLM onde cabiam ~7, e passou as ~30 h seguintes
+        # só em trabalho não-LLM.
+        nap = min(nap_max_s, max(1, secs))
 
         log(f"{prefixo} Backlog não-LLM drenado; aguardando reset da sessão "
             f"(~{secs // 60} min restantes)…")

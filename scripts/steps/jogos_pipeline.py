@@ -1543,7 +1543,7 @@ def autopilot_j():
                 #    2026-08-04/05/06: 61, 60 e 62 passes de JOGOS_QG, TODOS com
                 #    "Aprovados: 0 | Bloqueados: 319" — zero progresso, cada
                 #    passe relendo os 319 jogos não publicados.
-                drain_loop.drenar_ate_reset(
+                motivo = drain_loop.drenar_ate_reset(
                     autopilot_run=_drenar_publicar_jogos,
                     count_pending=_pendentes_publicacao,
                     session_window=session_window,
@@ -1553,8 +1553,13 @@ def autopilot_j():
                     prefixo="[J]",
                 )
 
-                if session_window().get("in_cooldown"):
-                    log("[J] Sessão ainda em cooldown — encerrando loop multijanela.")
+                # Decide pelo MOTIVO — reconsultar session_window() aqui era o
+                # que encerrava o loop na fronteira do reset (mesmo defeito do
+                # G, medido em 2026-08-14; ver o comentário de `nap` em
+                # core/drain_loop.py).
+                if motivo != "quota_restaurada":
+                    log(f"[J] Espera encerrada sem quota restaurada ({motivo}) "
+                        f"— encerrando loop multijanela.")
                     break
 
                 backlog_antes  = _synopsis_backlog()
