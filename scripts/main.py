@@ -1109,7 +1109,7 @@ def _run_gargalo(idioma: str):
                     finally:
                         conn_d.close()
 
-                drain_loop.drenar_ate_reset(
+                motivo = drain_loop.drenar_ate_reset(
                     autopilot_run=_drenar_uma_vez,
                     count_pending=_pendente,
                     session_window=session_window,
@@ -1118,8 +1118,17 @@ def _run_gargalo(idioma: str):
                     monotonic=_time.monotonic,
                 )
 
-                if session_window().get("in_cooldown"):
-                    log("[G] Sessão ainda em cooldown — encerrando loop multijanela.")
+                # Decide pelo MOTIVO, não reconsultando session_window(). A
+                # reconsulta é o que causava o encerramento prematuro: o
+                # `seconds_until_reset` vem truncado por int(), então a espera
+                # acordava uma fração de segundo antes do reset e a janela ainda
+                # respondia in_cooldown=True. Medido no
+                # pipeline_2026-08-12_19-03-07: 2 janelas LLM usadas em 35h27,
+                # com o loop encerrando às 00:47:49 depois de esperar as ~4h
+                # corretamente ("~1 min restantes" às 00:45:52).
+                if motivo != "quota_restaurada":
+                    log(f"[G] Espera encerrada sem quota restaurada ({motivo}) "
+                        f"— encerrando loop multijanela.")
                     break
 
                 backlog_antes = llm_orchestrator._content_backlog(idioma)

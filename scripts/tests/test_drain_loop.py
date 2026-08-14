@@ -117,4 +117,63 @@ f = Fake(cooldown_s=5 * 3600, pendente=0)
 f.rodar()
 assert all(m.startswith("[G]") for m in f.logs), f"padrão devia ser [G]: {f.logs[:3]}"
 
+
+# ── 8. Fronteira do reset: não desistir a 1 segundo do fim ───────────────────
+# O claude_usage_tracker TRUNCA `seconds_until_reset` com int(), então perto do
+# fim a janela diz in_cooldown=True com secs=0. Antes de 2026-08-14 isso
+# devolvia "reset_atingido" e o chamador encerrava o loop multijanela bem no
+# instante em que a quota voltava. Medido no pipeline_2026-08-12_19-03-07
+# (35h27): "~1 min restantes" às 00:45:52, "encerrando loop multijanela" às
+# 00:47:49 — 2 janelas LLM usadas onde cabiam ~7.
+class FakeFronteira:
+    """Janela que reporta in_cooldown=True com secs=0 por N checagens."""
+
+    def __init__(self, checagens_na_fronteira):
+        self.restantes = checagens_na_fronteira
+        self.t = 0.0
+        self.logs = []
+        self.dormiu = []
+
+    def monotonic(self):
+        return self.t
+
+    def sleep(self, n):
+        assert n > 0, "dormir 0 na fronteira faz busy-spin"
+        self.dormiu.append(n)
+        self.t += n
+        self.restantes -= 1
+
+    def session_window(self):
+        if self.restantes > 0:
+            return {"in_cooldown": True, "seconds_until_reset": 0}
+        return {"in_cooldown": False, "seconds_until_reset": 0}
+
+    def rodar(self):
+        return drenar_ate_reset(
+            autopilot_run=lambda: None,
+            count_pending=lambda: 0,
+            session_window=self.session_window,
+            log=self.logs.append,
+            sleep=self.sleep,
+            monotonic=self.monotonic,
+        )
+
+
+f = FakeFronteira(checagens_na_fronteira=3)
+assert f.rodar() == "quota_restaurada", (
+    "na fronteira do reset o loop tem de ESPERAR e devolver quota_restaurada — "
+    "devolver reset_atingido faz o chamador desistir com a quota voltando"
+)
+assert f.dormiu == [1, 1, 1], f"devia dormir 1s por checagem de fronteira: {f.dormiu}"
+
+# ── 9. Válvula: cooldown que nunca limpa não gira para sempre ────────────────
+class FakePreso(FakeFronteira):
+    def session_window(self):
+        return {"in_cooldown": True, "seconds_until_reset": 0}
+
+
+f = FakePreso(checagens_na_fronteira=0)
+assert f.rodar() == "reset_atingido", "cooldown preso tem de desistir"
+assert f.t > 6 * 3600 - 60, f"devia ter esperado ~6h antes de desistir: {f.t}"
+
 print("test_drain_loop OK")
