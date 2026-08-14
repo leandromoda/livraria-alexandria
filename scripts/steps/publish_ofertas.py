@@ -7,6 +7,7 @@
 #            e oferta resolvida (offer_status=1, offer_url preenchida).
 # ============================================================
 
+import hashlib
 import os
 import time
 
@@ -58,7 +59,8 @@ def fetch_pendentes(conn, pacote):
             supabase_id,
             marketplace,
             offer_url,
-            COALESCE(preco_atual, preco) AS preco
+            COALESCE(preco_atual, preco) AS preco,
+            oferta_payload_hash
         FROM livros
         WHERE CAST(offer_status AS TEXT) IN ('1', 'active')
           AND status_publish        = 1
@@ -169,16 +171,44 @@ def fix_offer_status(conn=None):
 # FLAG LOCAL
 # =========================
 
-def mark_published(conn, local_id):
+def _offer_url_final(offer_url):
+    """URL como ela vai ao Supabase — com as tags de afiliado já injetadas.
+
+    Existe para o `run_repair` e o `run` hasharem exatamente a MESMA string. Se
+    o repair hasheasse a URL crua do banco e o publish a URL com tag, todo hash
+    divergiria e o filtro de mudança não filtraria nada.
+    """
+    return inject_amazon_tag(inject_ml_affiliate(offer_url))
+
+
+def _payload_hash(marketplace, offer_url, preco) -> str:
+    """Impressão digital do que de fato vai ao Supabase.
+
+    Cobre os três campos mutáveis do payload — `marketplace`, `url_afiliada` e
+    `preco`. Fora de propósito: `livro_id` (imutável), `ativa` (sempre True
+    nesta query, que já filtra offer_status ativo) e `created_at` (muda a cada
+    chamada por construção, e incluí-lo faria todo hash diferir sempre).
+
+    O preço é arredondado a 2 casas antes de entrar: é NUMERIC no Supabase e
+    REAL no SQLite, e um ruído de ponto flutuante na 12ª casa não é mudança de
+    preço — seria republicação eterna.
+    """
+    preco_norm = "" if preco is None else f"{round(float(preco), 2):.2f}"
+    base = f"{marketplace or ''}|{offer_url or ''}|{preco_norm}"
+    return hashlib.sha1(base.encode("utf-8")).hexdigest()[:16]
+
+
+def mark_published(conn, local_id, payload_hash=None):
 
     cur = conn.cursor()
 
     cur.execute("""
         UPDATE livros
         SET status_publish_oferta = 1,
+            oferta_payload_hash   = COALESCE(?, oferta_payload_hash),
             updated_at            = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (local_id,))
+    """, (payload_hash, local_id))
 
     conn.commit()
 
@@ -225,10 +255,9 @@ def run(pacote=100):
 
     for i, row in enumerate(rows, start=1):
 
-        local_id, titulo, supabase_id, marketplace, offer_url, preco = row
+        local_id, titulo, supabase_id, marketplace, offer_url, preco, hash_atual = row
 
-        offer_url = inject_ml_affiliate(offer_url)
-        offer_url = inject_amazon_tag(offer_url)
+        offer_url = _offer_url_final(offer_url)
 
         payload = {
             "livro_id":    supabase_id,
@@ -236,8 +265,17 @@ def run(pacote=100):
             "url_afiliada": offer_url,
             "preco":       preco,
             "ativa":       True,
-            "created_at":  now,
         }
+
+        # `created_at` SÓ na primeira publicação desta oferta. Com
+        # `resolution=merge-duplicates` o PostgREST sobrescreve as colunas
+        # enviadas, então mandá-la em toda republicação reescrevia a data de
+        # criação de cada oferta a cada passe do run_repair — medido no
+        # pipeline_2026-08-12_19-03-07: 9.630 republicações em 35h, ou seja o
+        # `created_at` de TODAS as ofertas reescrito 2x. É o mesmo defeito já
+        # corrigido em publish_autores._resync_bios.
+        if hash_atual is None:
+            payload["created_at"] = now
 
         ok = upsert(ofertas_url, payload, headers)
 
@@ -246,7 +284,7 @@ def run(pacote=100):
             log(f"[OFERTAS][{i:03d}/{total:03d}] FALHA → {titulo}")
             continue
 
-        mark_published(conn, local_id)
+        mark_published(conn, local_id, _payload_hash(marketplace, offer_url, preco))
         inserted += 1
         log(f"[OFERTAS][{i:03d}/{total:03d}] OK → {titulo} ({marketplace})")
 
@@ -260,33 +298,68 @@ def run(pacote=100):
 # =========================
 
 def run_repair(pacote=200):
-    """Força republicação de todas as ofertas para livros publicados.
+    """Republica as ofertas cujo payload MUDOU desde a última publicação.
 
     1. Normaliza offer_status='active' → 1
-    2. Reseta status_publish_oferta=0 para livros elegíveis
+    2. Marca para republicação só quem tem payload diferente do já publicado
     3. Chama run(pacote) — upsert idempotente via on_conflict
+
+    ⚠ Até 2026-08-14 o passo 2 resetava `status_publish_oferta=0` para TODOS os
+    publicados, e o passo 3 reenviava o catálogo inteiro. Medido no
+    pipeline_2026-08-12_19-03-07 (35h27): 4.789 ofertas distintas e **9.630
+    publicações** — 2 execuções do repair × o catálogo inteiro, 99 passes de
+    100, e 52,6% de todas as linhas do log.
+
+    O que de fato muda entre passes é preço, e o `offer_price_monitor` visita
+    `PRECO_POR_CICLO` livros por ciclo (padrão 50). Reenviar ~4.800 upserts para
+    propagar ~50 preços é ~99% de escrita inútil no Supabase.
+
+    O filtro é por hash do payload (`_payload_hash`), não por timestamp: o
+    `updated_at` é tocado por vários steps — inclusive pelo próprio repair, na
+    versão anterior — então não serve de sinal de mudança. O hash cobre
+    marketplace, URL afiliada e preço; qualquer um deles mudando republica.
     """
     conn = get_conn()
 
     # 1. Normaliza offer_status
     fix_offer_status(conn)
 
-    # 2. Reseta flag para forçar re-upsert
+    # 2. Marca só o que mudou
     cur = conn.cursor()
     cur.execute("""
-        UPDATE livros
-        SET status_publish_oferta = 0,
-            updated_at            = CURRENT_TIMESTAMP
+        SELECT id, marketplace, offer_url,
+               COALESCE(preco_atual, preco) AS preco,
+               oferta_payload_hash, status_publish_oferta
+        FROM livros
         WHERE status_publish   = 1
           AND offer_url        IS NOT NULL
           AND CAST(offer_status AS TEXT) IN ('1', 'active')
           AND supabase_id      IS NOT NULL
     """)
-    conn.commit()
-    resetados = cur.rowcount
+    elegiveis = cur.fetchall()
+
+    mudaram = []
+    for local_id, marketplace, offer_url, preco, hash_ant, ja_pendente in elegiveis:
+        novo = _payload_hash(marketplace, _offer_url_final(offer_url), preco)
+        # hash_ant NULL = nunca publicada por esta versão do código: publica uma
+        # vez para semear o hash. A partir daí só volta se mudar de verdade.
+        if hash_ant != novo:
+            mudaram.append(local_id)
+
+    if mudaram:
+        cur.executemany(
+            "UPDATE livros SET status_publish_oferta = 0 WHERE id = ?",
+            [(i,) for i in mudaram],
+        )
+        conn.commit()
     conn.close()
 
-    log(f"[REPAIR] {resetados} ofertas marcadas para republicação")
+    inalterados = len(elegiveis) - len(mudaram)
+    log(f"[REPAIR] {len(mudaram)} oferta(s) com payload alterado → republicar | "
+        f"{inalterados} inalterada(s) — puladas")
 
-    # 3. Re-publica
+    if not mudaram:
+        return
+
+    # 3. Re-publica (pode levar mais de um passe se `mudaram` > pacote)
     run(pacote)
