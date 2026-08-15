@@ -723,8 +723,17 @@ def run_list_audit(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
 
     for lista_id, slug, titulo in rows:
         # Conta membros que ainda estão publicados
+        # `listas_livros` (PLURAL) é a tabela no SQLite — confirmado no
+        # sqlite_master do books.db: ['listas', 'listas_livros'].
+        # `lista_livros` (singular) é o nome da tabela NO SUPABASE, usado
+        # corretamente por steps/publish_listas.py na rota REST; o nome remoto
+        # tinha sido copiado para esta query local. Efeito medido em 2026-08-15
+        # na fila do /analise-logs: 7 ocorrências de
+        # "[G] ERRO em 29 Listas SEO: no such table: lista_livros" nos 6 logs
+        # substanciais de 2026-08-08 a 2026-08-14 — uma por execução do G, sem
+        # exceção. Esta auditoria nunca produziu resultado.
         count_row = conn.execute(
-            """SELECT COUNT(*) FROM lista_livros ll
+            """SELECT COUNT(*) FROM listas_livros ll
                JOIN livros l ON l.id = ll.livro_id
                WHERE ll.lista_id = ? AND l.status_publish = 1""",
             (lista_id,)

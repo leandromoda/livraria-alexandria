@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import threading
+from pathlib import Path
 
 # Console do Windows costuma usar cp1252; força UTF-8 no stdout/stderr para os
 # painéis e box-chars (─, █, →, ↓) não quebrarem com UnicodeEncodeError.
@@ -664,9 +665,12 @@ pipeline  → apenas ainda não publicados
             log("Gerando relatório de consistência (consulta Supabase)…")
             out = consistency_check.run()
             if out:
+                # Path(out).name: `consistency_check.run()` devolve o caminho
+                # como STRING, e `out.name` levantava AttributeError. Path()
+                # aceita str e Path, então não depende do tipo de retorno.
                 print(f"""
 === PRÓXIMO PASSO ===
-Relatório gerado: {out.name}
+Relatório gerado: {Path(out).name}
 
 Abra o Claude Code e execute:
   Leia agents/consistency_review/prompt.md e execute todas as instruções.
@@ -1040,7 +1044,13 @@ def _run_gargalo(idioma: str):
             elif key == "consistency_check":
                 out = consistency_check.run()
                 if out:
-                    log(f"[G] Relatório gerado: {out.name}")
+                    # Path(out): `run()` devolve STRING, e `out.name` matava o
+                    # step com AttributeError DEPOIS de o relatório já estar
+                    # gravado. Medido em 2026-08-15 na fila do /analise-logs: 5
+                    # ocorrências de "[G] ERRO em 32 Consistência: 'str' object
+                    # has no attribute 'name'" — a auditoria rodava, o relatório
+                    # saía, e o G registrava o step como falho.
+                    log(f"[G] Relatório gerado: {Path(out).name}")
                     # Não mandar o usuário rodar o agente (scripts/CLAUDE.md).
                     # O executor automático existe — `consistency_review` na
                     # FASE B do llm_orchestrator —, mas a Fase B é gated em
