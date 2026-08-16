@@ -217,14 +217,22 @@ Nunca gerar a lista inteira de uma vez.
 QUANTIDADE_ALVO = 30
 QUANTIDADE_MINIMA = NÃO EXISTE
 
-Por que 30 e não 60: o universo de jogos com edição brasileira já era menor
-que o de livros, e o filtro passou a ser TEMA + CATEGORIA + MECÂNICA — muito
-mais estreito que só TEMA. 30 é estimativa de projeto, NÃO é número medido.
-Recalibrar depois das primeiras execuções reais.
+MEDIDO em 2026-08-08 (n=15, seeds 009-023, primeiro lote real via Cowork):
+47 itens em 15 combinações — média **3,1**, faixa de 1 a 9, ZERO combinações
+vazias. O ALVO nunca chegou perto de ser o limite: o limite é o universo real,
+e ele é ~10x menor que 30.
 
-(Para comparação, na seção infantil o mesmo raciocínio levou a ALVO 40 e a
-entrega real medida foi de 6 a 12 itens por combinação. Espere pouco aqui
-também.)
+Para comparação, a seção infantil mediu média 7,6 (faixa 6-12) com o mesmo
+desenho. Jogos rende **menos da metade** — confirma que o universo com edição
+brasileira é bem mais estreito, como o texto anterior supunha.
+
+O ALVO fica em 30 de propósito: é teto, não meta. Baixá-lo para perto da média
+faria o agente parar cedo nas combinações ricas (a melhor entregou 9).
+
+ACHADO A OBSERVAR: 6 das 15 combinações (40%) só produziram algo depois de
+RELAXAR MECANICA. A dimensão MECÂNICA pode estar estreita demais para o
+mercado brasileiro de jogos. Se a taxa continuar nesse patamar nos próximos
+lotes, vale rever o catálogo de mecânicas em vez de seguir relaxando.
 
 A REALIDADE tem prioridade absoluta sobre a quota:
 
