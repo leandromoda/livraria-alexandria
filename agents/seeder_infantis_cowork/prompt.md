@@ -89,6 +89,37 @@ Quatro regras seguem disso:
 
 ---
 
+## O que a medição mostrou (2026-08-08) — leia junto com as regras acima
+
+As regras desta seção foram escritas em 2026-07-28 e **medidas** no lote
+seguinte (jogos, 15 seeds, 637 turnos, 133,7 M tokens, 2h07 numa única sessão),
+contra o lote anterior (infantis, 5 seeds, 232 turnos, 39,4 M):
+
+| | antes | depois | |
+|---|---:|---:|---|
+| tokens por seed | 7,9 M | **8,9 M** | +13% |
+| turnos por seed | 46,4 | 42,5 | -8% |
+| turnos sem ferramenta | 35% | **33%** | dentro do ruído |
+| chamadas de JS por seed | 9,6 | 6,5 | -32% |
+| chamadas de lista de tarefas | 21 | **0** | eliminado |
+
+**O custo por seed PIOROU.** Não porque as regras sejam inúteis, mas porque as
+15 combinações rodaram numa sessão só: o crescimento de contexto engoliu os
+ganhos por turno. Confirma que **o tamanho da sessão é o único lever que
+realmente pesa** — e ele não está nas suas mãos, está no N que o usuário pede.
+
+O que isso ensina sobre as próprias regras:
+
+- **Proibição binária funciona.** "Não use lista de tarefas" foi de 21 para 0.
+- **Pedido de comportamento funciona pouco.** "Não narre" moveu 35% para 33%,
+  que é ruído. Se você está lendo isto: um terço dos seus turnos ainda é só
+  texto. Vale de verdade cortar.
+- **"Uma chamada por objetivo" entregou parte.** 9,6 para 6,5 por seed — melhor,
+  mas ainda 6x acima do alvo de 1. O snippet do passo 5 devolve tudo de uma vez;
+  use-o e siga.
+
+---
+
 ## Argumento
 
 `N` = quantas combinações processar nesta execução. Sem argumento, **N = 1**.
@@ -119,7 +150,11 @@ Liste **os dois** diretórios:
 - `scripts/data/seeds/ingested_seeds/`
 
 Pegue o maior `NNN` entre os arquivos que casam com
-`^\d{3}_infantis_seeds\.json$` e some 1. Formate com 3 dígitos (`002`, `047`).
+`^\d+_infantis_seeds\.json$` e some 1. Formate com 3 dígitos (`002`, `047`).
+
+> O padrão do pipeline é `\d+`, sem teto de 3 dígitos (decisão registrada em
+> `scripts/CLAUDE.md`). Use 3 dígitos por convenção; passando de 999, siga com
+> 4 — não reinicie a contagem.
 
 O pipeline **move** o seed para `ingested_seeds/` ao ingerir — por isso a
 varredura precisa cobrir os dois. `controle.proximo_seed` é apenas cache: se
@@ -296,7 +331,7 @@ Ao final das N combinações, uma tabela:
 Mais:
 
 - o próximo `NNN` livre;
-- qualquer arquivo em `seeds/` fora do padrão `^\d{3}_infantis_seeds\.json$`
+- qualquer arquivo em `seeds/` fora do padrão `^\d+_infantis_seeds\.json$`
   (ex.: `XXX_infantis_seeds.json`) — **apenas reportar**, o pipeline ignora
   esses nomes silenciosamente e a decisão de renomear é do usuário;
 - lembrete de uma linha: os seeds ficam aguardando a ingestão pelo autopilot
