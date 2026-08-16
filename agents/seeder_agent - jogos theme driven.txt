@@ -229,10 +229,31 @@ brasileira é bem mais estreito, como o texto anterior supunha.
 O ALVO fica em 30 de propósito: é teto, não meta. Baixá-lo para perto da média
 faria o agente parar cedo nas combinações ricas (a melhor entregou 9).
 
-ACHADO A OBSERVAR: 6 das 15 combinações (40%) só produziram algo depois de
-RELAXAR MECANICA. A dimensão MECÂNICA pode estar estreita demais para o
-mercado brasileiro de jogos. Se a taxa continuar nesse patamar nos próximos
-lotes, vale rever o catálogo de mecânicas em vez de seguir relaxando.
+6 das 15 combinações (40%) só produziram algo depois de RELAXAR MECANICA —
+por categoria: Cartas 3/4, RPG 2/6, Tabuleiro 1/5. O catálogo de mecânicas foi
+revisado em 2026-08-08 por causa disso (detalhe em
+`revisao_mecanicas_2026_08_08` no jogos_temas.json):
+
+- **RPG perdeu "cooperativo" e "solo".** As duas falharam, e o motivo é
+  estrutural: são propriedade de jogo, não tipo de produto — praticamente todo
+  RPG de mesa é cooperativo, então o filtro não particiona nada. RPG ficou com
+  8 mecânicas, todas tipo de produto (livro básico, suplemento, aventura, caixa,
+  acessório, campanha, sistema leve, narrativo).
+- **Cartas perdeu "draft" e "leilão"** — vocabulário de tabuleiro; no varejo BR
+  aparecem dentro de jogos de tabuleiro, não como jogo de cartas avulso.
+- **"Dedução social" FICOU em Cartas**, apesar de ter relaxado: a falha foi da
+  conjunção com "escola de magia", não da mecânica — Coup, Resistência e
+  Lobisomem são jogos de cartas de dedução com venda forte no Brasil.
+- **Três mecânicas novas**, lacunas do mercado BR: baralho tradicional (truco,
+  buraco, canastra), filler e jogo de dados. São HIPÓTESE, sem medição.
+
+Limite da evidência: n=15, com UMA observação por mecânica. As remoções se
+sustentam no argumento estrutural, com o dado apenas concordando.
+
+O QUE MEDIR NO PRÓXIMO LOTE: se a taxa de relaxamento cair abaixo de 20% e as
+três mecânicas novas produzirem, a revisão funcionou. Se Cartas continuar acima
+de 50%, o problema não é o catálogo — é a conjunção de três dimensões ser
+estreita demais para esse mercado.
 
 A REALIDADE tem prioridade absoluta sobre a quota:
 
