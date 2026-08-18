@@ -64,7 +64,7 @@ export default async function Home() {
       id,
       nome,
       slug,
-      livros_autores (
+      livros_autores!inner (
         livro_id
       )
     `)

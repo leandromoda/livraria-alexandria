@@ -29,6 +29,7 @@ from core.logger import log
 from core.run_logger import StepRun
 from core import interrupt as _interrupt
 from core import step_cadence
+from core import kv_state
 
 from steps import (
     offer_seed,
@@ -636,6 +637,7 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
     # livros publicados DURANTE este run entram no delta; a rede de segurança cobre
     # qualquer resíduo de execução anterior que tenha falhado.
     REPAIR_SAFETY_EVERY = 25
+    CHAVE_CICLOS_SEM_REPAIR = "autopilot.ciclos_sem_repair"
     conn = get_conn()
     repair_synced_ids: set = {
         r[0] for r in conn.execute(
@@ -643,7 +645,19 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
         ).fetchall()
     }
     conn.close()
-    ciclos_sem_repair = 0
+
+    # PERSISTIDO entre invocações. Era variável local, então cada re-invocação de
+    # run() (o LLM_ORCH re-invoca o autopilot a cada esgotamento de sessão) zerava
+    # o contador e a rede de segurança de REPAIR_SAFETY_EVERY ciclos NUNCA
+    # disparava. Medido no pipeline_2026-08-17_05-35-45.log: 31 ocorrências de
+    # "Reparo de relações: sem livros novos", todas com a contagem regressiva
+    # parada em 23-24 ciclos — ela nunca desceu. Mesma armadilha que
+    # core/kv_state.py foi criado para resolver: o docstring de lá cita este
+    # contador pelo nome.
+    try:
+        ciclos_sem_repair = int(kv_state.get(CHAVE_CICLOS_SEM_REPAIR, 0) or 0)
+    except (TypeError, ValueError):
+        ciclos_sem_repair = 0
 
     # Listas SEO: mesma ideia do REPAIR acima, pelo mesmo motivo. A ENTRADA do
     # list_composer só muda quando um livro é publicado — e o step "14 Publicar
@@ -796,6 +810,7 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                         publish_autores.run_repair_relacoes()
                     repair_synced_ids = pub_ids
                     ciclos_sem_repair = 0
+                    kv_state.set(CHAVE_CICLOS_SEM_REPAIR, 0)
                 except Exception as e:
                     log(f"[AUTOPILOT] AVISO: repair_relacoes (completo) falhou: {e}")
             elif novos_ids:
@@ -804,10 +819,12 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                         publish_autores.run_repair_relacoes(livro_ids=list(novos_ids))
                     repair_synced_ids |= novos_ids
                     ciclos_sem_repair = 0
+                    kv_state.set(CHAVE_CICLOS_SEM_REPAIR, 0)
                 except Exception as e:
                     log(f"[AUTOPILOT] AVISO: repair_relacoes (incremental) falhou: {e}")
             else:
                 ciclos_sem_repair += 1
+                kv_state.set(CHAVE_CICLOS_SEM_REPAIR, ciclos_sem_repair)
                 log("[AUTOPILOT] Reparo de relações: sem livros novos desde o último "
                     f"reparo — pulando (rede de segurança em "
                     f"{max(0, REPAIR_SAFETY_EVERY - ciclos_sem_repair)} ciclo(s)).")
