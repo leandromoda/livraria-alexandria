@@ -48,10 +48,21 @@ def fetch_autores_pendentes(conn, pacote):
 
     cur = conn.cursor()
 
+    # EXISTS obrigatório: autor sem nenhum livro vinculado não vai ao Supabase.
+    # Sem esse filtro qualquer autor com status_publish=0 era publicado, inclusive
+    # os que ficaram sem obra (livro removido por dedup/blacklist depois, ou autor
+    # criado antes do vínculo). Medido em 2026-08-18: 642 dos 8.342 autores
+    # publicados não tinham NENHUMA linha em livros_autores — e nenhum deles tinha
+    # sequer um livro cujo campo `autor` casasse com o nome, ou seja, não era
+    # junção perdida, era autor sem obra. Como app/sitemap.ts lista todos os
+    # autores sem filtro, cada um virava uma página vazia submetida ao Google.
+    #
+    # Isto estanca a ORIGEM. O passivo já publicado é filtrado no sitemap.
     cur.execute("""
         SELECT id, nome, slug, nacionalidade, supabase_id, descricao
-        FROM autores
+        FROM autores a
         WHERE status_publish = 0
+          AND EXISTS (SELECT 1 FROM livros_autores la WHERE la.autor_id = a.id)
         LIMIT ?
     """, (pacote,))
 
