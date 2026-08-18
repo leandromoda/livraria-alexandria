@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-09 (sessao 35 - PR #272, /analise_gsc): (1) Linha de base do Search Console reposta — a secao de 08-08 rodou sem o Chrome conectado e ficou sem contagens. Numeros de 2026-08-09: bloqueada por robots 3.926, redirecionamento 1.654, canonica alternativa 1.260, excluida por noindex 580, 404 278, copia com canonica diferente 270, indexada-mas-bloqueada 107, rastreada nao indexada 74, 5xx 23. (2) UNICO bug real da secao: as 107 URLs de 'Indexada, mas bloqueada pelo robots.txt' sao 100% /api/click/*, porque os 3 links de livros/ofertas nao tinham rel=nofollow sponsored (jogos e infantis ja tinham). Corrigido no #272 e verificado em producao (TASK-SEO-013). (3) CORRIGE uma premissa registrada em 08-08: o alerta de 'Excluida pela tag noindex' NAO era do /infantis — 572 das 580 URLs sao /autores/*, populacao que a TASK-SEO-012 (#263) ja resolveu trocando 200+noindex por 404. Sao dados de crawl de 2 a 4 de ago, anteriores ao fix; migram sozinhos para o bucket 404. Licao de metodo: conferir URL que a gente supoe nao e amostrar a populacao — abrir o drilldown e agrupar por secao antes de concluir a causa. (4) Hipotese DESCARTADA por medicao: 'o sitemap anuncia URLs que 404'. O sitemap escolhe autores/categorias por inner join no pivot enquanto a pagina filtra por is_publishable — divergencia plausivel no papel, mas amostra de 30 URLs deu 30x HTTP 200, 0 falhas. Nao abrir tarefa sem medir de novo. (5) Registrado que o robots.txt de producao tem um bloco injetado pelo Cloudflare antes do nosso. (6) E-mail 'produtos nao estao no separador Compras' dispensado: promocional, exige Merchant Center e so suporta Shopify/WooCommerce.",
+    "last_updated": "2026-08-18 (PR #282): autores orfaos estancados na origem (publish exige vinculo), home passa a filtrar com livros_autores!inner, e `ciclos_sem_repair` do autopilot persistido em kv_state — a rede de seguranca do reparo de relacoes nunca disparava porque o contador zerava a cada re-invocacao. Ver TASK-AUTORES-004.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2444,6 +2444,31 @@
       "resolved_on": "2026-08-11",
       "resolution": "run_content_audit e run_title_verify passaram a chamar o LLM EM LOTE. AUDIT_BATCH_SIZE (env, padrao 10) define livros por chamada; limit=N agora custa ceil(N / AUDIT_BATCH_SIZE) chamadas. Medido no teste: 25 livros = 3 chamadas (era 25). AUDIT_LLM_POR_CICLO voltou de 3 para 10, o que com o padrao e 1 chamada — mesmo custo de qualquer outro ocupante do slot secundario.\n\nEstrutura em 3 fases nos dois modos: (1) coleta nao-LLM em laco (fetch da pagina renderizada / Google Books, diff, HEAD de imagem), (2) UMA chamada por lote, (3) merge, acao e persistencia. Livro ausente da resposta do lote NAO e gravado no audit_log — fica para a proxima rodada, em vez de registrar um veredito que ninguem deu.\n\nRemovido o caminho por-livro inteiro: _llm_verify_title, _parse_llm_audit_response, AUDIT_PROMPT_TEMPLATE, TITLE_VERIFY_PROMPT e o import de markdown_executor._call_llm. auditor.py nao usa mais o roteador legado; as duas chamadas de LLM que restaram passam por claude_runner.run_prompt, com timeout que escala com o tamanho do lote (os 120 s fixos do _call_llm eram curtos para um lote de 10).\n\nInvariante de custo fixado em tests/test_auditor_batch.py (N livros -> ceil(N/BATCH) chamadas, lote que falha nao inventa veredito, item sem slug e descartado).",
       "correcao_do_registro": "A descricao original dizia para 'criar agents/audit_batch/prompt.md — o nome ja consta da tabela AGENT_MODELS e nunca foi implementado'. ERRADO em dois pontos, verificado ao executar: agents/audit_batch/prompt.md EXISTE (163 linhas, de 2026-06-09) e e o agente do comando /audit — le relatorios NNNN_audit_MODE.json e aplica correcoes (ver core/audit_report.py:10). Nao tem relacao com lotear as chamadas da auditoria. Por isso a solucao nao criou agente markdown nenhum: o lote e montado em auditor.py e enviado por run_prompt, que e o caminho mais curto e nao colide com o nome existente."
+    },
+    {
+      "id": "TASK-AUTORES-004",
+      "title": "Autores orfaos publicados + cadencia do reparo de relacoes travada",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-18",
+      "resolved_on": "2026-08-18",
+      "origem": "Auditoria de integridade do pipeline de 17/08 (relatorios 0670, 0676 e 0677) acusou '642 autores publicados sem livros vinculados'.",
+      "diagnostico": [
+        "NAO era juncao perdida: nenhum dos 642 tinha sequer um livro cujo campo `autor` casasse com o nome. Sao autores sem obra nenhuma no banco — nao havia relacao a reconstruir.",
+        "O reparo de relacoes nao os corrigiria nem se rodasse: publish_autores.run_repair_relacoes empurra relacoes LOCAIS -> Supabase, e a auditoria checa a tabela LOCAL. Sem linha local, nao ha o que sincronizar. A `acao_recomendada` do proprio relatorio ('verificar livros_autores ou re-publicar autores') aponta para o lugar errado.",
+        "Origem: fetch_autores_pendentes publicava TODO autor com status_publish=0, sem exigir vinculo.",
+        "Bug adicional encontrado no caminho: o reparo de relacoes NUNCA rodava. No pipeline_2026-08-17_05-35-45.log sao 31 ocorrencias de 'sem livros novos — pulando', todas com a contagem regressiva parada em 23-24 ciclos: ela nunca desce. `ciclos_sem_repair` era variavel local de autopilot.run(), e o LLM_ORCH re-invoca run() a cada esgotamento de sessao — cada invocacao zerava o contador, entao a rede de seguranca de REPAIR_SAFETY_EVERY=25 nunca disparava."
+      ],
+      "solucao": [
+        "A) steps/autopilot.py: `ciclos_sem_repair` passa a ser persistido em core/kv_state (tabela pipeline_state). O docstring do kv_state JA citava este contador pelo nome como exemplo da armadilha que ele foi criado para resolver — a ferramenta existia, so nao tinha sido aplicada aqui.",
+        "B) steps/publish_autores.py: fetch_autores_pendentes exige EXISTS (SELECT 1 FROM livros_autores ...). Autor sem livro deixa de ser publicado. Estanca a origem.",
+        "C) app/(public)/page.tsx: passa a usar `livros_autores!inner`. A home era a UNICA das quatro superficies que listava autores sem inner join — renderizava 'Fulano / 0 livros' com link para pagina vazia. Indice de autores, busca e sitemap ja filtravam."
+      ],
+      "correcao_de_diagnostico": "Durante a analise eu afirmei que app/sitemap.ts listava todos os autores sem filtro e que os 642 viravam paginas vazias no Google. ERRADO: o sitemap ja usava `livros_autores!inner(livro_id)` desde antes deste PR. A exposicao real era a home, corrigida em C.",
+      "classe_do_bug": "TERCEIRA instancia de 'contador/guard zerado a cada re-invocacao' no projeto — depois do dreno (core/drain_loop.py) e do seed de repair_synced_ids. core/kv_state.py existe justamente para isso; ao encontrar a quarta, usar kv_state em vez de variavel local.",
+      "testes": "scripts/tests/test_kv_state_contador.py (novo, 5 checagens): o contador acumula entre invocacoes, sobrevive a nova conexao/processo e degrada para 0 com valor invalido.",
+      "pendente": "As 642 linhas seguem no Supabase. Apos C nenhuma superficie do site as lista (sao dados invisiveis, nao paginas quebradas), mas remove-las e destrutivo em producao e depende do usuario.",
+      "pr": "#282"
     }
   ],
   "qa_remediation_loop": {
