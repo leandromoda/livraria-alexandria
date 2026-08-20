@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-18 (PR #282): autores orfaos estancados na origem (publish exige vinculo), home passa a filtrar com livros_autores!inner, e `ciclos_sem_repair` do autopilot persistido em kv_state — a rede de seguranca do reparo de relacoes nunca disparava porque o contador zerava a cada re-invocacao. Ver TASK-AUTORES-004.",
+    "last_updated": "2026-08-20 (PR #284): tres gargalos fantasma eliminados do fallback do autopilot — os predicados de _count_per_step divergiam dos seletores dos steps, e 77 ciclos consecutivos terminaram em 'Progresso total: 0' ao longo de dois dias. Capas 0->19 selecionaveis, Quality Gate 98->2 e Enriquecer Desc 1->0 no contador. Ver TASK-PIPE-031 e TASK-PIPE-032.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2469,6 +2469,58 @@
       "testes": "scripts/tests/test_kv_state_contador.py (novo, 5 checagens): o contador acumula entre invocacoes, sobrevive a nova conexao/processo e degrada para 0 com valor invalido.",
       "pendente": "As 642 linhas seguem no Supabase. Apos C nenhuma superficie do site as lista (sao dados invisiveis, nao paginas quebradas), mas remove-las e destrutivo em producao e depende do usuario.",
       "pr": "#282"
+    },
+    {
+      "id": "TASK-PIPE-031",
+      "title": "Tres gargalos fantasma travavam o fallback do autopilot",
+      "status": "resolved",
+      "priority": "high",
+      "registered_on": "2026-08-20",
+      "resolved_on": "2026-08-20",
+      "origem": "Analise de logs (/analise-logs) dos dois logs pendentes: pipeline_2026-08-17_05-35-45.log e pipeline_2026-08-18_19-37-57.log. O sinal nao foi erro — foi AUSENCIA de progresso: 77 ciclos de fallback consecutivos (29 + 48, ao longo de dois dias) terminando em 'Progresso total: 0', com os mesmos tres gargalos congelados nos MESMOS valores (13 Quality Gate 97/98, 12 Capas 19, 2 Enriquecer Desc 1). Zero excecoes Python nos dois logs.",
+      "diagnostico": [
+        "Causa comum: os predicados de autopilot._count_per_step divergiram dos seletores fetch_pending/fetch_candidates dos proprios steps. O contador conta trabalho que o step nunca seleciona, entao o gargalo aparece em todo ciclo e nunca baixa.",
+        "12 Capas — verificado no books.db em 2026-08-20: os 19 livros com status_cover=0 tem TODOS idioma NULL. covers.fetch_pending filtrava 'idioma = ?' e, como \"NULL = 'PT'\" nunca e verdadeiro em SQL, selecionava 0 de 19. Aqui o contador estava CERTO e o seletor errado: sao trabalho real (imagem_url NULL nos 19).",
+        "13 Quality Gate — dos 98 contados, 94 ja estavam publicados (status_publish=1) e 2 em quarentena; quality_gate.fetch_candidates filtra 'status_publish = 0 AND COALESCE(qa_quarantine,0) = 0'. So 2 eram de fato elegiveis.",
+        "2 Enriquecer Desc — o unico registro com status_descricao=0 ('Esquadrao 7') ja tem descricao de 385 caracteres, e enrich_descricao.fetch_pending exige descricao vazia. O status ficou obsoleto (descricao veio de outra fonte sem virar o flag).",
+        "Custo real do sintoma: baixo. Cada ciclo de fallback leva ~10s e roda a cada ~30min — nao e busy-loop. O dano e de DIAGNOSTICO: gargalo fantasma permanente mascara gargalo real na deteccao do autopilot."
+      ],
+      "solucao": [
+        "A) steps/covers.py: fetch_pending passa a aceitar 'idioma = ? OR idioma IS NULL'. Corrigido no SELETOR (nao no contador) porque os 19 sao trabalho legitimo, e o idioma nao influencia a busca de capa — Amazon/Google/OpenLibrary consultam por ISBN/titulo/autor. Selecao com idioma=PT: 0 -> 19.",
+        "B) steps/autopilot.py: contador de '13 Quality Gate' alinhado ao seletor com 'AND status_publish = 0 AND COALESCE(qa_quarantine, 0) = 0'. Medido: 98 -> 2.",
+        "C) steps/autopilot.py: contador de '2  Enriquecer Desc' alinhado ao seletor com \"AND (descricao IS NULL OR TRIM(descricao) = '')\". Medido: 1 -> 0. Sem edicao de dados: status_descricao so e lido por enrich_descricao.py e por esse contador, e nao gateia nenhum step a jusante (verificado por grep em scripts/)."
+      ],
+      "classe_do_bug": "NOVA classe recorrente, distinta da de TASK-AUTORES-004 ('contador zerado a cada re-invocacao'): PREDICADO DO CONTADOR DIVERGENTE DO PREDICADO DO SELETOR. Tres instancias encontradas de uma vez no mesmo _count_per_step. Ao tocar em qualquer entrada de autopilot._count_per_step, conferir contra o fetch_pending/fetch_candidates do step correspondente — as duas queries sao escritas em arquivos diferentes e derivam sem que nada quebre, porque o sintoma e silencioso (gargalo que nao anda, nao excecao).",
+      "efeito_colateral_aceito": "Com 'idioma = ? OR idioma IS NULL', os 19 livros de idioma NULL entram na fila de capas de QUALQUER idioma, nao so PT. Rodam uma vez, recebem status_cover 1 ou 2 e saem da fila — nao ha reprocessamento.",
+      "nao_corrigido_de_proposito": "Outros 5 steps filtram 'idioma = ?' e tem a mesma exposicao aos 48 livros com idioma NULL: dedup.py:150, review.py:220, quality_gate.py:92 e :117, offer_resolver.py:146, ingestao_orientada.py:463. Sem evidencia de travamento nos logs, e mexer no particionamento por idioma de 5 steps de uma vez seria arriscado. Decidir entre backfill do idioma na ingestao e tratar NULL como elegivel em cada seletor. Ver TASK-PIPE-032.",
+      "dispensados": "Avaliados e descartados como comportamento esperado: reprovacoes do Quality Gate por 'aguardando sinopse' (164 sumarios — teto da quota PRO), 'limite de sessao' do LLM_ORCH (loop multijanela ja trata), [BLACKLIST][WARN] slug ausente (skip defensivo), HTTP 503 da Amazon e timeouts de imagem/Google Books (transitorios de rede).",
+      "files": [
+        "scripts/steps/autopilot.py",
+        "scripts/steps/covers.py"
+      ],
+      "pr": "#284"
+    },
+    {
+      "id": "TASK-PIPE-032",
+      "title": "48 livros com idioma NULL ficam inalcancaveis em 5 steps que filtram por idioma",
+      "status": "open",
+      "priority": "low",
+      "registered_on": "2026-08-20",
+      "origem": "Desdobramento de TASK-PIPE-031, que corrigiu apenas o caso de covers.py — o unico com evidencia de travamento nos logs de 17/08 e 18/08.",
+      "contexto": "Medido no books.db em 2026-08-20: 48 livros com idioma NULL, contra 17.107 PT, 639 EN, 32 ES, 31 UNKNOWN e 4 IT. Como \"NULL = 'PT'\" nunca e verdadeiro em SQL, qualquer step que filtre 'idioma = ?' os ignora em silencio. Em covers isso produziu 77 ciclos de fallback sem progresso antes de ser percebido; nos outros steps o sintoma ainda nao apareceu nos logs.",
+      "plano": [
+        "Decidir entre duas estrategias, nao aplicar as duas: (a) backfill do idioma na ingestao, atacando a origem; (b) tratar NULL como elegivel em cada seletor, como foi feito em covers.",
+        "(a) e mais limpo mas exige saber por que a ingestao deixa idioma NULL — nao investigado.",
+        "(b) e mecanico e ja tem precedente, mas muda o particionamento por idioma de 5 steps de uma vez; medir antes de aplicar em massa.",
+        "Pontos afetados: dedup.py:150, review.py:220, quality_gate.py:92 e :117, offer_resolver.py:146, ingestao_orientada.py:463."
+      ],
+      "files": [
+        "scripts/steps/dedup.py",
+        "scripts/steps/review.py",
+        "scripts/steps/quality_gate.py",
+        "scripts/steps/offer_resolver.py",
+        "scripts/steps/ingestao_orientada.py"
+      ]
     }
   ],
   "qa_remediation_loop": {
