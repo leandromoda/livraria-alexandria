@@ -123,9 +123,14 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   depois de **08/08** (o #263 mergeou em 08/08), logo o Google nem tinha
   reconferido. O **unico** exemplo rastreado apos o fix era
   `www.../categorias/mentalidade-financeira` (**14/08**), ainda 200 + `noindex`
-  — e foi ele que reprovou tudo. **Lição:** ao ver "Falha", nao presumir que a
-  causa antiga voltou; filtrar os exemplos por `ultimo rastreamento > data do
-  fix` e olhar so o que sobrou.
+  — e foi ele que reprovou tudo. **Confirmado pelo proprio GSC**, na pagina
+  `index/validation?...&item_key=<key>` (link "ver detalhes" ao lado do estado
+  da validacao): ela quebra o total em **`Pendente` 603 / `Falha` 1**. Ou seja,
+  o Google reconferiu **uma** URL e ela reprovou; as outras 603 nem foram
+  revisitadas. **Sempre abrir "ver detalhes" antes de diagnosticar uma validacao
+  reprovada** — o numero grande do bucket nao diz quantas URLs de fato falharam.
+  **Lição:** ao ver "Falha", nao presumir que a causa antiga voltou; filtrar os
+  exemplos por `ultimo rastreamento > data do fix` e olhar so o que sobrou.
 - **O drilldown carrega TODAS as URLs de exemplo no DOM de uma vez — a
   paginacao e so visual.** Nao precisa clicar "proxima pagina" N vezes (o que
   estoura o timeout de 45s do `javascript_tool`): `document.querySelectorAll('tr')`
@@ -200,8 +205,11 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   rastreada depois de 08/08**, e o único exemplo pós-fix era
   `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`.
   Corrigido pelo **#286** (categoria sem livro publicável → 404).
-  **Próximo passo manual:** com o #286 em produção, **resubmeter "Validar
-  correção"** no bucket. Aí sim as ~594 URLs de autor migram para
+  A pagina de detalhes da validação confirma: **`Pendente` 603 / `Falha` 1**.
+  **Próximo passo manual:** com o #286 em produção (conferido por `curl` em
+  2026-08-20 — as 6 categorias respondem **404**, e `folclore-brasileiro` /
+  `true-crime` seguem **200**), **clicar "INICIAR NOVA VALIDAÇÃO"** em
+  `search.google.com/search-console/index/validation?resource_id=sc-domain:livrariaalexandria.com.br&item_key=CAMYCCAC`. Aí sim as ~594 URLs de autor migram para
   **"Não encontrado (404)"** — comportamento correto, não regressão (o bucket
   404 já subiu 278 → 410 por causa disso).
 - **"Indexada, mas bloqueada pelo robots.txt": 107 → 108 — não submeter
