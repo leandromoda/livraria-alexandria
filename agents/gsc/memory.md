@@ -206,10 +206,12 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`.
   Corrigido pelo **#286** (categoria sem livro publicável → 404).
   A pagina de detalhes da validação confirma: **`Pendente` 603 / `Falha` 1**.
-  **Próximo passo manual:** com o #286 em produção (conferido por `curl` em
-  2026-08-20 — as 6 categorias respondem **404**, e `folclore-brasileiro` /
-  `true-crime` seguem **200**), **clicar "INICIAR NOVA VALIDAÇÃO"** em
-  `search.google.com/search-console/index/validation?resource_id=sc-domain:livrariaalexandria.com.br&item_key=CAMYCCAC`. Aí sim as ~594 URLs de autor migram para
+  ✅ **Validação RESUBMETIDA por Leandro em 2026-08-20**, com o #286 já em
+  produção (conferido por `curl` no mesmo dia — as 6 categorias respondem
+  **404**, e `folclore-brasileiro` / `true-crime` seguem **200**).
+  **NÃO resubmeter na próxima seção** — só conferir o estado em
+  `search.google.com/search-console/index/validation?resource_id=sc-domain:livrariaalexandria.com.br&item_key=CAMYCCAC`.
+  Resubmeter reinicia o relógio e o Google recomeça a fila de reconferência. Aí sim as ~594 URLs de autor migram para
   **"Não encontrado (404)"** — comportamento correto, não regressão (o bucket
   404 já subiu 278 → 410 por causa disso).
 - **"Indexada, mas bloqueada pelo robots.txt": 107 → 108 — não submeter
