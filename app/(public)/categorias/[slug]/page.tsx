@@ -50,10 +50,17 @@ const getCategoriaConteudo = unstable_cache(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const editoriais = listasEditorial?.map((l: any) => l.listas) ?? [];
 
-    const { data: livrosPivot } = await supabase
+    // `livrosQueryFailed` distingue QUERY FALHA de categoria realmente sem
+    // livro. A distincao existe porque a pagina 404a categoria sem livro
+    // publicavel: engolir o erro como lista vazia (o antigo `?? []` sozinho)
+    // faria uma falha transitoria do Supabase virar 404 — e, com revalidate de
+    // 24h, esse 404 ficaria CACHEADO por um dia numa categoria legitima. Mesma
+    // armadilha que o #263 evitou nas paginas de autor.
+    const { data: livrosPivot, error: livrosError } = await supabase
       .from("livros_categorias")
       .select("livros ( id, titulo, slug, imagem_url, is_publishable )")
       .eq("categoria_id", categoriaId);
+    const livrosQueryFailed = Boolean(livrosError);
     const livros = (livrosPivot ?? [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((l: any) => l.livros)
@@ -74,7 +81,7 @@ const getCategoriaConteudo = unstable_cache(
       automaticas = listasAuto?.map((l: any) => l.listas) ?? [];
     }
 
-    return { editoriais, livros, automaticas };
+    return { editoriais, livros, automaticas, livrosQueryFailed };
   },
   ["categoria-conteudo"],
   { revalidate: 86400 },
@@ -112,7 +119,26 @@ export default async function CategoriaPage({ params }: PageProps) {
   /**
    * Listas editoriais + livros + listas automáticas (cacheados juntos)
    */
-  const { editoriais, livros, automaticas } = await getCategoriaConteudo(categoria.id);
+  const { editoriais, livros, automaticas, livrosQueryFailed } =
+    await getCategoriaConteudo(categoria.id);
+
+  // Categoria sem nenhum livro publicavel nao tem pagina: 404.
+  //
+  // Antes isto respondia 200 com `robots: noindex`. Mas noindex desindexa e NAO
+  // impede o crawl — e, pior, mantinha o bucket "Excluida pela tag noindex"
+  // vivo: em 2026-08-20 a validacao desse bucket (604 URLs) voltou FALHA no
+  // GSC, e o unico exemplo rastreado depois do #263 era
+  // `/categorias/mentalidade-financeira` (14/08), ainda 200 + noindex. As
+  // outras 594 URLs eram `/autores/*` obsoletas (nenhuma rastreada depois de
+  // 08/08). Sao 6 de 170 categorias sem livro publicavel (medido 2026-08-20 via
+  // PostgREST: educacao-financeira, economia, mentalidade-financeira,
+  // estoicismo-filosofia, estrategia, politica-economia) — ja fora do sitemap
+  // (inner join no pivot) e do indice /categorias (filtro count > 0), entao o
+  // 404 fecha a ultima porta de crawl. Mesmo rationale do #263.
+  //
+  // `livrosQueryFailed` significa QUERY FALHA, nao ausencia de livro — nesse
+  // caso nao 404a, para nao cachear um 404 de 24h em cima de erro transitorio.
+  if (!livrosQueryFailed && livros.length === 0) return notFound();
 
   /**
    * Merge sem duplicar

@@ -117,6 +117,40 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   200, 0 falhas**; e as 4 URLs de exemplo do bucket `noindex` **não estão** no
   sitemap. É divergência teórica, não material. **Não abrir tarefa sem medir de
   novo.**
+- **⚠️ Uma unica URL ainda quebrada reprova a validacao do bucket inteiro.**
+  Em 2026-08-20 a validacao de "Excluida pela tag noindex" voltou **Falha** com
+  604 URLs. Das 604, **594 eram `/autores/*` obsoletas** — nenhuma rastreada
+  depois de **08/08** (o #263 mergeou em 08/08), logo o Google nem tinha
+  reconferido. O **unico** exemplo rastreado apos o fix era
+  `www.../categorias/mentalidade-financeira` (**14/08**), ainda 200 + `noindex`
+  — e foi ele que reprovou tudo. **Lição:** ao ver "Falha", nao presumir que a
+  causa antiga voltou; filtrar os exemplos por `ultimo rastreamento > data do
+  fix` e olhar so o que sobrou.
+- **O drilldown carrega TODAS as URLs de exemplo no DOM de uma vez — a
+  paginacao e so visual.** Nao precisa clicar "proxima pagina" N vezes (o que
+  estoura o timeout de 45s do `javascript_tool`): `document.querySelectorAll('tr')`
+  ja devolve as 604/410/426 linhas. Snippet que resolve a seção inteira:
+  ```js
+  const rows=[...document.querySelectorAll('tr')].map(r=>r.innerText)
+    .filter(t=>/livrariaalexandria\.com\.br\//.test(t));
+  const grp={}; rows.forEach(t=>{const u=(t.match(/https?:\/\/[^\s]*?livrariaalexandria\.com\.br\/[^\s]*?(?=\d{1,2} de |$)/)||[''])[0];
+    const w=u.includes('//www.')?'www':'apex';
+    const seg=u.replace(/^https?:\/\/(www\.)?livrariaalexandria\.com\.br/,'').split('/')[1]||'(root)';
+    grp[seg+'|'+w]=(grp[seg+'|'+w]||0)+1;}); grp
+  ```
+  ⚠️ **Recarregar a pagina entre drilldowns** (`location.reload()`): o Angular
+  **nao remove** as linhas do drilldown anterior do DOM, e a contagem sai somada
+  (foi assim que "410" virou 1.014 e "426" virou 536 nesta seção). Conferir
+  sempre o `n` extraido contra o numero do bucket antes de concluir qualquer
+  coisa.
+- **A UI do GSC ignora clique sintetico em `[role="option"]`** (o seletor
+  "Linhas por pagina"), mesmo com `mousedown`/`mouseup`/`click` despachados.
+  Nao insistir — usar o DOM completo do item acima.
+- **Livro que 404 quase sempre e `blacklisted`, mas confirme no banco.** Amostra
+  de 8 URLs `/livros/*` do bucket 404 em 2026-08-20: **7 `blacklisted`** e 1
+  (`lacos-de-familia`) com `status="publish"` mas `is_publishable=false` — a
+  divergencia conhecida das duas colunas. Nos dois casos o 404 e o correto e o
+  sitemap (pos-#259, filtra por `is_publishable`) nao anuncia a URL.
 - **UI do GSC congela o renderer**: `screenshot` e `get_page_text` dão timeout
   (o GSC nunca dispara `document_idle`). Extrair com `javascript_tool`. Detalhes
   e snippets prontos na memória de usuário `feedback-chrome-extension-gsc`.
@@ -127,6 +161,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-08-20 | noindex/404 | **`/categorias/[slug]` sem livro publicavel: 200 + `noindex` → 404** (espelha o #263, que fez o mesmo para autor). Era o que reprovava a validacao do bucket "Excluida pela tag noindex" (604): das 604 URLs, 594 sao `/autores/*` obsoletas (nenhuma rastreada apos 08/08) e o unico exemplo pos-fix era `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`. Sao **6 de 170** categorias afetadas (medido 2026-08-20 via PostgREST), ja fora do sitemap e do indice. Inclui o guard `livrosQueryFailed` para nao transformar falha transitoria do Supabase em 404 cacheado por 24h | #286 |
 | 2026-08-09 | robots/links | **"Indexada, mas bloqueada pelo robots.txt" (107 URLs, 100% `/api/click/*`)**: bloquear o crawl não impede a indexação quando a URL é descoberta por link interno seguível. Os 3 links de `/api/click/` (`livros/[slug]` ×2, `ofertas`) tinham só `noopener noreferrer`, enquanto `jogos` e `infantis` já usavam `nofollow sponsored` — daí só `/api/click/` aparecer no bucket. Agora os 5 links de oferta usam `nofollow sponsored`. Também fecha uma não conformidade com a política de links afiliados do Google | #272 |
 | 2026-08-08 | sitemap | **Cobertura: 1.144 → 7.762 URLs — confirmado pelo próprio GSC** ("Páginas encontradas" 1.145 → 7.762, processado no mesmo dia). Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.152 e 0 → 703); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #259 |
 | 2026-08-08 | dados estruturados | `livros/[slug]`: emitir `gtin13` quando o ISBN tem 13 dígitos e parar de emitir `"sku": null`. Atende parcialmente o aviso não crítico de Listagens do comerciante | #259 |
@@ -152,31 +187,43 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   ISBN — o aviso só some de verdade quando o pipeline preencher a coluna.
   **Lacuna de dados do pipeline, não tarefa de SEO** — mesmo padrão do
   `preco_atual` de jogos. Não reabrir como bug do site.
-- **Acompanhar "Detectada, mas não indexada"** nas próximas semanas: deve subir,
-  e isso é **esperado e temporário** — 6,6 mil URLs novas entraram na fila de
-  crawl de uma vez com o #259. Não tratar como regressão.
-- **Validação de "Excluída pela tag noindex" — "Iniciado" desde 2026-08-08, NÃO
-  resubmeter.** A causa real (o `noindex` das páginas de autor) foi removida
-  pelo #263 e as URLs já respondem 404, então a validação deve passar. O que
-  muda é o destino: as ~572 URLs migram para o bucket **"Não encontrado (404)"**
-  — isso é o comportamento correto, não regressão. Conferir na próxima seção.
-- **"Indexada, mas bloqueada pelo robots.txt" (107) — não submeter validação.**
-  O bucket drena sozinho conforme o Google recrawleia e deixa de achar link
-  seguível para `/api/click/*` (fix #272). Só reconferir a contagem.
-- **Inconsistência menor: categoria sem livro devolve 200 + `noindex`**, enquanto
-  autor sem livro passou a devolver **404** no #263. O rationale do #263 (o
-  `noindex` desindexa mas não impede o crawl, e cada crawl é uma regeneração
-  ISR) vale igual para categorias. Eram só **4 URLs** no bucket de 2026-08-09 —
-  baixa prioridade, fora do escopo daquela seção por decisão do Leandro.
-  ⚠️ Se for fazer: `getCategoriaConteudo` engole erro de query como lista vazia
-  (`livrosPivot ?? []`), então 404ar direto faria uma falha transitória do
-  Supabase virar **404 cacheado por 24h** — a mesma armadilha que o #263 evitou
-  com o `livrosPivot !== null`. Corrigir a distinção erro-vs-vazio primeiro.
-- **5 livros no apex em "Cópia c/ canônica diferente"** (`cuentos`,
-  `por-quien-doblan-las-campanas`, `lonely-planet-south-africa`,
-  `the-virginian`, `poetica-2`, rastreados 21–26 jul). São quase-duplicatas do
-  catálogo — **lacuna do dedup do pipeline, não bug de site**. 5 em ~4.700; só
-  agir se crescer.
+- **"Detectada, mas não indexada": 15 → 1.444** (2026-08-09 → 2026-08-20).
+  Era a previsão registrada em 08-09 e **se confirmou**: as 6,6 mil URLs que o
+  #259 pôs no sitemap entraram na fila de crawl de uma vez. É **esperado e
+  temporário** — não tratar como regressão. O contrapeso está no lado bom:
+  indexadas **5,65 mil (07-19) → 8,97 mil**. Acompanhar a drenagem; só virar
+  tarefa se o número **não cair** nas próximas 2–3 seções.
+- **Validação de "Excluída pela tag noindex" REPROVOU em 2026-08-20 — a
+  premissa de 08-09 estava errada.** Ficou escrito aqui que "a validação deve
+  passar" porque o #263 já 404ava autor sem livro. Ela voltou **Falha**, e o
+  motivo não era o autor: das 604 URLs do bucket, **nenhuma `/autores/*` foi
+  rastreada depois de 08/08**, e o único exemplo pós-fix era
+  `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`.
+  Corrigido pelo **#286** (categoria sem livro publicável → 404).
+  **Próximo passo manual:** com o #286 em produção, **resubmeter "Validar
+  correção"** no bucket. Aí sim as ~594 URLs de autor migram para
+  **"Não encontrado (404)"** — comportamento correto, não regressão (o bucket
+  404 já subiu 278 → 410 por causa disso).
+- **"Indexada, mas bloqueada pelo robots.txt": 107 → 108 — não submeter
+  validação.** O fix #272 está **em produção e conferido em 2026-08-20**:
+  `curl` em `/ofertas` e `/livros/o-hobbit` mostra
+  `rel="noopener noreferrer nofollow sponsored"` em todos os `/api/click/*`.
+  O bucket drena sozinho no recrawl; 11 dias depois ainda não drenou, o que é
+  normal para URL já indexada. Só reconferir a contagem.
+- ✅ **RESOLVIDO em 2026-08-20 (#286) — "categoria sem livro devolve 200 +
+  `noindex`".** Estava aqui como *baixa prioridade* (4 URLs em 08-09); virou
+  prioridade quando se descobriu que era ela que reprovava a validação do
+  bucket de 604 URLs. Agora 404a, com o guard `livrosQueryFailed` que a nota
+  antiga pedia (erro de query ≠ lista vazia, senão falha transitória do Supabase
+  vira 404 cacheado por 24h). **Lição: "poucas URLs" não é o mesmo que "pouco
+  impacto" — 5 URLs seguravam a validação de 604.**
+- **"Cópia c/ canônica diferente" no apex: 5 → 14** (2026-08-09 → 2026-08-20).
+  O bucket todo é 426, dos quais **412 (96,7%) são `www.*`** — esperado. Os 14
+  do apex já não são só livros: entraram **`/listas/*`** (4) e `/autores/*` (4),
+  rastreados em 18/08. Continua sendo **lacuna do dedup do pipeline, não bug de
+  site** (14 em ~9.000 indexadas), mas o número dobrou e a composição mudou —
+  **reconferir na próxima seção**; se as listas SEO seguirem crescendo aqui, é
+  sinal de sobreposição de conteúdo entre listas, não de duplicata de catálogo.
 - **`agents/audit/prompt.md` ainda referencia URLs `www`** — o agente de auditoria
   crawleia `https://www.livrariaalexandria.com.br` (segue o 308 p/ o apex, então
   funciona). Cleanup menor: apontar direto p/ o apex. Baixa prioridade.
@@ -199,10 +246,35 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-08-20 | 4.235 | 1.277 | 410 | 22 | 2 | 110 | 1.444 | 604 ⚠️ | 108 |
 | 2026-08-09 | 3.926 | 1.260 | 278 | 23 | 2 | 74 | 15 | 580 | 107 |
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+Colunas fora da tabela em 2026-08-20: Página com redirecionamento **1.809**,
+Cópia sem canônica do usuário **38**, Cópia c/ canônica diferente **426**,
+Erro de redirecionamento **1**. Indexadas **8,97 mil** / não indexadas
+**10,4 mil** (12 motivos). Dados do GSC até **16/08/2026**.
+⚠️ O `580` de 08-09 e o `604` de hoje têm a marca **"Validação: Falha"** —
+única categoria com validação em curso; todas as outras estão em
+"Não foi iniciado".
+
+**Leitura da variação 08-09 → 08-20.** Um bug real, um efeito colateral
+esperado e o resto é ruído de crescimento:
+- **Bug real — "Excluída por noindex" 580 → 604 e validação REPROVADA.** Causa:
+  5 categorias sem livro ainda em 200 + `noindex`. Corrigido no **#286**.
+- **"Não encontrado (404)" 278 → 410 (+132)** — é a migração prevista do #263:
+  o bucket 404 tem **276 `/autores/*`**. **Esperado, é o destino certo.**
+- **"Detectada, mas não indexada" 15 → 1.444** — fila de crawl das 6,6 mil URLs
+  do #259. Esperado; ver "Itens em aberto".
+- **Bloq. robots +309, Redirecionamento +155, Canônica dup. +156** — crescimento
+  de ofertas (`/api/click/*`) e recrawl de `www`. Esperado, sem ação.
+- **5xx 23 → 22, soft 404 estável em 2, erro de redirecionamento em 1** — sem
+  movimento; dispensados.
+- **"Rastreada, mas não indexada" 74 → 110** — população mista (livros 38,
+  autores 49, listas 7, resto asset/raiz), nenhum padrão de seção. Decisão do
+  Google sobre conteúdo fino, não bug de site.
 
 Colunas fora da tabela em 2026-08-09: Página com redirecionamento **1.654**,
 Cópia sem canônica do usuário **35**, Cópia c/ canônica diferente **270**,
