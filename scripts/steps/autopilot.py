@@ -154,9 +154,17 @@ def _count_per_step(conn) -> dict:
         return cur.fetchone()[0]
 
     return {
-        "2  Enriquecer Desc": _q(
-            "SELECT COUNT(*) FROM livros WHERE status_descricao = 0"
-        ),
+        # O predicado tem que casar com enrich_descricao.fetch_pending, que
+        # também exige a descrição vazia. Sem isso, um livro cuja descrição veio
+        # de outra fonte (seed, scraper) mas cujo status_descricao ficou em 0
+        # é contado como pendente para sempre e nunca selecionado — foi o caso
+        # de "Esquadrão 7" (descrição de 385 caracteres, status 0), que gerou
+        # gargalo fantasma em 77 ciclos nos logs de 17/08 e 18/08.
+        "2  Enriquecer Desc": _q("""
+            SELECT COUNT(*) FROM livros
+            WHERE status_descricao = 0
+              AND (descricao IS NULL OR TRIM(descricao) = '')
+        """),
         "3  Resolver Ofertas": _q("""
             SELECT COUNT(*) FROM livros
             WHERE lookup_query IS NOT NULL
@@ -182,9 +190,16 @@ def _count_per_step(conn) -> dict:
             SELECT COUNT(*) FROM livros
             WHERE status_cover = 0 AND status_review = 1 AND is_book = 1
         """),
+        # status_publish e qa_quarantine espelham quality_gate.fetch_candidates:
+        # o gate nunca reavalia livro já publicado nem em quarentena. Medido em
+        # 2026-08-20 (SQLite local): dos 98 que o predicado antigo contava, 94 já
+        # estavam publicados e 2 em quarentena — só 2 eram elegíveis. Os 98
+        # apareciam como gargalo em todo ciclo de fallback sem nunca baixar.
         "13 Quality Gate": _q("""
             SELECT COUNT(*) FROM livros
             WHERE is_publishable = 0 AND status_review = 1 AND status_synopsis = 1
+              AND status_publish = 0
+              AND COALESCE(qa_quarantine, 0) = 0
         """),
         "14 Publicar Livros": _q(
             "SELECT COUNT(*) FROM livros WHERE is_publishable = 1 AND status_publish = 0"
