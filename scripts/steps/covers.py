@@ -145,11 +145,18 @@ def fetch_pending(conn, idioma, limit, book_ids=None):
             ORDER BY priority_score DESC, created_at ASC
         """, tuple(book_ids))
         return cur.fetchall()
+    # `idioma IS NULL` entra na fila: a busca de capa consulta Amazon/Google/
+    # OpenLibrary por ISBN/título/autor — o idioma não influencia o resultado,
+    # então filtrá-lo só exclui. Medido em 2026-08-20 (SQLite local): os 19
+    # livros com status_cover=0 tinham TODOS idioma NULL, e como "NULL = 'PT'"
+    # nunca é verdadeiro em SQL, o autopilot os contava como gargalo e o step
+    # selecionava zero — 77 ciclos de fallback com "Progresso: 0" nos logs de
+    # 17/08 e 18/08. Ver log_analysis_2026-08-17_05-35-45.json.
     cur.execute("""
         SELECT id, titulo, autor, isbn
         FROM livros
         WHERE status_cover = 0
-          AND idioma = ?
+          AND (idioma = ? OR idioma IS NULL)
         ORDER BY priority_score DESC, created_at ASC
         LIMIT ?
     """, (idioma, limit))
