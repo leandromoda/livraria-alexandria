@@ -20,6 +20,7 @@ import requests
 from datetime import datetime
 
 from core.db import get_conn
+from core.isbn import normalize_isbn13
 from core.logger import log
 from core import interrupt as _interrupt
 
@@ -384,9 +385,25 @@ def try_google_books(isbn, titulo, autor):
         info = items[0].get("volumeInfo", {})
         img  = info.get("imageLinks", {})
 
+        # O ISBN vem de graca na MESMA resposta e ate 2026-08-21 era jogado
+        # fora: por isso so 41 de 17.861 livros tinham ISBN no banco, e o
+        # Search Console reclamava de identificador ausente. `industry
+        # Identifiers` e metadado da edicao que casou, nao heuristica.
+        #
+        # Sem guarda de titulo aqui de proposito: esta funcao so e alcancada
+        # quando o volume ja foi aceito como o livro (a descricao e a capa dele
+        # tambem vem daqui). A guarda de titulo vive no `isbn_backfill`, que
+        # busca as-cegas por titulo+autor e por isso precisa dela.
+        isbn13 = None
+        for ident in info.get("industryIdentifiers") or []:
+            isbn13 = normalize_isbn13(ident.get("identifier"))
+            if isbn13:
+                break
+
         return {
             "cover_url": img.get("thumbnail") or img.get("smallThumbnail"),
             "descricao": clean_text(info.get("description")),
+            "isbn":      isbn13,
             "preco":     None,
             "disponivel": True,
             "source":    "google_books",
@@ -431,13 +448,20 @@ def save_result(conn, livro_id, result, source="scraping"):
     cover_url  = result.get("cover_url")
     descricao  = result.get("descricao")
     preco      = result.get("preco")
+    isbn       = result.get("isbn")
     status_cov = 1 if cover_url else 2
 
+    # `isbn = COALESCE(isbn, ?)` e nao `COALESCE(?, isbn)`: aqui o valor que
+    # JA esta no banco ganha. As outras colunas fazem o contrario de proposito
+    # (dado novo da API sobrescreve), mas ISBN e identificador — se o livro ja
+    # tem um, ele veio do seed validado (#291) e nao deve ser trocado pelo
+    # palpite de uma busca.
     conn.execute("""
         UPDATE livros
         SET imagem_url    = COALESCE(?, imagem_url),
             descricao     = COALESCE(?, descricao),
             preco_atual   = COALESCE(?, preco_atual),
+            isbn          = COALESCE(isbn, ?),
             status_enrich = ?,
             status_cover  = ?,
             updated_at    = CURRENT_TIMESTAMP
@@ -446,6 +470,7 @@ def save_result(conn, livro_id, result, source="scraping"):
         cover_url,
         descricao,
         preco,
+        isbn,
         1 if source == "scraping" else 2,
         status_cov,
         livro_id,
