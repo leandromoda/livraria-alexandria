@@ -216,8 +216,16 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   **"Listagens do comerciante: nenhum identificador global (GTIN, marca)"**
   (e-mails de 2026-07-30 e 31). O fix de código já emite `gtin13` quando há
   ISBN — o aviso só some de verdade quando o pipeline preencher a coluna.
-  **Lacuna de dados do pipeline, não tarefa de SEO** — mesmo padrão do
-  `preco_atual` de jogos. Não reabrir como bug do site.
+  ✅ **ATACADO em 2026-08-21 (#293) — e a causa não era a que estava escrita
+  aqui.** Isto dizia "lacuna de dados do pipeline", sugerindo que o dado não
+  existia. Existia: o `marketplace_scraper` já recebia o ISBN do Google Books
+  na mesma resposta de onde tirava capa e descrição, e **descartava**. A prova
+  está no banco — os 4.852 publicados sem ISBN **têm descrição**, ou seja, a
+  API achou o livro. Agora o step 4 grava o ISBN, e o novo `isbn_backfill`
+  drena o passivo pelo autopilot (~1.000/dia de quota do Google Books).
+  ⏳ Acompanhar: o aviso "nenhum identificador global" deve **cair sozinho**
+  conforme a cobertura sobe. Reconferir a contagem na próxima seção antes de
+  concluir qualquer coisa.
   ➕ **2026-08-21: além de ausente, há ISBN _errado_.** `pai-rico-pai-pobre`
   tem `9788576849943` no banco — 13 dígitos com **dígito verificador inválido**,
   ou seja, não é um ISBN de verdade.
