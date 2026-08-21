@@ -156,6 +156,31 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   (`lacos-de-familia`) com `status="publish"` mas `is_publishable=false` — a
   divergencia conhecida das duas colunas. Nos dois casos o 404 e o correto e o
   sitemap (pos-#259, filtra por `is_publishable`) nao anuncia a URL.
+- **⚠️ "Listagens do comerciante" tem DOIS avisos diferentes — não confundir.**
+  (a) *"nenhum identificador global (GTIN, marca)"* = identificador **ausente**,
+  e-mails de 30–31/07 → **lacuna de dado do pipeline**, não age no site.
+  (b) *"Valor ISBN13 inválido para `isbn`"* = identificador **presente e
+  inválido**, e-mail de 21/08 (`[WNC-10030322]`) → **bug do site**, corrigido no
+  #289. O título do e-mail é quase idêntico nos dois casos; **ler a linha do
+  problema antes de dispensar como "já conhecido"**.
+- **Contar dígitos não é validar ISBN.** O `gtin13` do #259 usava
+  `isbnDigitos.length === 13`, o que deixa passar checksum errado, e o `isbn`
+  saía cru, sem checagem nenhuma. Medido em 2026-08-21 (PostgREST,
+  `is_publishable=true` + `isbn` não nulo, **n=9**): 7 ISBN-13 válidos, 1 com 13
+  dígitos e **checksum errado** (`pai-rico-pai-pobre` → `9788576849943`) e 1
+  **ISBN-10** (`industrial-economics-and-management-principles`). Hoje
+  `lib/isbn.ts` (`toIsbn13`) valida o dígito verificador e converte ISBN-10 →
+  ISBN-13. **Qualquer identificador novo no JSON-LD passa por validação de
+  formato antes de sair.**
+- **Livro sem oferta não emite JSON-LD nenhum — isso limita a verificação.** O
+  guard do #216 só renderiza o `Product` quando há `offers`. Ao conferir
+  mudanças de schema por `curl`, escolher livro **com oferta**: em 2026-08-21,
+  2 dos 4 livros da amostra (`esquadrao-7`,
+  `industrial-economics-and-management-principles`) responderam **200 sem
+  nenhum bloco `ld+json`** — parece que o fix não aplicou, e não é isso.
+  Alternativa quando não há caso com oferta: compilar o helper
+  (`npx tsc lib/isbn.ts --outDir … --module commonjs`) e exercitar a função no
+  node.
 - **UI do GSC congela o renderer**: `screenshot` e `get_page_text` dão timeout
   (o GSC nunca dispara `document_idle`). Extrair com `javascript_tool`. Detalhes
   e snippets prontos na memória de usuário `feedback-chrome-extension-gsc`.
@@ -166,6 +191,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-08-21 | dados estruturados | **"Valor ISBN13 invalido para `isbn`"** (Listagens do comerciante, `[WNC-10030322]`): `livros/[slug]` e `ofertas` emitiam `livro.isbn` cru no JSON-LD, e o `gtin13` so contava digitos. Novo `lib/isbn.ts` valida o digito verificador e converte ISBN-10 → ISBN-13 (prefixo 978 + checksum); `isbn`/`gtin13` so saem quando o ISBN e valido, `sku` segue o valor do banco. Afetava 2 dos 9 livros publicados com ISBN | #289 |
 | 2026-08-20 | noindex/404 | **`/categorias/[slug]` sem livro publicavel: 200 + `noindex` → 404** (espelha o #263, que fez o mesmo para autor). Era o que reprovava a validacao do bucket "Excluida pela tag noindex" (604): das 604 URLs, 594 sao `/autores/*` obsoletas (nenhuma rastreada apos 08/08) e o unico exemplo pos-fix era `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`. Sao **6 de 170** categorias afetadas (medido 2026-08-20 via PostgREST), ja fora do sitemap e do indice. Inclui o guard `livrosQueryFailed` para nao transformar falha transitoria do Supabase em 404 cacheado por 24h | #286 |
 | 2026-08-09 | robots/links | **"Indexada, mas bloqueada pelo robots.txt" (107 URLs, 100% `/api/click/*`)**: bloquear o crawl não impede a indexação quando a URL é descoberta por link interno seguível. Os 3 links de `/api/click/` (`livros/[slug]` ×2, `ofertas`) tinham só `noopener noreferrer`, enquanto `jogos` e `infantis` já usavam `nofollow sponsored` — daí só `/api/click/` aparecer no bucket. Agora os 5 links de oferta usam `nofollow sponsored`. Também fecha uma não conformidade com a política de links afiliados do Google | #272 |
 | 2026-08-08 | sitemap | **Cobertura: 1.144 → 7.762 URLs — confirmado pelo próprio GSC** ("Páginas encontradas" 1.145 → 7.762, processado no mesmo dia). Paginação `.range()` em todas as seções (teto de 1.000 do PostgREST cortava livros em 1.000 de 4.727); `autores` e `listas` restaurados trocando o filtro por coluna inexistente `status_publish` por inner join (0 → 2.152 e 0 → 703); livros passam a filtrar por `is_publishable` (mesmo critério do `notFound()`); `/jogos` e `/infantis` só entram quando a seção tem ≥1 item; erro de query agora vai para `console.error` em vez de virar seção vazia | #259 |
@@ -192,6 +218,12 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   ISBN — o aviso só some de verdade quando o pipeline preencher a coluna.
   **Lacuna de dados do pipeline, não tarefa de SEO** — mesmo padrão do
   `preco_atual` de jogos. Não reabrir como bug do site.
+  ➕ **2026-08-21: além de ausente, há ISBN _errado_.** `pai-rico-pai-pobre`
+  tem `9788576849943` no banco — 13 dígitos com **dígito verificador inválido**,
+  ou seja, não é um ISBN de verdade. O #289 impede o site de propagar isso, mas
+  **a origem é o pipeline**: vale checar de onde vem o ISBN na ingestão (Google
+  Books?) e validar o checksum **antes de gravar**. Com n=9 é 1 registro; se a
+  cobertura de ISBN subir sem essa validação, o aviso volta em escala.
 - **"Detectada, mas não indexada": 15 → 1.444** (2026-08-09 → 2026-08-20).
   Era a previsão registrada em 08-09 e **se confirmou**: as 6,6 mil URLs que o
   #259 pôs no sitemap entraram na fila de crawl de uma vez. É **esperado e
