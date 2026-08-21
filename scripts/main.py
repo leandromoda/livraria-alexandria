@@ -18,6 +18,7 @@ from steps import pipeline_status
 from steps import offer_seed
 from steps import enrich_descricao
 from steps import offer_resolver
+from steps import isbn_backfill
 from steps import slugify
 from steps import slugify_autores
 from steps import dedup
@@ -517,6 +518,7 @@ def menu_auditoria(idioma):
 59 → QA — Reconcile de sinopse (status_synopsis=0 c/ texto válido → flag + QG + publish, sem LLM)
 60 → QA — Marcar sinopses inválidas p/ regeneração (status_synopsis=1 ruim → 0; o O/G regenera)
 61 → QA — Ingerir relatórios de auditoria na fila de remediação (P1 → fila; sem LLM)
+62 → QA — Backfill de ISBN (Google Books, sem LLM; publicados primeiro) — já roda no G
 
 V  → Voltar
 """)
@@ -722,6 +724,13 @@ O agente irá ler o relatório e tomar ações corretivas automaticamente.
         elif op == "60":
             log("QA — marcar sinopses inválidas p/ regeneração (gatilho não-LLM)…")
             qa.run(mode="flag_synopsis_regen")
+
+        elif op == "62":
+            # Entrada manual para rodar um lote sob demanda. O caminho normal e
+            # o autopilot: o G ja chama isbn_backfill na fase de manutencao, ao
+            # lado das remediacoes de capa e sinopse.
+            log("QA — backfill de ISBN (Google Books, sem LLM)…")
+            isbn_backfill.run()
 
         elif op == "61":
             log("QA — ingerir relatórios de auditoria na fila de remediação (P1 → fila)…")

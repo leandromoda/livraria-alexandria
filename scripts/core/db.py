@@ -148,6 +148,12 @@ def ensure_schema(conn):
         # permite ao publish_ofertas.run_repair republicar SÓ o que mudou, em
         # vez do catálogo inteiro. Ver publish_ofertas._payload_hash.
         ("oferta_payload_hash",   "TEXT"),
+        # Backfill de ISBN (steps/isbn_backfill.py). `isbn_checado_em` e
+        # gravado mesmo quando o Google Books NAO acha — e o que impede o
+        # livro de voltar a consumir quota em todo ciclo do autopilot.
+        # `isbn_fonte`: 'google_books' | 'nao_encontrado'.
+        ("isbn_checado_em",       "TEXT"),
+        ("isbn_fonte",            "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")

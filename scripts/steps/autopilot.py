@@ -53,6 +53,7 @@ from steps import (
     publish_listas,
     batch_export,
     batch_import,
+    isbn_backfill,
     qa_remediation,
     qa,
 )
@@ -131,6 +132,14 @@ def _topup_batch(idioma: str, target: int = 10):
 
 # Steps lentos (scraping/HTTP) usam batch menor que o base.
 # Steps rápidos (CPU/banco) recebem o `pacote` sem modificação.
+# Teto do lote do backfill de ISBN. A quota do Google Books e ~1.000
+# consultas/dia e cada consulta leva ~1,2 s de pausa, entao lote grande so
+# prende o ciclo do autopilot para colher 429 no meio. Com ~4.850 publicados
+# pendentes (medido 2026-08-21), o passivo drena em poucos dias sem que o
+# backfill domine nenhum ciclo.
+ISBN_PACOTE_MAX = 25
+
+
 STEP_PACOTES = {
     "3  Resolver Ofertas": lambda p: min(p, 50),   # HTTP com retry — lento
     "4  Scraper":          lambda p: min(p, 20),   # scraping HTML — mais lento
@@ -799,6 +808,19 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     qa_remediation.run_synopsis_reconcile(limit=pacote)
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: reconcile de sinopse falhou: {e}")
+
+            # ISBN backfill: manutenção, igual às duas remediações acima, e
+            # pelo mesmo motivo fica FORA do accounting de progresso do loop.
+            # Ele preenche uma coluna que `count_pending` não conta, então
+            # dentro de STEPS ele apareceria como "3x sem gerar progresso" em
+            # todo ciclo — o gargalo fantasma que o #284 acabou de tirar dos
+            # logs. Autolimitado por quota: para sozinho no primeiro HTTP 429
+            # e retoma no ciclo seguinte (~1.000 consultas/dia).
+            try:
+                with StepRun("ISBN Backfill", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                    isbn_backfill.run(pacote=min(pacote, ISBN_PACOTE_MAX))
+            except Exception as e:
+                log(f"[AUTOPILOT] AVISO: backfill de ISBN falhou: {e}")
 
             if _interrupt.requested():
                 log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reparo de relações de autores.")
