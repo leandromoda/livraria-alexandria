@@ -8,6 +8,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { isOptimizableImage } from "@/lib/images";
+import { toIsbn13 } from "@/lib/isbn";
 
 export const metadata: Metadata = {
   title: "Ofertas de livros",
@@ -114,7 +115,11 @@ export default async function OfertasPage() {
           "@type": "Product",
           name: o.livros!.titulo,
           image: o.livros!.imagem_url || undefined,
-          ...(o.livros!.isbn ? { isbn: o.livros!.isbn } : {}),
+          // Mesmo cuidado de `livros/[slug]`: ISBN cru rendeu "Valor ISBN13
+          // invalido" no GSC (2026-08-21). Ver `lib/isbn.ts`.
+          ...(toIsbn13(o.livros!.isbn)
+            ? { isbn: toIsbn13(o.livros!.isbn)! }
+            : {}),
           ...(o.livros!.autor
             ? { brand: { "@type": "Brand", name: o.livros!.autor } }
             : {}),
