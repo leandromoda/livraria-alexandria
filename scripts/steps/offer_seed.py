@@ -24,6 +24,8 @@ import sqlite3
 from datetime import datetime
 from os import urandom
 
+from core.isbn import normalize_isbn13
+
 
 # =========================
 # CONFIG
@@ -360,7 +362,24 @@ def insert_seed(conn, seed, seed_id=None):
     if not is_editorial(titulo):
         return "filtered", None
 
+    # ATENCAO A ORDEM: `resolve_language` recebe o ISBN **cru**, nao o
+    # normalizado. `detect_lang_by_isbn` casa prefixos de grupo de ISBN-10
+    # ("85"=PT, "84"=ES, "88"=IT, "0"/"1"=EN) com `startswith`, entao um
+    # ISBN-13 nunca casa — medido em 2026-08-21: `8532305547` -> PT, mas
+    # `9788532305541` -> None. Normalizar antes desta linha desligaria em
+    # silencio a deteccao de idioma que hoje funciona para seeds com ISBN-10.
+    # (Que a deteccao nao cubra ISBN-13 e um defeito separado, fora do escopo
+    # deste fix — mexer nela reclassifica idioma e mexe no filtro da sinopse.)
     idioma_resolved = resolve_language(idioma, isbn, titulo)
+
+    # So grava ISBN que seja de fato um ISBN-13 valido (ISBN-10 e convertido).
+    # Antes o valor do seed ia cru para o banco: foi assim que
+    # `pai-rico-pai-pobre` ficou com `9788576849943`, 13 digitos com digito
+    # verificador errado, que o site publicava no JSON-LD e o Search Console
+    # apontou em 2026-08-21. Ver `core/isbn.py` e o #289.
+    isbn_normalizado = normalize_isbn13(isbn)
+    if isbn and not isbn_normalizado:
+        log(f"[SEED][ISBN] descartado (invalido): {isbn!r} — {titulo}")
 
     cur = conn.cursor()
 
@@ -399,7 +418,7 @@ def insert_seed(conn, seed, seed_id=None):
         )
     """, (
         book_id,
-        titulo, autor, isbn,
+        titulo, autor, isbn_normalizado,
         categoria, idioma_resolved, categoria,
         lookup_query, marketplace,
         preco, seed_id,
