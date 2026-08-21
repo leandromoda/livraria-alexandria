@@ -38,6 +38,8 @@ from datetime import datetime
 from os import urandom
 from pathlib import Path
 
+from core.isbn import normalize_isbn13
+
 import requests
 
 from core.logger import log
@@ -337,7 +339,7 @@ def insert_seed(conn, seed, seed_id=None):
         ) VALUES (?, ?, ?, ?, ?, ?, 'PT', ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
     """, (
         livro_id, titulo, autor, ilustrador,
-        (seed.get("isbn") or "").strip() or None,
+        normalize_isbn13(seed.get("isbn")),
         (seed.get("editora") or "").strip() or None,
         seed.get("ano_publicacao"),
         faixa, f["min"], f["max"],
