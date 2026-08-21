@@ -18,6 +18,7 @@ export async function generateStaticParams() {
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { toIsbn13 } from "@/lib/isbn";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
 import Link from "next/link";
@@ -159,8 +160,12 @@ export default async function LivroPage({ params }: PageProps) {
   // Só resolve os poucos livros que têm ISBN: numa amostra de 300 livros
   // publicados em 2026-08-06, 297 estavam SEM isbn no banco. O resto é lacuna
   // de dado do pipeline, não do site.
-  const isbnDigitos = (livro.isbn ?? "").replace(/\D/g, "");
-  const gtin13 = isbnDigitos.length === 13 ? isbnDigitos : undefined;
+  //
+  // `toIsbn13` valida o dígito verificador em vez de só contar dígitos. A
+  // checagem antiga (`length === 13`) deixava passar checksum errado, e o
+  // `isbn` abaixo saía cru — o que rendeu "Valor ISBN13 inválido para `isbn`"
+  // no GSC em 2026-08-21 ([WNC-10030322]). Ver `lib/isbn.ts`.
+  const isbn13 = toIsbn13(livro.isbn);
 
   const schema = {
     "@context": "https://schema.org",
@@ -170,8 +175,10 @@ export default async function LivroPage({ params }: PageProps) {
     description: livro.descricao ?? undefined,
     image: livro.imagem_url || undefined,
     // Condicionais: sem isbn, `sku: livro.isbn` emitia `"sku": null` no JSON-LD.
-    ...(livro.isbn ? { sku: livro.isbn, isbn: livro.isbn } : {}),
-    ...(gtin13 ? { gtin13 } : {}),
+    // `sku` é identificador livre e não é validado pelo Google, então segue o
+    // valor do banco; `isbn`/`gtin13` só saem quando o ISBN é de fato válido.
+    ...(livro.isbn ? { sku: livro.isbn } : {}),
+    ...(isbn13 ? { isbn: isbn13, gtin13: isbn13 } : {}),
     ...(livro.autor?.trim() ? { brand: { "@type": "Brand", name: livro.autor.trim().substring(0, 70) } } : {}),
     additionalProperty: [
       {
