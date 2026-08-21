@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-20 (PR #284): tres gargalos fantasma eliminados do fallback do autopilot — os predicados de _count_per_step divergiam dos seletores dos steps, e 77 ciclos consecutivos terminaram em 'Progresso total: 0' ao longo de dois dias. Capas 0->19 selecionaveis, Quality Gate 98->2 e Enriquecer Desc 1->0 no contador. Ver TASK-PIPE-031 e TASK-PIPE-032.",
+    "last_updated": "2026-08-21 (PRs #289 e #291): ISBN passa a ser validado nas duas pontas — `lib/isbn.ts` no site e `scripts/core/isbn.py` na ingestao. O GSC apontou \"Valor ISBN13 invalido para `isbn`\" ([WNC-10030322]) porque o valor do seed ia cru ate o JSON-LD, sem checagem de digito verificador.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -2520,6 +2520,64 @@
         "scripts/steps/quality_gate.py",
         "scripts/steps/offer_resolver.py",
         "scripts/steps/ingestao_orientada.py"
+      ]
+    },
+    {
+      "id": "TASK-SEO-015",
+      "title": "ISBN invalido publicado no JSON-LD e gravado cru pela ingestao",
+      "status": "resolved",
+      "priority": "medium",
+      "registered_on": "2026-08-21",
+      "origem": "E-mail do GSC de 2026-08-21 04:49 ([WNC-10030322]), relatorio Listagens do comerciante: 'Valor ISBN13 invalido para isbn'. NAO e o aviso ja mapeado de identificador AUSENTE (30-31/07) — e identificador PRESENTE e INVALIDO.",
+      "contexto": "livros/[slug] e ofertas emitiam `livro.isbn` cru no JSON-LD; o `gtin13` do #259 so contava digitos (`length === 13`), o que deixa passar checksum errado. A origem era a ingestao: offer_seed.insert_seed gravava seed.get('isbn') sem validar. Medido em 2026-08-21 via PostgREST (is_publishable=true e isbn nao nulo, n=9): 7 ISBN-13 validos, 1 com 13 digitos e checksum ERRADO (pai-rico-pai-pobre -> 9788576849943) e 1 ISBN-10 (industrial-economics-and-management-principles -> 8131803015).",
+      "plano": [
+        "#289 (site): lib/isbn.ts com toIsbn13 — valida digito verificador e converte ISBN-10 em ISBN-13; isbn/gtin13 so saem quando validos, sku segue o banco",
+        "#291 (pipeline): scripts/core/isbn.py com normalize_isbn13, espelho do helper do site; ISBN invalido vira NULL e sai no log em vez de entrar em silencio",
+        "Paridade TS x Python conferida em 18 entradas: zero divergencias",
+        "tests/test_isbn.py (17 casos) roda no CI junto da suite de scripts/"
+      ],
+      "files": [
+        "lib/isbn.ts",
+        "app/(public)/livros/[slug]/page.tsx",
+        "app/(public)/ofertas/page.tsx",
+        "scripts/core/isbn.py",
+        "scripts/steps/offer_seed.py",
+        "scripts/steps/infantis_pipeline.py",
+        "scripts/tests/test_isbn.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-033",
+      "title": "detect_lang_by_isbn e cego para ISBN-13 — deteccao de idioma por ISBN so funciona no formato antigo",
+      "status": "open",
+      "priority": "low",
+      "registered_on": "2026-08-21",
+      "origem": "Encontrado ao fazer o #291: precisei garantir que normalizar o ISBN nao desligasse a deteccao de idioma, e ao medir descobri que ela ja e letra morta para ISBN-13.",
+      "contexto": "ISBN_PREFIX_LANG (offer_seed.py) casa prefixos de GRUPO DE REGISTRO de ISBN-10 ('85'/'65'/'972'=PT, '84'=ES, '88'=IT, '0'/'1'=EN) com startswith. Um ISBN-13 comeca com 978/979, entao nunca casa. Medido em 2026-08-21: '8532305547' -> PT mas '9788532305541' -> None; '0140449132' -> EN mas '9780140449136' -> None. Por isso o #291 passa o ISBN CRU para resolve_language e so grava o normalizado — inverter a ordem apagaria a deteccao que ainda funciona.",
+      "plano": [
+        "Tirar o prefixo 978/979 antes de casar o grupo (um ISBN-13 978-85-... e o mesmo grupo '85' do ISBN-10)",
+        "ATENCAO: isso reclassifica idioma de livros existentes e mexe no filtro da sinopse (idioma=PT). Medir quantos livros mudariam ANTES de aplicar",
+        "Decidir se vale: hoje o fallback e detect_lang_by_title, que ja cobre parte"
+      ],
+      "files": [
+        "scripts/steps/offer_seed.py"
+      ]
+    },
+    {
+      "id": "TASK-PIPE-034",
+      "title": "Limpar o ISBN invalido ja gravado em producao (pai-rico-pai-pobre)",
+      "status": "open",
+      "priority": "low",
+      "registered_on": "2026-08-21",
+      "origem": "Residuo do TASK-SEO-015: os fixes impedem novos casos, nao limpam o antigo.",
+      "contexto": "pai-rico-pai-pobre tem isbn='9788576849943' no Supabase — 13 digitos com digito verificador invalido. SEM impacto de SEO desde o #289 (o site nao emite mais o campo), entao e higiene de dado, nao urgencia. Alteracao em producao: exige decisao explicita do Leandro.",
+      "plano": [
+        "Varrer livros com isbn nao nulo e rodar core.isbn.normalize_isbn13 em cada um",
+        "Para os que derem None: decidir entre NULL ou buscar o ISBN correto na origem",
+        "Rodar a mesma varredura no books.db local, nao so no Supabase"
+      ],
+      "files": [
+        "scripts/core/isbn.py"
       ]
     }
   ],

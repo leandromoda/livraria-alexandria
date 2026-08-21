@@ -220,10 +220,18 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   `preco_atual` de jogos. Não reabrir como bug do site.
   ➕ **2026-08-21: além de ausente, há ISBN _errado_.** `pai-rico-pai-pobre`
   tem `9788576849943` no banco — 13 dígitos com **dígito verificador inválido**,
-  ou seja, não é um ISBN de verdade. O #289 impede o site de propagar isso, mas
-  **a origem é o pipeline**: vale checar de onde vem o ISBN na ingestão (Google
-  Books?) e validar o checksum **antes de gravar**. Com n=9 é 1 registro; se a
-  cobertura de ISBN subir sem essa validação, o aviso volta em escala.
+  ou seja, não é um ISBN de verdade.
+  ✅ **Fechado nas duas pontas:** #289 (site para de propagar) e **#291
+  (ingestão para de gravar)** — `scripts/core/isbn.py` valida o checksum e
+  converte ISBN-10 → ISBN-13; inválido vira `NULL` **e sai no log**. As duas
+  implementações (`lib/isbn.ts` e `core/isbn.py`) foram conferidas uma contra a
+  outra em 18 entradas, zero divergências — **ao mexer numa, mexer na outra**.
+  ⏳ Resta só **limpar o registro antigo em produção** (TASK-PIPE-034): sem
+  impacto de SEO, é higiene de dado.
+  ⚠️ Achado de tabela: **`detect_lang_by_isbn` é cego para ISBN-13**
+  (TASK-PIPE-033) — casa prefixo de grupo de ISBN-10 com `startswith`, então
+  `8532305547` → `PT` mas `9788532305541` → `None`. Não corrigido de propósito:
+  mexer nisso reclassifica idioma e mexe no filtro da sinopse.
 - **"Detectada, mas não indexada": 15 → 1.444** (2026-08-09 → 2026-08-20).
   Era a previsão registrada em 08-09 e **se confirmou**: as 6,6 mil URLs que o
   #259 pôs no sitemap entraram na fila de crawl de uma vez. É **esperado e
