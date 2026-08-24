@@ -81,7 +81,13 @@ BATCH_SIZE_AUTHOR_BIO = int(os.getenv("BATCH_SIZE_AUTHOR_BIO", "25"))
 # da sinopse. Sem isso as bios nunca rodam: a fase de bios fica atrás de
 # sinopse e categorização, que juntas somam ~1.300 lotes e não zeram numa
 # janela de 5h. 0 desliga a rotação e restaura o comportamento antigo.
-BIO_POR_CICLO = int(os.getenv("BIO_POR_CICLO", "10"))
+#
+# ⚠ Era 10 até 2026-08-23, contra `BATCH_SIZE_AUTHOR_BIO=25`. A cota recorta
+# ABAIXO do lote (ver `_export_author_bio`), então 10 desperdiçava 60% do lote
+# **sem economizar chamada nenhuma**: o slot secundário custa 1 chamada, com 10
+# ou com 25 autores. Não havia medição por trás do 10 — o custo real está na
+# ocupação do slot, não no tamanho do lote.
+BIO_POR_CICLO = int(os.getenv("BIO_POR_CICLO", "25"))
 
 # Mesma fome que as bios, com fila maior e prejuízo já no ar: em 2026-07-25,
 # 2.620 dos 4.403 livros publicados (60%) estavam no site sem categoria
@@ -224,8 +230,28 @@ def _count_pending_classify(conn) -> int:
 
 
 def _count_pending_author_bio(conn) -> int:
+    """Autores sem bio CUJA PÁGINA EXISTE — ou seja, com livro publicado.
+
+    ⚠ Até 2026-08-23 isto contava `autores WHERE descricao IS NULL`, sem olhar
+    se o autor tem livro. Medido no books.db naquele dia: dos 7.884 autores sem
+    bio, **5.793 (73%) não têm nenhum livro publicado** — e a página de autor
+    faz `notFound()` nesse caso, então elas respondem **404**. Contá-las fazia o
+    `_slot_secundario` gastar o slot (1 chamada de uma janela que só tem 5–6)
+    escrevendo bio para página que o Google nunca vê.
+
+    A fila acionável são os 2.091 autores com livro publicado e sem bio.
+    Ver TASK-AUTORES-005.
+    """
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM autores WHERE descricao IS NULL")
+    cur.execute("""
+        SELECT COUNT(*) FROM autores a
+        WHERE a.descricao IS NULL
+          AND EXISTS (
+              SELECT 1 FROM livros_autores la
+              JOIN livros l ON l.id = la.livro_id
+              WHERE la.autor_id = a.id AND l.status_publish = 1
+          )
+    """)
     return cur.fetchone()[0]
 
 
@@ -413,8 +439,20 @@ def _import_classify() -> int:
 # =========================
 
 def _export_author_bio(conn, limite: int | None = None) -> int:
-    """Exporta um lote de bios. `limite` recorta abaixo de BATCH_SIZE_AUTHOR_BIO
-    para a cota da rotação (ex: 10 autores), que é menor que um lote cheio."""
+    """Exporta um lote de bios, do autor MAIS publicado para o menos.
+
+    `limite` recorta abaixo de BATCH_SIZE_AUTHOR_BIO para a cota da rotação.
+
+    ⚠ A ordem era `a.nome ASC` até 2026-08-23 — alfabética, sem olhar se a
+    página do autor existe. Medido naquele dia: nos 10 primeiros da fila, **7
+    tinham 0 livros publicados**, e página de autor sem livro responde 404. A
+    quota do gargalo ia para páginas que o Google nunca vê.
+
+    Ordenar por livros publicados (desc) resolve **sem filtro rígido**: os 5.793
+    autores sem página afundam sozinhos para o fim da fila, e qualquer um deles
+    que ganhe um livro publicado depois sobe naturalmente. `a.nome` fica como
+    desempate estável, para o lote não variar entre execuções.
+    """
     processed_dir = BATCH_DIR / "processed_author_bio"
     os.makedirs(BATCH_DIR, exist_ok=True)
     os.makedirs(processed_dir, exist_ok=True)
@@ -424,13 +462,14 @@ def _export_author_bio(conn, limite: int | None = None) -> int:
     cur = conn.cursor()
     cur.execute("""
         SELECT a.id, a.nome, a.nacionalidade,
-               GROUP_CONCAT(l.titulo, ' | ') AS titulos
+               GROUP_CONCAT(l.titulo, ' | ') AS titulos,
+               SUM(CASE WHEN l.status_publish = 1 THEN 1 ELSE 0 END) AS publicados
         FROM autores a
         LEFT JOIN livros_autores la ON la.autor_id = a.id
         LEFT JOIN livros l ON l.id = la.livro_id
         WHERE a.descricao IS NULL
         GROUP BY a.id
-        ORDER BY a.nome ASC
+        ORDER BY publicados DESC, a.nome ASC
         LIMIT ?
     """, (tamanho,))
 
@@ -1065,6 +1104,12 @@ def _rotacao_author_bio(cota: int) -> tuple[int, bool]:
     junto com a de classify, 33-40%. Por isso deixou de ser chamada
     incondicionalmente: hoje ela disputa o slot único (`_slot_secundario`), que
     é onde a conta de custo vive.
+
+    ⚠ MUDANÇA (2026-08-23, TASK-AUTORES-005): a cota subiu de 10 para 25 e a
+    fila passou a ser ordenada por livros publicados. As duas coisas atacam o
+    mesmo desperdício por ângulos diferentes — a cota enchia só 40% do lote
+    pagando a chamada inteira, e a ordem alfabética mandava 73% das bios para
+    páginas que respondem 404. O custo em quota das duas mudanças é **zero**.
     """
     if cota <= 0:
         return 0, False
