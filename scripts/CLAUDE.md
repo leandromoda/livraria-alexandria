@@ -57,6 +57,58 @@ fix_affiliate_urls + publish_ofertas.run_repair).
 > monitor é capturada em `try` próprio — bloqueio de marketplace é transitório e
 > não pode derrubar o reparo de ofertas.
 
+### ⚠ O monitor lia o preço da página de BUSCA — corrigido em 2026-08-23
+
+O `offer_price_monitor` tinha `PRICE_SELECTORS` próprios, de **página de
+produto**, e os aplicava direto sobre o `offer_url`. Só que o `offer_url` que o
+`offer_resolver` produz é uma URL de **busca**: medido no `books.db` em
+2026-08-23, **4.849 dos 4.856 livros publicados (99,9%)** têm URL de busca
+(2.477 Amazon `/s?k=`, 2.372 ML `lista.`); só 7 são `/dp/` e nenhuma é `/MLB-`.
+Então `select_one('.a-price .a-offscreen')` devolvia o preço do **primeiro card**
+da busca, de qualquer item que estivesse lá.
+
+Amostra do mesmo dia (n=3 buscas reais na Amazon, 2 utilizáveis — a terceira
+esgotou os 3 retries em 503): a busca de *"O Guia do Mochileiro das Galáxias"*
+devolveu **4 preços — R$ 45,83 / 76,97 / 33,45 / 19,00** — sendo dois de
+**outros livros da série**. Não era só cobertura baixa: era preço possivelmente
+de outro produto, com o link mandando o usuário para uma busca em vez do item
+precificado.
+
+Hoje a leitura é em **2 saltos** (busca → página do produto), reusando
+`marketplace_scraper._resolve_produto`, e o `offer_url` é **promovido ao
+deep-link** do produto. A republicação no Supabase é automática:
+`publish_ofertas._payload_hash` já inclui `url_afiliada` e `preco`, então o
+`run_repair` do mesmo passe detecta a mudança. Ver TASK-OFERTAS-004.
+
+Três detalhes que os testes fixam (`tests/test_produto_2saltos.py`):
+
+- **Regime `estrito` para livros.** O portão de jogos (≥60% dos tokens) aceita
+  *"Praticamente Inofensiva — Volume 5. Série O Mochileiro das Galáxias"* para
+  *"O Guia do Mochileiro das Galáxias"* (2 de 3 tokens = 0,67). Livro tem série,
+  jogo não — por isso o regime frouxo nunca doeu em jogos. Com `estrito=True`
+  exige-se **todos** os tokens significativos (ou similaridade ≥0,85) mais o
+  sobrenome do autor no texto do card.
+- **Escolhe o card de MAIOR pontuação**, não o primeiro compatível — na mesma
+  busca, *"O guia definitivo do mochileiro das galáxias"* também passa o portão.
+  O portão de jogos não mudou; só a escolha entre os aprovados.
+- **Sem fallback de raspar a busca**, e sem gravar `preco_updated_at` quando a
+  resolução falha. Antes o `UPDATE` de sucesso rodava mesmo sem preço, então o
+  livro ia para o fim da fila como se tivesse sido resolvido.
+
+A fila (`fetch_pending`) passou a pôr **quem nunca teve preço antes do
+round-robin** por `preco_updated_at`: em 2026-08-23 só 553 dos 4.856 publicados
+(11%) tinham sido visitados.
+
+> **Medição de aproveitamento fica pendente — o bot wall estava fechado.** No
+> dry-run de validação (2026-08-23, n=8) **8 de 8 deram `error`**: a Amazon
+> respondeu 503 nas 3 tentativas e o ML devolveu a página *"Para continuar,
+> acesse sua conta"* (40 KB, **zero** cards de resultado). Isso não é regressão
+> — é o mesmo muro que já limitava o código anterior —, mas significa que o
+> ganho de aproveitamento **ainda não foi medido**. O que está verificado é a
+> lógica de resolução, por teste; o número real só sai de um passe do G com o
+> muro aberto. `PRECO_POR_CICLO` fica em 50 até lá: subir a cota junto com a
+> troca de mecanismo confundiria as duas variáveis.
+
 ### Gargalo de publicação — o autopilot é o único caminho
 
 **Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma

@@ -15,6 +15,7 @@ import os
 import random
 import re
 import time
+import unicodedata
 import requests
 
 from datetime import datetime
@@ -255,6 +256,199 @@ def scrape_marketplace(offer_url):
     }
 
     return result
+
+
+# =========================
+# BUSCA -> PRODUTO (2 SALTOS)
+# =========================
+
+# Estes helpers nasceram em `steps/jogos_pipeline.py` (2026-07-14) e foram
+# promovidos para cá em 2026-08-23 porque o problema é o mesmo nos dois
+# pipelines: o `offer_url` que o resolver produz é uma URL de BUSCA, e os
+# SELECTORS acima são de PÁGINA DE PRODUTO. Raspar a busca com eles devolve o
+# preço do primeiro card — de qualquer item que esteja lá.
+#
+# Medido em 2026-08-23 no books.db: 4.849 dos 4.856 livros publicados (99,9%)
+# têm offer_url de busca. Numa amostra de 3 buscas reais na Amazon, a de "O Guia
+# do Mochileiro das Galáxias" devolveu 4 preços — R$ 45,83 / 76,97 / 33,45 /
+# 19,00 — sendo dois de OUTROS livros da série. Ver TASK-OFERTAS-004.
+#
+# A direção da dependência não inverte: `jogos_pipeline` já importava deste
+# módulo, e o que migrou é lógica genérica de marketplace, não domínio de jogos.
+
+_AMAZON_ASIN_RE = re.compile(r"/dp/([A-Z0-9]{10})")
+_ML_LINK_RE     = re.compile(
+    r"https?://(?:produto\.mercadolivre\.com\.br/MLB-?\d+[^\s\"'#?]*"
+    r"|www\.mercadolivre\.com\.br/[^\s\"'#?]*?/p/MLB\d+)"
+)
+
+# Tokens que não identificam o produto (edição/formato/tipo). Cobre os dois
+# domínios: "rpg/caixa/box" vêm de jogos, "livro/livros" de livros — as buscas
+# de livro literalmente terminam em "livro" (ver offer_resolver).
+_TITULO_STOPWORDS = {
+    "rpg", "livro", "livros", "basico", "básico", "caixa", "box",
+    "edicao", "edição", "jogo", "jogos", "de", "do", "da", "dos", "das",
+    "e", "o", "a", "em", "para", "ed", "vol", "volume", "2a", "1a", "3a",
+    "ii", "iii",
+}
+
+
+def _tokens_titulo(texto):
+    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode("ascii")
+    t = re.sub(r"[^a-z0-9\s]", " ", t.lower())
+    return [w for w in t.split() if w and w not in _TITULO_STOPWORDS]
+
+
+def _autor_compativel(autor, texto):
+    """True se o SOBRENOME do autor aparece em `texto`.
+
+    Sobrenome, não o nome inteiro: a Amazon abrevia ("Douglas Adams" vira
+    "Adams, Douglas" ou só "Adams") e o ML costuma omitir o autor. Sem `autor`
+    ou sem `texto` a checagem não se aplica e devolve True — quem decide se
+    isso basta é `_titulo_score`, via `estrito`.
+    """
+    if not autor or not texto:
+        return True
+    tokens_autor = [t for t in _tokens_titulo(autor) if len(t) > 2]
+    if not tokens_autor:
+        return True
+    return tokens_autor[-1] in set(_tokens_titulo(texto))
+
+
+def _titulo_score(titulo, titulo_resultado, autor=None, texto_card=None, estrito=False):
+    """Pontua o quanto o card da busca corresponde ao item procurado.
+    Devolve `(cobertura, similaridade)` — comparável entre cards — ou None
+    quando o card é REJEITADO.
+
+    A pontuação de desempate é medida sobre os dois lados ORDENADOS, e o portão
+    de aceitação não: o portão precisa continuar idêntico ao de jogos desde
+    2026-07-14, e ordenar os dois lados o afrouxaria. São usos diferentes do
+    mesmo par de títulos — aceitar é uma decisão, ranquear é outra.
+
+    Dois regimes, porque os dois domínios erram de formas diferentes:
+
+    - `estrito=False` (jogos, comportamento desde 2026-07-14): aceita com >=60%
+      dos tokens significativos presentes, ou similaridade global >=0.6. Falso
+      negativo é aceitável — o item cai no agente finder.
+
+    - `estrito=True` (livros): exige TODOS os tokens significativos do título
+      buscado presentes no card (ou similaridade >=0.85) e, quando o autor é
+      conhecido, o sobrenome dele no texto do card. Motivo medido em 2026-08-23:
+      com o limiar de 0,6 só sobre o título, "Praticamente Inofensiva - Volume
+      5. Série O Mochileiro das Galáxias" casa com "O Guia do Mochileiro das
+      Galáxias" (2 de 3 tokens = 0,67). Livro tem série; jogo não tem, e por
+      isso o regime frouxo nunca doeu em jogos.
+    """
+    from difflib import SequenceMatcher
+
+    tj = _tokens_titulo(titulo)
+    if not tj:
+        return None
+    tr = set(_tokens_titulo(titulo_resultado))
+    cobertura = (sum(1 for w in tj if w in tr) / len(tj)) if tr else 0.0
+    ratio = SequenceMatcher(None, " ".join(tj), " ".join(sorted(tr))).ratio()
+
+    if estrito:
+        if cobertura < 1.0 and ratio < 0.85:
+            return None
+        if not _autor_compativel(autor, f"{titulo_resultado} {texto_card or ''}"):
+            return None
+    else:
+        if cobertura < 0.6 and ratio < 0.6:
+            return None
+
+    ranking = SequenceMatcher(None, " ".join(sorted(set(tj))),
+                              " ".join(sorted(tr))).ratio()
+    return (cobertura, ranking)
+
+
+def _titulo_compativel(titulo, titulo_resultado, autor=None, texto_card=None, estrito=False):
+    """Wrapper booleano de `_titulo_score`, mantido para leitura nos testes."""
+    return _titulo_score(titulo, titulo_resultado, autor, texto_card, estrito) is not None
+
+
+def _find_product_url(soup, marketplace, titulo, autor=None, estrito=False):
+    """Extrai da página de BUSCA a URL do resultado que MELHOR casa com o item.
+    Retorna URL canônica sem tag de afiliado, ou None.
+
+    ⚠ Mudança de 2026-08-23: escolhe o card de MAIOR pontuação, não o primeiro
+    compatível. O portão de aceitação é o mesmo de antes em jogos — só a escolha
+    entre os aprovados melhorou. Medido na busca de "O Guia do Mochileiro das
+    Galáxias": "O guia do mochileiro das galáxias" (1,00) e "O guia definitivo
+    do mochileiro das galáxias" (~0,86) passam os dois no regime estrito, e o
+    primeiro card da página nem sempre é o de maior pontuação.
+    """
+    if soup is None:
+        return None
+
+    melhor_url, melhor_score = None, None
+
+    if marketplace == "amazon":
+        # Cards de resultado (páginas reais têm; páginas de captcha, não)
+        for card in soup.select('div[data-component-type="s-search-result"]'):
+            h2 = card.select_one("h2")
+            card_titulo = h2.get_text(" ", strip=True) if h2 else ""
+            score = _titulo_score(titulo, card_titulo, autor,
+                                  card.get_text(" ", strip=True), estrito)
+            if score is None or (melhor_score is not None and score <= melhor_score):
+                continue
+            for a in card.select('a[href*="/dp/"]'):
+                href = a.get("href") or ""
+                if "/sspa/" in href or "sspa=" in href:   # patrocinado
+                    continue
+                m = _AMAZON_ASIN_RE.search(href)
+                if m:
+                    melhor_url, melhor_score = f"https://www.amazon.com.br/dp/{m.group(1)}", score
+                    break
+        return melhor_url
+
+    if marketplace == "mercadolivre":
+        # Layouts novo (poly-card) e antigo (ui-search)
+        for card in soup.select("div.poly-card, li.ui-search-layout__item"):
+            t = card.select_one(
+                ".poly-component__title, .ui-search-item__title, h3, h2"
+            )
+            card_titulo = t.get_text(" ", strip=True) if t else ""
+            score = _titulo_score(titulo, card_titulo, autor,
+                                  card.get_text(" ", strip=True), estrito)
+            if score is None or (melhor_score is not None and score <= melhor_score):
+                continue
+            for a in card.select("a[href]"):
+                href = (a.get("href") or "").split("#", 1)[0]
+                if "click1.mercadolivre" in href or "mclics" in href:  # anúncio
+                    continue
+                m = _ML_LINK_RE.match(href)
+                if m:
+                    melhor_url, melhor_score = m.group(0), score
+                    break
+        return melhor_url
+
+    return None
+
+
+def _resolve_produto(search_url, titulo, autor=None, estrito=False):
+    """Busca -> página do produto compatível com o título.
+    Retorna (result_dict|None, product_url_afiliada|None). SEM fallback de
+    raspar a página de busca: dado de produto errado é pior que dado nenhum
+    (o item sem descrição segue para o agente finder)."""
+    from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
+
+    marketplace = detect_marketplace(search_url)
+    soup = fetch_page(search_url)
+    if soup is None:
+        return None, None
+
+    product_url = _find_product_url(soup, marketplace, titulo, autor, estrito)
+    if not product_url:
+        return None, None
+
+    result = scrape_marketplace(product_url)
+    if not result:
+        return None, None
+
+    afiliada = (inject_amazon_tag(product_url) if marketplace == "amazon"
+                else inject_ml_affiliate(product_url))
+    return result, afiliada
 
 
 # =========================

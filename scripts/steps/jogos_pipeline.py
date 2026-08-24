@@ -399,130 +399,25 @@ def resolve_offers(pacote=100):
 # 3. SCRAPER (capa + descrição + preço — via PÁGINA DO PRODUTO)
 # =========================
 
-# O offer_url do resolver é uma URL de BUSCA. Os SELECTORS do
-# marketplace_scraper são de PÁGINA DE PRODUTO (#productDescription,
-# .ui-pdp-*) — raspar a busca não rende descrição nem imagem (só um preço
-# de card, possivelmente de outro item). Nos livros esse buraco era coberto
-# pelos fallbacks Open Library/Google Books, que jogos não usam (por design).
-# Aqui, portanto: busca -> resultado CUJO TÍTULO CASA com o jogo -> raspa a
-# página do produto, e o offer_url é promovido ao deep-link afiliado.
+# O offer_url do resolver e uma URL de BUSCA e os SELECTORS do
+# marketplace_scraper sao de PAGINA DE PRODUTO, entao raspar a busca nao rende
+# descricao nem imagem (so um preco de card, possivelmente de outro item). O
+# scrape aqui e em 2 saltos: busca -> resultado CUJO TITULO CASA com o jogo ->
+# pagina do produto, com o offer_url promovido ao deep-link afiliado.
 #
-# A validação de título é OBRIGATÓRIA: o 1º resultado da busca pode ser
-# outro produto (medido: "Knave" retornou Blades in the Dark). Sem card
-# compatível -> sem produto -> item fica sem descrição e vai para o agente
-# finder (LLM), que cobre também os muros anti-bot (Amazon 503/captcha,
-# ML account-verification) — mesmo papel do offer_finder nos livros.
+# Os helpers viviam AQUI ate 2026-08-23, quando foram promovidos para
+# `steps/marketplace_scraper.py`: o pipeline de livros tem exatamente o mesmo
+# problema (4.849 dos 4.856 publicados com offer_url de busca) e passou a
+# precisar deles. Ver TASK-OFERTAS-004. O comportamento de jogos nao mudou --
+# `estrito` fica em False, que e o regime de sempre (>=60% dos tokens).
+#
+# A validacao de titulo continua OBRIGATORIA: o 1o resultado da busca pode ser
+# outro produto (medido: "Knave" retornava Blades in the Dark). Sem card
+# compativel -> sem produto -> item fica sem descricao e vai para o agente
+# finder (LLM), que cobre tambem os muros anti-bot (Amazon 503/captcha,
+# ML account-verification) -- mesmo papel do offer_finder nos livros.
 
-_AMAZON_ASIN_RE = re.compile(r"/dp/([A-Z0-9]{10})")
-_ML_LINK_RE     = re.compile(
-    r"https?://(?:produto\.mercadolivre\.com\.br/MLB-?\d+[^\s\"'#?]*"
-    r"|www\.mercadolivre\.com\.br/[^\s\"'#?]*?/p/MLB\d+)"
-)
-
-# Tokens que não identificam o produto (edição/formato/tipo)
-_TITULO_STOPWORDS = {
-    "rpg", "livro", "basico", "básico", "caixa", "box", "edicao", "edição",
-    "jogo", "jogos", "de", "do", "da", "dos", "das", "e", "o", "a", "em",
-    "para", "ed", "vol", "volume", "2a", "1a", "3a", "ii", "iii",
-}
-
-
-def _tokens_titulo(texto):
-    t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode("ascii")
-    t = re.sub(r"[^a-z0-9\s]", " ", t.lower())
-    return [w for w in t.split() if w and w not in _TITULO_STOPWORDS]
-
-
-def _titulo_compativel(titulo_jogo, titulo_resultado):
-    """True se o título do resultado da busca corresponde ao jogo procurado.
-    Critério: >=60% dos tokens significativos do jogo presentes no resultado
-    (ou similaridade global >=0.6). Rejeita produto errado; falso negativo é
-    aceitável (o item vai para o agente finder)."""
-    from difflib import SequenceMatcher
-
-    tj = _tokens_titulo(titulo_jogo)
-    if not tj:
-        return False
-    tr = set(_tokens_titulo(titulo_resultado))
-    if tr:
-        hits = sum(1 for w in tj if w in tr)
-        if hits / len(tj) >= 0.6:
-            return True
-    a = " ".join(tj)
-    b = " ".join(sorted(tr))
-    return SequenceMatcher(None, a, b).ratio() >= 0.6
-
-
-def _find_product_url(soup, marketplace, titulo):
-    """Extrai da página de BUSCA a URL do primeiro resultado cujo TÍTULO casa
-    com o jogo. Retorna URL canônica sem tag de afiliado, ou None."""
-    if soup is None:
-        return None
-
-    if marketplace == "amazon":
-        # Cards de resultado (páginas reais têm; páginas de captcha, não)
-        for card in soup.select('div[data-component-type="s-search-result"]'):
-            h2 = card.select_one("h2")
-            card_titulo = h2.get_text(" ", strip=True) if h2 else ""
-            if not _titulo_compativel(titulo, card_titulo):
-                continue
-            for a in card.select('a[href*="/dp/"]'):
-                href = a.get("href") or ""
-                if "/sspa/" in href or "sspa=" in href:   # patrocinado
-                    continue
-                m = _AMAZON_ASIN_RE.search(href)
-                if m:
-                    return f"https://www.amazon.com.br/dp/{m.group(1)}"
-        return None
-
-    if marketplace == "mercadolivre":
-        # Layouts novo (poly-card) e antigo (ui-search)
-        cards = soup.select("div.poly-card, li.ui-search-layout__item")
-        for card in cards:
-            t = card.select_one(
-                ".poly-component__title, .ui-search-item__title, h3, h2"
-            )
-            card_titulo = t.get_text(" ", strip=True) if t else ""
-            if not _titulo_compativel(titulo, card_titulo):
-                continue
-            for a in card.select("a[href]"):
-                href = (a.get("href") or "").split("#", 1)[0]
-                if "click1.mercadolivre" in href or "mclics" in href:  # anúncio
-                    continue
-                m = _ML_LINK_RE.match(href)
-                if m:
-                    return m.group(0)
-        return None
-
-    return None
-
-
-def _resolve_produto(search_url, titulo):
-    """Busca -> página do produto compatível com o título.
-    Retorna (result_dict|None, product_url_afiliada|None). SEM fallback de
-    raspar a página de busca: dado de produto errado é pior que dado nenhum
-    (o item sem descrição segue para o agente finder)."""
-    from steps.marketplace_scraper import (
-        detect_marketplace, fetch_page, scrape_marketplace,
-    )
-    from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
-
-    marketplace = detect_marketplace(search_url)
-    soup = fetch_page(search_url)
-    if soup is None:
-        return None, None
-
-    product_url = _find_product_url(soup, marketplace, titulo)
-    if not product_url:
-        return None, None
-
-    result = scrape_marketplace(product_url)
-    if not result:
-        return None, None
-
-    afiliada = (inject_amazon_tag(product_url) if marketplace == "amazon"
-                else inject_ml_affiliate(product_url))
-    return result, afiliada
+from steps.marketplace_scraper import _resolve_produto   # noqa: E402  (perto do uso)
 
 
 def scrape(pacote=30):
