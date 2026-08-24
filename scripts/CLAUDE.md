@@ -826,7 +826,7 @@ executada **no início do ciclo, antes da sinopse**.
 
 | Rotação | Env | Padrão | Unidade | Fila em 2026-07-25 |
 |---|---|---|---|---|
-| Bios | `BIO_POR_CICLO` | 10 | autores | 8.034 |
+| Bios | `BIO_POR_CICLO` | **25** | autores | 2.091 (fila útil, 2026-08-23) |
 | Categorização | `CLASSIFY_POR_CICLO` | 25 | livros | 13.872 |
 
 `0` desliga qualquer uma delas. As cotas recortam abaixo do `BATCH_SIZE_*` via
@@ -857,9 +857,47 @@ perto disso. Resultado prático: **8.034 autores sem bio e 0 gerada por janela**
 fome permanente, não lentidão.
 
 **Mecanismo:** `_rotacao_author_bio(cota)` gera até `BIO_POR_CICLO` bios (padrão
-**10** — autores, não lotes; a cota recorta abaixo do `BATCH_SIZE_AUTHOR_BIO`).
+**25** — autores, não lotes; a cota recorta abaixo do `BATCH_SIZE_AUTHOR_BIO`).
 Desde 2026-08-09 ela roda **quando ganha o slot secundário** (a cada ~2 ciclos),
 não em todo ciclo — ver "Slot secundário" acima.
+
+#### ⚠ 73% das bios iam para páginas que respondem 404 — corrigido em 2026-08-23
+
+A fila era `ORDER BY a.nome ASC`, alfabética, sem olhar se a página do autor
+existe. Medido no `books.db` em 2026-08-23:
+
+| | Autores |
+|---|---|
+| Sem bio (fila antiga) | 7.884 |
+| **Sem bio E sem nenhum livro publicado** | **5.793 (73%)** |
+| Com livro publicado | 2.215 — **2.091 sem bio (94%)** |
+
+`app/(public)/autores/[slug]/page.tsx` faz `notFound()` para autor sem livro, ou
+seja, essas 5.793 páginas respondem **404**. Nos 10 primeiros da fila antiga, 7
+estavam nessa condição — a quota do gargalo escrevendo bio para página que o
+Google nunca vê. O topo da fila era *"André Breton, André Carregal, André
+Chouraqui…"*; hoje é *"Umberto Eco (43 livros publicados), Augusto Cury (38),
+Stephen King (37), J.R.R. Tolkien (35)…"*.
+
+Duas mudanças, **custo zero em quota**:
+
+- **`_export_author_bio` ordena por livros publicados (desc)**, com `a.nome`
+  como desempate estável. Não é filtro rígido de propósito: os autores sem
+  página afundam sozinhos, e qualquer um que ganhe livro publicado depois sobe
+  sem precisar de backfill.
+- **`_count_pending_author_bio` conta só quem tem livro publicado**, senão o
+  `_slot_secundario` gastaria o slot (1 chamada de uma janela que só tem 5–6)
+  quando só sobram autores sem página. A fila útil caiu de 7.884 para **2.091**.
+
+E a cota subiu de 10 para 25, igualando `BATCH_SIZE_AUTHOR_BIO`: o slot custa
+**1 chamada com 10 ou com 25 autores**, então 10 desperdiçava 60% do lote sem
+economizar nada. Não havia medição por trás do 10.
+
+> **Ganho é ESTIMATIVA, não medição.** Com ~4,8 janelas/dia e o bio vencendo
+> cerca de metade dos slots secundários, sai de ~20 bios/dia (das quais ~27% em
+> páginas indexadas) para ~50/dia, todas em páginas indexadas. Confirmar num
+> passe real do G. Invariantes fixados em `tests/test_author_bio_prioridade.py`.
+> Ver TASK-AUTORES-005.
 
 > **A ordem é o mecanismo.** Rodar a rotação *depois* da sinopse seria idêntico
 > a não ter rotação: a janela acaba na sinopse e o fluxo nunca chega lá. Por isso
@@ -998,7 +1036,7 @@ BATCH_SIZE_CLASSIFY=25
 BATCH_SIZE_AUTHOR_BIO=25
 
 # Rotações (ver "Rotações"). Cotas por ciclo, não lotes. 0 desliga.
-BIO_POR_CICLO=10                 # autores por ciclo
+BIO_POR_CICLO=25                 # autores por ciclo (= BATCH_SIZE_AUTHOR_BIO)
 CLASSIFY_POR_CICLO=25            # livros por ciclo
 
 # Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
