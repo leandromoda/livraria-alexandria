@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-21 (PR #293): pipeline passa a PREENCHER ISBN, nao so a validar. O passivo era 4.852 de 4.859 publicados sem ISBN (99,86%), causado por descarte do dado que o Google Books ja devolvia no step 4. Novo step `isbn_backfill` na fase de manutencao do autopilot.",
+    "last_updated": "2026-08-23: queda de ~93% em impressoes no Google entre 18 e 21/08, atribuida ao August 2026 spam update (TASK-SEO-016). Resposta em duas frentes de qualidade: preco vindo da pagina do produto com deep link (TASK-OFERTAS-004) e fila de bios priorizando autores com pagina indexada (TASK-AUTORES-005). Publicar mais paginas fica contraindicado enquanto o passivo nao drenar.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1102,20 +1102,23 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-08-07",
+    "last_measured": "2026-08-23",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
-      "publicados": 4403,
+      "publicados": 4856,
       "com_sinopse": 4395,
       "sinopse_pendente": 11058,
       "categorize_pendente": 13847,
       "autores": 8342,
-      "autores_sem_bio": 8024,
-      "livros_com_preco_atual": 58,
+      "autores_sem_bio": 7884,
+      "livros_com_preco_atual": 222,
       "livros_status_enrich_scraping": 140,
       "idioma_todos_PT_antes_do_backfill": 17727,
-      "fila_step3_lookup_query": 159
+      "fila_step3_lookup_query": 159,
+      "autores_com_livro_publicado": 2215,
+      "autores_com_livro_publicado_sem_bio": 2091,
+      "publicados_visitados_pelo_monitor_de_precos": 553
     },
     "supabase": {
       "livros": 4562,
@@ -1128,7 +1131,7 @@
       "autores_sem_livro": 6248,
       "autores_com_livro": 2151
     },
-    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. | 2026-08-07: ISR Writes estourou (100% de 200K). O driver e deploy x paginas, nao TTL — ver TASK-PERF-017. 6.248 dos 8.399 autores nao tem livro nenhum.",
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. | 2026-08-07: ISR Writes estourou (100% de 200K). O driver e deploy x paginas, nao TTL — ver TASK-PERF-017. 6.248 dos 8.399 autores nao tem livro nenhum. | 2026-08-23: releitura apos o mergulho do GSC (TASK-SEO-016). Precos: 553 de 4.856 publicados ja visitados pelo monitor (11%) e 219 desses com preco (40% de aproveitamento) - mas o preco vem do 1o card da pagina de BUSCA, entao pode ser de outro livro (TASK-OFERTAS-004). Bios: 7.884 dos 8.342 autores sem bio, e 5.793 deles (73% da fila) nao tem livro publicado, ou seja, a pagina responde 404 (TASK-AUTORES-005).",
     "vercel_free_tier": {
       "medido_em": "2026-08-07",
       "janela": "30 dias DESLIZANTES — o Hobby nao tem ciclo de faturamento, entao nao ha reset no dia 1",
@@ -1158,6 +1161,103 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-SEO-016",
+      "description": "Queda de ~93% em impressoes no Google a partir de 18/08/2026, com precipicio em 21/08 - atribuida ao August 2026 spam update",
+      "priority": "high",
+      "status": "open",
+      "registered_on": "2026-08-23",
+      "origem": "Leandro trouxe o print do GSC em 2026-08-23 pedindo avaliacao do mergulho em cliques e impressoes.",
+      "diagnostico": {
+        "medido_em": "2026-08-23",
+        "metodo": "GSC da propriedade sc-domain:livrariaalexandria.com.br - breakdown por data (90 dias), relatorio de 24 horas, Indexacao das paginas, Acoes manuais e Estatisticas de rastreamento; mais o Search Status Dashboard do Google.",
+        "serie_diaria_impressoes": "1-17/08 media de 735/dia (n=17) | 18/08: 957 | 19/08: 787 | 20/08: 524 | 21/08: 69",
+        "serie_diaria_cliques": "1-17/08 media de 12,1/dia (n=17) | 18/08: 13 | 19/08: 12 | 20/08: 12 | 21/08: 2",
+        "janela_24h_22_a_23_08": "1 clique / 51 impressoes / posicao media 48,4 - confirma que a queda e REAL e nao o atraso de 2 dias do relatorio diario, que era a hipotese barata",
+        "posicao_media": "12-19 no inicio de agosto -> 48,4 nas ultimas 24h (n=51, amostra pequena; 21/08 sozinho ja marcava 40,8 sobre 69 impressoes)",
+        "queda": "~-93% em impressoes e ~-92% em cliques"
+      },
+      "causa_atribuida": "August 2026 spam update - unico incidente de ranking de agosto no Search Status Dashboard, iniciado em 18/08 (~12h30 ET) e concluido em 21/08 (~4h50), 2d16h, global e em todos os idiomas. A erosao comeca em 18/08 e o precipicio cai em 21/08, o dia em que o rollout terminou.",
+      "descartado_por_verificacao": [
+        "Acao manual: 'Nenhum problema foi detectado' em Seguranca e acoes manuais.",
+        "Site fora do ar: home, /livros, /robots.txt e /sitemap.xml respondem 200 com UA do Googlebot.",
+        "Bloqueio no robots.txt: 'User-Agent: * / Allow: /' intacto. Apareceu um bloco novo 'Cloudflare Managed Content' (Content-Signal search=yes, ai-train=no; Disallow para GPTBot/ClaudeBot/Google-Extended) que NAO afeta a Busca classica.",
+        "Falha de rastreamento: 43,1 mil requisicoes, 78% em 200, <1% de 5xx, 306 ms de resposta media.",
+        "Desindexacao em massa: 9,19 mil paginas indexadas contra 10,4 mil nao indexadas."
+      ],
+      "confundidores_internos_descartados": "PR #282 (18/08, autores orfaos) e PR #286 (20/08, categoria sem livro publicavel devolve 404) mexeram no inventario de paginas na mesma janela. Explicam perda de impressao de paginas marginais, mas NAO a posicao media saindo de ~15 para ~48 nas paginas que sobraram: o bucket 'excluida por noindex' tem 604 URLs, escala de centenas e nao de milhares.",
+      "ressalva": "O relatorio de Indexacao das paginas estava atualizado ate 20/08 - nao cobre o dia do precipicio. Reconferir em 3-5 dias se houve desindexacao junto do rebaixamento; isso muda o plano.",
+      "decisao_de_prioridade": "Publicar MAIS paginas fica CONTRAINDICADO enquanto o passivo de qualidade nao drenar. O gargalo que estava no radar (destravar os ~11 mil livros sem sinopse) produz mais pagina fina, que e o oposto da correcao. A prioridade passa a ser qualidade das paginas que ja existem - ver TASK-OFERTAS-004 e TASK-AUTORES-005.",
+      "politicas_de_spam_provaveis": "O Google nao diz qual politica foi acionada. O perfil do site bate com duas: 'thin affiliate pages' (4.579 ofertas ativas com 2 precos, link levando a pagina de BUSCA e nao ao produto) e 'scaled content abuse' (4.856 livros publicados com sinopse de LLM, 667 listas geradas, 8.342 autores com 458 bios).",
+      "plano": [
+        "PR 2 (TASK-OFERTAS-004): preco vindo da pagina do produto, com deep link afiliado.",
+        "PR 3 (TASK-AUTORES-005): fila de bios priorizando autores com pagina indexada.",
+        "Em 3-5 dias: reabrir o GSC com o relatorio de indexacao ja atualizado pos-21/08 e a serie diaria, para decidir se a resposta precisa de mais frentes."
+      ]
+    },
+    {
+      "id": "TASK-OFERTAS-004",
+      "description": "offer_price_monitor le o preco do primeiro card da pagina de BUSCA - preco pode ser de outro livro, e o link afiliado leva a uma busca em vez do produto",
+      "priority": "high",
+      "status": "open",
+      "registered_on": "2026-08-23",
+      "origem": "Investigacao do mergulho do GSC (TASK-SEO-016): 'thin affiliate pages' e uma das politicas de spam que batem com o perfil do site.",
+      "medicao": {
+        "medido_em": "2026-08-23",
+        "metodo": "consultas ao scripts/data/books.db + amostra de 3 buscas reais na Amazon",
+        "publicados": 4856,
+        "offer_url_de_busca": "4.849 de 4.856 (99,9%) - 2.477 Amazon /s?k= e 2.372 ML lista.mercadolivre; apenas 7 sao /dp/ e nenhuma e /MLB-",
+        "cobertura_do_monitor": "553 de 4.856 (11%) ja visitados (preco_updated_at nao nulo)",
+        "aproveitamento": "219 dos 553 visitados ficaram com preco (40%). Por tipo de URL: Amazon busca 189/313 (60%), ML busca 24/223 (11%)",
+        "amostra_de_correcao": "A busca de 'O Guia do Mochileiro das Galaxias' devolveu 4 precos distintos (R$ 45,83 / 76,97 / 33,45 / 19,00), dois deles de OUTROS livros da serie. O monitor grava o do 1o card. Os 3 fetches da amostra levaram 503 da Amazon em alguma tentativa - o bot wall e real e explica os 40%."
+      },
+      "causa": "process_book faz fetch_page(offer_url) e aplica PRICE_SELECTORS de pagina de PRODUTO sobre uma pagina de BUSCA. soup.select_one('.a-price .a-offscreen') devolve o preco do primeiro card, qualquer que seja o produto.",
+      "plano": [
+        "Promover _titulo_compativel / _find_product_url / _resolve_produto de steps/jogos_pipeline.py para steps/marketplace_scraper.py (a direcao da dependencia nao inverte - jogos ja importa do scraper de livros).",
+        "_titulo_compativel passa a aceitar 'autor' opcional: so o titulo com limiar 0,6 casa 'Praticamente Inofensiva - Volume 5. Serie O Mochileiro das Galaxias' com 'O Guia do Mochileiro das Galaxias' (falso positivo de serie, comum em livro e inexistente em jogo).",
+        "offer_price_monitor.process_book passa a resolver busca -> produto e ler o preco de la. SEM fallback de raspar a busca: dado de produto errado e pior que dado nenhum.",
+        "Promover o deep link: gravar em livros.offer_url a URL do produto com tag de afiliado. A propagacao ao Supabase e automatica - publish_ofertas._payload_hash ja inclui url_afiliada e preco, entao o run_repair republica.",
+        "Nao marcar preco_updated_at quando a resolucao falha (hoje marca, e o livro vai para o fim da fila como se tivesse sido resolvido).",
+        "fetch_pending ordena 'preco_atual IS NULL' primeiro, depois o round-robin por preco_updated_at.",
+        "Manter PRECO_POR_CICLO=50 nesta entrega: os 2 saltos dobram os requests por livro e subir a cota junto confundiria as duas variaveis."
+      ],
+      "files": [
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/jogos_pipeline.py",
+        "scripts/tests/test_produto_2saltos.py"
+      ]
+    },
+    {
+      "id": "TASK-AUTORES-005",
+      "description": "Fila de bios ordenada por nome gasta 73% da quota LLM em autores cuja pagina responde 404",
+      "priority": "high",
+      "status": "open",
+      "registered_on": "2026-08-23",
+      "origem": "Investigacao do mergulho do GSC (TASK-SEO-016): pagina de autor sem bio e conteudo fino, e a bio e o unico texto proprio dessas paginas.",
+      "medicao": {
+        "medido_em": "2026-08-23",
+        "metodo": "consultas ao scripts/data/books.db",
+        "autores_total": 8342,
+        "sem_bio": 7884,
+        "sem_bio_e_sem_livro_publicado": "5.793 (73% da fila)",
+        "com_livro_publicado": "2.215, dos quais 2.091 sem bio (94%)",
+        "amostra_da_fila_atual": "nos 10 primeiros por ORDER BY nome ASC, 7 tem 0 livros publicados"
+      },
+      "causa": "llm_orchestrator._export_author_bio ordena por 'ORDER BY a.nome ASC'. E a pagina de autor faz notFound() para autor sem livro - essas paginas respondem 404, entao cada bio gerada para elas e uma chamada do gargalo LLM jogada fora. Alem disso BIO_POR_CICLO=10 contra BATCH_SIZE_AUTHOR_BIO=25 subutiliza o lote em 60% sem economizar chamada nenhuma (o slot secundario custa 1 chamada com 10 ou com 25 autores).",
+      "plano": [
+        "_export_author_bio ordena por contagem de livros PUBLICADOS do autor, decrescente, com a.nome como desempate estavel. Sem filtro rigido: autor que ganhar livro publicado depois sobe naturalmente.",
+        "_count_pending_author_bio conta so autores sem bio COM pelo menos um livro publicado, para o _slot_secundario nao gastar o slot quando so sobram autores sem pagina.",
+        "BIO_POR_CICLO de 10 para 25, igualando BATCH_SIZE_AUTHOR_BIO.",
+        "Nao mexer no rodizio author_bio <-> classify nem no gate de auditoria: os tres itens acima ja mudam a ordem de grandeza, e mexer no rodizio junto tornaria o efeito nao atribuivel."
+      ],
+      "estimativa_nao_medida": "Com ~4,8 janelas/dia (documentado em scripts/CLAUDE.md) e o bio vencendo cerca de metade dos slots secundarios, sai de ~20 bios/dia (das quais ~27% em paginas indexadas) para ~50/dia, todas em paginas indexadas. E ESTIMATIVA derivada de medicoes existentes, nao medicao nova - confirmar num passe real do G.",
+      "files": [
+        "scripts/steps/llm_orchestrator.py",
+        "scripts/CLAUDE.md",
+        "scripts/tests/test_author_bio_prioridade.py"
+      ]
+    },
     {
       "id": "TASK-INFANTIS-001",
       "description": "Aplicar migração da seção Livros Infantis no Supabase (livros_infantis + livro_infantil_clicks)",
