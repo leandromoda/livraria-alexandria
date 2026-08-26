@@ -14,6 +14,7 @@
 # ============================================================
 
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime
@@ -82,6 +83,54 @@ def fetch_amazon_cover(isbn):
     return None
 
 
+# Zoom da capa do Google Books. A capa é exibida a 176x256 px
+# (`app/_components/BookCover.tsx`), com `priority` — ou seja, é o elemento de
+# LCP da página de livro.
+#
+# ⚠ Até 2026-08-26 esta função fazia `thumb.replace("&zoom=1", "&zoom=0")`, com
+# o comentário "remove zoom baixo". `zoom=0` é a resolução CHEIA, e o resultado
+# medido em 2026-08-26 no books.db foi: **1.294 das 2.137 capas do Google Books
+# (60%) ficaram em `zoom=0`**, servindo centenas de KB para exibir 176 px.
+#
+# Medido na mesma data, na capa de `o-jardim-das-rosas`:
+#
+#   | variante      | peso   | tempo  |
+#   |---------------|--------|--------|
+#   | zoom=0 (antes)| 593 KB | 1,56 s |
+#   | zoom=2 (hoje) |  40 KB | 0,96 s |
+#   | zoom=1        |  24 KB | 0,39 s |
+#
+# `zoom=2` e não `zoom=1`: o 1 entrega ~128 px de largura, que borra numa tela
+# 2x sobre um slot de 176 px. O 2 é o menor que ainda cobre retina.
+ZOOM_GOOGLE_BOOKS = "2"
+
+_ZOOM_RE = re.compile(r"([?&])zoom=\d+")
+
+
+def normalizar_capa_google(url):
+    """Forma canônica da URL de capa do Google Books: HTTPS + zoom alvo.
+
+    As duas correções vivem juntas porque são o mesmo campo e o mesmo passe.
+    Além do zoom, medido em 2026-08-26: **837 capas PUBLICADAS estavam em
+    `http://`** (1.875 no banco todo). O site é HTTPS, então isso é conteúdo
+    misto — o navegador bloqueia ou faz upgrade por conta própria, e em nenhum
+    dos dois casos é o que queremos servir. `fetch_google_cover` já forçava
+    HTTPS nas capas NOVAS desde sempre; o passivo antigo nunca foi reescrito
+    porque `publish.fetch_pendentes` filtra `status_publish = 0` e cada livro é
+    enviado ao Supabase uma única vez.
+
+    Só age em books.google.com — as capas do OpenLibrary usam sufixo `-L`/`-M`
+    no path e não têm este parâmetro.
+    """
+    if not url or "books.google.com" not in url:
+        return url
+    url = url.replace("http://", "https://")
+    if _ZOOM_RE.search(url):
+        return _ZOOM_RE.sub(r"\1zoom=" + ZOOM_GOOGLE_BOOKS, url)
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}zoom={ZOOM_GOOGLE_BOOKS}"
+
+
 def fetch_google_cover(titulo, autor, isbn=None):
     """Google Books API — busca por ISBN primeiro, depois título+autor."""
     try:
@@ -103,10 +152,7 @@ def fetch_google_cover(titulo, autor, isbn=None):
                  or links.get("smallThumbnail"))
 
         if thumb:
-            # Força HTTPS e remove zoom baixo
-            thumb = thumb.replace("http://", "https://")
-            thumb = thumb.replace("&zoom=1", "&zoom=0")
-            return thumb
+            return normalizar_capa_google(thumb)
 
     except Exception:
         pass
