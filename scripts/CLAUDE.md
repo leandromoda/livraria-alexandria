@@ -99,15 +99,33 @@ A fila (`fetch_pending`) passou a pôr **quem nunca teve preço antes do
 round-robin** por `preco_updated_at`: em 2026-08-23 só 553 dos 4.856 publicados
 (11%) tinham sido visitados.
 
-> **Medição de aproveitamento fica pendente — o bot wall estava fechado.** No
-> dry-run de validação (2026-08-23, n=8) **8 de 8 deram `error`**: a Amazon
-> respondeu 503 nas 3 tentativas e o ML devolveu a página *"Para continuar,
-> acesse sua conta"* (40 KB, **zero** cards de resultado). Isso não é regressão
-> — é o mesmo muro que já limitava o código anterior —, mas significa que o
-> ganho de aproveitamento **ainda não foi medido**. O que está verificado é a
-> lógica de resolução, por teste; o número real só sai de um passe do G com o
-> muro aberto. `PRECO_POR_CICLO` fica em 50 até lá: subir a cota junto com a
-> troca de mecanismo confundiria as duas variáveis.
+> **Medição de aproveitamento: o número mede o bot wall, não o mecanismo.**
+> No dry-run de validação (**2026-08-24**, n=8) **8 de 8 deram `error`**: a
+> Amazon respondeu 503 nas 3 tentativas e o ML devolveu a página *"Para
+> continuar, acesse sua conta"* (40 KB, **zero** cards de resultado).
+>
+> ⚠️ *Correção de registro (2026-08-26): este dry-run estava datado aqui como
+> 2026-08-23. Ele rodou em 24/08 — o log é `pipeline_2026-08-24_19-49-11`. As
+> medições do GSC e do `books.db` citadas nesta seção são mesmo de 23/08.*
+>
+> **A primeira rodada real do G confirmou o quadro** (log
+> `pipeline_2026-08-24_20-09-02`, ~23 h, commit `118574c`):
+>
+> | | Pré-fix (23/08) | Pós-fix (24/08) |
+> |---|---|---|
+> | `Ativos` / 50 | 28 | **4** |
+> | `Erros` / 50 | 21 | **45** |
+> | Duração do lote | 4m17s | **15m21s** |
+> | HTTP 503 na janela | — | **82, todos `amazon.com.br`** |
+>
+> **A queda não é regressão, e a comparação não é válida como tal:** os 28
+> "ativos" de antes vinham da página de busca e podiam ser de outro produto, e
+> os 82 bloqueios caem todos dentro desta janela. O que a rodada **provou** é o
+> mecanismo: os livros com deep link `/dp/` subiram de 7 para 14, e *Phantastes*
+> saiu de URL de busca para `amazon.com.br/dp/6556891150?tag=livrariaalexa-20`.
+> Com o muro aberto o aproveitamento continua sem medição. `PRECO_POR_CICLO`
+> fica em 50 até lá: subir a cota junto com a troca de mecanismo confundiria as
+> duas variáveis, e sob muro só multiplicaria 503.
 
 ### Gargalo de publicação — o autopilot é o único caminho
 
@@ -893,11 +911,17 @@ E a cota subiu de 10 para 25, igualando `BATCH_SIZE_AUTHOR_BIO`: o slot custa
 **1 chamada com 10 ou com 25 autores**, então 10 desperdiçava 60% do lote sem
 economizar nada. Não havia medição por trás do 10.
 
-> **Ganho é ESTIMATIVA, não medição.** Com ~4,8 janelas/dia e o bio vencendo
-> cerca de metade dos slots secundários, sai de ~20 bios/dia (das quais ~27% em
-> páginas indexadas) para ~50/dia, todas em páginas indexadas. Confirmar num
-> passe real do G. Invariantes fixados em `tests/test_author_bio_prioridade.py`.
-> Ver TASK-AUTORES-005.
+> ✅ **MEDIDO na primeira rodada real** (log `pipeline_2026-08-24_20-09-02`,
+> ~23 h, commit `118574c`): **50 bios**, em 2 ocupações do slot secundário
+> (20:11 e 12:37), **25 autores por lote** — lote cheio, uma chamada cada, no
+> Opus. A fila reportada no log foi **2.091 → 2.065**, confirmando que a
+> contagem passou a ser só de autores com livro publicado.
+>
+> A estimativa registrada no PR #297 era de ~50/dia, e bateu. O que **não**
+> estava previsto e o log mostrou: em ~23 h houve só **4 slots secundários** (2
+> de bio, 2 de classify) — o rodízio 1:1 com o `classify` é o que limita, não a
+> cota. `CLASSIFY_POR_CICLO=0` dobra as bios enquanto a fila útil não zerar.
+> Invariantes em `tests/test_author_bio_prioridade.py`. Ver TASK-AUTORES-005.
 
 > **A ordem é o mecanismo.** Rodar a rotação *depois* da sinopse seria idêntico
 > a não ter rotação: a janela acaba na sinopse e o fluxo nunca chega lá. Por isso

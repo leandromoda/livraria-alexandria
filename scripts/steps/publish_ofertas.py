@@ -117,6 +117,10 @@ def fix_offer_status(conn=None):
     elegíveis para step 17 (exige offer_status=1 inteiro). Esta função
     corrige o estado para que possam ser publicados.
 
+    Retorna `(com_url, sem_url)`. O log separa, dentro de `sem_url`, quem é fila
+    real do step 3 de quem está bloqueado a montante por falta de `lookup_query`
+    — ver o comentário no fim da função.
+
     Também recupera ofertas em offer_status='error': o offer_price_monitor
     marca 'error' quando falha ao BUSCAR a página da oferta (bloqueio/timeout
     transitório da Amazon) — mas deixa offer_url e status_publish intactos.
@@ -158,12 +162,42 @@ def fix_offer_status(conn=None):
     conn.commit()
     sem_url = cur.rowcount
 
+    # Quantos desses o step 3 pode de fato alcançar. `offer_resolver.fetch_pending`
+    # exige `lookup_query IS NOT NULL`, então quem está sem lookup_query não é fila
+    # do step 3 — está bloqueado a montante.
+    cur.execute("""
+        SELECT COUNT(*) FROM livros
+        WHERE offer_status = 'active'
+          AND offer_url IS NULL
+          AND (lookup_query IS NULL OR TRIM(lookup_query) = '')
+    """)
+    sem_lookup = cur.fetchone()[0]
+    fila_step3 = sem_url - sem_lookup
+
     if close_conn:
         conn.close()
 
     log(f"[OFERTAS] fix_offer_status: {com_url} offer_status normalizados → 1 (offer_url preenchida)")
-    if sem_url:
-        log(f"[OFERTAS] fix_offer_status: {sem_url} livros com offer_url vazia — rodar step 3 primeiro")
+    if fila_step3:
+        log(f"[OFERTAS] fix_offer_status: {fila_step3} livros sem offer_url na fila do step 3 "
+            f"(o autopilot resolve no próximo passe)")
+    if sem_lookup:
+        # ⚠ Esta linha dizia "rodar step 3 primeiro" até 2026-08-26, e era falso.
+        # Medido nos logs pipeline_2026-08-23_10-20-27 (14 ocorrências) e
+        # pipeline_2026-08-24_20-09-02 (43): o número ficou IMÓVEL em 179 em todas
+        # elas, com o autopilot rodando o step 3 várias vezes no intervalo,
+        # inclusive um lote de fallback de 1.000. A causa é que os 179 estão com
+        # `lookup_query` NULL, e o step 3 filtra por ela — "rodar o step 3
+        # primeiro" é impossível por construção, não uma pendência do usuário.
+        #
+        # E a exclusão deles é CORRETA: são títulos EN (periódicos e catálogos de
+        # biblioteca), e `tools/backfill_lookup_query.py` usa por padrão o escopo
+        # `pt_confirmado`, que os deixa de fora de propósito — resolver oferta para
+        # não-PT gasta requisição no marketplace para livro que o quality_gate vai
+        # reprovar por idioma. O defeito era só a mensagem.
+        log(f"[OFERTAS] fix_offer_status: {sem_lookup} livros sem offer_url E sem "
+            f"lookup_query — fora do alcance do step 3 (backfill de lookup_query "
+            f"exclui não-PT de propósito); nada a fazer")
     return com_url, sem_url
 
 
