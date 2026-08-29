@@ -220,12 +220,55 @@ def parse_price(text):
         return None
 
 
-def is_unavailable(soup, signals):
-    page_text = soup.get_text(separator=" ").lower()
-    for signal in signals:
-        if signal.lower() in page_text:
-            return True
-    return False
+# Onde a disponibilidade REALMENTE é declarada, por marketplace. Buscar fora
+# dessas regiões é o que causou o bug de 2026-08-29 (ver `is_unavailable`).
+AVAIL_SELECTORS = {
+    "amazon": ["#availability", "#outOfStock", "#availability_feature_div"],
+    "mercadolivre": [".ui-pdp-stock-information", ".ui-pdp-buybox__quantity"],
+}
+
+
+def is_unavailable(soup, signals, preco=None, marketplace=None):
+    """True só quando a página DECLARA indisponibilidade. Na dúvida: False.
+
+    ⚠ BUG CORRIGIDO EM 2026-08-29 — esta função varria o texto INTEIRO da
+    página atrás das palavras de `signals`, e despublicou 6 livros que estavam
+    à venda. Medido nas próprias páginas, no mesmo dia:
+
+        A Quinta Estação    R$  69,10
+        Cidade dos Ossos    R$ 300,90
+        Encontro com Rama   R$  54,85
+
+    O que casava era boilerplate presente em TODA página de produto da Amazon:
+    `${cardName} indisponível para o vendedor escolhido` (template de
+    JavaScript), `Imagem não disponível` (alt de placeholder) e `Listar
+    indisponível` (string de erro de UI). Nenhum deles fala do produto.
+
+    O bug era latente e o PR #296 o tornou alcançável: até ali o monitor lia a
+    página de BUSCA, que não traz esses textos; ao passar a ler a página de
+    PRODUTO — que era a correção certa — a varredura começou a casar sempre.
+
+    Duas travas agora:
+
+    1. **Preço manda.** Página com preço de compra é página de produto à venda.
+       Isso sozinho derruba os três falsos positivos acima.
+    2. **Só a região de disponibilidade conta.** Sem essa região no HTML, o
+       retorno é False — "não consegui confirmar" não pode virar "indisponível"
+       quando a consequência é despublicar.
+    """
+    if preco is not None and preco > 0:
+        return False
+
+    regioes = AVAIL_SELECTORS.get(marketplace or "", [])
+    trechos = []
+    for sel in regioes:
+        for el in soup.select(sel):
+            trechos.append(el.get_text(separator=" ", strip=True))
+    if not trechos:
+        return False
+
+    texto = " ".join(trechos).lower()
+    return any(s.lower() in texto for s in signals)
 
 
 # =========================
@@ -247,11 +290,15 @@ def scrape_marketplace(offer_url):
     if soup is None:
         return None
 
+    preco = parse_price(extract_text_from_selectors(soup, sels.get("price", [])))
     result = {
         "cover_url":  extract_image_url(soup, sels.get("cover", [])),
         "descricao":  clean_text(extract_text_from_selectors(soup, sels.get("desc", []))),
-        "preco":      parse_price(extract_text_from_selectors(soup, sels.get("price", []))),
-        "disponivel": not is_unavailable(soup, sels.get("unavail", [])),
+        "preco":      preco,
+        # `preco` e `marketplace` entram para a checagem não depender de varrer
+        # o texto inteiro — ver a nota de bug em `is_unavailable`.
+        "disponivel": not is_unavailable(soup, sels.get("unavail", []),
+                                         preco=preco, marketplace=marketplace),
         "marketplace": marketplace,
     }
 

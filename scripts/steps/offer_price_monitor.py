@@ -236,9 +236,35 @@ def process_book(conn, row, dry_run=False):
         conn.commit()
 
     if disponivel is False:
-        new_status = "unavailable"
-        if not dry_run:
-            # Despublicar após UNAVAIL_THRESHOLD — aqui simplificado para 1 detecção clara
+        # ⚠ DESPUBLICAR É DESTRUTIVO — exige DUAS detecções consecutivas.
+        #
+        # O comentário que estava aqui dizia "aqui simplificado para 1 detecção
+        # clara", e o `UNAVAIL_THRESHOLD = 2` do topo do módulo era letra morta.
+        # Em 2026-08-29 isso tirou 6 livros do ar numa única passada — e os
+        # três que conferi estavam à venda (R$ 69,10 / R$ 300,90 / R$ 54,85):
+        # o `is_unavailable` casava com boilerplate de JavaScript da Amazon.
+        #
+        # A causa raiz está corrigida em `marketplace_scraper.is_unavailable`,
+        # mas a trava fica: num site que já perdeu 93% do tráfego, remover
+        # página boa é o pior erro possível, e uma detecção isolada não pode
+        # bastar. A "detecção anterior" é o próprio `offer_status` — quando ele
+        # já está 'unavailable', esta é a segunda seguida.
+        ja_marcado = str(cur_status) == "unavailable"
+
+        if not dry_run and not ja_marcado:
+            # 1ª detecção: só registra. O livro CONTINUA publicado.
+            conn.execute("""
+                UPDATE livros
+                SET offer_status     = 'unavailable',
+                    preco_updated_at = CURRENT_TIMESTAMP,
+                    updated_at       = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (livro_id,))
+            conn.commit()
+            log(f"[MONITOR] 1ª detecção de indisponibilidade → {titulo} "
+                f"(segue publicado; despublica só se repetir)")
+        elif not dry_run:
+            # 2ª consecutiva: aí sim sai do ar.
             conn.execute("""
                 UPDATE livros
                 SET offer_status        = 'unavailable',
@@ -252,6 +278,7 @@ def process_book(conn, row, dry_run=False):
             supabase_patch(supabase_id, {"is_publishable": False, "offer_status": "unavailable"})
             supabase_patch_oferta(supabase_id, {"ativa": False})
             log_price_change(conn, livro_id, preco_ant, None, "unavailable", marketplace)
+            log(f"[MONITOR] 2ª detecção consecutiva → DESPUBLICANDO {titulo}")
         return "unavailable"
 
     # Determinar status
