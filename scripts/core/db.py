@@ -135,6 +135,10 @@ def ensure_schema(conn):
         ("lookup_query",          "TEXT"),
         ("categoria",             "TEXT"),
         ("categorize_attempts",   "INTEGER DEFAULT 0"),
+        # Motivo textual da rejeição do agente de classificação. É o que torna
+        # `status_categorize = 2` legível sem abrir log — e a base factual para
+        # decidir a ampliação da taxonomia (TASK-TAX-001).
+        ("categorize_motivo",     "TEXT"),
         ("status_descricao",      "INTEGER DEFAULT 0"),
         ("priority_score",        "INTEGER DEFAULT 0"),
         ("status_publish_cat",    "INTEGER DEFAULT 0"),

@@ -103,6 +103,63 @@ def find_output_files(data_dir):
 
 
 # =========================
+# REJEIÇÃO
+# =========================
+
+def _marcar_rejeitado(cur, conn, livro_id, status, motivo):
+    """Registra a rejeição TIRANDO o livro da fila, em vez de devolvê-lo a ela.
+
+    ⚠ Até 2026-08-29 esta função não existia e a rejeição gravava
+    `status_categorize = 0` — a MESMA fila de `categorize_export.fetch_pending`,
+    e na mesma posição, porque o `ORDER BY priority_score DESC, created_at ASC`
+    é determinístico e a rejeição não muda nenhuma das duas colunas. O livro era
+    reexportado no lote seguinte e rejeitado de novo, sem teto.
+
+    Medido nos 3 logs de 2026-08-27..29 (n=547 rejeições, contando
+    `Rejeitado pelo agente` contra `→ classify: invocando claude CLI`):
+
+    | log | chamadas | OK | rejeitados | % do lote |
+    |---|---|---|---|---|
+    | 2026-08-27_19-22-47 | 46 | 630 | 420 | 40,0% |
+    | 2026-08-29_05-45-10 | 10 | 145 | 105 | 42,0% |
+    | 2026-08-29_07-54-02 |  3 |  28 |  22 | 44,0% |
+
+    As 547 rejeições eram de **32 livros distintos**; nove deles apareceram
+    **54 vezes cada** (`How to Brew`, `The Essential Woodworker`,
+    `Artisan Breads Every Day`…). Com a sinopse em 0 exportáveis, o classify é o
+    único ocupante da janela LLM (5-6 chamadas / 5h), então isso era ~40% do
+    gargalo do projeto girando em falso.
+
+    A causa de fundo é a taxonomia, não o agente: `taxonomy.json` tem 171
+    categorias em 23 grupos, todos de literatura e humanidades, e nenhuma cobre
+    cervejaria (214 rejeições), marcenaria (164) ou culinária (144) — 95% do
+    total. O agente estava certo em rejeitar. Ver TASK-CLASSIFY-001 e
+    TASK-TAX-001.
+
+    O destino é `status_categorize = 2` e não um estado novo porque a máquina de
+    retry JÁ EXISTIA e nunca tinha sido ligada: `MAX_CATEGORIZE_ATTEMPTS` e o
+    guard de `categorize_attempts` em `categorize.reset_failed()` liam um estado
+    que **nada no código escrevia** (grep em todo `scripts/`), e os logs de
+    arquivo confirmam — `reset_failed: 0 livro(s)`, sempre. Mesma classe do
+    `UNAVAIL_THRESHOLD = 2` que o PR #303 tirou do papel.
+
+    Não seta `qa_quarantine`: o `synopsis_import` seta porque sem sinopse o livro
+    trava o Quality Gate, mas falta de categoria temática não bloqueia publicação
+    — e `qa_quarantine` também tiraria o livro da fila de sinopse.
+    """
+    cur.execute(
+        """UPDATE livros
+           SET status_categorize   = ?,
+               categorize_attempts = COALESCE(categorize_attempts, 0) + 1,
+               categorize_motivo   = ?,
+               updated_at          = CURRENT_TIMESTAMP
+           WHERE id = ?""",
+        (status, motivo, livro_id),
+    )
+    conn.commit()
+
+
+# =========================
 # PROCESS ONE FILE
 # =========================
 
@@ -143,15 +200,21 @@ def _process_file(filepath, taxonomy, conn, cur):
             continue
 
         # status_categorize=4 → livro blacklistado; não reverter para 0
-        _rejected_status = 4 if not is_publishable else 0
+        _rejected_status = 4 if not is_publishable else 2
 
         if status != "CLASSIFIED":
-            log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo}) → {titulo}")
-            cur.execute(
-                "UPDATE livros SET status_categorize = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (_rejected_status, livro_id),
-            )
-            conn.commit()
+            motivo_str = str(motivo).strip() if motivo else ""
+            if not motivo_str or motivo_str.lower() == "none":
+                # Rejeição SEM motivo = falha transitória do agente, não veredito.
+                # Não toca no banco: o livro continua em status_categorize=0 e
+                # volta na próxima exportação. Mesma leitura de
+                # synopsis_import._process_file.
+                log(f"[CATEGORIZE_IMPORT][{i:03d}] AVISO: agente rejeitou sem motivo "
+                    f"— status mantido → {titulo}")
+                rejeitados += 1
+                continue
+            log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado pelo agente ({motivo_str}) → {titulo}")
+            _marcar_rejeitado(cur, conn, livro_id, _rejected_status, motivo_str)
             rejeitados += 1
             continue
 
@@ -159,11 +222,7 @@ def _process_file(filepath, taxonomy, conn, cur):
 
         if not valido:
             log(f"[CATEGORIZE_IMPORT][{i:03d}] Rejeitado na validação ({razao}) → {titulo}")
-            cur.execute(
-                "UPDATE livros SET status_categorize = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (_rejected_status, livro_id),
-            )
-            conn.commit()
+            _marcar_rejeitado(cur, conn, livro_id, _rejected_status, razao)
             rejeitados += 1
             continue
 

@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-29: API do ML em producao — aproveitamento do monitor de 6-8% para 24%, com os 12 precos do passe vindos todos da API (TASK-OFERTAS-005). Roteamento passa a ignorar o marketplace do seed e ir sempre ao ML, com resgate antes de despublicar (TASK-OFERTAS-007). E corrigido um bug que despublicava livro A VENDA: 14 restaurados (TASK-OFERTAS-006).",
+    "last_updated": "2026-08-29: laco de categorizacao corrigido — rejeicao devolvia o livro a mesma fila e queimava ~40% de cada lote de classify (547 rejeicoes para 32 livros); ampliacao da taxonomia registrada e BLOQUEADA pela colisao com o spam update (TASK-CLASSIFY-001, TASK-TAX-001)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1163,6 +1163,167 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-CLASSIFY-001",
+      "description": "Rejeicao de categorizacao devolvia o livro a MESMA fila e na MESMA posicao — 547 rejeicoes para 32 livros, ~40% de cada lote de classify",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-29",
+      "resolved_on": "2026-08-29",
+      "como_apareceu": "Triagem do /analise-logs sobre a fila de 9 logs (26-29/08). Nao havia um unico sinal 'hard' na fila inteira — nenhum Traceback, Exception, ERRO ou ERROR. O bug so aparece contando linhas repetidas, nunca por mensagem de erro.",
+      "mecanismo": "categorize_import gravava status_categorize = 0 ao rejeitar. Essa e exatamente a fila de categorize_export.fetch_pending, cujo ORDER BY priority_score DESC, created_at ASC e deterministico — e a rejeicao nao mexe em nenhuma das duas colunas. O livro reencabecava a fila no lote seguinte e era rejeitado de novo, sem teto.",
+      "medicao": {
+        "metodo": "contagem de 'Rejeitado pelo agente' contra '-> classify: invocando claude CLI' nos 3 logs maiores da fila",
+        "por_log": [
+          {
+            "log": "pipeline_2026-08-27_19-22-47",
+            "chamadas": 46,
+            "ok": 630,
+            "rejeitados": 420,
+            "pct": "40,0%"
+          },
+          {
+            "log": "pipeline_2026-08-29_05-45-10",
+            "chamadas": 10,
+            "ok": 145,
+            "rejeitados": 105,
+            "pct": "42,0%"
+          },
+          {
+            "log": "pipeline_2026-08-29_07-54-02",
+            "chamadas": 3,
+            "ok": 28,
+            "rejeitados": 22,
+            "pct": "44,0%"
+          }
+        ],
+        "total": "59 chamadas | 803 OK | 547 rejeitados | 40,5% do lote",
+        "titulos_distintos": 32,
+        "nove_livros_54x": [
+          "How to Brew",
+          "Homebrewing for Dummies",
+          "The Brew Manual",
+          "Extreme Brewing",
+          "Bread Illustrated",
+          "Artisan Breads Every Day",
+          "The Essential Woodworker",
+          "The Woodworker's Bible",
+          "Furniture Projects"
+        ],
+        "catraca": "Nao era patamar: cada livro novo rejeitado passava a ocupar a fila para sempre. No log de 27/08 a rejeicao por lote sai de 9-11 (lotes 1-6) para 10-15 (lotes 37-42), e o conjunto preso cresce de 9 para 32 titulos ao longo dos tres logs. Sem teto, o classify convergiria para 100% de desperdicio."
+      },
+      "por_que_doi": "Com a sinopse em 0 exportaveis (10.029 bloqueados por falta de descricao), o classify e hoje o UNICO ocupante da janela LLM — 5-6 chamadas por 5h. 40% do gargalo do projeto girava em falso.",
+      "causa_de_fundo": "A taxonomia, nao o agente. data/taxonomy.json tem 171 categorias em 23 grupos, TODOS de literatura e humanidades; nenhuma cobre cervejaria (214 rejeicoes), marcenaria (164) ou culinaria (144) — 95% do total. O agente estava certo em rejeitar. Ver TASK-TAX-001.",
+      "segundo_defeito": "MAX_CATEGORIZE_ATTEMPTS e o guard de categorize_attempts em categorize.reset_failed() eram letra morta: nada no codigo escrevia status_categorize = 2 e nada incrementava categorize_attempts. Confirmado no books.db em 2026-08-29, nao so por grep — status_categorize: 0 -> 10.172, 1 -> 5.123, 4 -> 2.566, 2 -> NENHUM; categorize_attempts > 0 -> 0 livros. Mesma classe do UNAVAIL_THRESHOLD = 2 que o #303 tirou do papel, e a segunda vez em duas semanas que um guard escrito no modulo nunca chegou a rodar.",
+      "resolution": "categorize_import._marcar_rejeitado grava status_categorize = 2 (fora da fila do fetch_pending), incrementa categorize_attempts e guarda o texto em categorize_motivo (coluna nova, aditiva em core/db.py). O destino e o 2 e nao um estado novo porque a maquina de retry ja existia e so precisava ser ligada: reset_failed passa a funcionar, e como so o menu 10 o chama, sob autopilot a rejeicao e terminal na primeira vez.",
+      "tres_detalhes_fixados_por_teste": [
+        "Rejeicao SEM motivo mantem o livro na fila — sem motivo e falha transitoria do agente, nao veredito (mesma leitura do synopsis_import). Antes as duas eram tratadas igual.",
+        "NAO seta qa_quarantine: o synopsis_import seta porque sem sinopse o livro trava o Quality Gate, mas falta de categoria tematica nao bloqueia publicacao — e qa_quarantine tiraria o livro tambem da fila de sinopse.",
+        "Livro blacklistado continua indo para 4, que e o que reprocess_blacklist seleciona."
+      ],
+      "efeito_colateral_aceito": "publicados_sem_categoria, na auditoria de classificacao, passa a contar esses livros de forma permanente. E relatorio, nao acao: run_classification_audit nao despublica nada, e categorize_inconsistente exige status_categorize = 1, entao eles nao caem la. Registrado para nao virar caca ao fantasma num /audit futuro.",
+      "files": [
+        "scripts/steps/categorize_import.py",
+        "scripts/steps/categorize.py",
+        "scripts/core/db.py",
+        "scripts/tests/test_categorize_rejeicao.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
+      "id": "TASK-TAX-001",
+      "description": "Taxonomia nao cobre livros praticos (cervejaria, marcenaria, culinaria) — 95% das rejeicoes de classify; ampliacao BLOQUEADA pelo spam update",
+      "priority": "medium",
+      "status": "open",
+      "registered_on": "2026-08-29",
+      "bloqueada_por": "spam-update-agosto-2026",
+      "origem": "Cauda da TASK-CLASSIFY-001. O laco esta corrigido, mas os 32 livros seguem sem categoria tematica porque nao existe categoria onde encaixa-los.",
+      "fato_medido": {
+        "data": "2026-08-29",
+        "taxonomia": "171 categorias em 23 grupos, todos de literatura e humanidades. O unico match para os temas rejeitados era 'estoicismo-pratico', que nao serve.",
+        "temas_e_peso": {
+          "cervejaria/fermentacao": 214,
+          "marcenaria/artesanato/madeira": 164,
+          "culinaria/panificacao": 144,
+          "outros (engenharia, jardinagem, fauna)": 25
+        },
+        "concentracao": "95% das 547 rejeicoes em tres temas"
+      },
+      "exemplos_concretos": {
+        "cervejaria": [
+          "How to Brew",
+          "Homebrewing for Dummies",
+          "The Brew Manual",
+          "Extreme Brewing"
+        ],
+        "marcenaria": [
+          "The Essential Woodworker",
+          "The Woodworker's Bible",
+          "Furniture Projects"
+        ],
+        "culinaria": [
+          "Artisan Breads Every Day",
+          "Bread Illustrated"
+        ],
+        "cauda": [
+          "Basic Fantasy RPG (23x)",
+          "Peru (9x)",
+          "Engenharia de Recursos Hidricos (4x)",
+          "Peixes do Pantanal (4x)",
+          "Gaia's Garden (3x)"
+        ]
+      },
+      "proposta": {
+        "grupo": "Praticos e Hobbies",
+        "formato": "taxonomy.json e uma lista de {group, id, label, slug} — seguir o padrao dos 171 existentes",
+        "slugs_sugeridos": [
+          {
+            "group": "Praticos e Hobbies",
+            "label": "Culinaria e Panificacao",
+            "slug": "culinaria-e-panificacao"
+          },
+          {
+            "group": "Praticos e Hobbies",
+            "label": "Cervejaria e Fermentacao",
+            "slug": "cervejaria-e-fermentacao"
+          },
+          {
+            "group": "Praticos e Hobbies",
+            "label": "Marcenaria e Artesanato",
+            "slug": "marcenaria-e-artesanato"
+          },
+          {
+            "group": "Praticos e Hobbies",
+            "label": "Jardinagem e Horta",
+            "slug": "jardinagem-e-horta"
+          }
+        ]
+      },
+      "colisao_gsc": {
+        "cadeia_verificada": "taxonomy.json -> livros_categorias_tematicas (SQLite) -> publish_categorias.py:153-188 (upsert em `categorias` + `livros_categorias` no Supabase) -> app/sitemap.ts:77-80 (categorias JOIN livros_categorias!inner) -> /categorias/<slug> anunciada no sitemap",
+        "consequencia": "Um grupo novo em taxonomy.json vira pagina nova INDEXAVEL. Nao e efeito colateral remoto: e o proximo passo automatico do pipeline.",
+        "tres_conflitos": [
+          "O diagnostico de 23-26/08 fechou com 'publicar mais paginas ficou CONTRAINDICADO enquanto o passivo de qualidade nao drenar' — impressoes em 7-14% da media e posicao de 48,4 para 56,1.",
+          "/categorias/* e EXATAMENTE a superficie que reprovou a validacao do bucket 'Excluida pela tag noindex' no GSC: 603 Pendente / 1 Falha, e a unica falha era /categorias/mentalidade-financeira (200 + noindex, rastreada em 14/08). So o #286 estancou. A validacao foi resubmetida em 20/08 e a orientacao registrada e NAO resubmeter — mexer em /categorias/ agora arrisca reabrir o bucket.",
+          "32 livros em 4-6 slugs dao categorias de 3-10 livros cada. Categoria magra e o perfil de scaled content abuse, o mesmo que o diagnostico de agosto atribuiu ao rebaixamento."
+        ],
+        "referencias": [
+          "scripts/steps/publish_categorias.py:153-188",
+          "app/sitemap.ts:77-80",
+          "agents/gsc/memory.md",
+          "PR #286"
+        ]
+      },
+      "caminho_seguro": "Se a ampliacao for feita antes de o GSC recuperar, faze-la SEM criar superficie indexavel: manter os slugs novos fora do sitemap.ts e com robots: { index: false } na pagina ate a categoria ter massa. Os livros ganham classificacao e interlinking interno sem somar URL nova ao indice. Nao e o que o #286 faz hoje — ele 404a categoria VAZIA; estas nao estariam vazias, so magras.",
+      "condicao_de_desbloqueio": "Reabrir quando as impressoes diarias voltarem a faixa pre-18/08 (~735/dia) OU a posicao media voltar abaixo de ~20, o que vier primeiro. Estado em 26/08: 52-110 impressoes/dia, posicao 56,1.",
+      "custo_de_nao_fazer": "Os 32 livros seguem publicados e sem categoria tematica — perdem interlinking interno e nao aparecem em nenhuma pagina de categoria. Custo real, mas menor que abrir 4-6 paginas magras num site sob rebaixamento.",
+      "como_reprocessar_depois": "UPDATE livros SET status_categorize = 0, categorize_attempts = 0 WHERE status_categorize = 2;  -- os livros voltam a fila e sao classificados nos slugs novos",
+      "files": [
+        "scripts/data/taxonomy.json",
+        "scripts/steps/publish_categorias.py",
+        "app/sitemap.ts"
+      ]
+    },
     {
       "id": "TASK-OFERTAS-006",
       "description": "Monitor despublicava livro A VENDA — is_unavailable casava com boilerplate de JavaScript da Amazon; 14 livros restaurados",

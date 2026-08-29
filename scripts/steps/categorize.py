@@ -36,7 +36,20 @@ _LLM_LIMIT_MARKERS = ("CLAUDE_SESSION_LIMIT_REACHED", "limit", "usage limit")
 # =========================
 
 def reset_failed(conn=None):
-    """Reseta livros com status_categorize=2 para 0, respeitando MAX_CATEGORIZE_ATTEMPTS."""
+    """Reseta livros com status_categorize=2 para 0, respeitando MAX_CATEGORIZE_ATTEMPTS.
+
+    ⚠ Isto foi um no-op de 2026-05 até 2026-08-29: **nada no código escrevia
+    `status_categorize = 2`** (verificado por grep em `scripts/`), e nada
+    incrementava `categorize_attempts` — os dois logs de arquivo que sobraram
+    registram `reset_failed: 0 livro(s)` em 2026-04-03 e 04-04. Desde que
+    `categorize_import._marcar_rejeitado` passou a gravar o estado 2, a função
+    faz o que a assinatura sempre prometeu.
+
+    Só o menu 10 (`main.py`) chama isto — o autopilot (G) não. Ou seja: sob uso
+    normal a rejeição é terminal na primeira vez, e as até
+    `MAX_CATEGORIZE_ATTEMPTS` tentativas são uma válvula manual, não um retry
+    automático que voltaria a queimar quota.
+    """
     close_conn = conn is None
     if conn is None:
         conn = get_conn()

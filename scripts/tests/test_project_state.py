@@ -12,11 +12,11 @@ pulou silenciosamente ids que já existiam.
 
 Nada no fluxo impedia a colisão — ela só aparecia se alguém contasse os ids.
 
-⚠ LACUNA CONHECIDA: `.github/workflows/tests.yml` dispara em `paths: scripts/**`,
-não em `state/**`. Um PR que edite SÓ o project_state.json — justamente o que
-introduz uma duplicata — não roda este teste. Falta adicionar `- 'state/**'` às
-duas listas de `paths` do workflow. Alterar `.github/workflows/` exige o escopo
-`workflow` no token, que o assistente não tem; ver TASK-CI-001.
+✅ LACUNA FECHADA (conferido em 2026-08-29). Ficou escrito aqui que
+`.github/workflows/tests.yml` disparava só em `paths: scripts/**`, de modo que
+um PR tocando apenas o `project_state.json` — justamente o que introduz a
+duplicata — não rodaria este teste. O workflow hoje lista `- 'state/**'` nas
+**duas** listas de `paths` (`push` e `pull_request`), então o teste roda.
 """
 
 import json
