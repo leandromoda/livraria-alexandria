@@ -186,6 +186,31 @@ pré-voo **não** bloqueia: o scraping segue válido para a Amazon e como fallba
 
 Credenciais em `scripts/.env`: `ML_CLIENT_ID`, `ML_CLIENT_SECRET`.
 
+#### O pré-voo ABRE a janela — avisar no log não resolve
+
+Pedido do Leandro em 2026-08-29: *"não adianta o G só avisar, tem que abrir uma
+janela para logar quando necessário"*. Está certo — o log de 2026-08-24 durou
+**~23 h**, e um aviso em arquivo às 3 da manhã não conserta nada.
+
+`core/auth_prompt.pedir()` abre a página onde a credencial se resolve e destaca
+o pedido no console. Ligado nos **dois** pré-voos: API do ML (→ DevCenter) e
+sessão do claude CLI (→ docs; o login de fato é `claude auth login`, no
+terminal).
+
+⚠ O caro é o do **claude CLI**: sinopse é o hard-block do Quality Gate, então
+sessão expirada = **zero publicações** até alguém perceber.
+
+Três propriedades que `tests/test_auth_prompt.py` fixa, porque quebrar qualquer
+uma transforma a ajuda em problema:
+
+- **NÃO bloqueia.** Nada de `input()` — o teste inclusive varre o fonte atrás de
+  `input(`/`getpass`/`sys.stdin`. Parar o pipeline esperando digitação custaria
+  a madrugada inteira.
+- **Uma vez por processo, por serviço.** Sem essa guarda, 23 h de laço abririam
+  dezenas de abas do mesmo endereço.
+- **`ABRIR_LOGIN=0` desliga**, para headless/CI. E navegador que levanta exceção
+  (servidor sem display) não derruba o passe.
+
 ### Gargalo de publicação — o autopilot é o único caminho
 
 **Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma
@@ -1127,6 +1152,14 @@ PRECO_POR_CICLO=50               # livros visitados pelo offer_price_monitor
 
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
+
+# API de catalogo do Mercado Livre (ver "API de catalogo do Mercado Livre").
+# App criado no DevCenter; qualquer conta serve, sem requisito de vendas.
+ML_CLIENT_ID=...
+ML_CLIENT_SECRET=...
+
+# Pre-voo abre o navegador quando falta credencial. 0 desliga (headless/CI).
+ABRIR_LOGIN=1
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
