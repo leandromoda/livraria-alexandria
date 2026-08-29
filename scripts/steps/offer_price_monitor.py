@@ -219,6 +219,65 @@ def log_price_change(conn, livro_id, preco_anterior, preco_novo, status, marketp
 
 
 # =========================
+# RESGATE NO ML
+# =========================
+
+def _resgatar_no_ml(conn, livro_id, titulo, autor, isbn, supabase_id, dry_run):
+    """Refaz a oferta no ML quando a origem atual não tem mais o livro.
+
+    Retorna o dict do achado (com `preco` e `url`) ou None.
+
+    Por que existe: até 2026-08-29, "indisponível" levava direto a despublicar.
+    Mas metade do catálogo aponta para a Amazon, que não tem API acessível —
+    e o mesmo livro costuma estar no ML, onde a API confirma título, autor e
+    preço. Tirar a página do ar sem tentar o outro marketplace joga fora uma
+    página boa por um problema de fornecedor.
+
+    O livro sai daqui MELHOR do que entrou: com deep link de produto e preço,
+    no lugar da URL de busca sem preço que tinha.
+    """
+    try:
+        from core import ml_api
+    except Exception:
+        return None
+    if not ml_api.configurado():
+        return None
+    try:
+        achado = ml_api.buscar_livro(titulo, autor, isbn)
+    except Exception:
+        return None
+    if not achado or not achado.get("preco"):
+        return None
+
+    if dry_run:
+        return achado
+
+    from steps.offer_resolver import inject_ml_affiliate
+    nova_url = inject_ml_affiliate(achado["url"])
+
+    conn.execute("""
+        UPDATE livros
+        SET offer_url        = ?,
+            marketplace      = 'mercado_livre',
+            preco_atual      = ?,
+            preco_updated_at = CURRENT_TIMESTAMP,
+            offer_status     = 1,
+            is_publishable   = 1,
+            status_publish   = 1,
+            updated_at       = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (nova_url, achado["preco"], livro_id))
+    conn.commit()
+
+    # O `run_repair` do publish_ofertas republica sozinho pelo hash do payload,
+    # mas o livro pode estar com is_publishable=false no Supabase de uma
+    # despublicação anterior — então o PATCH é explícito.
+    supabase_patch(supabase_id, {"is_publishable": True, "offer_status": "active"})
+    supabase_patch_oferta(supabase_id, {"preco": achado["preco"], "ativa": True})
+    return achado
+
+
+# =========================
 # PROCESS ONE BOOK
 # =========================
 
@@ -270,6 +329,24 @@ def process_book(conn, row, dry_run=False):
         conn.commit()
 
     if disponivel is False:
+        # ── RESGATE PELO ML antes de qualquer coisa ──────────────────────
+        #
+        # "Sumiu da Amazon" não é "sumiu do mundo". Antes de tratar o livro
+        # como indisponível, tenta o ML: se o catálogo tiver o produto, a
+        # oferta é REFEITA ali e o livro segue publicado, agora com preço e
+        # deep link — melhor do que estava antes de sumir.
+        #
+        # Isto vem ANTES da contagem de detecções de propósito: despublicar e
+        # republicar depois deixaria a página fora do ar no intervalo, e num
+        # site sob rebaixamento de spam update, cada página fora do ar é
+        # exatamente o que não se quer.
+        resgate = _resgatar_no_ml(conn, livro_id, titulo, autor, isbn,
+                                  supabase_id, dry_run)
+        if resgate:
+            log(f"[MONITOR] Indisponível na origem, RESGATADO no ML → {titulo} "
+                f"(R$ {resgate['preco']})")
+            return "active"
+
         # ⚠ DESPUBLICAR É DESTRUTIVO — exige DUAS detecções consecutivas.
         #
         # O comentário que estava aqui dizia "aqui simplificado para 1 detecção

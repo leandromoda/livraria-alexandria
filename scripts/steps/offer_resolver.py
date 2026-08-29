@@ -108,18 +108,61 @@ def build_mercadolivre_url(query: str) -> str:
     return inject_ml_affiliate(url)
 
 
-def resolve_offer(marketplace: str, lookup_query: str):
+# O marketplace do seed é palpite de quem escreveu o JSON, e a distribuição
+# mostra isso: 8.798 'amazon' contra 8.778 'mercado_livre' — quase moeda ao ar.
+# Só que os dois lados NÃO são equivalentes (medido em 2026-08-29):
+#
+#   ML ....... API oficial de catálogo. Preço, disponibilidade e deep link de
+#              produto. ~1-2 s por livro, 37% de casamento confirmado.
+#   Amazon ... sem API acessível (PA-API desligada em 15/05/2026; a Creators
+#              API exige 10 vendas/30 dias). Só scraping, sob bot wall:
+#              ~13,7 s por livro e ~0% de preço.
+#
+# Um livro roteado para a Amazon hoje é beco sem saída: fica com URL de busca,
+# sem preço, que é exatamente o perfil de "thin affiliate" que o spam update
+# penaliza. Por isso o roteamento deixou de obedecer o seed.
+#
+# `FORCAR_ML=0` volta a obedecer o campo `marketplace` do seed.
+FORCAR_ML = os.getenv("FORCAR_ML", "1").strip() not in ("0", "false", "no")
 
+
+def resolve_offer(marketplace: str, lookup_query: str,
+                  titulo: str = None, autor: str = None, isbn: str = None):
+    """(offer_url, preco, marketplace_final) — ou (None, None, None).
+
+    Três degraus, do melhor para o pior:
+
+    1. **API do ML confirma o livro** → deep link da PÁGINA DO PRODUTO, com
+       preço já na mão. O livro nasce com oferta de verdade, sem precisar
+       esperar o monitor de preços passar por ele.
+    2. **API não confirma** → URL de BUSCA do ML. O monitor tenta de novo
+       depois; "não casou agora" não é o mesmo que "não existe no ML".
+    3. **`FORCAR_ML=0`** → obedece o seed, comportamento antigo.
+    """
     if not lookup_query:
-        return None
+        return None, None, None
 
-    if marketplace == "amazon":
-        return build_amazon_url(lookup_query)
+    if FORCAR_ML:
+        if titulo:
+            try:
+                from core import ml_api
+                if ml_api.configurado():
+                    achado = ml_api.buscar_livro(titulo, autor, isbn)
+                    if achado:
+                        return (inject_ml_affiliate(achado["url"]),
+                                achado["preco"], "mercado_livre")
+            except Exception as e:
+                log(f"[RESOLVER] API do ML indisponível ({type(e).__name__}) "
+                    f"— caindo na URL de busca")
+        return build_mercadolivre_url(lookup_query), None, "mercado_livre"
 
-    if marketplace == "mercado_livre":
-        return build_mercadolivre_url(lookup_query)
+    if marketplace and marketplace.strip().lower() == "amazon":
+        return build_amazon_url(lookup_query), None, "amazon"
 
-    return None
+    if marketplace and marketplace.strip().lower() in ("mercado_livre", "mercadolivre"):
+        return build_mercadolivre_url(lookup_query), None, "mercado_livre"
+
+    return None, None, None
 
 
 # =========================
@@ -157,17 +200,29 @@ def fetch_pending(conn, idioma, limit):
 # UPDATE
 # =========================
 
-def update_offer(conn, book_id, offer_url, success):
+def update_offer(conn, book_id, offer_url, success, preco=None, marketplace=None):
+    """Grava a oferta resolvida.
 
+    `marketplace` é gravado junto porque o roteamento deixou de obedecer o seed
+    (ver `resolve_offer`): sem isso o banco diria 'amazon' com uma URL do ML, e
+    o `publish_ofertas` publicaria essa contradição no Supabase.
+
+    `preco` só aparece quando a API do ML confirmou o produto — nesse caso o
+    livro já nasce com preço, sem esperar o monitor passar por ele.
+    """
     cur = conn.cursor()
 
     cur.execute("""
         UPDATE livros
         SET offer_url    = ?,
             offer_status = ?,
+            marketplace  = COALESCE(?, marketplace),
+            preco_atual  = COALESCE(?, preco_atual),
+            preco_updated_at = CASE WHEN ? IS NOT NULL
+                                    THEN CURRENT_TIMESTAMP ELSE preco_updated_at END,
             updated_at   = CURRENT_TIMESTAMP
         WHERE id = ?
-    """, (offer_url, 1 if success else -1, book_id))
+    """, (offer_url, 1 if success else -1, marketplace, preco, preco, book_id))
 
     conn.commit()
 
@@ -223,9 +278,10 @@ def run(idioma, pacote):
 
     rows = fetch_pending(conn, idioma, pacote)
 
-    total    = len(rows)
-    resolved = 0
-    failed   = 0
+    total      = len(rows)
+    resolved   = 0
+    failed     = 0
+    com_preco  = 0
 
     log(f"{total} seeds pendentes")
 
@@ -234,11 +290,15 @@ def run(idioma, pacote):
         book_id, titulo, autor, marketplace, lookup_query = row
 
         try:
-            offer_url = resolve_offer(marketplace, lookup_query)
+            offer_url, preco, mkt = resolve_offer(
+                marketplace, lookup_query, titulo=titulo, autor=autor)
 
             if offer_url:
-                update_offer(conn, book_id, offer_url, True)
+                update_offer(conn, book_id, offer_url, True,
+                             preco=preco, marketplace=mkt)
                 resolved += 1
+                if preco:
+                    com_preco += 1
             else:
                 update_offer(conn, book_id, None, False)
                 failed += 1
@@ -250,5 +310,5 @@ def run(idioma, pacote):
 
     conn.close()
 
-    log(f"Resolvidas: {resolved} | Falhas: {failed}")
+    log(f"Resolvidas: {resolved} | Falhas: {failed} | ja com preco pela API do ML: {com_preco}")
     log("Offer Resolver finalizado.")

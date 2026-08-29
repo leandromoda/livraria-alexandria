@@ -226,6 +226,37 @@ uma transforma a ajuda em problema:
 - **`ABRIR_LOGIN=0` desliga**, para headless/CI. E navegador que levanta exceção
   (servidor sem display) não derruba o passe.
 
+#### O roteamento deixou de obedecer o seed (2026-08-29)
+
+`offer_resolver.resolve_offer` ignorava a assimetria entre os marketplaces e
+despachava pelo campo `marketplace` do seed — que é palpite de quem escreveu o
+JSON, e a distribuição mostrava isso: **8.798 'amazon' contra 8.778
+'mercado_livre'**, quase moeda ao ar.
+
+Só que os dois lados não são equivalentes. Livro roteado para a Amazon hoje é
+beco sem saída: fica com URL de busca e sem preço — o perfil de *thin affiliate*
+que o spam update penaliza. Hoje o step 3 tem três degraus:
+
+1. **API do ML confirma** → deep link da PÁGINA DO PRODUTO, **com preço já na
+   mão**. O livro nasce com oferta de verdade, sem esperar o monitor.
+2. **API não confirma** → URL de busca do ML ("não casou agora" ≠ "não existe").
+3. **`FORCAR_ML=0`** → obedece o seed (comportamento antigo).
+
+`update_offer` grava `marketplace` e `preco_atual` junto: sem isso o banco diria
+'amazon' com URL do ML, e o `publish_ofertas` publicaria a contradição.
+Corrigido de quebra um `'Amazon'` maiúsculo que não casava com nenhum ramo e
+resolvia para `None`.
+
+#### Indisponível na origem → RESGATE no ML antes de despublicar
+
+"Sumiu da Amazon" não é "sumiu do mundo". `offer_price_monitor._resgatar_no_ml`
+tenta o catálogo do ML **antes** da contagem de detecções: achando o produto, a
+oferta é refeita ali e o livro **segue publicado**, agora com preço e deep link
+— melhor do que estava antes de sumir.
+
+A ordem importa: despublicar e republicar depois deixaria a página fora do ar no
+intervalo, e num site sob rebaixamento de spam update é o que menos se quer.
+
 ### Gargalo de publicação — o autopilot é o único caminho
 
 **Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma
@@ -1165,6 +1196,7 @@ CLASSIFY_POR_CICLO=25            # livros por ciclo
 # Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
 PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
 PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
+FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o seed
 
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
