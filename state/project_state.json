@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-29: API de catalogo do ML entra como fonte oficial de preco e deep link, com scraping de fallback (TASK-OFERTAS-005). Pre-voo ml_api.status() roda no G antes do monitor de precos. Aproveitamento medido: 37% (o 58% registrado antes estava errado — media so o portao do autor). Amazon segue fechada ate ter 10 vendas/30d.",
+    "last_updated": "2026-08-29: API do ML em producao — aproveitamento do monitor de 6-8% para 24%, com os 12 precos do passe vindos todos da API (TASK-OFERTAS-005). Roteamento passa a ignorar o marketplace do seed e ir sempre ao ML, com resgate antes de despublicar (TASK-OFERTAS-007). E corrigido um bug que despublicava livro A VENDA: 14 restaurados (TASK-OFERTAS-006).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1102,23 +1102,25 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-08-23",
+    "last_measured": "2026-08-29",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
-      "publicados": 4856,
+      "publicados": 4860,
       "com_sinopse": 4395,
       "sinopse_pendente": 11058,
       "categorize_pendente": 13847,
       "autores": 8342,
       "autores_sem_bio": 7884,
-      "livros_com_preco_atual": 222,
+      "livros_com_preco_atual": 232,
       "livros_status_enrich_scraping": 140,
       "idioma_todos_PT_antes_do_backfill": 17727,
       "fila_step3_lookup_query": 159,
       "autores_com_livro_publicado": 2215,
       "autores_com_livro_publicado_sem_bio": 2091,
-      "publicados_visitados_pelo_monitor_de_precos": 553
+      "publicados_visitados_pelo_monitor_de_precos": 553,
+      "deep_links_ml_produto": 10,
+      "aproveitamento_monitor_precos": "24% no passe de 2026-08-29 (12/50), contra 6-8% nas duas rodadas so-scraping (24/08 e 27/08). Os 12 vieram TODOS da API do ML."
     },
     "supabase": {
       "livros": 4562,
@@ -1161,6 +1163,50 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-OFERTAS-006",
+      "description": "Monitor despublicava livro A VENDA — is_unavailable casava com boilerplate de JavaScript da Amazon; 14 livros restaurados",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-29",
+      "resolved_on": "2026-08-29",
+      "pr": 303,
+      "como_apareceu": "Rodando o G de verdade em 2026-08-29 a pedido do Leandro. A bancada de 70 livros que mediu 37% NAO teria mostrado — bancada nao despublica nada.",
+      "medicao": "A rodada despublicou 6 livros. Conferidos na propria pagina da Amazon no mesmo dia: A Quinta Estacao R$ 69,10, Cidade dos Ossos R$ 300,90, Encontro com Rama R$ 54,85 — todos A VENDA.",
+      "causa": "is_unavailable varria o texto INTEIRO da pagina atras das palavras de `unavail`, e casava com boilerplate presente em TODA pagina de produto da Amazon: '${cardName} indisponivel para o vendedor escolhido' (template de JavaScript), 'Imagem nao disponivel' (alt de placeholder), 'Listar indisponivel' (string de erro de UI).",
+      "atribuicao_precisa": "O bug e ANTERIOR ao PR #296 — ha livros despublicados desde 2026-04-20. Mas o #296 multiplicou a frequencia: ate ele o monitor lia a pagina de BUSCA, que nao traz esses textos; ao passar a ler a de PRODUTO, que era a correcao certa, a varredura passou a casar quase sempre. De alguns casos em meses para 6 numa passada.",
+      "resolution": "Duas travas. (1) is_unavailable so olha a REGIAO de disponibilidade (#availability e afins), nunca o texto inteiro, e preco manda: pagina com preco de compra e pagina a venda. Sem regiao conhecida no HTML devolve False — 'nao consegui confirmar' nao pode virar 'indisponivel' quando a consequencia e tirar a pagina do ar. (2) UNAVAIL_THRESHOLD=2 deixou de ser letra morta: a 1a deteccao so registra e o livro SEGUE publicado; despublica so na 2a consecutiva.",
+      "reparo": "tools/restaurar_falsos_indisponiveis.py reconsulta cada livro marcado e so restaura o que estiver disponivel AGORA — nao republica no escuro. 14 restaurados no SQLite e no Supabase (is_publishable=true confirmado via PostgREST), 1 nao verificavel (Amazon em 503). Sobrou 1 marcado, contra 15.",
+      "files": [
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/tools/restaurar_falsos_indisponiveis.py",
+        "scripts/tests/test_indisponivel.py"
+      ]
+    },
+    {
+      "id": "TASK-OFERTAS-007",
+      "description": "Roteamento sempre para o ML: no seed (step 3 ignora o marketplace do JSON) e no resgate antes de despublicar",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-29",
+      "resolved_on": "2026-08-29",
+      "prs": [
+        304,
+        305
+      ],
+      "origem": "Pedido do Leandro: 'ao ler o seed e tentar coletar o link, priorizar ML sempre' e 'se um titulo for despublicado, refazer o link para ML antes de republicar'.",
+      "por_que": "resolve_offer despachava pelo campo `marketplace` do seed — palpite de quem escreveu o JSON, e a distribuicao mostrava isso: 8.798 'amazon' contra 8.778 'mercado_livre'. Mas os lados nao sao equivalentes: ML tem API (preco, deep link, ~1-2s, 37%), Amazon nao tem API acessivel (scraping sob bot wall, ~13,7s, ~0%). Livro roteado para a Amazon e beco sem saida: URL de busca sem preco, o perfil de thin affiliate que o spam update penaliza.",
+      "resolution": "Step 3 em tres degraus: API do ML confirma -> deep link do PRODUTO com preco ja na mao (o livro NASCE com oferta de verdade); nao confirma -> URL de busca do ML; FORCAR_ML=0 -> obedece o seed. update_offer grava marketplace e preco_atual junto, senao o banco diria 'amazon' com URL do ML. Corrigido de quebra um 'Amazon' maiusculo que nao casava com nenhum ramo. | Resgate: _resgatar_no_ml roda ANTES da contagem de deteccoes — o pedido era 'refazer antes de republicar', mas despublicar-e-republicar deixaria a pagina fora do ar no intervalo; resgatando antes, ela nunca sai. | Fila do monitor prioriza ML (PRIORIZAR_ML) e PRECO_POR_CICLO subiu de 50 para 150: a fila antiga comecava com 12 de 12 livros da Amazon.",
+      "verificado": "Dom Casmurro -> /p/MLB20090573 R$ 24,90 e Comece pelo Porque -> /p/MLB19285560 R$ 45,46, ambos com seed dizendo 'amazon'.",
+      "pendente": "Passivo de 2.484 livros ja roteados para a Amazon: so migram quando o monitor os visitar e a origem falhar. Um backfill que rote todos de uma vez e possivel, mas vale medir antes quantos o ML confirma — os nao confirmados trocariam busca da Amazon por busca do ML, o que e neutro.",
+      "files": [
+        "scripts/steps/offer_resolver.py",
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/main.py",
+        "scripts/tests/test_roteamento_ml.py"
+      ]
+    },
     {
       "id": "TASK-OFERTAS-005",
       "description": "Saida oficial do bot wall: API de catalogo do Mercado Livre substitui o scraping (58% utilizavel medido); Amazon fechada ate ter 10 vendas/30d",
