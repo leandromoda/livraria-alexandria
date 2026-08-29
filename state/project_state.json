@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-23: queda de ~93% em impressoes no Google entre 18 e 21/08, atribuida ao August 2026 spam update (TASK-SEO-016). Resposta em duas frentes de qualidade: preco vindo da pagina do produto com deep link (TASK-OFERTAS-004) e fila de bios priorizando autores com pagina indexada (TASK-AUTORES-005). Publicar mais paginas fica contraindicado enquanto o passivo nao drenar.",
+    "last_updated": "2026-08-29: mapeada a saida oficial do bot wall (TASK-OFERTAS-005). Amazon fechada — PA-API desligada em 15/05/2026 e a Creators API exige 10 vendas/30d. Mercado Livre aberto via /products/search + /products/{id}/items com client_credentials: 58% utilizavel medido (n=70) contra 8% do scraping. A validacao do atributo AUTHOR e obrigatoria — a busca do ML nunca diz 'nao achei', devolve o mais parecido.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1161,6 +1161,53 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-OFERTAS-005",
+      "description": "Saida oficial do bot wall: API de catalogo do Mercado Livre substitui o scraping (58% utilizavel medido); Amazon fechada ate ter 10 vendas/30d",
+      "priority": "high",
+      "status": "open",
+      "registered_on": "2026-08-29",
+      "origem": "TASK-OFERTAS-004 corrigiu o mecanismo do preco, mas a primeira rodada real do G entregou 4 de 50 livros: a Amazon respondeu 503 nas 3 tentativas e o ML exigiu login. O gargalo deixou de ser o codigo e passou a ser o bot wall.",
+      "amazon_bloqueada": {
+        "medido_em": "2026-08-29",
+        "fato": "PA-API descontinuada em 30/04/2026 e desligada em 15/05/2026; nao aceita clientes novos. Substituta e a Creators API (OAuth2), que exige >=10 vendas qualificadas nos ultimos 30 dias.",
+        "consequencia": "Bloqueio circular: precisa de vendas para ter a API, precisa da API para consertar as paginas, precisa das paginas para ter trafego e vendas. Com ~1 clique/dia pos-spam update, inalcancavel. 2.484 livros (51% do catalogo) parados nisso.",
+        "reavaliar_quando": "Se o ML elevar conversao a ponto de gerar 10 vendas/mes, a Amazon destrava. Conferir tambem em associados.amazon.com.br se a conta ja registra vendas qualificadas."
+      },
+      "ml_o_que_abre": {
+        "medido_em": "2026-08-29",
+        "metodo": "sondas scripts/tools/probe_ml_api.py e probe_ml_endpoints.py, com app criado no DevCenter (credenciais em scripts/.env)",
+        "client_credentials": "FUNCIONA — token de 21600s, sem login e sem redirect. Corrige a documentacao de terceiros que afirma que o ML so aceita authorization_code.",
+        "fechado": "/sites/MLB/search devolve 403 mesmo com token valido; /items/{id} tambem fechado",
+        "aberto": "/products/search (atributos BOOK_TITLE, AUTHOR, GTIN, domain_id=MLB-BOOKS) e /products/{id}/items (traz o price e o item_id)",
+        "deep_link": "A API nao devolve permalink, mas https://www.mercadolivre.com.br/p/{catalog_product_id} e a URL canonica — confirmada em Chrome logado (titulo correto, sem muro, barra 'Afiliados GANHOS 12%'). Requisicao automatizada cai em account-verification: e o muro contra robo, nao URL invalida. inject_ml_affiliate ja anexa a tag."
+      },
+      "armadilha_critica": "A /products/search NUNCA responde 'nao achei' — devolve o mais parecido. Medido: 97% 'encontrou produto', numero enganoso sozinho. 'Sob a Roda' (Hesse) devolveu 'Sob a Selva'; 'Misterio no Castelo de Chimneys' (Christie) devolveu 'O Misterio do Castelo Abandonado'. VALIDAR O ATRIBUTO AUTHOR E OBRIGATORIO — sem isso, trocaria preco de livro errado por scraping por preco de livro errado por API, agora com deep link para o produto errado.",
+      "medicao": {
+        "amostra": "70 livros publicados sorteados, 2026-08-29",
+        "produto_encontrado": "68 (97%)",
+        "autor_confere": 47,
+        "autor_nao_confere": 19,
+        "com_preco": "53 (75%)",
+        "utilizavel_autor_ok_e_preco": "41 (58%)",
+        "casou_por_isbn": 3,
+        "isbn_no_catalogo": "1.439 dos 4.855 publicados (30%) tem ISBN, e boa parte e edicao estrangeira ausente do catalogo brasileiro — o caminho principal e titulo+autor com validacao de AUTHOR",
+        "comparacao": "58% contra os 8% que o scraping entrega hoje sob bot wall (4 de 50 na rodada de 24/08)"
+      },
+      "plano": [
+        "Cliente da API do ML em modulo proprio (token com cache de 6h, renovacao automatica).",
+        "resolve_produto passa a tentar a API antes do scraping, com o scraping como fallback: busca por ISBN quando houver, senao titulo+autor; filtrar domain_id=MLB-BOOKS; REJEITAR quando o AUTHOR nao casar.",
+        "offer_url vira https://www.mercadolivre.com.br/p/{catalog_product_id} com a tag de afiliado.",
+        "Teste fixando os casos medidos de falso positivo (Sob a Roda -> Sob a Selva) para a validacao de AUTHOR nao regredir.",
+        "Medir a cobertura real depois de um passe do G e comparar com os 58% da amostra."
+      ],
+      "files": [
+        "scripts/tools/probe_ml_api.py",
+        "scripts/tools/probe_ml_endpoints.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/offer_price_monitor.py"
+      ]
+    },
     {
       "id": "TASK-SEO-016",
       "description": "Queda de ~93% em impressoes no Google a partir de 18/08/2026, com precipicio em 21/08 - atribuida ao August 2026 spam update",
