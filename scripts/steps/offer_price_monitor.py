@@ -78,16 +78,21 @@ def detect_marketplace(url):
 # SEM fallback de raspar a busca — dado de produto errado é pior que dado
 # nenhum. Ver TASK-OFERTAS-004.
 
-def resolve_produto(offer_url, titulo, autor=None):
+def resolve_produto(offer_url, titulo, autor=None, isbn=None):
     """(preco, disponivel, url_afiliada_do_produto) ou (None, None, None).
 
     `url_afiliada` só volta preenchida quando a resolução partiu de uma URL de
     busca — é o deep-link que substitui a busca no `offer_url` do livro.
+
+    No Mercado Livre o `_resolve_produto` tenta a API oficial de catálogo antes
+    do scraping; o `isbn` entra como chave de busca preferencial quando existe
+    (TASK-OFERTAS-005).
     """
     from steps.marketplace_scraper import _resolve_produto, scrape_marketplace
 
     if _e_url_de_busca(offer_url):
-        result, afiliada = _resolve_produto(offer_url, titulo, autor, estrito=True)
+        result, afiliada = _resolve_produto(offer_url, titulo, autor,
+                                            estrito=True, isbn=isbn)
         if not result:
             return None, None, None
         return result.get("preco"), result.get("disponivel"), afiliada
@@ -123,7 +128,7 @@ def fetch_pending(conn, limit):
     cur = conn.cursor()
     cur.execute("""
         SELECT
-            id, titulo, autor, slug, offer_url, supabase_id,
+            id, titulo, autor, isbn, slug, offer_url, supabase_id,
             preco_atual, offer_status
         FROM livros
         WHERE status_publish = 1
@@ -188,13 +193,14 @@ def process_book(conn, row, dry_run=False):
     livro_id     = row["id"]
     titulo       = row["titulo"]
     autor        = (row["autor"] if "autor" in row.keys() else None)
+    isbn         = (row["isbn"] if "isbn" in row.keys() else None)
     offer_url    = row["offer_url"]
     supabase_id  = row["supabase_id"]
     preco_ant    = row["preco_atual"]
     cur_status   = row["offer_status"] or "active"
     marketplace  = detect_marketplace(offer_url)
 
-    preco_novo, disponivel, url_produto = resolve_produto(offer_url, titulo, autor)
+    preco_novo, disponivel, url_produto = resolve_produto(offer_url, titulo, autor, isbn)
 
     if preco_novo is None and disponivel is None:
         # Não chegamos à página do produto: bot wall, timeout, ou nenhum card

@@ -1017,6 +1017,32 @@ def _run_gargalo(idioma: str):
     log("[G] ── Reparo de ofertas (preços → URLs afiliadas → republicar) ──")
     try:
         if PRECO_POR_CICLO > 0:
+            # Pré-voo da API do ML — mesma ideia do pré-voo da sessão do claude
+            # CLI logo acima: uma chamada trivial ANTES de gastar o passe.
+            #
+            # Sem isso, o monitor tentaria a API livro a livro, falharia em
+            # todos e cairia no scraping — que sob bot wall custa até ~25 s de
+            # backoff POR LIVRO. Com a cota em 50, é um passe inteiro perdido
+            # descobrindo o que uma chamada responde em 1 s.
+            #
+            # Falha do pré-voo NÃO bloqueia: o scraping continua sendo o
+            # caminho válido para a Amazon (que não tem API acessível — ver
+            # TASK-OFERTAS-005) e o fallback para o ML.
+            try:
+                from core import ml_api
+                _ml, _ml_det = ml_api.status()
+                if _ml == "ok":
+                    log(f"[G] Pré-voo da API do ML: OK — {_ml_det}")
+                elif _ml == "sem_credencial":
+                    log("[G] ⚠ API do ML não configurada — preço do ML sai só por "
+                        "scraping (medido: ~8% sob bot wall).")
+                    log(f"[G]    {_ml_det}")
+                else:
+                    log(f"[G] ⚠ Pré-voo da API do ML falhou ({_ml}): {_ml_det}")
+                    log("[G]    Segue com scraping; o ML deve render pouco neste passe.")
+            except Exception as e_mlp:
+                log(f"[G] ⚠ Pré-voo da API do ML não pôde rodar: {e_mlp}")
+
             log(f"[G] Monitor de preços — cota do ciclo: {PRECO_POR_CICLO} livros")
             try:
                 offer_price_monitor.run(limit=PRECO_POR_CICLO, dry_run=False)

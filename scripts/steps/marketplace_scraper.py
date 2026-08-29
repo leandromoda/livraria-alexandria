@@ -426,14 +426,62 @@ def _find_product_url(soup, marketplace, titulo, autor=None, estrito=False):
     return None
 
 
-def _resolve_produto(search_url, titulo, autor=None, estrito=False):
+def _resolve_produto_ml_api(titulo, autor=None, isbn=None):
+    """Tenta a API de catálogo do ML. Retorna (result, url_afiliada) ou None.
+
+    O formato de retorno imita o do `scrape_marketplace` para o chamador não
+    precisar saber de onde veio o dado. `cover_url` e `descricao` ficam None de
+    propósito: a API de catálogo não é fonte de descrição, e o pipeline já tem
+    Open Library / Google Books para isso.
+    """
+    try:
+        from core import ml_api
+    except Exception:
+        return None
+    if not ml_api.configurado():
+        return None
+    try:
+        achado = ml_api.buscar_livro(titulo, autor, isbn)
+    except Exception as e:
+        log(f"[SCRAPER] API do ML falhou ({type(e).__name__}) — caindo no scraping")
+        return None
+    if not achado:
+        return None
+
+    from steps.offer_resolver import inject_ml_affiliate
+    _run_stats["ml_api_ok"] = _run_stats.get("ml_api_ok", 0) + 1
+    result = {
+        "cover_url": None,
+        "descricao": None,
+        "preco": achado["preco"],
+        "disponivel": True,
+        "marketplace": "mercadolivre",
+        "fonte": "ml_api",
+    }
+    return result, inject_ml_affiliate(achado["url"])
+
+
+def _resolve_produto(search_url, titulo, autor=None, estrito=False, isbn=None):
     """Busca -> página do produto compatível com o título.
     Retorna (result_dict|None, product_url_afiliada|None). SEM fallback de
     raspar a página de busca: dado de produto errado é pior que dado nenhum
-    (o item sem descrição segue para o agente finder)."""
+    (o item sem descrição segue para o agente finder).
+
+    Desde 2026-08-29, no Mercado Livre a API oficial de catálogo é tentada
+    ANTES do scraping (TASK-OFERTAS-005). Motivo medido: num passe real do G o
+    scraping entregou 4 de 50 livros, com o ML devolvendo "Para continuar,
+    acesse sua conta". A API entrega 58% (n=70) e não tem bot wall. O scraping
+    continua como fallback — a API cobre 58%, não 100%.
+    """
     from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
 
     marketplace = detect_marketplace(search_url)
+
+    if marketplace == "mercadolivre":
+        via_api = _resolve_produto_ml_api(titulo, autor, isbn)
+        if via_api:
+            return via_api
+
     soup = fetch_page(search_url)
     if soup is None:
         return None, None
