@@ -116,17 +116,50 @@ def _e_url_de_busca(url):
 # FETCH PENDING
 # =========================
 
-def fetch_pending(conn, limit):
-    """Fila do monitor: COBERTURA antes de refresh.
+import os
+
+# Livro do ML resolve pela API oficial; livro da Amazon depende de scraping sob
+# bot wall. Priorizar o ML muda a economia do passe — ver `fetch_pending`.
+# 0 volta ao round-robin puro.
+PRIORIZAR_ML = os.getenv("PRIORIZAR_ML", "1").strip() not in ("0", "false", "no")
+
+
+def fetch_pending(conn, limit, priorizar_ml=None):
+    """Fila do monitor: COBERTURA antes de refresh, e ML antes de Amazon.
 
     Quem nunca teve preço vem primeiro; só depois o round-robin por
     `preco_updated_at`. Medido em 2026-08-23: 553 dos 4.856 publicados (11%)
     já tinham sido visitados, e 219 desses ficaram com preço — revisitar quem
-    já tem preço antes de cobrir os 89% restantes é desperdício de um step
-    que é o mais lento do passe não-LLM.
+    já tem preço antes de cobrir os 89% restantes é desperdício.
+
+    ⚠ **Livro do ML vem antes do da Amazon** (desde 2026-08-29). Medido no
+    passe do G daquele dia: 50 livros levaram **11m26s** e renderam 12 preços —
+    e os **12 vieram todos da API do ML**. Os da Amazon consumiram quase todo o
+    tempo em backoff de 503 e renderam **zero**.
+
+    A economia dos dois lados não se parece:
+
+    | | ML (API oficial) | Amazon (scraping) |
+    |---|---|---|
+    | custo por livro | ~1-2 s | ~13,7 s |
+    | aproveitamento | 37% | ~0% sob bot wall |
+
+    Misturar os dois na mesma fila gasta metade do passe no lado que não
+    entrega. A Amazon não some da fila: ela vem depois, e volta a ser alcançada
+    quando o backlog do ML drenar — ou já, com `PRIORIZAR_ML=0`.
+
+    Contrapartida aceita: enquanto houver ML pendente, o preço dos livros da
+    Amazon não é reconferido. Como 100% deles está sem preço nenhum hoje, não
+    há dado fresco a perder.
     """
+    if priorizar_ml is None:
+        priorizar_ml = PRIORIZAR_ML
+
+    ordem_ml = ("(offer_url LIKE '%mercadolivre%') DESC,"
+                if priorizar_ml else "")
+
     cur = conn.cursor()
-    cur.execute("""
+    cur.execute(f"""
         SELECT
             id, titulo, autor, isbn, slug, offer_url, supabase_id,
             preco_atual, offer_status
@@ -135,6 +168,7 @@ def fetch_pending(conn, limit):
           AND offer_url IS NOT NULL
           AND offer_url != ''
         ORDER BY (preco_atual IS NOT NULL) ASC,
+                 {ordem_ml}
                  preco_updated_at ASC NULLS FIRST
         LIMIT ?
     """, (limit,))

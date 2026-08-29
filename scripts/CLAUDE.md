@@ -173,6 +173,21 @@ contra robô, **não** URL inválida.
 
 **Aproveitamento medido (n=70 livros com oferta ML, 2026-08-29): 37%.**
 
+**Confirmado em execução real** (passe do G de 2026-08-29): 50 livros em
+**11m26s** renderam **12 preços — os 12 vindos da API do ML**. Contra 4 (24/08)
+e 3 (27/08) das duas rodadas só-scraping: **6-8% → 24%**.
+
+O mesmo passe expôs a assimetria que reordenou a fila:
+
+| | ML (API) | Amazon (scraping) |
+|---|---|---|
+| custo por livro | ~1-2 s | **~13,7 s** |
+| aproveitamento | 37% | **~0%** sob bot wall |
+
+A fila antiga começava com **12 de 12 livros da Amazon** — metade do passe ia
+para o lado que não entrega. Desde então `fetch_pending` põe o ML primeiro
+(`PRIORIZAR_ML=0` reverte) e `PRECO_POR_CICLO` subiu de 50 para **150**.
+
 ⚠️ Uma medição anterior registrou **58%** e está **errada** — ela validava só o
 autor, sobre `results[0]`, então contava como acerto casamentos que a segunda
 folha do portão reprova. O 37% é do cliente real. Contra os ~0% que o ML entrega
@@ -1148,7 +1163,8 @@ BIO_POR_CICLO=25                 # autores por ciclo (= BATCH_SIZE_AUTHOR_BIO)
 CLASSIFY_POR_CICLO=25            # livros por ciclo
 
 # Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
-PRECO_POR_CICLO=50               # livros visitados pelo offer_price_monitor
+PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
+PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
 
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
