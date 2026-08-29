@@ -966,7 +966,18 @@ def _run_gargalo(idioma: str):
     if _sessao == "auth":
         log("[G] ⛔ Sessão do claude CLI inválida ou expirada — fase LLM PULADA.")
         log(f"[G]    {_detalhe}")
-        log("[G]    Solução: abra um terminal e rode 'claude auth login'.")
+        # Este é o caso mais caro do pipeline: sinopse é o hard-block do Quality
+        # Gate, então sessão expirada = ZERO publicações até alguém perceber. Numa
+        # rodada de madrugada isso é a noite inteira perdida. O login do claude é
+        # no terminal, não no navegador, então aqui a janela que abre é a da
+        # documentação — o que resolve de fato é o comando, destacado no log.
+        from core import auth_prompt
+        auth_prompt.pedir(
+            servico="sessão do Claude CLI",
+            url="https://docs.claude.com/en/docs/claude-code/setup",
+            motivo=("A fase LLM está PULADA. Sinopse é o hard-block do Quality "
+                    "Gate, então enquanto isso o pipeline publica ZERO livros."),
+            como_resolver="abra um terminal e rode: claude auth login")
         log("[G]    Segue só com o trabalho não-LLM.")
     elif _sessao == "erro":
         log(f"[G] ⚠ Pré-voo da sessão falhou: {_detalhe}")
@@ -1033,10 +1044,20 @@ def _run_gargalo(idioma: str):
                 _ml, _ml_det = ml_api.status()
                 if _ml == "ok":
                     log(f"[G] Pré-voo da API do ML: OK — {_ml_det}")
-                elif _ml == "sem_credencial":
-                    log("[G] ⚠ API do ML não configurada — preço do ML sai só por "
-                        "scraping (medido: ~8% sob bot wall).")
-                    log(f"[G]    {_ml_det}")
+                elif _ml in ("sem_credencial", "auth"):
+                    # Avisar no log não resolve numa rodada de madrugada: abre a
+                    # página onde a credencial se resolve. Não bloqueia — ver
+                    # core/auth_prompt.py.
+                    from core import auth_prompt
+                    auth_prompt.pedir(
+                        servico="API do Mercado Livre",
+                        url="https://developers.mercadolivre.com.br/devcenter",
+                        motivo=(f"{_ml_det}. Sem ela o preço do ML sai só por "
+                                "scraping — medido: ~8% sob bot wall, contra 37% "
+                                "pela API."),
+                        como_resolver=("DevCenter → sua aplicação → copiar "
+                                       "Client ID e Secret para ML_CLIENT_ID / "
+                                       "ML_CLIENT_SECRET em scripts/.env"))
                 else:
                     log(f"[G] ⚠ Pré-voo da API do ML falhou ({_ml}): {_ml_det}")
                     log("[G]    Segue com scraping; o ML deve render pouco neste passe.")
