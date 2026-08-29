@@ -94,12 +94,20 @@ last_activity = time.time()
 # offer_price_log e 78 livros com preco_updated_at. O resultado no site era
 # 4.577 das 4.579 ofertas ativas sem preço.
 #
-# O padrão é baixo de propósito: o monitor faz scraping HTTP com delay por
-# livro, então é o step mais lento do passe não-LLM. Ele ordena por
-# `preco_updated_at ASC NULLS FIRST`, então cada ciclo pega quem está há mais
-# tempo sem preço — o backlog drena sozinho ao longo das janelas, sem martelar
-# o marketplace numa só.
-PRECO_POR_CICLO = int(os.getenv("PRECO_POR_CICLO", "50"))
+# ⚠ Era 50 até 2026-08-29, quando o caminho principal do ML ainda era scraping.
+# Com a API oficial (TASK-OFERTAS-005) a economia do passe mudou:
+#
+#   ML via API .......... ~1-2 s por livro, 37% de aproveitamento
+#   Amazon via scraping .. ~13,7 s por livro, ~0% sob bot wall
+#
+# e a fila passou a priorizar o ML (`offer_price_monitor.fetch_pending`). Medido
+# no passe de 2026-08-29: 50 livros em 11m26s renderam 12 preços, TODOS da API —
+# o tempo foi quase todo backoff da Amazon, que rendeu zero.
+#
+# Com a fila priorizada, 150 livros majoritariamente do ML cabem em ~6 min. Se o
+# passe cair numa faixa de Amazon (quando o backlog do ML drenar), 150 × 13,7 s
+# são ~34 min — longo, mas tolerável num G que roda horas. `0` desliga.
+PRECO_POR_CICLO = int(os.getenv("PRECO_POR_CICLO", "150"))
 
 
 # `log` vem de core.logger (import no topo), que escreve no console E no

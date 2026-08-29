@@ -230,12 +230,46 @@ def test_fila_prioriza_quem_nao_tem_preco():
     )
     conn.commit()
 
-    ordem = [r["id"] for r in opm.fetch_pending(conn, 10)]
+    ordem = [r["id"] for r in opm.fetch_pending(conn, 10, priorizar_ml=False)]
     assert ordem[0] == "c", ordem   # nunca visitado, sem preco
     assert ordem[1] == "b", ordem   # sem preco, visitado ha mais tempo
     assert ordem[2] == "a", ordem   # ja tem preco -> por ultimo
     conn.close()
     print("[OK] fila poe quem nao tem preco antes de quem so precisa de refresh")
+
+
+def test_fila_prioriza_mercado_livre():
+    """ML antes de Amazon — os dois lados tem economia oposta.
+
+    Medido no passe do G de 2026-08-29: 50 livros em 11m26s renderam 12 precos,
+    e os 12 vieram TODOS da API do ML. Os da Amazon consumiram quase todo o
+    tempo em backoff de 503 e renderam zero.
+
+      ML via API ......... ~1-2 s por livro, 37% de aproveitamento
+      Amazon (scraping) .. ~13,7 s por livro, ~0% sob bot wall
+
+    Sem esta ordem, a fila real comecava com 12 de 12 livros da Amazon.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(DDL)
+    conn.executemany(
+        "INSERT INTO livros (id, titulo, offer_url, preco_atual, preco_updated_at,"
+        " status_publish) VALUES (?, ?, ?, NULL, ?, 1)",
+        [
+            # a Amazon foi vista ha MAIS tempo: no round-robin puro ela vem antes
+            ("amz", "Livro da Amazon", "https://www.amazon.com.br/s?k=x", "2026-01-01"),
+            ("ml",  "Livro do ML", "https://lista.mercadolivre.com.br/y", "2026-08-01"),
+        ],
+    )
+    conn.commit()
+
+    assert [r["id"] for r in opm.fetch_pending(conn, 10)] == ["ml", "amz"]
+    # E continua reversivel, para quando o backlog do ML drenar ou o bot wall cair.
+    assert [r["id"] for r in opm.fetch_pending(conn, 10, priorizar_ml=False)] == \
+        ["amz", "ml"]
+    conn.close()
+    print("[OK] ML vem antes da Amazon, e PRIORIZAR_ML=0 reverte")
 
 
 if __name__ == "__main__":
@@ -248,4 +282,5 @@ if __name__ == "__main__":
     test_ml_pula_anuncio()
     test_reconhece_url_de_busca()
     test_fila_prioriza_quem_nao_tem_preco()
+    test_fila_prioriza_mercado_livre()
     print("\nTodos os testes passaram.")
