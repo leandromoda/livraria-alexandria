@@ -177,6 +177,23 @@ contra robô, **não** URL inválida.
 **11m26s** renderam **12 preços — os 12 vindos da API do ML**. Contra 4 (24/08)
 e 3 (27/08) das duas rodadas só-scraping: **6-8% → 24%**.
 
+> ✅ **Reconfirmado no mesmo dia, agora com a fila reordenada** (log
+> `pipeline_2026-08-29_07-54-02`, commit `8bbef41`, já com `FORCAR_ML=1`,
+> `PRIORIZAR_ML=1` e `PRECO_POR_CICLO=150`): **`Ativos: 62 | Erros: 88 |
+> Total: 150`** em 15m44s — **41%**, contra os 24% do passe das 05:45 (`12/50`,
+> commit `80a9d83`, antes do #305). Três passes, mesma linha do tempo:
+>
+> | Passe | commit | cota | ativos | aproveitamento |
+> |---|---|---|---|---|
+> | 27/08 19:22 (só scraping) | `b94956f` | 50 | 3 | 6% |
+> | 29/08 05:45 (API do ML) | `80a9d83` | 50 | 12 | 24% |
+> | 29/08 07:54 (+ roteamento) | `8bbef41` | 150 | **62** | **41%** |
+>
+> ⚠ **Limite: n=1 por linha, e as três variáveis mudaram juntas** (API, ordem da
+> fila e cota). O 41% não isola qual delas contribuiu quanto — mas está acima
+> dos 37% da bancada de 70 livros, o que é coerente com a fila passar a servir
+> o ML primeiro em vez de gastar metade do passe na Amazon.
+
 O mesmo passe expôs a assimetria que reordenou a fila:
 
 | | ML (API) | Amazon (scraping) |
@@ -996,6 +1013,81 @@ o parâmetro `limite` dos respectivos `_export_*`.
 Os `_drain_*` ilimitados seguem no fim da Fase A: quando as filas realmente
 zerarem, tudo drena de uma vez como antes.
 
+#### ⚠ 40% de cada lote de classify eram 32 livros em laço — corrigido em 2026-08-29
+
+`categorize_import` gravava `status_categorize = 0` ao rejeitar — a **mesma**
+fila de `categorize_export.fetch_pending`, e na **mesma posição**, porque o
+`ORDER BY priority_score DESC, created_at ASC` é determinístico e a rejeição não
+mexe em nenhuma das duas colunas. O livro voltava no lote seguinte e era
+rejeitado de novo, sem teto.
+
+Medido nos 3 logs de 2026-08-27..29 (contagem de `Rejeitado pelo agente` contra
+`→ classify: invocando claude CLI`):
+
+| Log | chamadas | OK | rejeitados | % do lote |
+|---|---|---|---|---|
+| `2026-08-27_19-22-47` | 46 | 630 | 420 | 40,0% |
+| `2026-08-29_05-45-10` | 10 | 145 | 105 | 42,0% |
+| `2026-08-29_07-54-02` | 3 | 28 | 22 | 44,0% |
+| **total** | **59** | **803** | **547** | **40,5%** |
+
+As 547 rejeições eram de **32 livros distintos**, nove deles **54 vezes cada**
+(`How to Brew`, `Homebrewing for Dummies`, `The Brew Manual`, `Extreme Brewing`,
+`Bread Illustrated`, `Artisan Breads Every Day`, `The Essential Woodworker`,
+`The Woodworker's Bible`, `Furniture Projects`). Lote de classify tem 25 livros;
+~10 dos 25 eram sempre os mesmos.
+
+**O custo não é cosmético:** com a sinopse em 0 exportáveis, o classify é hoje o
+único ocupante da janela LLM — 5–6 chamadas por 5h. 40% do gargalo do projeto
+girava em falso.
+
+**E era catraca, não patamar.** Todo livro novo rejeitado passava a ocupar a
+fila para sempre, somando aos que já estavam lá. No log de 27/08 a rejeição por
+lote sai de 9–11 (lotes 1–6) para 10–15 (lotes 37–42), e o conjunto de títulos
+presos cresce de 9 para **32** ao longo dos três logs — os nove primeiros com 54
+aparições, `Basic Fantasy RPG` com 23, `Peru` com 9, e 22 títulos que entraram
+perto do fim com 1 cada. Sem teto, o classify convergiria para 100% de
+desperdício.
+
+**A causa de fundo é a taxonomia, não o agente.** `data/taxonomy.json` tem 171
+categorias em 23 grupos, **todos** de literatura e humanidades; nenhuma cobre
+cervejaria (214 rejeições), marcenaria (164) ou culinária (144) — 95% do total.
+O agente estava certo em rejeitar. Ampliar a taxonomia é TASK-TAX-001, e está
+**bloqueada de propósito**: `taxonomy.json → publish_categorias →
+app/sitemap.ts` faz de cada slug novo uma `/categorias/<slug>` indexável, e
+`/categorias/*` é exatamente a superfície que reprovou a validação do bucket
+"Excluída pela tag noindex" no GSC (603 `Pendente` / 1 `Falha`), sob um site já
+rebaixado pelo spam update de agosto.
+
+**O destino é `status_categorize = 2`, não um estado novo** — a máquina de retry
+já existia e nunca tinha sido ligada. `MAX_CATEGORIZE_ATTEMPTS` e o guard de
+`categorize_attempts` em `categorize.reset_failed()` liam um estado que **nada
+no código escrevia**. Conferido no `books.db` em 2026-08-29, não só por grep:
+
+```
+status_categorize:  0 → 10.172 | 1 → 5.123 | 4 → 2.566 | 2 → NENHUM
+categorize_attempts > 0: 0 livros
+```
+
+Mesma classe do `UNAVAIL_THRESHOLD = 2` que o #303 tirou do papel — e a segunda
+vez em duas semanas que um guard escrito no módulo nunca chegou a rodar.
+
+Três detalhes que `tests/test_categorize_rejeicao.py` fixa:
+
+- **Rejeição SEM motivo mantém o livro na fila.** Sem motivo é falha transitória
+  do agente, não veredito — mesma leitura de `synopsis_import`. Antes as duas
+  eram tratadas igual.
+- **Não seta `qa_quarantine`.** O `synopsis_import` seta porque sem sinopse o
+  livro trava o Quality Gate; falta de categoria temática não bloqueia
+  publicação, e `qa_quarantine` também tiraria o livro da fila de sinopse.
+- **Blacklistado continua indo para `4`**, que é o que `reprocess_blacklist`
+  seleciona.
+
+Efeito colateral aceito: `publicados_sem_categoria`, na auditoria de
+classificação, passa a contar esses livros de forma permanente. É relatório, não
+ação — `run_classification_audit` não despublica nada, e `categorize_inconsistente`
+exige `status_categorize = 1`, então eles não caem lá.
+
 ### Rotação de bios — detalhe
 
 **Problema (medido em 2026-07-25):** a fase de bios do `llm_orchestrator` só é
@@ -1119,12 +1211,13 @@ PYTHONPATH=. python tests/test_project_state.py       # ids únicos no project_s
 PYTHONPATH=. python tests/test_marketplace_scraper_ordem.py  # ordem das fontes + circuit
 ```
 
-> ⚠ **O workflow dispara em `paths: scripts/**`, não em `state/**`.** Um PR que
-> edite só o `state/project_state.json` — justamente o que introduz id duplicado
-> — **não roda** `test_project_state.py`. Falta acrescentar `- 'state/**'` às duas
-> listas de `paths` em `.github/workflows/tests.yml`. Alterar workflows exige o
-> escopo `workflow` no token (ver TASK-CI-001), então essa linha depende do
-> usuário.
+> ✅ **A lacuna de `paths` já foi fechada — conferido em 2026-08-29.** Estava
+> escrito aqui que o workflow disparava só em `paths: scripts/**`, e que um PR
+> tocando apenas o `state/project_state.json` não rodaria
+> `test_project_state.py`. **Não é mais verdade:** `.github/workflows/tests.yml`
+> lista `- 'state/**'` nas **duas** listas (`push` e `pull_request`). O mesmo
+> aviso obsoleto estava na docstring de `tests/test_project_state.py` e foi
+> corrigido junto.
 
 **No CI:** `.github/workflows/tests.yml` roda `compileall` + todos os
 `tests/test_*.py` a cada push/PR que toque em `scripts/**`. O workflow varre o
