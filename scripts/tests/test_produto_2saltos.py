@@ -201,10 +201,13 @@ def test_reconhece_url_de_busca():
 
 # ------------------------------------------------------------ 4. fila do monitor
 
+# `isbn` entrou na fila em 2026-08-29: e a chave de busca preferencial da API
+# de catalogo do ML (TASK-OFERTAS-005). Sem a coluna aqui, fetch_pending quebra.
 DDL = """
 CREATE TABLE livros (
     id TEXT PRIMARY KEY,
-    titulo TEXT, autor TEXT, slug TEXT, offer_url TEXT, supabase_id TEXT,
+    titulo TEXT, autor TEXT, isbn TEXT, slug TEXT, offer_url TEXT,
+    supabase_id TEXT,
     preco_atual REAL, preco_updated_at TEXT, offer_status TEXT,
     status_publish INTEGER DEFAULT 0
 );

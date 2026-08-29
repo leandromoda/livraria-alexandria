@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-29: mapeada a saida oficial do bot wall (TASK-OFERTAS-005). Amazon fechada — PA-API desligada em 15/05/2026 e a Creators API exige 10 vendas/30d. Mercado Livre aberto via /products/search + /products/{id}/items com client_credentials: 58% utilizavel medido (n=70) contra 8% do scraping. A validacao do atributo AUTHOR e obrigatoria — a busca do ML nunca diz 'nao achei', devolve o mais parecido.",
+    "last_updated": "2026-08-29: API de catalogo do ML entra como fonte oficial de preco e deep link, com scraping de fallback (TASK-OFERTAS-005). Pre-voo ml_api.status() roda no G antes do monitor de precos. Aproveitamento medido: 37% (o 58% registrado antes estava errado — media so o portao do autor). Amazon segue fechada ate ter 10 vendas/30d.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1165,7 +1165,7 @@
       "id": "TASK-OFERTAS-005",
       "description": "Saida oficial do bot wall: API de catalogo do Mercado Livre substitui o scraping (58% utilizavel medido); Amazon fechada ate ter 10 vendas/30d",
       "priority": "high",
-      "status": "open",
+      "status": "resolved",
       "registered_on": "2026-08-29",
       "origem": "TASK-OFERTAS-004 corrigiu o mecanismo do preco, mas a primeira rodada real do G entregou 4 de 50 livros: a Amazon respondeu 503 nas 3 tentativas e o ML exigiu login. O gargalo deixou de ser o codigo e passou a ser o bot wall.",
       "amazon_bloqueada": {
@@ -1192,7 +1192,8 @@
         "utilizavel_autor_ok_e_preco": "41 (58%)",
         "casou_por_isbn": 3,
         "isbn_no_catalogo": "1.439 dos 4.855 publicados (30%) tem ISBN, e boa parte e edicao estrangeira ausente do catalogo brasileiro — o caminho principal e titulo+autor com validacao de AUTHOR",
-        "comparacao": "58% contra os 8% que o scraping entrega hoje sob bot wall (4 de 50 na rodada de 24/08)"
+        "comparacao": "58% contra os 8% que o scraping entrega hoje sob bot wall (4 de 50 na rodada de 24/08)",
+        "CORRECAO_2026-08-29": "Os 58% registrados aqui estavam ERRADOS e ficam como registro do metodo falho: aquela bancada validava so o atributo AUTHOR, sobre results[0], entao contava como acerto casamentos que a segunda folha do portao reprova. O cliente real (core/ml_api.py) aplica autor E titulo e mede 37% (n=70 livros com oferta ML). Contra ~0% que o ML entrega sob bot wall, segue valendo."
       },
       "plano": [
         "Cliente da API do ML em modulo proprio (token com cache de 6h, renovacao automatica).",
@@ -1206,7 +1207,10 @@
         "scripts/tools/probe_ml_endpoints.py",
         "scripts/steps/marketplace_scraper.py",
         "scripts/steps/offer_price_monitor.py"
-      ]
+      ],
+      "resolved_on": "2026-08-29",
+      "portao_tem_duas_folhas": "1) AUTHOR: sem ele 'Sob a Roda' (Hesse) resolvia para 'Sob a Selva'. 2) TITULO via _titulo_score(estrito=True): so o autor NAO basta — 'Misterio no Castelo de Chimneys' passava apontando para 'Um misterio no Caribe', outro livro DA MESMA AUTORA. Alem disso a escolha e do MELHOR candidato aprovado, nao do primeiro: com 'primeiro que passa', 'Comunicacao Nao Violenta' resolvia para o 'Kit ... + Vive' a R$151,43 (combo).",
+      "resolution": "core/ml_api.py (cliente + status() com o mesmo contrato do claude_runner.session_status), marketplace_scraper._resolve_produto_ml_api tentando a API antes do scraping no ML, isbn propagado pelo offer_price_monitor, pre-voo da API no _run_gargalo do main.py e tests/test_ml_api.py fixando os 4 falsos positivos medidos."
     },
     {
       "id": "TASK-SEO-016",

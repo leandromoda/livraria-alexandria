@@ -127,6 +127,65 @@ round-robin** por `preco_updated_at`: em 2026-08-23 só 553 dos 4.856 publicados
 > fica em 50 até lá: subir a cota junto com a troca de mecanismo confundiria as
 > duas variáveis, e sob muro só multiplicaria 503.
 
+### API de catálogo do Mercado Livre — a saída oficial do bot wall
+
+Desde 2026-08-29 o preço e o deep link do ML saem da **API oficial**, com o
+scraping como fallback (`core/ml_api.py`, TASK-OFERTAS-005). Motivo medido: num
+passe real do G o scraping entregou **4 de 50** livros — Amazon com 503 nas 3
+tentativas, ML pedindo login.
+
+**A Amazon não tem saída equivalente.** A PA-API foi desligada em 15/05/2026 e a
+Creators API que a substitui exige **≥10 vendas qualificadas em 30 dias** —
+bloqueio circular enquanto o tráfego estiver no chão. São 51% do catálogo.
+
+Portas sondadas (`tools/probe_ml_api.py`, `tools/probe_ml_endpoints.py`):
+
+| Endpoint | |
+|---|---|
+| `/oauth/token` **client_credentials** | ✅ token de 6 h, sem login |
+| `/sites/MLB/search` | ❌ 403 mesmo com token |
+| `/items/{id}` | ❌ fechado |
+| `/products/search` | ✅ **é a porta** — traz `BOOK_TITLE`, `AUTHOR`, `GTIN`, `domain_id` |
+| `/products/{id}/items` | ✅ traz o `price` |
+
+Deep link: `https://www.mercadolivre.com.br/p/{catalog_product_id}` — a API não
+devolve `permalink`, mas essa forma é a canônica, confirmada em navegador
+logado. Requisição automatizada cai em `account-verification`; isso é o muro
+contra robô, **não** URL inválida.
+
+> #### ⚠ O portão tem DUAS folhas, e cada uma custou uma medição
+>
+> **`/products/search` nunca responde "não achei"** — devolve o mais parecido.
+> 97% "encontram" produto, e esse número sozinho engana.
+>
+> 1. **`AUTHOR`** — sem ele, *"Sob a Roda"* (Hermann Hesse) resolvia para
+>    *"Sob a Selva"*.
+> 2. **Título, com `_titulo_score(estrito=True)`** — só o autor não basta:
+>    *"Mistério no Castelo de Chimneys"* passava apontando para *"Um mistério
+>    no Caribe"*, **outro livro da mesma autora**. É a mesma classe do falso
+>    positivo de série que o scraping já tratava, então a regra é reusada em
+>    vez de reescrita.
+>
+> E a escolha é do **melhor** candidato aprovado, não do primeiro: com
+> "primeiro que passa", *"Comunicação Não Violenta"* resolvia para o *"Kit
+> Comunicação Não Violenta + Vive"* a R$ 151,43 — um combo. Sem desistir no
+> primeiro sem preço, que custaria cobertura à toa.
+
+**Aproveitamento medido (n=70 livros com oferta ML, 2026-08-29): 37%.**
+
+⚠️ Uma medição anterior registrou **58%** e está **errada** — ela validava só o
+autor, sobre `results[0]`, então contava como acerto casamentos que a segunda
+folha do portão reprova. O 37% é do cliente real. Contra os ~0% que o ML entrega
+sob bot wall hoje, ainda é a diferença entre parado e andando.
+
+**Pré-voo no G:** `ml_api.status()` devolve `ok | sem_credencial | auth | erro`,
+mesmo contrato do `claude_runner.session_status()`, e roda **antes** do monitor
+de preços. Sem ele o passe tentaria a API livro a livro, falharia em todos e
+cairia no scraping — que sob bot wall custa ~25 s de backoff por livro. Falha do
+pré-voo **não** bloqueia: o scraping segue válido para a Amazon e como fallback.
+
+Credenciais em `scripts/.env`: `ML_CLIENT_ID`, `ML_CLIENT_SECRET`.
+
 ### Gargalo de publicação — o autopilot é o único caminho
 
 **Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma
