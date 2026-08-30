@@ -32,6 +32,43 @@ from core import interrupt as _interrupt
 
 _run_stats = {"http_503": 0, "mp_ok": 0, "mp_skip": 0}
 
+# ---------------------------------------------------------------------------
+# Telemetria do `_resolve_produto` — por QUE um livro não resolveu
+#
+# ⚠ Motivo de existir, medido em 2026-08-29. Em duas passadas do mesmo dia o
+# monitor de preços rendeu 41% (62/150, log 07-54-02) e depois 20% (30/150, log
+# 10-28-52) — e o log não permitia dizer o porquê, porque a única saída era
+# `Ativos: N | Erros: N`. Foi preciso cruzar o relatório `NNNN_audit_prices.json`
+# com o `books.db` para descobrir o fato que importava: os **120 erros eram
+# 120 URLs do Mercado Livre**, nenhuma da Amazon.
+#
+# Sem isto, "a API do ML rendeu menos" e "o scraping do ML apanhou do bot wall"
+# são indistinguíveis no log — e são correções opostas. Os contadores são
+# AGREGADOS de propósito: log por item foi justamente o que inchou os logs de
+# julho (ver "A espera produtiva suspende o dreno" no topo deste arquivo).
+# ---------------------------------------------------------------------------
+
+_resolve_stats = {
+    "ml_api_ok":     0,   # API do ML confirmou o produto (portão de 2 folhas)
+    "ml_api_miss":   0,   # API consultada, não confirmou — cai no scraping
+    "ml_api_off":    0,   # sem credencial / módulo ausente — nem tentou
+    "ml_api_erro":   0,   # exceção na chamada da API
+    "scrape_sem_pagina": 0,  # fetch_page devolveu None (bot wall, timeout)
+    "scrape_sem_card":   0,  # página veio, nenhum card casou título+autor
+    "scrape_ok":     0,   # scraping resolveu o produto
+}
+
+
+def reset_resolve_stats():
+    for k in _resolve_stats:
+        _resolve_stats[k] = 0
+
+
+def resolve_stats_line():
+    """Uma linha agregada, só com o que aconteceu (zeros são ruído)."""
+    partes = [f"{k}={v}" for k, v in _resolve_stats.items() if v]
+    return " | ".join(partes) if partes else "sem tentativas"
+
 # Circuit breaker para Open Library: após OL_CIRCUIT_THRESHOLD falhas
 # consecutivas, skip Open Library pelo resto do batch para não bloquear
 # o scraper inteiro em ConnectTimeout/ReadTimeout repetidos.
@@ -484,19 +521,28 @@ def _resolve_produto_ml_api(titulo, autor=None, isbn=None):
     try:
         from core import ml_api
     except Exception:
+        _resolve_stats["ml_api_off"] += 1
         return None
     if not ml_api.configurado():
+        _resolve_stats["ml_api_off"] += 1
         return None
     try:
         achado = ml_api.buscar_livro(titulo, autor, isbn)
     except Exception as e:
+        _resolve_stats["ml_api_erro"] += 1
         log(f"[SCRAPER] API do ML falhou ({type(e).__name__}) — caindo no scraping")
         return None
     if not achado:
+        # A /products/search NUNCA responde "não achei" — ela devolve o mais
+        # parecido, e o portão de duas folhas (autor E título) reprovou. Isto é
+        # o comportamento CERTO; contar aqui é o que separa "a API rejeitou"
+        # de "a API está fora".
+        _resolve_stats["ml_api_miss"] += 1
         return None
 
     from steps.offer_resolver import inject_ml_affiliate
     _run_stats["ml_api_ok"] = _run_stats.get("ml_api_ok", 0) + 1
+    _resolve_stats["ml_api_ok"] += 1
     result = {
         "cover_url": None,
         "descricao": None,
@@ -517,8 +563,17 @@ def _resolve_produto(search_url, titulo, autor=None, estrito=False, isbn=None):
     Desde 2026-08-29, no Mercado Livre a API oficial de catálogo é tentada
     ANTES do scraping (TASK-OFERTAS-005). Motivo medido: num passe real do G o
     scraping entregou 4 de 50 livros, com o ML devolvendo "Para continuar,
-    acesse sua conta". A API entrega 58% (n=70) e não tem bot wall. O scraping
-    continua como fallback — a API cobre 58%, não 100%.
+    acesse sua conta". A API não tem bot wall, mas cobre bem menos que 100% — o
+    scraping continua como fallback.
+
+    ⚠ **O número de cobertura desta docstring estava errado e foi corrigido em
+    2026-08-29.** Dizia "a API entrega 58% (n=70)". Os 58% vinham de uma bancada
+    que validava só o atributo AUTHOR sobre `results[0]`, contando como acerto
+    casamentos que a segunda folha do portão (título, `_titulo_score` estrito)
+    reprova. O cliente real mede **37%** na mesma amostra, e em execução real de
+    ponta a ponta o rendimento do monitor foi **24% → 41% → 20%** em três passes
+    (12/50, 62/150, 30/150) — **~30% somando os três (104/350)**. Use os 30%
+    como expectativa, não os 58%.
     """
     from steps.offer_resolver import inject_amazon_tag, inject_ml_affiliate
 
@@ -531,15 +586,20 @@ def _resolve_produto(search_url, titulo, autor=None, estrito=False, isbn=None):
 
     soup = fetch_page(search_url)
     if soup is None:
+        _resolve_stats["scrape_sem_pagina"] += 1
         return None, None
 
     product_url = _find_product_url(soup, marketplace, titulo, autor, estrito)
     if not product_url:
+        _resolve_stats["scrape_sem_card"] += 1
         return None, None
 
     result = scrape_marketplace(product_url)
     if not result:
+        _resolve_stats["scrape_sem_card"] += 1
         return None, None
+
+    _resolve_stats["scrape_ok"] += 1
 
     afiliada = (inject_amazon_tag(product_url) if marketplace == "amazon"
                 else inject_ml_affiliate(product_url))

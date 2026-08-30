@@ -177,22 +177,38 @@ contra robô, **não** URL inválida.
 **11m26s** renderam **12 preços — os 12 vindos da API do ML**. Contra 4 (24/08)
 e 3 (27/08) das duas rodadas só-scraping: **6-8% → 24%**.
 
-> ✅ **Reconfirmado no mesmo dia, agora com a fila reordenada** (log
-> `pipeline_2026-08-29_07-54-02`, commit `8bbef41`, já com `FORCAR_ML=1`,
-> `PRIORIZAR_ML=1` e `PRECO_POR_CICLO=150`): **`Ativos: 62 | Erros: 88 |
-> Total: 150`** em 15m44s — **41%**, contra os 24% do passe das 05:45 (`12/50`,
-> commit `80a9d83`, antes do #305). Três passes, mesma linha do tempo:
+> ⚠️ **O 41% de 29/08 07:54 NÃO era tendência — o passe seguinte deu 20%.**
+> Ficou escrito aqui, no mesmo dia, que o rendimento havia subido para 41% e que
+> isso era "coerente com a fila servir o ML primeiro". O passe das 10:28 (log
+> `pipeline_2026-08-29_10-28-52`, commit `410525a`) rendeu **`Ativos: 30 |
+> Erros: 120 | Total: 150` = 20%**, metade. Quatro passes reais:
 >
 > | Passe | commit | cota | ativos | aproveitamento |
 > |---|---|---|---|---|
 > | 27/08 19:22 (só scraping) | `b94956f` | 50 | 3 | 6% |
 > | 29/08 05:45 (API do ML) | `80a9d83` | 50 | 12 | 24% |
-> | 29/08 07:54 (+ roteamento) | `8bbef41` | 150 | **62** | **41%** |
+> | 29/08 07:54 (+ roteamento) | `8bbef41` | 150 | 62 | 41% |
+> | 29/08 10:28 | `410525a` | 150 | 30 | **20%** |
+> | **soma dos 3 passes com API** | — | **350** | **104** | **~30%** |
 >
-> ⚠ **Limite: n=1 por linha, e as três variáveis mudaram juntas** (API, ordem da
-> fila e cota). O 41% não isola qual delas contribuiu quanto — mas está acima
-> dos 37% da bancada de 70 livros, o que é coerente com a fila passar a servir
-> o ML primeiro em vez de gastar metade do passe na Amazon.
+> **Use ~30% como expectativa**, não 41% nem os 58% da bancada antiga. A lição
+> de método é a de sempre neste arquivo: um passe é n=1, e ler tendência em dois
+> pontos com três variáveis mudando junto foi exatamente o erro.
+>
+> **O que o passe de 10:28 permitiu concluir**, cruzando o
+> `0736_audit_prices.json` com o `books.db`: os **120 erros eram 120 URLs do
+> Mercado Livre — nenhuma da Amazon**. Com `PRIORIZAR_ML=1` o passe inteiro é
+> ML, então o teto do monitor hoje é a cobertura do catálogo do ML, não mais o
+> bot wall da Amazon. Isso desloca o alvo: ganhar aqui é melhorar o casamento
+> na `/products/search`, não driblar bloqueio.
+>
+> ⚠️ **Esse cruzamento teve de ser feito à mão porque o log não dizia.** A única
+> saída era `Ativos: N | Erros: N`, e "a API rendeu menos" e "o scraping apanhou
+> do bot wall" — correções opostas — eram indistinguíveis. Desde 2026-08-29 o
+> monitor emite uma segunda linha agregada,
+> `[MONITOR] Resolução: ml_api_ok=… | ml_api_miss=… | scrape_sem_pagina=…`
+> (`marketplace_scraper._resolve_stats`, testes em `tests/test_resolve_stats.py`).
+> Agregada, nunca por item — log por item foi o que inchou os logs de julho.
 
 O mesmo passe expôs a assimetria que reordenou a fila:
 
@@ -1087,6 +1103,25 @@ Efeito colateral aceito: `publicados_sem_categoria`, na auditoria de
 classificação, passa a contar esses livros de forma permanente. É relatório, não
 ação — `run_classification_audit` não despublica nada, e `categorize_inconsistente`
 exige `status_categorize = 1`, então eles não caem lá.
+
+> ✅ **CONFIRMADO no primeiro passe do G pós-fix** (log
+> `pipeline_2026-08-29_10-28-52`, commit `410525a` — o próprio merge do #307):
+>
+> | | antes (3 logs, 27-29/08) | depois (1 passe) |
+> |---|---|---|
+> | chamadas de classify | 59 | 7 |
+> | OK | 803 | 140 |
+> | rejeitados | **547** | **10** |
+> | % do lote | **40,5%** | **6,7%** |
+>
+> **As 10 rejeições aconteceram todas no primeiro lote, às 10:38:28, e nenhuma
+> se repetiu nos 6 lotes seguintes** — são exatamente os 9 do laço mais o
+> `Basic Fantasy RPG`. Do 2º lote em diante o aproveitamento foi de **100%**.
+>
+> Conferido no `books.db` logo depois: `status_categorize = 2` em **10 livros**,
+> com `categorize_attempts` somando **10** — ou seja, **uma tentativa cada**,
+> nenhum reprocessado. `categorize_motivo` preenchido e legível nos 10.
+> `status_categorize = 1` subiu de 5.123 para 5.263 (+140, batendo com os OK).
 
 ### Rotação de bios — detalhe
 
