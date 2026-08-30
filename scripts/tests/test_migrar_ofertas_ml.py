@@ -90,6 +90,8 @@ CREATE TABLE livros (
     status_publish        INTEGER DEFAULT 1,
     status_publish_oferta INTEGER DEFAULT 1,
     supabase_id           TEXT,
+    blacklist_reason      TEXT,
+    qa_quarantine         INTEGER DEFAULT 0,
     ml_migracao_em        TEXT,
     updated_at            TEXT
 );
@@ -121,7 +123,7 @@ def _db(livros):
     return conn
 
 
-def _rodar(conn, resposta, dry_run=False, limit=50):
+def _rodar(conn, resposta, dry_run=False, limit=50, book_ids=None):
     """Roda mig.run com get_conn e ml_api trocados por stubs."""
     fake_api = types.ModuleType("core.ml_api")
     fake_api.configurado = lambda: True
@@ -136,7 +138,8 @@ def _rodar(conn, resposta, dry_run=False, limit=50):
 
     orig_conn, mig.get_conn = mig.get_conn, lambda: conn
     try:
-        return mig.run(limit=limit, dry_run=dry_run)
+        return mig.run(limit=limit, dry_run=dry_run,
+                       book_ids=book_ids, conn=conn)
     finally:
         mig.get_conn = orig_conn
         if salvo is not None:
@@ -258,6 +261,53 @@ def test_so_publicados():
     print("OK  livro nao publicado fica fora")
 
 
+# --- recorte por book_ids: o caminho da reingestao de seed -----------------
+
+def test_book_ids_alcanca_nao_publicado():
+    """O passe do G so ve publicados; o seed alcanca tambem o que nao publicou.
+
+    Sem isto, o livro estrearia com link de BUSCA da Amazon no dia em que
+    passasse no Quality Gate — recriando o thin affiliate que estamos drenando.
+    """
+    conn = _db([{"id": "x", "titulo": "T", "offer_url": BUSCA_AMZ,
+                 "status_publish": 0}])
+    assert mig.fetch_pending(conn, 50) == [], "fila do G so ve publicados"
+    ids = [r["id"] for r in mig.fetch_pending(conn, 50, book_ids=["x"])]
+    assert ids == ["x"], ids
+    print("OK  book_ids alcanca livro ainda nao publicado")
+
+
+def test_book_ids_nao_ressuscita_blacklist():
+    conn = _db([
+        {"id": "bl", "titulo": "Banido", "offer_url": BUSCA_AMZ,
+         "status_publish": 0, "blacklist_reason": "conteudo impróprio"},
+        {"id": "qa", "titulo": "Quarentena", "offer_url": BUSCA_AMZ,
+         "status_publish": 0, "qa_quarantine": 1},
+        {"id": "ok", "titulo": "Normal", "offer_url": BUSCA_AMZ,
+         "status_publish": 0},
+    ])
+    ids = [r["id"] for r in mig.fetch_pending(conn, 50,
+                                              book_ids=["bl", "qa", "ok"])]
+    assert ids == ["ok"], f"blacklist/quarentena nao podem entrar: {ids}"
+    print("OK  book_ids exclui blacklist e quarentena")
+
+
+def test_book_ids_vazio_e_noop():
+    """Lista vazia != None. None = passe do G; [] = seed sem duplicata."""
+    conn = _db([{"id": "x", "titulo": "T", "offer_url": BUSCA_AMZ}])
+    assert _rodar(conn, ACHOU, book_ids=[]) == (0, 0, 0)
+    assert _row(conn, "x")["offer_url"] == BUSCA_AMZ
+    print("OK  book_ids=[] nao roda nada")
+
+
+def test_conn_externa_nao_e_fechada():
+    """A reingestao passa a propria conexao; fecha-la quebraria o step 1."""
+    conn = _db([{"id": "x", "titulo": "T", "offer_url": BUSCA_AMZ}])
+    _rodar(conn, ACHOU, book_ids=["x"])
+    conn.execute("SELECT 1").fetchone()   # levantaria se tivesse fechado
+    print("OK  conexao do chamador segue utilizavel")
+
+
 if __name__ == "__main__":
     test_oferta_boa_da_amazon_nao_entra_na_fila()
     test_dp_sem_preco_entra()
@@ -267,4 +317,8 @@ if __name__ == "__main__":
     test_erro_de_api_nao_carimba()
     test_dry_run_nao_escreve()
     test_so_publicados()
+    test_book_ids_alcanca_nao_publicado()
+    test_book_ids_nao_ressuscita_blacklist()
+    test_book_ids_vazio_e_noop()
+    test_conn_externa_nao_e_fechada()
     print("\nTodos os testes passaram.")

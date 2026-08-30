@@ -390,8 +390,13 @@ def insert_seed(conn, seed, seed_id=None):
         LIMIT 1
     """, (titulo, autor))
 
-    if cur.fetchone():
-        return "duplicate", None
+    _ja = cur.fetchone()
+    if _ja:
+        # Devolve o id do livro QUE JÁ EXISTE, não None. Reingerir um seed
+        # deixou de ser um no-op: `process_file` junta esses ids e religa a
+        # oferta ao ML (ver `_religar_duplicatas`). Antes, o seed reingerido
+        # não produzia efeito nenhum sobre o livro que ele repetia.
+        return "duplicate", _ja[0]
 
     # Gera o ID no Python para poder retorná-lo ao caller
     book_id = urandom(12).hex()
@@ -436,6 +441,50 @@ def insert_seed(conn, seed, seed_id=None):
 # PROCESS ONE FILE
 # =========================
 
+# =========================
+# RELIGAR DUPLICATAS (reingestão de seed)
+# =========================
+
+def _religar_duplicatas(conn, duplicate_ids):
+    """Reingerir um seed passou a AGIR sobre o livro que ele repete.
+
+    Antes, `insert_seed` devolvia "duplicate" e o seed reingerido não produzia
+    efeito nenhum: o módulo é INSERT puro, sem um único `UPDATE livros`. Quem
+    quisesse refazer os links precisava esperar a cota do step 31 alcançar o
+    livro na fila geral de 2.486.
+
+    O que ESTA função faz e o que deliberadamente NÃO faz:
+
+    - **Faz:** religa a oferta ao ML via `migrar_ofertas_ml`, que só troca
+      quando a API de catálogo CONFIRMA o produto (autor E título). Não
+      confirmando, nada muda — nem URL, nem marketplace, nem preço.
+    - **Não faz:** mexer em flag de publicação. O Quality Gate já reavalia
+      **todo** livro com `status_publish = 0` que não esteja em quarentena, a
+      cada passe do G (`quality_gate.fetch_pending`). Resetar algo aqui seria
+      redundante — e resetar `is_publishable` republicaria livro despublicado
+      de propósito.
+    - **Não faz:** ressuscitar blacklist. O recorte por `book_ids` em
+      `migrar_ofertas_ml.fetch_pending` exclui `blacklist_reason IS NOT NULL`
+      e `qa_quarantine = 1` explicitamente.
+
+    Falha aqui não derruba a ingestão: o seed já foi gravado, e a fila normal
+    do step 31 alcança esses livros de qualquer forma.
+    """
+    if not duplicate_ids:
+        return
+
+    try:
+        from steps import migrar_ofertas_ml
+        mig, nao, err = migrar_ofertas_ml.run(
+            book_ids=duplicate_ids, conn=conn, dry_run=False)
+        if mig or nao or err:
+            log(f"[SEED] Religação ao ML dos repetidos → migrados: {mig} | "
+                f"não confirmados: {nao} | erros: {err}")
+    except Exception as e:
+        log(f"[SEED] AVISO: religação ao ML falhou ({e}) — "
+            f"o step 31 alcança esses livros no passe do G.")
+
+
 def process_file(conn, filename, filepath):
     """Processa um arquivo de seed e insere os livros no banco.
 
@@ -454,6 +503,7 @@ def process_file(conn, filename, filepath):
     total  = len(seeds)
     counts = {"inserted": 0, "duplicate": 0, "filtered": 0, "invalid": 0, "error": 0}
     inserted_ids = []
+    duplicate_ids = []
 
     for i, seed in enumerate(seeds, start=1):
         titulo_log = seed.get("titulo", "?")
@@ -463,12 +513,19 @@ def process_file(conn, filename, filepath):
             result, book_id = insert_seed(conn, seed, seed_id=filename)
             counts[result] = counts.get(result, 0) + 1
             if book_id:
-                inserted_ids.append(book_id)
+                # `duplicate` também devolve id — o do livro que já existe.
+                # Separar aqui importa: `inserted_ids` alimenta a ingestão
+                # orientada, que espera SÓ os recém-criados.
+                (duplicate_ids if result == "duplicate" else inserted_ids).append(book_id)
         except Exception as e:
             log(f"[ERRO] {titulo_log}: {e}")
             counts["error"] += 1
 
     conn.commit()
+
+    # Reingestão deixou de ser inócua: o seed repetido religa a oferta do livro
+    # que ele descreve. Roda DEPOIS do commit, sobre a mesma conexão.
+    _religar_duplicatas(conn, duplicate_ids)
 
     inserted = counts["inserted"]
     skipped  = counts["duplicate"] + counts["filtered"] + counts["invalid"]
