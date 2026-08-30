@@ -335,6 +335,55 @@ em ~17 passes.
 > ML cuja busca falhou, aqui é de livros nunca tentados no ML. Populações
 > diferentes, números não comparáveis. Reconferir depois de alguns passes reais.
 
+#### Reingerir um seed deixou de ser inócuo (2026-08-30)
+
+Até aqui, devolver um arquivo de `seeds/ingested_seeds/` para `seeds/` e rodar
+o G **não produzia efeito nenhum** sobre os livros que o seed repetia:
+`offer_seed` é **INSERT puro** — não existe um único `UPDATE livros` no módulo
+—, e `insert_seed` devolvia `("duplicate", None)`.
+
+Isso confunde, porque o step *parece* reprocessar: `already_imported()` existe
+mas **nunca é chamado**, e o `jogos_pipeline` documenta a escolha — a proteção é
+por **item** (`titulo`+`autor`), não por nome de arquivo, para um seed novo que
+reusa um número não ficar preso em silêncio. Então o arquivo é relido inteiro e
+descartado item a item.
+
+Medido em 2026-08-30, simulando a trava contra o banco:
+
+| | arquivos | duplicados | inseriria |
+|---|---|---|---|
+| Livros (`NNN_offer_seeds`) | 4 | 23 | 1 |
+| Jogos (`NNN_jogos_seeds`) | 25 | 454 | 0 |
+| Infantis (`NNN_infantis_seeds`) | 6 | 48 | 0 |
+
+Hoje `insert_seed` devolve o **id do livro que já existe**, `process_file` junta
+esses ids e `_religar_duplicatas` chama `migrar_ofertas_ml.run(book_ids=…)`.
+
+**O que a reingestão faz e o que deliberadamente NÃO faz:**
+
+- **Faz:** religa a oferta ao ML, e só quando a API **confirma** o produto
+  (autor E título). Não confirmando, nada muda — nem URL, nem `marketplace`,
+  nem `preco_atual`.
+- **Não faz:** mexer em flag de publicação. O Quality Gate **já** reavalia todo
+  livro com `status_publish = 0` fora de quarentena, a cada passe
+  (`quality_gate.fetch_pending`) — resetar aqui seria redundante, e resetar
+  `is_publishable` republicaria livro despublicado de propósito.
+- **Não faz:** ressuscitar blacklist. O recorte por `book_ids` exclui
+  `blacklist_reason IS NOT NULL` e `qa_quarantine = 1` explicitamente.
+
+O recorte por `book_ids` também **relaxa o `status_publish = 1`** do passe do G:
+o seed chegou falando daquele livro, então vale religar mesmo o que ainda não
+publicou — senão ele estrearia com link de **busca** da Amazon no dia em que
+passasse no QG, recriando o *thin affiliate* que estamos drenando.
+
+⚠️ **A trava de duplicata dos livros é a mais fraca das três.**
+`offer_seed.insert_seed` compara `titulo = ?` — **case-sensitive** —, enquanto
+`jogos_pipeline` e `infantis_pipeline` usam `LOWER(titulo) = LOWER(?)`. Com os 4
+arquivos atuais isso não custou nada (1 escape, e era livro de fato ausente),
+mas o `archive.zip` em `ingested_seeds/` guarda **mais 21** `NNN_offer_seeds.json`
+— aí a chance de uma variação de caixa virar linha duplicada é bem maior. Medir
+antes de extrair.
+
 #### Indisponível na origem → RESGATE no ML antes de despublicar
 
 "Sumiu da Amazon" não é "sumiu do mundo". `offer_price_monitor._resgatar_no_ml`

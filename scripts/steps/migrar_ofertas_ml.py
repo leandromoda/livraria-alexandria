@@ -66,14 +66,45 @@ MIGRAR_ML_POR_CICLO = int(os.getenv("MIGRAR_ML_POR_CICLO", "150"))
 _DEEP_LINK_AMZ = "%/dp/%"
 
 
-def fetch_pending(conn, limit):
-    """Publicados na Amazon que valem a tentativa, nunca-tentados primeiro.
+def fetch_pending(conn, limit, book_ids=None):
+    """Livros na Amazon que valem a tentativa, nunca-tentados primeiro.
 
     Exclui deliberadamente quem já tem deep link `/dp/` **e** `preco_atual`:
     são 9 livros (medido 2026-08-30) com oferta que funciona, e trocar o
     marketplace deles seria regressão, não migração.
+
+    Dois recortes, conforme a origem da chamada:
+
+    - **Sem `book_ids`** (passe do G): só `status_publish = 1`. A cota é
+      escassa e o catálogo visível vem primeiro.
+    - **Com `book_ids`** (reingestão de seed): o filtro de publicação dá lugar
+      a exclusões explícitas de blacklist e quarentena. O seed chegou falando
+      daquele livro, então vale religar mesmo o que ainda não publicou — senão
+      ele estrearia com link de BUSCA da Amazon no dia em que passar no Quality
+      Gate, recriando o *thin affiliate* que estamos justamente drenando.
+      `blacklist_reason` é o marcador certo: `apply_blacklist` o grava junto
+      com `is_publishable = 0` e `status_publish = 0`.
     """
     cur = conn.cursor()
+
+    if book_ids:
+        ph = ",".join("?" * len(book_ids))
+        cur.execute(
+            f"""
+            SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id
+            FROM livros
+            WHERE id IN ({ph})
+              AND LOWER(COALESCE(offer_url, '')) LIKE '%amazon%'
+              AND NOT (offer_url LIKE ? AND preco_atual IS NOT NULL)
+              AND blacklist_reason IS NULL
+              AND COALESCE(qa_quarantine, 0) = 0
+            ORDER BY (ml_migracao_em IS NOT NULL), ml_migracao_em ASC, titulo ASC
+            LIMIT ?
+            """,
+            (*book_ids, _DEEP_LINK_AMZ, limit),
+        )
+        return cur.fetchall()
+
     cur.execute(
         """
         SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id
@@ -124,9 +155,17 @@ def _migrar(conn, livro_id, url_ml, preco):
     conn.commit()
 
 
-def run(limit=None, dry_run=False):
-    """Retorna (migrados, nao_confirmados, erros). Log agregado, nunca por item."""
-    limit = MIGRAR_ML_POR_CICLO if limit is None else limit
+def run(limit=None, dry_run=False, book_ids=None, conn=None):
+    """Retorna (migrados, nao_confirmados, erros). Log agregado, nunca por item.
+
+    `book_ids` restringe a livros específicos — é o caminho da reingestão de
+    seed (`offer_seed._religar_duplicatas`). `conn` permite reusar a conexão do
+    chamador; sem ela, abre e fecha a sua, como o resto dos steps.
+    """
+    if book_ids is not None and not book_ids:
+        return 0, 0, 0
+    if limit is None:
+        limit = len(book_ids) if book_ids else MIGRAR_ML_POR_CICLO
     if limit <= 0:
         return 0, 0, 0
 
@@ -142,12 +181,14 @@ def run(limit=None, dry_run=False):
 
     from steps.offer_resolver import inject_ml_affiliate
 
-    conn = get_conn()
-    rows = fetch_pending(conn, limit)
+    fechar = conn is None
+    conn = get_conn() if fechar else conn
+    rows = fetch_pending(conn, limit, book_ids=book_ids)
 
     if not rows:
-        log("[MIGRA_ML] Nenhum livro publicado na Amazon elegível.")
-        conn.close()
+        log("[MIGRA_ML] Nenhum livro na Amazon elegível.")
+        if fechar:
+            conn.close()
         return 0, 0, 0
 
     restantes = conn.execute(
@@ -160,7 +201,8 @@ def run(limit=None, dry_run=False):
         (_DEEP_LINK_AMZ,),
     ).fetchone()[0]
 
-    log(f"[MIGRA_ML] {len(rows)} livro(s) neste passe | {restantes} no passivo "
+    origem = "seed" if book_ids else "passe do G"
+    log(f"[MIGRA_ML] {len(rows)} livro(s) ({origem}) | {restantes} no passivo "
         f"| dry_run={dry_run}")
 
     migrados = nao_conf = erros = 0
@@ -189,7 +231,8 @@ def run(limit=None, dry_run=False):
                     float(achado["preco"]))
         migrados += 1
 
-    conn.close()
+    if fechar:
+        conn.close()
 
     log(f"[MIGRA_ML] Migrados: {migrados} | Não confirmados: {nao_conf} | "
         f"Erros: {erros} | Total: {len(rows)}")

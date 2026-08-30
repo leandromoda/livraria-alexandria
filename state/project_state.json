@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: passivo Amazon -> ML vira step 31 no G — 2.486 publicados na Amazon, dos quais 2.265 sao link de busca sem preco; migra so com confirmacao da API (60% em dry-run real, n=60), com anti-laco por ml_migracao_em (TASK-OFERTAS-009)",
+    "last_updated": "2026-08-30: reingestao de seed deixa de ser inocua — o seed repetido religa a oferta do livro ao ML (so com confirmacao da API), sem mexer em flag de publicacao nem ressuscitar blacklist (TASK-SEED-001, apos TASK-OFERTAS-009)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1163,6 +1163,39 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-SEED-001",
+      "description": "Reingerir um seed era INOCUO (INSERT puro, duplicate -> None); agora religa a oferta do livro repetido ao ML",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-08-30",
+      "resolved_on": "2026-08-30",
+      "origem": "Leandro perguntou se havia problema em mover ingested_seeds/ de volta para seeds/ e rodar o G, e depois definiu o requisito: 'se reingerido, o seed deveria republicar o que for possivel e passar no quality gate, refazendo os links para o ML, quando existente'.",
+      "diagnostico": "offer_seed e INSERT puro — nao existe um unico UPDATE livros no modulo — e insert_seed devolvia ('duplicate', None). O step PARECE reprocessar (already_imported() existe mas nunca e chamado, e o jogos_pipeline documenta a escolha: protecao por ITEM titulo+autor, nao por nome de arquivo), mas o arquivo era relido e descartado item a item.",
+      "medicao_da_simulacao": {
+        "data": "2026-08-30",
+        "metodo": "simulacao somente-leitura reproduzindo a trava de cada pipeline contra o books.db",
+        "livros": "4 arquivos | 23 duplicados | 1 inseriria (livro de fato ausente) | 1 arquivo com JSON corrompido (432_offer_seeds.json)",
+        "jogos": "25 arquivos | 454 duplicados | 0 inseriria",
+        "infantis": "6 arquivos | 48 duplicados | 0 inseriria",
+        "ressurreicao": "0 dos novos tinha homonimo entre os 13.096 despublicados"
+      },
+      "resolution": "insert_seed devolve o id do livro que JA EXISTE; process_file junta esses ids em duplicate_ids (separados de inserted_ids, que a ingestao orientada consome) e _religar_duplicatas chama migrar_ofertas_ml.run(book_ids=..., conn=...). O step 31 ganhou os parametros book_ids e conn.",
+      "o_que_NAO_faz_e_por_que": [
+        "NAO mexe em flag de publicacao: quality_gate.fetch_pending ja reavalia TODO livro com status_publish=0 fora de quarentena, a cada passe do G. Resetar seria redundante — e resetar is_publishable republicaria livro despublicado de proposito.",
+        "NAO ressuscita blacklist: o recorte por book_ids exclui blacklist_reason IS NOT NULL e qa_quarantine=1 explicitamente (apply_blacklist grava blacklist_reason junto com is_publishable=0 e status_publish=0).",
+        "NAO troca link sem confirmacao da API: mesma regra do step 31, pelos mesmos dois motivos (busca vazia, e preco da Amazon colado em URL do ML)."
+      ],
+      "recorte_book_ids_relaxa_status_publish": "No passe do G a fila e so status_publish=1 (cota escassa, catalogo visivel primeiro). Com book_ids o filtro cai, porque o seed chegou falando daquele livro: religar mesmo o nao publicado evita que ele estreie com link de BUSCA da Amazon no dia em que passar no Quality Gate.",
+      "achado_lateral_nao_corrigido": "A trava de duplicata dos LIVROS e a mais fraca das tres: offer_seed compara titulo = ? (case-sensitive), enquanto jogos_pipeline e infantis_pipeline usam LOWER(titulo)=LOWER(?). Com os 4 arquivos atuais nao custou nada, mas o archive.zip em ingested_seeds/ guarda mais 21 NNN_offer_seeds.json — medir antes de extrair. Tambem nao corrigidos, por serem do usuario: 432_offer_seeds.json com JSON corrompido (fica preso em seeds/ repetindo o erro a cada G), 460_offer_seeds.json ainda nao ingerido em seeds/, e XXX_infantis_seeds.json / XXX_jogos_seeds.json invisiveis aos tres pipelines por nao casarem o \\d+ do padrao.",
+      "files": [
+        "scripts/steps/offer_seed.py",
+        "scripts/steps/migrar_ofertas_ml.py",
+        "scripts/tests/test_seed_reingestao.py",
+        "scripts/tests/test_migrar_ofertas_ml.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
     {
       "id": "TASK-OFERTAS-009",
       "description": "Passivo de 2.486 livros publicados na Amazon migra para o ML pelo G (step 31), so quando a API confirma o produto",
