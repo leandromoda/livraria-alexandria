@@ -49,6 +49,7 @@ from steps import priority_scorer
 from steps import author_bio
 from steps import offer_list_importer
 from steps import fix_affiliate_urls
+from steps import migrar_ofertas_ml
 from steps import synopsis_export
 from steps import synopsis_import
 from steps import categorize_export
@@ -108,6 +109,12 @@ last_activity = time.time()
 # passe cair numa faixa de Amazon (quando o backlog do ML drenar), 150 × 13,7 s
 # são ~34 min — longo, mas tolerável num G que roda horas. `0` desliga.
 PRECO_POR_CICLO = int(os.getenv("PRECO_POR_CICLO", "150"))
+
+# Cota por passe do G da migração Amazon → ML (step 31). Cada livro custa
+# ~1-2 s (uma chamada à API do ML), então 150 fica na mesma ordem de
+# grandeza do PRECO_POR_CICLO. Passivo medido em 2026-08-30: 2.265 livros
+# publicados com URL de BUSCA da Amazon e sem preço. `0` desliga.
+MIGRAR_ML_POR_CICLO = int(os.getenv("MIGRAR_ML_POR_CICLO", "150"))
 
 
 # `log` vem de core.logger (import no topo), que escreve no console E no
@@ -422,6 +429,7 @@ def menu_publicacao(idioma):
 28 → Fix Affiliate URLs (corrige URLs sem parâmetros de comissão)
 29 → Importar offer_list.json (agente offer_finder → SQLite + Supabase)
 30 → Reparar Relações Autores-Livros (re-sincroniza livros_autores no Supabase)
+31 → Migrar Ofertas Amazon → ML (só quando a API do ML confirma o produto)
 
 V  → Voltar
 """)
@@ -491,6 +499,16 @@ V  → Voltar
             log("Re-sincronizando relações livros_autores no Supabase…")
             with StepRun("repair_relacoes_autores", idioma=idioma):
                 publish_autores.run_repair_relacoes()
+
+        elif op == "31":
+            # Entrada manual do mesmo step que o G roda a cada passe. Existe
+            # para dry-run e para drenar o passivo de uma vez, sem esperar as
+            # cotas por ciclo — o uso normal é o autopilot.
+            pacote = escolher_pacote()
+            seco = input("Dry-run (não grava)? [s/N]: ").strip().lower() == "s"
+            log(f"Migrando ofertas da Amazon para o ML (limit={pacote}, dry_run={seco})…")
+            with StepRun("migrar_ofertas_ml", idioma=idioma, pacote=pacote):
+                migrar_ofertas_ml.run(limit=pacote, dry_run=seco)
 
         else:
             print("Opção inválida.\n")
@@ -1079,6 +1097,22 @@ def _run_gargalo(idioma: str):
                 # Não deixa o scraping de preço derrubar o reparo de ofertas:
                 # bloqueio do marketplace é transitório e esperado.
                 log(f"[G] AVISO: monitor de preços falhou: {e_pm}")
+
+        # Migração do passivo Amazon → ML (step 31). Vem DEPOIS do monitor e
+        # ANTES do run_repair pela mesma razão de ordem já documentada acima: o
+        # deep link e o preço obtidos aqui saem republicados no mesmo ciclo.
+        #
+        # Roda no mesmo `try` do pré-voo porque depende da API do ML, mas em
+        # `try` próprio: indisponibilidade da API não pode derrubar o
+        # fix_affiliate_urls nem o run_repair, que são locais e sempre válidos.
+        if MIGRAR_ML_POR_CICLO > 0:
+            log(f"[G] Migração Amazon → ML — cota do ciclo: "
+                f"{MIGRAR_ML_POR_CICLO} livros")
+            try:
+                migrar_ofertas_ml.run(limit=MIGRAR_ML_POR_CICLO, dry_run=False)
+            except Exception as e_mg:
+                log(f"[G] AVISO: migração Amazon → ML falhou: {e_mg}")
+
         fix_affiliate_urls.run()
         publish_ofertas.run_repair()
     except Exception as e_of:

@@ -34,7 +34,7 @@ O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de açã
 | Ingestão | 1-4 | seeds, enrich, resolver ofertas, scraper |
 | Pré-processamento | 5-9 | slugs, slugify autores, dedup autores, dedup, review |
 | Geração de Conteúdo | 10-19 | 10 categorizar, 10R reset, 11 sinopses, 12 capas, 13 bios |
-| Publicação | 20-30 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações |
+| Publicação | 20-31 | 20 QG, 21 publicar, 22 autores, 23 categorias, 24 ofertas, 25 listas SEO, 26 publicar listas, 27 reparar ofertas, 28 fix URLs, 29 importar offer_list, 30 reparar relações, **31 migrar ofertas Amazon → ML** |
 | Auditoria/QA | 40-61 | 40 preços, 41 conectividade, 42 conteúdo, 43 reparar ruins, 44 reparo slug, 45 blacklist, 46 export auditoria, 47 integridade, 48 listas, 49 autores sem bio, 50 veracidade títulos, 51 consistência, 52 reprocessar blacklist, 53 QA remediação, 54 capas, 55 classificação, 56 QA auditoria completa do site, 57 QA passe completo, **58 remediação de capas, 59 reconcile sinopse, 60 marcar sinopses p/ regen, 61 ingerir relatórios de auditoria** |
 | Exports | 91-94 | transcripts/estado |
 | Banco | 95-97 | backup, restore, recover |
@@ -280,6 +280,61 @@ que o spam update penaliza. Hoje o step 3 tem três degraus:
 Corrigido de quebra um `'Amazon'` maiúsculo que não casava com nenhum ramo e
 resolvia para `None`.
 
+#### O passivo da Amazon migra pelo G, e só com confirmação da API (step 31)
+
+O `#305` fez o step 3 rotear sempre para o ML — **mas só para livro novo**:
+`offer_resolver.fetch_pending` filtra `offer_url IS NULL`. Quem já tinha sido
+resolvido ficou na Amazon. Medido no `books.db` em **2026-08-30**:
+
+| | livros |
+|---|---|
+| publicados | 4.860 |
+| com `offer_url` da Amazon | **2.486** |
+| └ URL de **busca** e **sem preço** | **2.265 (91%)** |
+| └ com `preco_atual` | 203 |
+| └ com deep link `/dp/` | 27 |
+| └ **com deep link E preço** (oferta que funciona) | **9** |
+
+Os 2.265 são o perfil de *thin affiliate* que o diagnóstico do spam update
+apontou. Migrá-los ataca esse passivo **sem criar uma única página nova** — ao
+contrário de quase tudo mais que aumenta publicação.
+
+`steps/migrar_ofertas_ml.py` roda a cada passe do G (cota `MIGRAR_ML_POR_CICLO`,
+padrão 150, `0` desliga), **depois** do monitor de preços e **antes** do
+`run_repair` — mesma razão de ordem do monitor: o deep link e o preço obtidos
+saem republicados no mesmo ciclo. Menu 31 é a entrada manual, com dry-run.
+
+> ⚠ **Só migra no degrau 1 (API confirma), nunca no degrau 2 (busca do ML).**
+> Ficou registrado na TASK-OFERTAS-007 que trocar busca da Amazon por busca do
+> ML "é neutro". **Não é**, por dois motivos:
+>
+> 1. Livro fora do catálogo do ML troca uma busca que acha por uma **vazia**.
+> 2. Pior: `offer_resolver.update_offer` faz
+>    `preco_atual = COALESCE(?, preco_atual)`. Sem confirmação, `preco` vem
+>    `None` e **o preço da Amazon sobrevive colado numa URL do ML** — nos 203
+>    livros com preço, preço de um marketplace exibido como se fosse do outro.
+>
+> Para seed **novo** o degrau 2 continua certo: lá não há nada a perder.
+
+> ⚠ **A fila não pode virar laço.** Livro que a API não confirma segue
+> elegível — o catálogo do ML muda —, mas reconsultá-lo a cada passe repetiria
+> o laço de categorização do #307 (547 rejeições para 32 livros). A trava é a
+> coluna `ml_migracao_em`: **nunca-tentados primeiro**, depois os de carimbo
+> mais antigo. Mesmo padrão do `preco_updated_at` no monitor. Erro de rede
+> **não** carimba — falha de API não é "livro avaliado".
+
+**Medido em dry-run real contra a API (2026-08-30, n=60, nada gravado):**
+**36 confirmados, 24 não, 0 erros — 60%**, a 3,2 s/livro (3m12s). Projeta
+**~1.480 dos 2.477** ganhando deep link + preço, em ~2h13 de API distribuídas
+em ~17 passes.
+
+> ⚠ **Limites desta medição, para não virar o próximo "41%":** (1) n=60 de
+> 2.477; (2) a amostra **não é aleatória** — a fila ordena por `titulo ASC`
+> dentro dos nunca-tentados, então é um recorte alfabético; (3) os 60% **não
+> contradizem** os ~30% do monitor: lá a população já é de livros roteados ao
+> ML cuja busca falhou, aqui é de livros nunca tentados no ML. Populações
+> diferentes, números não comparáveis. Reconferir depois de alguns passes reais.
+
 #### Indisponível na origem → RESGATE no ML antes de despublicar
 
 "Sumiu da Amazon" não é "sumiu do mundo". `offer_price_monitor._resgatar_no_ml`
@@ -465,6 +520,7 @@ scripts/
 | 15 | Publicar Ofertas | publish_ofertas.py | — | step 13 | status_publish_oferta=1 |
 | 16 | Listas SEO | list_composer.py | — | step 13 | tabelas listas/listas_livros |
 | 17 | Monitor Preços | offer_price_monitor.py | — | step 13 | offer_price_log |
+| 31 | Migrar Ofertas Amazon→ML | migrar_ofertas_ml.py | — | step 13 | offer_url, preco_atual, ml_migracao_em |
 | 18 | Auditoria Conectiv | auditor.py | — | — | connectivity_log + NNNN_audit_connectivity.json |
 | **19** | **Auditoria Conteúdo** | auditor.py | **Claude** | step 13 | audit_log + NNNN_audit_content.json |
 | 40–57 | Auditoria/QA (suite) | auditor.py (modes) + qa.py | parcial | step 13 | data/logs/NNNN_audit_<mode>.json |
@@ -1325,6 +1381,7 @@ CLASSIFY_POR_CICLO=25            # livros por ciclo
 PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
 PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
 FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o seed
+MIGRAR_ML_POR_CICLO=150          # step 31: passivo Amazon -> ML por passe do G
 
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
