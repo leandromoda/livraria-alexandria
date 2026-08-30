@@ -135,6 +135,12 @@ def ensure_schema(conn):
         ("lookup_query",          "TEXT"),
         ("categoria",             "TEXT"),
         ("categorize_attempts",   "INTEGER DEFAULT 0"),
+        # Data da última tentativa de migrar a oferta da Amazon para o ML
+        # (`steps/migrar_ofertas_ml.py`). É o anti-laço da fila: nunca-tentados
+        # primeiro, depois os mais antigos. Sem isso, os livros que a API não
+        # confirma seriam reconsultados a cada passe do G — o mesmo laço que o
+        # #307 corrigiu na categorização.
+        ("ml_migracao_em",        "TEXT"),
         # Motivo textual da rejeição do agente de classificação. É o que torna
         # `status_categorize = 2` legível sem abrir log — e a base factual para
         # decidir a ampliação da taxonomia (TASK-TAX-001).

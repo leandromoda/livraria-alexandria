@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: fix do laco de categorizacao CONFIRMADO em execucao real (547 -> 10 rejeicoes, 40,5% -> 6,7% do lote, e zero repeticao apos o 1o lote); monitor de precos ganhou telemetria agregada e o 41% de 29/08 foi corrigido — o passe seguinte deu 20%, media real ~30% (TASK-OFERTAS-008)",
+    "last_updated": "2026-08-30: passivo Amazon -> ML vira step 31 no G — 2.486 publicados na Amazon, dos quais 2.265 sao link de busca sem preco; migra so com confirmacao da API (60% em dry-run real, n=60), com anti-laco por ml_migracao_em (TASK-OFERTAS-009)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1163,6 +1163,45 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-OFERTAS-009",
+      "description": "Passivo de 2.486 livros publicados na Amazon migra para o ML pelo G (step 31), so quando a API confirma o produto",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-30",
+      "resolved_on": "2026-08-30",
+      "origem": "Pergunta do Leandro: 'valeria a pena reingerir os seeds ja processados para recriar os links que sairam Amazon, dessa vez para o ML? Os demais dados seriam preservados?'",
+      "resposta_a_pergunta": "A reingestao preservaria tudo — e por isso mesmo nao resolveria nada. offer_seed e INSERT puro: antes de inserir faz SELECT id FROM livros WHERE titulo=? AND autor=? e, achando, retorna 'duplicate'. NAO existe um unico UPDATE livros no modulo. Os 17.331 livros voltariam como duplicata e nenhuma offer_url seria tocada. Ainda haveria duas catracas antes: already_imported() bloqueia por nome de arquivo (499 seeds em seed_imports) e os JSONs foram movidos para ingested_seeds/.",
+      "por_que_o_passivo_existe": "O #305 fez o step 3 rotear sempre para o ML, mas so para livro NOVO: offer_resolver.fetch_pending filtra offer_url IS NULL. Quem ja tinha sido resolvido ficou na Amazon e so migraria se o monitor o visitasse E a origem falhasse.",
+      "dimensionamento": {
+        "medido_em": "2026-08-30 (books.db)",
+        "publicados": 4860,
+        "offer_url_amazon": 2486,
+        "busca_sem_preco": "2.265 (91%) — thin affiliate puro, alvo limpo",
+        "com_preco_atual": 203,
+        "com_deep_link_dp": 27,
+        "com_deep_link_E_preco": "9 — oferta que funciona, EXCLUIDA da fila"
+      },
+      "por_que_so_o_degrau_1": "Esta task CORRIGE o que a TASK-OFERTAS-007 registrou como 'neutro'. Trocar busca da Amazon por busca do ML NAO e neutro: (1) livro fora do catalogo do ML troca uma busca que acha por uma vazia; (2) pior, offer_resolver.update_offer faz preco_atual = COALESCE(?, preco_atual), entao sem confirmacao o preco da AMAZON sobrevive colado numa URL do ML — nos 203 com preco, preco de um marketplace exibido como se fosse do outro. Para seed NOVO o degrau 2 segue certo: la nao ha o que perder.",
+      "anti_laco": "Livro nao confirmado segue elegivel (o catalogo do ML muda), mas reconsulta-lo a cada passe repetiria o laco do #307. A coluna ml_migracao_em ordena a fila: nunca-tentados primeiro, depois carimbo mais antigo — mesmo padrao do preco_updated_at no monitor. Erro de rede NAO carimba: falha de API nao e 'livro avaliado'.",
+      "medicao_dry_run": {
+        "data": "2026-08-30",
+        "metodo": "migrar_ofertas_ml.run(limit=60, dry_run=True) contra a API real, nada gravado",
+        "resultado": "36 confirmados | 24 nao | 0 erros = 60%, a 3,2 s/livro (3m12s)",
+        "projecao": "~1.480 dos 2.477 com deep link + preco, ~2h13 de API em ~17 passes",
+        "limites": "n=60 de 2.477; amostra NAO aleatoria (a fila ordena por titulo ASC dentro dos nunca-tentados, entao e recorte alfabetico); e os 60% NAO contradizem os ~30% do monitor — la a populacao ja e de livros roteados ao ML cuja busca falhou, aqui e de livros nunca tentados no ML. Populacoes diferentes. Reconferir apos passes reais."
+      },
+      "resolution": "steps/migrar_ofertas_ml.py, rodando a cada passe do G (MIGRAR_ML_POR_CICLO, padrao 150, 0 desliga), DEPOIS do monitor de precos e ANTES do run_repair — mesma razao de ordem do monitor: o deep link e o preco saem republicados no mesmo ciclo (status_publish_oferta=0 reabre, e o _payload_hash ja inclui url_afiliada e preco). Menu 31 e a entrada manual, com dry-run. Coluna ml_migracao_em em core/db.py. 8 invariantes em tests/test_migrar_ofertas_ml.py.",
+      "por_que_no_G_e_nao_num_tool": "Pedido explicito do Leandro: 'fazer isso atraves do pipeline, em uma opcao permanente acionavel atraves do G'. Coerente com a regra do CLAUDE.md: o uso e autopilot por padrao, e step nao coberto deve ser INCORPORADO ao autopilot, nao virar tool avulso.",
+      "alinhamento_com_o_spam_update": "Os 2.265 links de busca sem preco SAO o perfil de thin affiliate que o diagnostico de agosto apontou. Este step ataca esse passivo sem criar UMA pagina nova — ao contrario da ampliacao de taxonomia (TASK-TAX-001), que fica bloqueada justamente por criar.",
+      "files": [
+        "scripts/steps/migrar_ofertas_ml.py",
+        "scripts/main.py",
+        "scripts/core/db.py",
+        "scripts/tests/test_migrar_ofertas_ml.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
     {
       "id": "TASK-OFERTAS-008",
       "description": "Monitor de precos era indiagnosticavel (so 'Ativos: N | Erros: N') — e o 41% de 29/08 nao era tendencia: o passe seguinte deu 20%",
