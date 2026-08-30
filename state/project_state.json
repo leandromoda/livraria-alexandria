@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-29: laco de categorizacao corrigido — rejeicao devolvia o livro a mesma fila e queimava ~40% de cada lote de classify (547 rejeicoes para 32 livros); ampliacao da taxonomia registrada e BLOQUEADA pela colisao com o spam update (TASK-CLASSIFY-001, TASK-TAX-001)",
+    "last_updated": "2026-08-30: fix do laco de categorizacao CONFIRMADO em execucao real (547 -> 10 rejeicoes, 40,5% -> 6,7% do lote, e zero repeticao apos o 1o lote); monitor de precos ganhou telemetria agregada e o 41% de 29/08 foi corrigido — o passe seguinte deu 20%, media real ~30% (TASK-OFERTAS-008)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1164,6 +1164,27 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-OFERTAS-008",
+      "description": "Monitor de precos era indiagnosticavel (so 'Ativos: N | Erros: N') — e o 41% de 29/08 nao era tendencia: o passe seguinte deu 20%",
+      "priority": "medium",
+      "status": "resolved",
+      "registered_on": "2026-08-30",
+      "resolved_on": "2026-08-30",
+      "como_apareceu": "Analise do log do G que o Leandro rodou apos o #307. O monitor rendeu 30/150 = 20%, contra os 41% (62/150) registrados no passe de 4h antes, no MESMO dia. O log nao permitia dizer o porque.",
+      "correcao_de_afirmacao": "O 41% foi escrito no scripts/CLAUDE.md em 29/08 com a leitura de que o rendimento tinha subido e de que isso era 'coerente com a fila servir o ML primeiro'. NAO era tendencia — eram dois pontos com tres variaveis mudando junto (API, ordem da fila, cota). Quatro passes reais: 6% (3/50, so scraping) -> 24% (12/50) -> 41% (62/150) -> 20% (30/150). Somando os tres com API: 104/350 = ~30%. Use 30% como expectativa, nao 41% nem os 58% da bancada antiga.",
+      "o_que_o_passe_permitiu_concluir": "Cruzando o 0736_audit_prices.json com o books.db: os 120 erros eram 120 URLs do Mercado Livre, NENHUMA da Amazon. Com PRIORIZAR_ML=1 o passe inteiro e ML, entao o teto do monitor hoje e a cobertura do catalogo do ML — nao mais o bot wall da Amazon. Isso desloca o alvo: ganhar aqui e melhorar o casamento na /products/search, nao driblar bloqueio.",
+      "o_defeito": "Esse cruzamento teve de ser feito A MAO porque o log nao dizia nada. A unica saida era 'Ativos: N | Erros: N', e 'a API do ML rendeu menos' e 'o scraping do ML apanhou do bot wall' — que sao correcoes OPOSTAS — eram indistinguiveis. O contador ml_api_ok ate existia em marketplace_scraper._run_stats, mas so era impresso pelo run() do step 4; o monitor chama _resolve_produto direto e nunca passava por la.",
+      "resolution": "marketplace_scraper._resolve_stats com 7 contadores (ml_api_ok, ml_api_miss, ml_api_off, ml_api_erro, scrape_sem_pagina, scrape_sem_card, scrape_ok), mais reset_resolve_stats() e resolve_stats_line(). O offer_price_monitor.run() zera no inicio (senao herdaria os contadores do step 4 no mesmo processo — o mesmo latch que o run() do scraper ja corrigia) e emite '[MONITOR] Resolucao: ...' no fim. AGREGADO, nunca por item: log por item foi o que inchou os logs de julho. Zeros sao omitidos da linha.",
+      "distincao_que_faltava": "scrape_sem_pagina (fetch_page devolveu None = bot wall/timeout) vs scrape_sem_card (pagina veio, nenhum card casou titulo+autor) vs ml_api_miss (a /products/search respondeu, mas o portao de duas folhas reprovou). Os tres eram 'error' indiferenciado.",
+      "afirmacao_falsa_corrigida_no_codigo": "A docstring de _resolve_produto afirmava 'a API entrega 58% (n=70)'. Os 58% vinham da bancada que validava so o atributo AUTHOR sobre results[0] — numero que o proprio project_state ja marcava como errado desde 29/08, mas que continuava escrito no codigo como justificativa. Trocado por ~30% medido em execucao real.",
+      "files": [
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/steps/offer_price_monitor.py",
+        "scripts/tests/test_resolve_stats.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
       "id": "TASK-CLASSIFY-001",
       "description": "Rejeicao de categorizacao devolvia o livro a MESMA fila e na MESMA posicao — 547 rejeicoes para 32 livros, ~40% de cada lote de classify",
       "priority": "high",
@@ -1228,7 +1249,25 @@
         "scripts/core/db.py",
         "scripts/tests/test_categorize_rejeicao.py",
         "scripts/CLAUDE.md"
-      ]
+      ],
+      "verificado_em_execucao_real": {
+        "log": "pipeline_2026-08-29_10-28-52",
+        "commit": "410525a (o proprio merge do #307)",
+        "antes": {
+          "chamadas": 59,
+          "ok": 803,
+          "rejeitados": 547,
+          "pct_do_lote": "40,5%"
+        },
+        "depois": {
+          "chamadas": 7,
+          "ok": 140,
+          "rejeitados": 10,
+          "pct_do_lote": "6,7%"
+        },
+        "prova_de_que_o_laco_morreu": "As 10 rejeicoes aconteceram TODAS no primeiro lote (10:38:28) e nenhuma se repetiu nos 6 lotes seguintes — sao exatamente os 9 do laco mais o Basic Fantasy RPG. Do 2o lote em diante o aproveitamento foi 100%.",
+        "conferido_no_books_db": "status_categorize = 2 em 10 livros, com categorize_attempts somando 10 — uma tentativa cada, nenhum reprocessado. categorize_motivo preenchido e legivel nos 10. status_categorize = 1 subiu de 5.123 para 5.263 (+140, batendo com os OK)."
+      }
     },
     {
       "id": "TASK-TAX-001",

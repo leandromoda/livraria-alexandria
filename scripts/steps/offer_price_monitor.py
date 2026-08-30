@@ -451,6 +451,15 @@ def run(limit=50, dry_run=False):
         conn.close()
         return
 
+    # Zera a telemetria do resolvedor para que a linha final descreva ESTE passe.
+    # Sem o reset, um passe herdaria os contadores do step 4 no mesmo processo —
+    # o mesmo erro de circuit latchado que o `run()` do scraper já corrigiu.
+    try:
+        from steps.marketplace_scraper import reset_resolve_stats
+        reset_resolve_stats()
+    except Exception:
+        pass
+
     counts = {"active": 0, "price_changed": 0, "unavailable": 0, "error": 0}
     results = []
 
@@ -484,6 +493,16 @@ def run(limit=50, dry_run=False):
         f"Erros: {counts['error']} | "
         f"Total: {total}"
     )
+
+    # Sem esta linha o passe é indiagnosticável. Medido em 2026-08-29: dois
+    # passes do mesmo dia renderam 41% (62/150) e 20% (30/150), e descobrir o
+    # porquê exigiu cruzar o NNNN_audit_prices.json com o books.db à mão — os
+    # 120 erros eram 120 URLs do ML, nenhuma da Amazon. Agregado, nunca por item.
+    try:
+        from steps.marketplace_scraper import resolve_stats_line
+        log(f"[MONITOR] Resolução: {resolve_stats_line()}")
+    except Exception:
+        pass
 
     if dry_run:
         log("[MONITOR] dry-run ativo — nenhuma alteração foi salva.")
