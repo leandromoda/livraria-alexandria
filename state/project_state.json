@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: rastreamento de cliques de oferta estava MORTO desde 18/03 (utm_medium inexistente -> PGRST204 silencioso); GSC registrou 518 cliques reais nessa janela cega. Corrigido, com o erro agora logado e a auditoria verificando o EFEITO e nao o status (TASK-TRACK-002)",
+    "last_updated": "2026-08-30: primeira execucao real do step 31 no G — 420 livros migrados para o ML (49% de 851, corrigindo os 60% do dry-run), deep links do ML de 102 para 635 e o ML passando a Amazon no catalogo publicado; todas as chamadas vieram pelo caminho da reingestao de seed",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1246,7 +1246,8 @@
         "scripts/tests/test_seed_reingestao.py",
         "scripts/tests/test_migrar_ofertas_ml.py",
         "scripts/CLAUDE.md"
-      ]
+      ],
+      "verificado_em_execucao_real": "Primeira oportunidade real, no G de 2026-08-30 08:09: as 24 chamadas do step 31 vieram TODAS pelo caminho da reingestao (o log marca '(seed)'), porque o Leandro devolveu os arquivos de ingested_seeds/ para seeds/. 420 livros religados ao ML, 0 erros. O _religar_duplicatas rodou em producao exatamente como desenhado."
     },
     {
       "id": "TASK-OFERTAS-009",
@@ -1285,7 +1286,19 @@
         "scripts/core/db.py",
         "scripts/tests/test_migrar_ofertas_ml.py",
         "scripts/CLAUDE.md"
-      ]
+      ],
+      "verificado_em_execucao_real": {
+        "log": "pipeline_2026-08-30_08-09-13 (commit 3aff196)",
+        "chamadas_do_step_31": 24,
+        "n": 851,
+        "migrados": 420,
+        "nao_confirmados": 431,
+        "erros": 0,
+        "taxa": "49%",
+        "correcao_do_dry_run": "O dry-run da manha media 60% com n=60. A ressalva registrada junto — amostra nao aleatoria, recorte alfabetico — se confirmou: era otimista em ~11 pontos. USE 49%.",
+        "efeito_no_catalogo": "publicados na Amazon 2.486 -> 2.156 | publicados no ML 2.374 -> 2.672 | deep links mercadolivre.com.br/p/ 102 -> 635. O ML passou a Amazon pela primeira vez, e 533 livros sairam de URL de busca para pagina de produto com preco.",
+        "99_despublicados": "99 dos migrados estao com status_publish=0 — e o relaxamento do status_publish no recorte por book_ids funcionando: nao vao estrear com link de busca da Amazon ao passar no QG."
+      }
     },
     {
       "id": "TASK-OFERTAS-008",
