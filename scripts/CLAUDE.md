@@ -392,6 +392,41 @@ em ~17 passes.
 > ML cuja busca falhou, aqui é de livros nunca tentados no ML. Populações
 > diferentes, números não comparáveis. Reconferir depois de alguns passes reais.
 
+> ✅ **RECONFERIDO no mesmo dia, em execução real — 49%, não 60%** (log
+> `pipeline_2026-08-30_08-09-13`, commit `3aff196`, 24 chamadas do step 31):
+>
+> | | dry-run (manhã) | execução real |
+> |---|---|---|
+> | n | 60 | **851** |
+> | migrados | 36 | **420** |
+> | não confirmados | 24 | 431 |
+> | erros | 0 | **0** |
+> | taxa | 60% | **49%** |
+>
+> **Use 49%** — n=851 contra n=60, e sem o viés alfabético. A ressalva escrita
+> acima se confirmou: o recorte alfabético do dry-run era otimista em ~11 pontos.
+>
+> **Efeito no catálogo, medido no `books.db` logo depois:**
+>
+> | | antes (30/08 manhã) | depois |
+> |---|---|---|
+> | publicados na Amazon | 2.486 | **2.156** |
+> | publicados no ML | 2.374 | **2.672** |
+> | deep links `mercadolivre.com.br/p/` | 102 | **635** |
+>
+> O ML passou a Amazon pela primeira vez, e **533 livros saíram de URL de busca
+> para página de produto com preço** — que é o ganho que interessa contra o
+> perfil de *thin affiliate*.
+>
+> Todas as 24 chamadas vieram pelo caminho da **reingestão de seed** (o log
+> marca `(seed)`), porque o Leandro havia devolvido os arquivos de
+> `ingested_seeds/` para `seeds/`. É o `_religar_duplicatas` do #310 rodando em
+> produção na primeira oportunidade.
+>
+> **99 dos migrados estão despublicados** — é o relaxamento do `status_publish`
+> no recorte por `book_ids` funcionando: eles não vão estrear com link de busca
+> da Amazon quando passarem no Quality Gate.
+
 #### Reingerir um seed deixou de ser inócuo (2026-08-30)
 
 Até aqui, devolver um arquivo de `seeds/ingested_seeds/` para `seeds/` e rodar
