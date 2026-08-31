@@ -191,6 +191,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-08-30 | tracking | **Cliques de oferta não eram gravados desde 18/03**: o `INSERT` em `oferta_clicks` mandava `utm_medium`, coluna inexistente → 400 PGRST204, erro não conferido, redirect 302 normal. Payload alinhado ao schema, erro logado na Vercel, e a auditoria passou a verificar se a linha ENTROU (não só o status do redirect). Migração opcional de paridade em `scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql` | #312 |
 | 2026-08-21 | dados estruturados | **"Valor ISBN13 invalido para `isbn`"** (Listagens do comerciante, `[WNC-10030322]`): `livros/[slug]` e `ofertas` emitiam `livro.isbn` cru no JSON-LD, e o `gtin13` so contava digitos. Novo `lib/isbn.ts` valida o digito verificador e converte ISBN-10 → ISBN-13 (prefixo 978 + checksum); `isbn`/`gtin13` so saem quando o ISBN e valido, `sku` segue o valor do banco. Afetava 2 dos 9 livros publicados com ISBN | #289 |
 | 2026-08-20 | noindex/404 | **`/categorias/[slug]` sem livro publicavel: 200 + `noindex` → 404** (espelha o #263, que fez o mesmo para autor). Era o que reprovava a validacao do bucket "Excluida pela tag noindex" (604): das 604 URLs, 594 sao `/autores/*` obsoletas (nenhuma rastreada apos 08/08) e o unico exemplo pos-fix era `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`. Sao **6 de 170** categorias afetadas (medido 2026-08-20 via PostgREST), ja fora do sitemap e do indice. Inclui o guard `livrosQueryFailed` para nao transformar falha transitoria do Supabase em 404 cacheado por 24h | #286 |
 | 2026-08-09 | robots/links | **"Indexada, mas bloqueada pelo robots.txt" (107 URLs, 100% `/api/click/*`)**: bloquear o crawl não impede a indexação quando a URL é descoberta por link interno seguível. Os 3 links de `/api/click/` (`livros/[slug]` ×2, `ofertas`) tinham só `noopener noreferrer`, enquanto `jogos` e `infantis` já usavam `nofollow sponsored` — daí só `/api/click/` aparecer no bucket. Agora os 5 links de oferta usam `nofollow sponsored`. Também fecha uma não conformidade com a política de links afiliados do Google | #272 |
@@ -304,11 +305,62 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-08-30 | — | — | — | — | — | — | — | — | — |  ← seção de DESEMPENHO, não de indexação
 | 2026-08-20 | 4.235 | 1.277 | 410 | 22 | 2 | 110 | 1.444 | 604 ⚠️ | 108 |
 | 2026-08-09 | 3.926 | 1.260 | 278 | 23 | 2 | 74 | 15 | 580 | 107 |
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-08-30 — desempenho (tráfego), não indexação
+
+Pergunta do Leandro: *"e todo o tráfego registrado no GSC?"*, depois de se
+descobrir que o site praticamente não registra clique de afiliado.
+
+**Relatório de Desempenho, 26/03/2026 – 29/08/2026:**
+
+| Cliques | Impressões | CTR média | Posição média |
+|---|---|---|---|
+| **518** | 34,8 mil | 1,5% | 20,4 |
+
+Top consultas: `livraria alexandria` (29 cliques / 153 impr.),
+`livraria de alexandria` (5/323 — intenção histórica, não a loja),
+`homem aranha de volta ao preto` (3/6), `rule 34 unidade` (2/89),
+`blindsight livro` (2/74). Ou seja: o topo é **navegacional de marca** ou
+**intenção trocada**, não busca comercial por livro.
+
+> 🔴 **O achado da seção — o rastreamento de cliques de oferta está morto desde
+> 2026-03-18.** O `INSERT` em `oferta_clicks` manda `utm_medium`, coluna que
+> **não existe** na tabela; o PostgREST devolve **400 PGRST204** e o handler
+> **não confere o erro**, seguindo para o redirect 302. Falha silenciosa.
+>
+> Como foi provado sem adivinhar: a auditoria de conectividade bateu em
+> `/api/click/25568c3b-…` às **14:00 de 2026-08-30** e recebeu **302**
+> (`0739_audit_connectivity.json`) — e a tabela continuou com **4 linhas**, a
+> mais nova de **fevereiro**. Redirect OK, gravação não.
+>
+> **Controle natural:** `jogo_clicks` e `livro_infantil_clicks` **têm**
+> `utm_medium` — e são justamente as duas que seguiram registrando (42 e 4).
+>
+> Culpado datado: commit **`2e1b104` (2026-03-18)**, intitulado
+> *"feat(admin): status do catálogo, origens de tráfego e fix UTM tracking"*.
+> Quebrou o que se propunha a consertar.
+>
+> **Consequência para a leitura de tudo:** os **518 cliques** do período caem
+> quase inteiramente dentro da janela cega. Não sabemos quantos visitantes
+> clicaram numa oferta — **não há dado**, o que é diferente de haver zero.
+> Qualquer conclusão anterior de "ninguém clica nas ofertas" está **suspensa**.
+
+Mesma classe do gotcha já registrado para `status_publish` em `autores`/`listas`
+(coluna ausente → PGRST204 → operação trava). **Ao mexer em payload de escrita
+no Supabase, conferir o schema remoto pelo OpenAPI do PostgREST** — é o que o
+`jogos.py` opção V já faz com `verify_supabase()`.
+
+⚠️ **Lição de método, e ela vale além do GSC:** a auditoria de conectividade
+cobria essa rota desde sempre e dava **✓** o tempo todo, porque conferia o
+**status do redirect** e não o **efeito**. Status é intenção; contagem é efeito.
+O novo check `Click API grava o clique` compara o total de `oferta_clicks`
+antes e depois da batida.
 
 Colunas fora da tabela em 2026-08-20: Página com redirecionamento **1.809**,
 Cópia sem canônica do usuário **38**, Cópia c/ canônica diferente **426**,

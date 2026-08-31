@@ -51,7 +51,10 @@ export async function GET(
 
   const requestUrl = new URL(request.url);
   const utm_source   = requestUrl.searchParams.get("utm_source")   ?? null;
-  const utm_medium   = requestUrl.searchParams.get("utm_medium")   ?? null;
+  // `utm_medium` NÃO é lido de propósito: a coluna não existe em
+  // `oferta_clicks` e mandá-la quebrava o insert inteiro (ver o bloco 4).
+  // Para voltar a capturá-la, aplicar antes
+  // `scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql`.
   const utm_campaign = requestUrl.searchParams.get("utm_campaign") ?? null;
   const session_id   = requestUrl.searchParams.get("session_id")   ?? null;
 
@@ -71,18 +74,48 @@ export async function GET(
 
   /**
    * 4) Insert tracking
+   *
+   * ⚠ ESTE INSERT FALHOU EM SILÊNCIO DE 2026-03-18 A 2026-08-30.
+   *
+   * A tabela `oferta_clicks` no Supabase NÃO tem a coluna `utm_medium`
+   * (as irmãs `jogo_clicks` e `livro_infantil_clicks` têm — e são justamente
+   * as duas que continuaram registrando). Mandá-la no payload faz o PostgREST
+   * devolver 400 PGRST204 "column not found", a mesma armadilha já documentada
+   * para `status_publish` em `autores`/`listas`.
+   *
+   * O erro não era conferido, então o handler seguia para o redirect 302 e
+   * ninguém via nada. Medido em 2026-08-30: a auditoria de conectividade bateu
+   * nesta rota às 14:00 e recebeu 302, e nenhuma linha entrou — a tabela
+   * seguia com 4 registros, todos de `localhost` em fevereiro.
+   *
+   * O commit que introduziu `utm_medium` é o `2e1b104` (2026-03-18), intitulado
+   * "fix UTM tracking". No mesmo intervalo o GSC registrou **518 cliques** de
+   * visitantes reais — tráfego sobre o qual não há um único dado de oferta.
+   *
+   * Duas mudanças: o payload passa a espelhar o schema real, e a falha passa a
+   * aparecer no log da Vercel. O redirect NUNCA é bloqueado por erro de
+   * tracking — perder a métrica é ruim, perder o clique do usuário é pior.
    */
-  await supabase.from("oferta_clicks").insert({
-    oferta_id: oferta.id,
-    livro_id: oferta.livro_id,
-    user_agent: userAgent,
-    referer: referer,
-    ip_hash: ipHash,
-    utm_source,
-    utm_medium,
-    utm_campaign,
-    session_id,
-  });
+  const { error: trackError } = await supabase
+    .from("oferta_clicks")
+    .insert({
+      oferta_id: oferta.id,
+      livro_id: oferta.livro_id,
+      user_agent: userAgent,
+      referer: referer,
+      ip_hash: ipHash,
+      utm_source,
+      utm_campaign,
+      session_id,
+    });
+
+  if (trackError) {
+    console.error(
+      `[click] falha ao gravar oferta_clicks (oferta=${oferta.id}):`,
+      trackError.code,
+      trackError.message
+    );
+  }
 
   /**
    * 5) Redirect afiliado
