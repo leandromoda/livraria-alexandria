@@ -169,6 +169,55 @@ def _http_head(url: str) -> tuple[int | None, int, str]:
         return None, 0, f"error: {e}"
 
 
+def _contar_oferta_clicks() -> int | None:
+    """Total de linhas em `oferta_clicks`. None se não deu para consultar."""
+    if not SUPABASE_URL:
+        return None
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/oferta_clicks",
+            params={"select": "id"},
+            headers={**_supabase_headers(use_service_key=True),
+                     "Prefer": "count=exact", "Range": "0-0"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        cr = r.headers.get("content-range", "")
+        return int(cr.split("/")[-1]) if "/" in cr else None
+    except Exception as e:
+        log.warning(f"  Falha ao contar oferta_clicks: {e}")
+        return None
+
+
+def _check_click_gravado(antes: int | None) -> dict:
+    """Confirma que a batida no /api/click gerou UMA linha nova.
+
+    É o check que faltava: até 2026-08-30 a auditoria só olhava o status do
+    redirect, e por isso deu ✓ durante os 5 meses em que o INSERT falhava em
+    silêncio. Status é intenção; contagem é efeito.
+    """
+    depois = _contar_oferta_clicks()
+    if antes is None or depois is None:
+        detail = "não foi possível contar oferta_clicks (sem Supabase?)"
+        ok = True          # não dá para afirmar falha — não reprova o passe
+    else:
+        ok = depois > antes
+        detail = (f"{antes} → {depois}" if ok else
+                  f"{antes} → {depois}: redirect respondeu, mas NADA foi "
+                  f"gravado — insert falhando em silêncio (conferir o log da "
+                  f"Vercel e o schema de oferta_clicks)")
+    icon = "✓" if ok else "✗"
+    log.info(f"  [{icon}] Click API gravou o clique — {detail}")
+    return {
+        "label": "Click API grava o clique",
+        "check_type": "api_click_persistido",
+        "url": f"{SITE_BASE_URL}/api/click/<amostra>",
+        "status_code": None,
+        "latency_ms": 0,
+        "ok": ok,
+        "detail": detail,
+    }
+
+
 def _fetch_sample_oferta_id() -> str | None:
     """Retorna o id de uma oferta real no Supabase para testar o Click API.
 
@@ -312,6 +361,7 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
     log.info("--- Click API ---")
     oferta_id = _fetch_sample_oferta_id()
     if oferta_id:
+        antes = _contar_oferta_clicks()
         results.append(check(
             "Click API redirect",
             "api_click",
@@ -319,6 +369,15 @@ def run_connectivity(conn: sqlite3.Connection, dry_run: bool = False) -> dict:
             expected_status=[301, 302, 307, 308],
             allow_redirects=False,
         ))
+        # ⚠ O 302 NÃO prova que o clique foi gravado — e essa diferença custou
+        # 5 meses de dados. De 2026-03-18 a 2026-08-30 a rota redirecionava
+        # normalmente enquanto o INSERT falhava com 400 PGRST204 (`utm_medium`
+        # não existe em `oferta_clicks`); o handler não conferia o erro, e este
+        # check aqui dava ✓ o tempo todo. No mesmo intervalo o GSC registrou
+        # 518 cliques reais, sobre os quais não há um único dado de oferta.
+        #
+        # Verificar o EFEITO, não o status: a linha entrou ou não entrou.
+        results.append(_check_click_gravado(antes))
     else:
         log.warning("  Nenhuma oferta no Supabase para testar click API")
 

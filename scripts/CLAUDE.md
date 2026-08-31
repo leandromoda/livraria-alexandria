@@ -139,8 +139,16 @@ Painel de Associados (`associados.amazon.com.br/p/reporting/earnings`, últimos
 Contra o rastreamento do próprio site, no mesmo dia:
 
 - `oferta_clicks`: **4 registros no total**, e os quatro com
-  `referer = http://localhost:3000/…` — **testes do desenvolvedor em
-  fevereiro**. O site **nunca** registrou clique de afiliado de visitante real.
+  `referer = http://localhost:3000/…` — testes do desenvolvedor em fevereiro.
+
+  > ⚠️ **CORREÇÃO 2026-08-30 — este zero era instrumento quebrado, não medição.**
+  > Ficou escrito aqui que "o site nunca registrou clique de afiliado de
+  > visitante real". A frase é literalmente verdadeira e **enganosa**: o INSERT
+  > em `oferta_clicks` falhava em silêncio desde **2026-03-18** (`utm_medium`
+  > não existe na tabela → 400 PGRST204, erro não conferido, redirect 302
+  > normal). No mesmo intervalo o GSC registrou **518 cliques** de visitantes
+  > reais. Não sabemos quantos clicaram numa oferta — **não há dado**, que é
+  > diferente de haver zero. Corrigido nesta data; ver `agents/gsc/memory.md`.
 - `jogo_clicks`: 42 (jul/ago) · `livro_infantil_clicks`: 4 (ago).
 - A Busca manda ~1 visita/dia desde o spam update.
 

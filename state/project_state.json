@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: o PIPELINE gerava os cliques de afiliado da Amazon — 3.402 em 30 dias com 0% de conversao, contra 4 cliques do site (todos de localhost, testes de fevereiro); fetch_page mandava a offer_url etiquetada e agora limpa os params de afiliado (TASK-OFERTAS-010)",
+    "last_updated": "2026-08-30: rastreamento de cliques de oferta estava MORTO desde 18/03 (utm_medium inexistente -> PGRST204 silencioso); GSC registrou 518 cliques reais nessa janela cega. Corrigido, com o erro agora logado e a auditoria verificando o EFEITO e nao o status (TASK-TRACK-002)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1164,6 +1164,29 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-TRACK-002",
+      "description": "Cliques de oferta nao eram gravados desde 2026-03-18 — INSERT mandava utm_medium, coluna inexistente; erro nao conferido, redirect 302 normal",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-30",
+      "resolved_on": "2026-08-30",
+      "origem": "Pergunta do Leandro no /analise_gsc: 'e todo o trafego registrado no GSC?', depois de se descobrir que o site praticamente nao registra clique de afiliado.",
+      "como_foi_provado": "Sem adivinhar e sem escrever nada: a auditoria de conectividade bateu em /api/click/25568c3b-... as 14:00 de 2026-08-30 e recebeu 302 (0739_audit_connectivity.json) — e a tabela continuou com 4 linhas, a mais nova de FEVEREIRO. Redirect OK, gravacao nao. Depois, o OpenAPI do PostgREST mostrou que oferta_clicks nao tem utm_medium, enquanto jogo_clicks e livro_infantil_clicks TEM — e sao justamente as duas que seguiram registrando (42 e 4 linhas). Controle natural.",
+      "culpado_datado": "commit 2e1b104 (2026-03-18), 'feat(admin): status do catalogo, origens de trafego e fix UTM tracking' — quebrou o que se propunha a consertar.",
+      "impacto": "GSC (Desempenho, 26/03 a 29/08/2026): 518 cliques, 34,8 mil impressoes, CTR 1,5%, posicao 20,4. A janela cega cobre quase todo esse periodo. Nao sabemos quantos desses visitantes clicaram numa oferta — NAO HA DADO, o que e diferente de haver zero.",
+      "classe_do_bug": "Mesma do gotcha ja registrado para status_publish em autores/listas: coluna ausente no Supabase -> 400 PGRST204 -> operacao trava. A diferenca e que aqui o erro nao era conferido, entao nao travava nada visivel — so perdia o dado.",
+      "resolution": "(1) route: payload alinhado ao schema real (sem utm_medium) e erro do insert conferido e logado com console.error, aparecendo no log da Vercel. O redirect NUNCA e bloqueado por erro de tracking. (2) scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql para paridade de schema, OPCIONAL — a correcao nao depende dela. (3) auditoria de conectividade ganhou o check 'Click API grava o clique', que conta oferta_clicks antes e depois da batida.",
+      "licao_de_metodo": "A auditoria cobria essa rota desde sempre e dava ✓ o tempo todo, porque conferia o STATUS do redirect e nao o EFEITO. Status e intencao; contagem e efeito. Vale para qualquer check de rota com efeito colateral.",
+      "verificar_depois": "Apos o deploy, conferir que uma batida no /api/click gera linha nova. E, em algumas semanas, olhar a razao cliques-GSC / cliques-de-oferta: agora ela existe pela primeira vez.",
+      "files": [
+        "app/(internal)/api/click/[id]/route.ts",
+        "scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql",
+        "scripts/steps/auditor.py",
+        "agents/gsc/memory.md",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
       "id": "TASK-OFERTAS-010",
       "description": "O pipeline gerava cliques de afiliado na Amazon — 3.402 em 30 dias, 0% de conversao; fetch_page mandava a offer_url ETIQUETADA",
       "priority": "high",
@@ -1189,7 +1212,8 @@
         "scripts/steps/marketplace_scraper.py",
         "scripts/tests/test_strip_afiliado.py",
         "scripts/CLAUDE.md"
-      ]
+      ],
+      "CORRECAO_2026-08-30": "A frase 'O site NUNCA registrou clique de afiliado de visitante real' e literalmente verdadeira e ENGANOSA: o INSERT em oferta_clicks falhava em silencio desde 2026-03-18 (utm_medium inexistente -> 400 PGRST204). Aquele zero era INSTRUMENTO QUEBRADO, nao medicao. No mesmo intervalo o GSC registrou 518 cliques reais. Nao sabemos quantos clicaram em oferta — nao ha dado. Ver TASK-TRACK-002. O resto da task (3.402 cliques gerados pelo pipeline, e a remocao da tag do GET) segue valendo: aquilo foi medido no painel da Amazon, nao no site."
     },
     {
       "id": "TASK-SEED-001",
