@@ -351,6 +351,17 @@ Top consultas: `livraria alexandria` (29 cliques / 153 impr.),
 > clicaram numa oferta — **não há dado**, o que é diferente de haver zero.
 > Qualquer conclusão anterior de "ninguém clica nas ofertas" está **suspensa**.
 
+> ✅ **Verificado em produção após o deploy do #312:** batida no
+> `/api/click/<id>` devolveu **302** e a tabela foi de **4 para 5 linhas**.
+>
+> ⚠️ **A linha 5 é sintética** — `user_agent = AlexandriaVerify/1.0 (verificacao
+> do fix #312)`, gerada nesta verificação. **Não contar como clique real** em
+> análise futura. O primeiro clique genuíno será o 6º.
+>
+> Detalhe que apareceu de brinde: o `Location` do redirect foi
+> `amazon.com.br/s?k=Admirável+Mundo+Novo+Aldous+Huxley` — **URL de busca**, o
+> perfil de *thin affiliate* que o step 31 está drenando. Exemplo ao vivo.
+
 Mesma classe do gotcha já registrado para `status_publish` em `autores`/`listas`
 (coluna ausente → PGRST204 → operação trava). **Ao mexer em payload de escrita
 no Supabase, conferir o schema remoto pelo OpenAPI do PostgREST** — é o que o
