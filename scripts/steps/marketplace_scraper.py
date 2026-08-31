@@ -167,6 +167,21 @@ def fetch_page(url):
         log("[SCRAPER] beautifulsoup4 não instalado. Rode: pip install beautifulsoup4")
         return None
 
+    # ⚠ Requisição de MÁQUINA não pode carregar a tag de afiliado.
+    #
+    # Medido em 2026-08-30 no painel de Associados (últimos 30 dias):
+    # 3.402 cliques, 0 pedidos, 0,00% de conversão. O `oferta_clicks` do
+    # próprio site tem 4 cliques de livro no total desde janeiro, e o site
+    # recebe ~1 visita/dia da Busca — o excedente é este `fetch_page`, que
+    # recebe a `offer_url` JÁ ETIQUETADA e a busca como está, com até
+    # RETRY_MAX=3 requisições por livro e 150 livros por passe do G.
+    #
+    # `fetch_page` é o único ponto de saída para marketplace (as outras
+    # chamadas do módulo vão a Open Library e Google Books), então limpar aqui
+    # cobre o scraper, o monitor de preços e o resolvedor de produto de uma vez.
+    from steps.offer_resolver import strip_affiliate_params
+    url = strip_affiliate_params(url)
+
     for attempt in range(RETRY_MAX):
         headers = {**HEADERS, "User-Agent": random.choice(USER_AGENTS)}
         try:

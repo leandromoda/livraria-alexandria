@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: reingestao de seed deixa de ser inocua — o seed repetido religa a oferta do livro ao ML (so com confirmacao da API), sem mexer em flag de publicacao nem ressuscitar blacklist (TASK-SEED-001, apos TASK-OFERTAS-009)",
+    "last_updated": "2026-08-30: o PIPELINE gerava os cliques de afiliado da Amazon — 3.402 em 30 dias com 0% de conversao, contra 4 cliques do site (todos de localhost, testes de fevereiro); fetch_page mandava a offer_url etiquetada e agora limpa os params de afiliado (TASK-OFERTAS-010)",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1164,6 +1164,34 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-OFERTAS-010",
+      "description": "O pipeline gerava cliques de afiliado na Amazon — 3.402 em 30 dias, 0% de conversao; fetch_page mandava a offer_url ETIQUETADA",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-08-30",
+      "resolved_on": "2026-08-30",
+      "como_apareceu": "Leandro pediu para identificar a origem da comissao de R$ 1,33 (06/2026). O relatorio de ganhos do painel de Associados mostrou 3.402 cliques com 0 pedidos — numero incompativel com o trafego do site.",
+      "medicao": {
+        "data": "2026-08-30",
+        "painel_associados_30d": "Cliques 3.402 | Pedidos 0 | Enviados 0 | Conversao 0,00% | Ganhos R$ 0,00",
+        "oferta_clicks_do_site": "4 registros NO TOTAL, todos com referer http://localhost:3000/... — testes do desenvolvedor em fevereiro. O site NUNCA registrou clique de afiliado de visitante real.",
+        "outros": "jogo_clicks 42 (jul/ago) | livro_infantil_clicks 4 (ago)",
+        "trafego": "~1 visita/dia da Busca desde o spam update de agosto"
+      },
+      "cadeia_do_defeito": "offer_resolver.build_amazon_url injeta tag= e a URL ETIQUETADA e gravada em livros.offer_url; offer_price_monitor e o step 4 chamam fetch_page(offer_url) sobre ELA. Com RETRY_MAX=3 um livro rende ate 3 requisicoes, e o G visita PRECO_POR_CICLO=150 por passe. Cada requisicao contava como clique de afiliado no painel.",
+      "por_que_e_grave": "O contrato de Associados proibe gerar clique artificial. Milhares deles com 0% de conversao e o padrao que encerra conta — o que tambem eliminaria qualquer chance futura de qualificar para a Creators API (TASK-OFERTAS-005). De quebra, o numero inflado dava um sinal falso de audiencia na Amazon: parecia haver publico onde nao ha.",
+      "resolution": "offer_resolver.strip_affiliate_params() remove tag, matt_tool, matt_word, ascsubtag e linkCode; marketplace_scraper.fetch_page a aplica antes de cada GET. fetch_page e o UNICO ponto de saida para marketplace (as outras chamadas do modulo vao a Open Library e Google Books), entao uma linha cobre scraper, monitor de precos e resolvedor de produto. A tag continua na url_afiliada publicada, que e o link que o usuario clica.",
+      "testes": "tests/test_strip_afiliado.py fixa os DOIS lados: a requisicao sai limpa (espiao sobre requests.get dentro do fetch_page) e build_amazon_url/inject_amazon_tag seguem etiquetando o link publicado. Mais preservacao de params nao-afiliados, idempotencia e tolerancia a vazio/None.",
+      "comissao_nao_identificada": "Nao foi possivel isolar o item dos R$ 1,33 de 06/2026: o seletor de periodo do painel so oferece ate 'Ultimo mes' e ignorou tanto parametro de URL quanto preenchimento por script (duas tentativas, entao parei). O que se pode afirmar e de onde NAO veio — zero cliques rastreados do site em junho, e o historico inteiro sao 4 testes de localhost em fevereiro. Para o item exato: 'Fazer download de relatorios' com periodo personalizado, acao do usuario.",
+      "verificar_depois": "No proximo passe do G, conferir se o contador de cliques do painel PARA de subir. Se continuar subindo, sobrou algum caminho de saida com tag fora do fetch_page.",
+      "files": [
+        "scripts/steps/offer_resolver.py",
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/tests/test_strip_afiliado.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
       "id": "TASK-SEED-001",
       "description": "Reingerir um seed era INOCUO (INSERT puro, duplicate -> None); agora religa a oferta do livro repetido ao ML",
       "priority": "medium",
@@ -1528,7 +1556,16 @@
       ],
       "resolved_on": "2026-08-29",
       "portao_tem_duas_folhas": "1) AUTHOR: sem ele 'Sob a Roda' (Hesse) resolvia para 'Sob a Selva'. 2) TITULO via _titulo_score(estrito=True): so o autor NAO basta — 'Misterio no Castelo de Chimneys' passava apontando para 'Um misterio no Caribe', outro livro DA MESMA AUTORA. Alem disso a escolha e do MELHOR candidato aprovado, nao do primeiro: com 'primeiro que passa', 'Comunicacao Nao Violenta' resolvia para o 'Kit ... + Vive' a R$151,43 (combo).",
-      "resolution": "core/ml_api.py (cliente + status() com o mesmo contrato do claude_runner.session_status), marketplace_scraper._resolve_produto_ml_api tentando a API antes do scraping no ML, isbn propagado pelo offer_price_monitor, pre-voo da API no _run_gargalo do main.py e tests/test_ml_api.py fixando os 4 falsos positivos medidos."
+      "resolution": "core/ml_api.py (cliente + status() com o mesmo contrato do claude_runner.session_status), marketplace_scraper._resolve_produto_ml_api tentando a API antes do scraping no ML, isbn propagado pelo offer_price_monitor, pre-voo da API no _run_gargalo do main.py e tests/test_ml_api.py fixando os 4 falsos positivos medidos.",
+      "conferido_no_portal_de_associados": {
+        "data": "2026-08-30",
+        "metodo": "print do associados.amazon.com.br/home/account/paymentHistory enviado pelo Leandro (StoreID livrariaalexa-20)",
+        "proximos_pagamentos": "R$ 1,33 — 'Receita de comissao de 06/2026'",
+        "historico_6_meses": "'Nenhuma transacao foi relatada ate o momento' — zero repasses",
+        "conclusao": "O bloqueio circular da Creators API (>=10 vendas qualificadas em 30 dias) esta CONFIRMADO POR DADO, nao mais por deducao. R$ 1,33 e da ordem de uma venda. A Amazon segue fechada e nao ha caminho de destravar pelo lado dela.",
+        "consequencia_estrategica": "Reenquadra o step 31 (TASK-OFERTAS-009): 2.486 dos 4.860 livros publicados (51%) apontam para a Amazon, ou seja METADE da superficie de monetizacao aponta para um canal que rendeu R$ 1,33. Migrar para o ML deixa de ser limpeza de qualidade com efeito colateral em receita — e a receita.",
+        "nao_reabrir": "Este era o 'reavaliar_quando' registrado na propria task. Fica fechado ate haver sinal OPOSTO (repasse efetivo no historico de pagamentos). Nao reabrir por suposicao."
+      }
     },
     {
       "id": "TASK-SEO-016",

@@ -127,6 +127,55 @@ round-robin** por `preco_updated_at`: em 2026-08-23 só 553 dos 4.856 publicados
 > fica em 50 até lá: subir a cota junto com a troca de mecanismo confundiria as
 > duas variáveis, e sob muro só multiplicaria 503.
 
+### ⚠ O pipeline estava gerando cliques de afiliado — corrigido em 2026-08-30
+
+Painel de Associados (`associados.amazon.com.br/p/reporting/earnings`, últimos
+30 dias, lido em 2026-08-30):
+
+| Cliques | Pedidos | Enviados | Conversão | Ganhos |
+|---|---|---|---|---|
+| **3.402** | 0 | 0 | **0,00%** | R$ 0,00 |
+
+Contra o rastreamento do próprio site, no mesmo dia:
+
+- `oferta_clicks`: **4 registros no total**, e os quatro com
+  `referer = http://localhost:3000/…` — **testes do desenvolvedor em
+  fevereiro**. O site **nunca** registrou clique de afiliado de visitante real.
+- `jogo_clicks`: 42 (jul/ago) · `livro_infantil_clicks`: 4 (ago).
+- A Busca manda ~1 visita/dia desde o spam update.
+
+Um público desse tamanho não produz 3.402 cliques. **O pipeline produzia.**
+
+A cadeia: `offer_resolver.build_amazon_url` injeta `tag=` e a URL **etiquetada**
+é gravada em `livros.offer_url`; depois `offer_price_monitor` e o step 4 chamam
+`fetch_page(offer_url)` sobre **ela**. Com `RETRY_MAX=3` um livro rende até 3
+requisições, e o G visita `PRECO_POR_CICLO=150` por passe. Cada requisição
+contava como clique de afiliado.
+
+**Por que isso importa mais que os centavos:** o contrato de Associados proíbe
+gerar clique artificial, e milhares deles com 0% de conversão é o padrão que
+encerra conta — o que também eliminaria qualquer chance futura de qualificar
+para a Creators API (ver a seção da API do ML abaixo). De quebra, o número
+inflado dava um **sinal falso de audiência** na Amazon.
+
+**Correção:** `offer_resolver.strip_affiliate_params()` remove `tag`,
+`matt_tool`, `matt_word`, `ascsubtag` e `linkCode`, e `fetch_page` a aplica
+antes de cada GET. `fetch_page` é o **único** ponto de saída para marketplace
+(as outras chamadas do módulo vão a Open Library e Google Books), então uma
+linha cobre scraper, monitor de preços e resolvedor de produto.
+
+A tag continua onde deve: na `url_afiliada` publicada, que é o link que o
+usuário clica. `tests/test_strip_afiliado.py` fixa os dois lados — que a
+requisição sai limpa e que `build_amazon_url`/`inject_amazon_tag` seguem
+etiquetando.
+
+> **Nota sobre a comissão de R$ 1,33 (06/2026).** Não foi possível identificar o
+> item: o seletor de período do painel só oferece até "Último mês" e ignorou
+> tanto parâmetro de URL quanto preenchimento por script. O que se pode afirmar
+> é de onde **não** veio — não há clique rastreado do site em junho, e o
+> histórico inteiro do `oferta_clicks` são 4 testes de localhost em fevereiro.
+> Para o item exato, "Fazer download de relatórios" com período personalizado.
+
 ### API de catálogo do Mercado Livre — a saída oficial do bot wall
 
 Desde 2026-08-29 o preço e o deep link do ML saem da **API oficial**, com o
