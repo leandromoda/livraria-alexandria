@@ -89,6 +89,55 @@ def inject_amazon_tag(url: str) -> str:
 
 
 # =========================
+# REMOVER AFILIADO (requisição de máquina)
+# =========================
+
+# Parâmetros que identificam a conta de afiliado. Presentes na `offer_url`
+# porque é ela que o usuário clica — mas o pipeline busca ESSA MESMA URL para
+# raspar preço, e aí eles não podem ir junto.
+_PARAMS_AFILIADO = ("tag", "matt_tool", "matt_word", "ascsubtag", "linkCode")
+
+
+def strip_affiliate_params(url: str) -> str:
+    """Remove os parâmetros de afiliado — para requisição feita por MÁQUINA.
+
+    ⚠ Motivo, medido em 2026-08-30 no painel de Associados
+    (`associados.amazon.com.br/p/reporting/earnings`, últimos 30 dias):
+
+        Cliques 3.402 | Pedidos 0 | Conversão 0,00% | Ganhos R$ 0,00
+
+    O rastreamento do próprio site, no mesmo período, tem **4 cliques de livro
+    no total desde janeiro** (`oferta_clicks`), e o site recebe ~1 visita/dia da
+    Busca desde o spam update. Um público humano desse tamanho não produz 3.402
+    cliques — o pipeline produz.
+
+    A cadeia: `build_amazon_url` injeta `tag=` e a URL etiquetada é gravada em
+    `livros.offer_url`; depois `offer_price_monitor` e o step 4 chamam
+    `fetch_page(offer_url)` sobre ELA. Com `RETRY_MAX=3`, um livro rende até 3
+    requisições, e o G visita 150 por passe. Cada uma conta como clique de
+    afiliado no painel da Amazon.
+
+    Por que importa mais que os centavos: o contrato de Associados proíbe
+    gerar cliques artificiais, e milhares deles com 0% de conversão é o padrão
+    que encerra conta — o que também eliminaria qualquer chance futura de
+    qualificar para a Creators API. De quebra, o número inflado dava um sinal
+    falso de audiência na Amazon.
+
+    A tag continua onde deve: na `url_afiliada` publicada, que é o link que o
+    usuário de fato clica.
+    """
+    if not url:
+        return url
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    if not any(p in params for p in _PARAMS_AFILIADO):
+        return url
+    limpos = {k: v for k, v in params.items() if k not in _PARAMS_AFILIADO}
+    new_query = urlencode({k: v[0] for k, v in limpos.items()})
+    return urlunparse(parsed._replace(query=new_query))
+
+
+# =========================
 # URL BUILDERS
 # =========================
 
