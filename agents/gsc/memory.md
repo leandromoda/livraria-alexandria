@@ -312,6 +312,63 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
 
+### Seção 2026-09-05 — a pegada indexável, medida por espessura
+
+Pedido do Leandro: *"vamos atuar na resolução do mergulho"*. Antes de propor
+corte, medi **o que o sitemap de produção realmente anuncia** e quão fina é cada
+faixa. Método: `sitemap.xml` de produção cruzado com o Supabase (`livros`,
+`autores`, `listas`, `lista_livros`, `livros_autores`, `ofertas`).
+
+**Sitemap: 8.273 URLs.**
+
+| seção | URLs | espessura |
+|---|---|---|
+| `/livros` | 5.095 | **densas** — 5.031 de 5.186 (97%) com descrição ≥600 caracteres; só 9 sem descrição |
+| `/autores` | 2.291 | **2.063 (90%) SEM BIO**; 1.418 (62%) com apenas 1 livro |
+| `/listas` | 743 | **437 (59%) com <5 membros**; **as 743** com introdução <200 caracteres |
+| `/categorias` | 127 | saudáveis — 129 das 174 com 20+ livros |
+
+> 🔴 **As páginas de livro NÃO são o problema.** Isso contraria a leitura
+> intuitiva de "scaled content abuse" num catálogo de 5 mil livros: o conteúdo
+> delas é denso. O fino está em **autores e listas**.
+>
+> E bate com o sinal que o próprio GSC deu em agosto, registrado na seção de
+> 2026-08-26: `/listas/` caiu de **21% para 6,7%** da fatia de impressões
+> depois do spam update. **O Google já começou a rebaixar exatamente a faixa
+> que a medição agora mostra ser fina.**
+
+**Faixa fina somada: 1.855 URLs = 22,4% do sitemap** (437 listas com <5 membros
++ 1.418 autores com ≤1 livro).
+
+Uma página de autor sem bio é, literalmente, um nome e uma lista de um livro.
+Uma "lista dos melhores X" com 2 itens e um parágrafo de 150 caracteres não é
+uma lista.
+
+**Do lado do *thin affiliate*** (a outra metade do diagnóstico): apenas
+**861 de 5.186 livros (17%) têm preço** — 4.325 páginas ainda oferecem link sem
+preço. O step 31 (TASK-OFERTAS-009) ataca isso, mas devagar.
+
+#### Decisão: ESPERAR o dado atual do GSC antes de cortar
+
+Proposta apresentada: `noindex` + fora do sitemap para a faixa fina, **sem
+404** — a página segue navegável e volta ao índice sozinha quando ganhar corpo
+(autor que receber bio, lista que chegar a 5 membros).
+
+**Leandro escolheu não mexer ainda**, e sim medir o GSC primeiro: a última
+leitura de posição média é **56,1, de 2026-08-26**. Se houve recuperação
+espontânea desde então, o corte pode ser menor ou desnecessário. Mexer em 20%
+do sitemap sem dado atual é caro para desfazer.
+
+⚠️ **Bloqueio operacional da seção:** a extensão do Chrome não conectou
+(`list_connected_browsers` → `[]`, três tentativas). Pela nota de
+`feedback_chrome_extension_gsc`, ela só conecta depois de **abrir o painel
+lateral do Claude** — instalar e fixar não basta. Sem isso não dá para ler o
+Desempenho atual nem aplicar a migração do `is_bot` pelo SQL Editor.
+
+**Próximo passo, quando o Chrome conectar:** ler posição média e impressões dos
+últimos 28 dias e comparar com 56,1 / 52-110 impressões-dia de 26/08. Só então
+decidir o critério de corte.
+
 ### Seção 2026-08-30 — desempenho (tráfego), não indexação
 
 Pergunta do Leandro: *"e todo o tráfego registrado no GSC?"*, depois de se
