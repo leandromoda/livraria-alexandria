@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { urlDeRedirect } from "@/lib/afiliado";
 
 /* Click tracking da Seção Jogos — espelha /api/click/[id] (livros), mas lê a
    tabela `jogos` (oferta embutida no registro) e loga em `jogo_clicks`.
@@ -67,7 +68,15 @@ export async function GET(
   /**
    * 4) Insert tracking
    */
-  await supabase.from("jogo_clicks").insert({
+  const { url: destino, humano } = urlDeRedirect(
+    jogo.url_afiliada,
+    userAgent,
+    referer
+  );
+
+  // Bot leva redirect igual, mas SEM a tag de afiliado. Ver lib/afiliado.ts:
+  // medido em 2026-09-04, 3.182 cliques em 5 dias com 86% sem referer.
+  const base = {
     jogo_id: jogo.id,
     user_agent: userAgent,
     referer: referer,
@@ -76,10 +85,33 @@ export async function GET(
     utm_medium,
     utm_campaign,
     session_id,
-  });
+  };
+
+  // `is_bot` so existe apos a migracao de 2026-09-04. Sem a coluna o PostgREST
+  // devolve PGRST204 e o insert INTEIRO se perde — foi assim que 5 meses de
+  // dados sumiram em oferta_clicks. Aqui vira retry.
+  let { error: trackError } = await supabase
+    .from("jogo_clicks")
+    .insert({ ...base, is_bot: !humano });
+
+  if (trackError?.code === "PGRST204") {
+    console.warn(
+      "[click] jogo_clicks sem a coluna is_bot — aplicar " +
+        "scripts/sql/2026-09-04_click_is_bot.sql. Gravando sem ela."
+    );
+    ({ error: trackError } = await supabase.from("jogo_clicks").insert(base));
+  }
+
+  if (trackError) {
+    console.error(
+      `[click] falha ao gravar jogo_clicks (id=${jogo.id}):`,
+      trackError.code,
+      trackError.message
+    );
+  }
 
   /**
    * 5) Redirect afiliado
    */
-  return NextResponse.redirect(jogo.url_afiliada, 302);
+  return NextResponse.redirect(destino, 302);
 }
