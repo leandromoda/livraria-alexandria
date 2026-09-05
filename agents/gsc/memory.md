@@ -348,7 +348,32 @@ uma lista.
 **861 de 5.186 livros (17%) têm preço** — 4.325 páginas ainda oferecem link sem
 preço. O step 31 (TASK-OFERTAS-009) ataca isso, mas devagar.
 
-#### Decisão: ESPERAR o dado atual do GSC antes de cortar
+#### ✅ GSC LIDO em 2026-09-05 — não houve recuperação
+
+| janela | cliques | impressões | CTR | **posição** |
+|---|---|---|---|---|
+| **7 dias** (28/08–03/09) — limpa, toda pós-update | **3** | 631 (~90/dia) | 0,5% | **58,1** |
+| 28 dias (07/08–03/09) — atravessa o update | 179 | 12,2 mil | 1,5% | 21,9 |
+| 3 meses (04/06–03/09) | 466 | 30,1 mil | 1,5% | 19,9 |
+
+⚠️ **Use a janela de 7 dias.** A de 28 dias dá 21,9 só porque metade dela é
+anterior ao update; a média é puxada pelo período bom.
+
+**Contra os 56,1 de 26/08, a posição está em 58,1** — piorou marginalmente.
+Três semanas de piso estável: não é queda contínua, mas **não há recuperação
+espontânea**. O dado que faltava para decidir o corte agora existe, e ele
+sustenta agir.
+
+**Sinal lateral que reforça o diagnóstico:** as consultas do topo seguem fora de
+intenção comercial — `rule 34 unidade` (89 impressões), `blindsight` (145),
+`livraria de alexandria` (141, a biblioteca histórica). Isso pressiona o CTR
+para baixo e é coerente com o perfil de conteúdo em escala.
+
+Método: relatório de Desempenho, alternando o intervalo pelo próprio seletor da
+UI via `javascript_tool` (o `get_page_text` não atualiza ao trocar de aba, e o
+clique no seletor sozinho não basta — ver `feedback_chrome_extension_gsc`).
+
+#### Decisão original: ESPERAR o dado atual do GSC antes de cortar
 
 Proposta apresentada: `noindex` + fora do sitemap para a faixa fina, **sem
 404** — a página segue navegável e volta ao índice sozinha quando ganhar corpo
