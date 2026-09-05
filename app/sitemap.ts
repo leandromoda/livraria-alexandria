@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
+import { autorIndexavel, listaIndexavel } from "@/lib/indexavel";
 
 const base = "https://livrariaalexandria.com.br";
 
@@ -46,6 +47,12 @@ async function fetchAll<T>(
 
 type SlugComData = { slug: string; updated_at: string | null };
 type Slug = { slug: string };
+type ListaComMembros = { slug: string; lista_livros: unknown[] | null };
+type AutorComLivros = {
+  slug: string;
+  descricao: string | null;
+  livros_autores: unknown[] | null;
+};
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [livros, listas, categorias, autores, jogos, infantis] = await Promise.all([
@@ -64,7 +71,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // As tabelas `listas` e `autores` NÃO têm coluna `status_publish` — o filtro
     // antigo `.eq("status_publish", true)` devolvia erro 400 e zerava a seção.
     // O inner join já garante "só o que tem ao menos 1 livro".
-    fetchAll<Slug>("listas", (from, to) =>
+    // O embed traz os membros, então dá para contar aqui e aplicar o mesmo
+    // corte que o `generateMetadata` da página usa — ver lib/indexavel.ts.
+    // Anunciar no sitemap uma URL que a página marca com `noindex` foi
+    // exatamente o alerta que o Search Console levantou em agosto.
+    fetchAll<ListaComMembros>("listas", (from, to) =>
       supabase
         .from("listas")
         .select("slug, lista_livros!inner(livro_id)")
@@ -83,10 +94,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .range(from, to),
     ),
 
-    fetchAll<Slug>("autores", (from, to) =>
+    // `descricao` entra no select porque o corte de autor depende dela: sem
+    // bio E com menos de 2 livros, a página é nome + um item.
+    fetchAll<AutorComLivros>("autores", (from, to) =>
       supabase
         .from("autores")
-        .select("slug, livros_autores!inner(livro_id)")
+        .select("slug, descricao, livros_autores!inner(livro_id)")
         .order("slug")
         .range(from, to),
     ),
@@ -118,11 +131,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
-  const listaPages: MetadataRoute.Sitemap = listas.map((l) => ({
-    url: `${base}/listas/${l.slug}`,
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
+  const listaPages: MetadataRoute.Sitemap = listas
+    .filter((l) => listaIndexavel(l.lista_livros?.length ?? 0))
+    .map((l) => ({
+      url: `${base}/listas/${l.slug}`,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
   const categoriaPages: MetadataRoute.Sitemap = categorias.map((c) => ({
     url: `${base}/categorias/${c.slug}`,
@@ -130,11 +145,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  const autorPages: MetadataRoute.Sitemap = autores.map((a) => ({
-    url: `${base}/autores/${a.slug}`,
-    changeFrequency: "monthly",
-    priority: 0.6,
-  }));
+  const autorPages: MetadataRoute.Sitemap = autores
+    .filter((a) => autorIndexavel(a.descricao, a.livros_autores?.length ?? 0))
+    .map((a) => ({
+      url: `${base}/autores/${a.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
 
   const jogoPages: MetadataRoute.Sitemap = jogos.map((j) => ({
     url: `${base}/jogos/${j.slug}`,
