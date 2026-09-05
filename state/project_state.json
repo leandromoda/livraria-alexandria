@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-08-30: primeira execucao real do step 31 no G — 420 livros migrados para o ML (49% de 851, corrigindo os 60% do dry-run), deep links do ML de 102 para 635 e o ML passando a Amazon no catalogo publicado; todas as chamadas vieram pelo caminho da reingestao de seed",
+    "last_updated": "2026-09-04: o SITE gerava cliques de afiliado — 3.182 em 5 dias, 86% sem referer, contra 518 do GSC em 5 meses; as tres rotas de click passam a redirecionar bot SEM a tag e a marcar is_bot (TASK-TRACK-003). Correcoes de 29-30/08 confirmadas em regime nos passes de 02-04/09.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1163,6 +1163,39 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-TRACK-003",
+      "description": "3.182 cliques de oferta em 5 dias, 86% sem referer — varredura de bot indo para a Amazon COM a tag de afiliado",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-04",
+      "resolved_on": "2026-09-04",
+      "origem": "/analise-logs sobre a fila de 02-04/09. O tracking voltou a gravar em 30/08 (#312) e o PRIMEIRO retrato ja mostrou volume incompativel com o trafego real.",
+      "medicao": {
+        "data": "2026-09-04",
+        "cliques_desde_o_fix": 3182,
+        "janela": "5 dias (30/08 a 04/09)",
+        "contraste": "o GSC registra 518 cliques em 5 MESES (26/03 a 29/08)",
+        "sem_referer": "2.746 de 3.182 (86%) batendo em /api/click/ direto",
+        "livros_distintos": "2.191 para 3.182 cliques — varredura de catalogo, nao interesse",
+        "concentracao": "732 ip_hash; o maior com 78 cliques em intervalos de 1-3 min de madrugada",
+        "user_agents": "1.107 cliques com exatamente o mesmo UA de Mac; um referer m.baidu.com/s?wd=unlesso42",
+        "por_dia": "31/08: 47 | 01/09: 560 | 02/09: 1.704 | 03/09: 312 | 04/09: 559"
+      },
+      "por_que_e_grave": "Cada um desses cliques ia para a Amazon COM a tag de afiliado. O site gerava clique artificial em volume MAIOR do que o pipeline gerava antes do #311: 3.182 em 5 dias contra 3.402 em 30 dias. Mesmo risco de encerramento de conta da TASK-OFERTAS-010, por outra porta — e que tambem eliminaria a chance de qualificar para a Creators API. O robots.txt bloqueia /api/click/, mas esse trafego nao obedece.",
+      "decisao_do_usuario": "Leandro escolheu em 2026-09-04: redirecionar mesmo assim, mas SEM a tag. Nada quebra para quem for classificado errado — a pessoa chega a pagina do produto normalmente, so nao gera comissao naquele clique. Descartadas: 403 (destrutivo se errar com referrer-policy restritiva ou link colado) e 'so marcar' (o risco de conta permaneceria).",
+      "resolution": "lib/afiliado.ts com pareceHumano(ua, referer) e semTagAfiliado(url); as TRES rotas de click (livros, jogos, infantis) passam a redirecionar para urlDeRedirect(...) e a gravar is_bot. Criterio: veio de pagina do proprio site E o UA nao e de bot conhecido. scripts/sql/2026-09-04_click_is_bot.sql acrescenta is_bot nas tres tabelas + indice.",
+      "licao_aplicada_do_bug_anterior": "O insert NAO pode quebrar se a coluna is_bot ainda nao existir — foi exatamente assim que 5 meses de dados sumiram (TASK-TRACK-002). As tres rotas tentam com is_bot e, no PGRST204, logam um WARN e regravam sem ela. A migracao e opcional para o redirect e necessaria so para a marcacao.",
+      "nao_preencher_retroativo": "As 3.182 linhas anteriores ficam com is_bot NULL. O dado bruto (user_agent, referer) continua la e a classificacao de hoje pode nao ser a de amanha; para separar o historico, aplicar a mesma regra na consulta. Query de exemplo no proprio .sql.",
+      "verificar_depois": "(1) O contador de cliques do painel de Associados deve parar de subir — agora pelos DOIS lados (#311 pipeline, este pelo site). (2) Acompanhar a razao cliques-com-is_bot-false / cliques-GSC: e a primeira metrica de conversao real que o projeto tera.",
+      "files": [
+        "lib/afiliado.ts",
+        "app/(internal)/api/click/[id]/route.ts",
+        "app/(internal)/api/click-jogo/[id]/route.ts",
+        "app/(internal)/api/click-infantil/[id]/route.ts",
+        "scripts/sql/2026-09-04_click_is_bot.sql"
+      ]
+    },
     {
       "id": "TASK-TRACK-002",
       "description": "Cliques de oferta nao eram gravados desde 2026-03-18 — INSERT mandava utm_medium, coluna inexistente; erro nao conferido, redirect 302 normal",

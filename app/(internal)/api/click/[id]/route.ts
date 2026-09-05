@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { urlDeRedirect } from "@/lib/afiliado";
 
 /* NOTE: o segundo parâmetro é tipado como `any` intencionalmente —
    Next 15 impõe um tipo restrito para handlers dinâmicos; usar `any`
@@ -96,18 +97,38 @@ export async function GET(
    * aparecer no log da Vercel. O redirect NUNCA é bloqueado por erro de
    * tracking — perder a métrica é ruim, perder o clique do usuário é pior.
    */
-  const { error: trackError } = await supabase
+  const { url: destino, humano } = urlDeRedirect(
+    oferta.url_afiliada,
+    userAgent,
+    referer
+  );
+
+  const base = {
+    oferta_id: oferta.id,
+    livro_id: oferta.livro_id,
+    user_agent: userAgent,
+    referer: referer,
+    ip_hash: ipHash,
+    utm_source,
+    utm_campaign,
+    session_id,
+  };
+
+  // `is_bot` só existe depois da migração de 2026-09-04. Se a coluna não
+  // estiver lá, o PostgREST devolve PGRST204 e o insert INTEIRO se perde — foi
+  // exatamente assim que 5 meses de dados sumiram. Aqui a perda vira retry:
+  // tenta com a coluna, e sem ela se o schema ainda não a tiver.
+  let { error: trackError } = await supabase
     .from("oferta_clicks")
-    .insert({
-      oferta_id: oferta.id,
-      livro_id: oferta.livro_id,
-      user_agent: userAgent,
-      referer: referer,
-      ip_hash: ipHash,
-      utm_source,
-      utm_campaign,
-      session_id,
-    });
+    .insert({ ...base, is_bot: !humano });
+
+  if (trackError?.code === "PGRST204") {
+    console.warn(
+      "[click] oferta_clicks sem a coluna is_bot — aplicar " +
+        "scripts/sql/2026-09-04_click_is_bot.sql. Gravando sem ela."
+    );
+    ({ error: trackError } = await supabase.from("oferta_clicks").insert(base));
+  }
 
   if (trackError) {
     console.error(
@@ -119,9 +140,9 @@ export async function GET(
 
   /**
    * 5) Redirect afiliado
+   *
+   * Bot é redirecionado do mesmo jeito — mas SEM a tag. Ver lib/afiliado.ts
+   * para a medição que motivou isso (3.182 cliques em 5 dias, 86% sem referer).
    */
-  return NextResponse.redirect(
-    oferta.url_afiliada,
-    302
-  );
+  return NextResponse.redirect(destino, 302);
 }
