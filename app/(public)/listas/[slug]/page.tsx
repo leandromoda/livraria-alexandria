@@ -11,6 +11,7 @@ export async function generateStaticParams() {
 
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
+import { listaIndexavel, robotsSeNaoIndexavel } from "@/lib/indexavel";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -69,12 +70,24 @@ export async function generateMetadata({
 
   if (!lista) return {};
 
+  // Medido em 2026-09-05: 437 das 743 listas (59%) têm menos de 5 membros, e
+  // TODAS as 743 têm introdução < 200 caracteres. Uma "lista dos melhores X"
+  // com 2 itens não é uma lista — e `/listas/` foi justamente a seção que o
+  // GSC mostrou caindo de 21% para 6,7% da fatia de impressões depois do spam
+  // update. Conta só membro PUBLICÁVEL: é o que a página de fato mostra.
+  const membros = await getLivrosDaLista(lista.id);
+  const publicaveis = (membros ?? []).filter(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (m: any) => m?.livros?.is_publishable === true,
+  ).length;
+
   return {
     title: lista.titulo,
     description: lista.introducao
       ? lista.introducao.slice(0, 160)
       : `Lista editorial: ${lista.titulo}`,
     alternates: { canonical: `/listas/${slug}` },
+    ...robotsSeNaoIndexavel(listaIndexavel(publicaveis)),
   };
 }
 

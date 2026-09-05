@@ -11,6 +11,7 @@ export async function generateStaticParams() {
 
 import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
+import { autorIndexavel, robotsSeNaoIndexavel } from "@/lib/indexavel";
 import { supabase } from "@/lib/supabase";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -64,13 +65,18 @@ export async function generateMetadata({
 
   if (!autor) return {};
 
-  const temLivros = (autor.livros_autores?.length ?? 0) > 0;
+  // Antes bastava ter 1 livro para entrar no índice. Medido em 2026-09-05:
+  // 2.063 das 2.291 páginas de autor no sitemap (90%) não têm bio nenhuma, e
+  // 1.418 (62%) têm um livro só — nome + um item, sem texto próprio. Agora o
+  // critério é `autorIndexavel`: bio de verdade OU pelo menos 2 livros, caso em
+  // que a página vale como índice. Ver lib/indexavel.ts para a medição inteira.
+  const qtdLivros = autor.livros_autores?.length ?? 0;
 
   return {
     title: autor.nome,
     description: `Livros de ${autor.nome}${autor.nacionalidade ? `, escritor(a) ${autor.nacionalidade}` : ""} disponíveis na Livraria Alexandria.`,
     alternates: { canonical: `/autores/${slug}` },
-    ...(!temLivros ? { robots: { index: false } } : {}),
+    ...robotsSeNaoIndexavel(autorIndexavel(autor.descricao, qtdLivros)),
   };
 }
 
