@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-05: fix do clique de bot verificado em producao (#315) — sem referer o redirect vai SEM tag, com referer do site mantem; e o retry do PGRST204 gravou os cliques mesmo sem a coluna is_bot. Fila de logs 02-04/09 processada, sem correcao alem dessa. TASK-TAX-001 ganhou taxa de crescimento medida (+59 livros num passe).",
+    "last_updated": "2026-09-05: pegada indexavel medida — 8.273 URLs no sitemap, das quais 1.855 (22,4%) sao finas, e NAO sao as paginas de livro (97% densas) e sim autores (90% sem bio) e listas (59% com <5 membros). Corte proposto e ADIADO ate ler o GSC atual (TASK-SEO-001).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1163,6 +1163,41 @@
     "/admin"
   ],
   "open_tasks": [
+    {
+      "id": "TASK-SEO-001",
+      "description": "Tirar do indice a faixa fina do sitemap (1.855 URLs, 22,4%) — AGUARDANDO leitura atual do GSC antes de decidir o corte",
+      "priority": "high",
+      "status": "open",
+      "registered_on": "2026-09-05",
+      "bloqueada_por": "falta o dado atual do GSC (extensao do Chrome nao conectou)",
+      "origem": "Pedido do Leandro: 'vamos atuar na resolucao do mergulho'.",
+      "medicao": {
+        "data": "2026-09-05",
+        "metodo": "sitemap.xml de producao cruzado com o Supabase (livros, autores, listas, lista_livros, livros_autores, ofertas)",
+        "sitemap_total": 8273,
+        "livros": "5.095 URLs — DENSAS: 5.031 de 5.186 (97%) com descricao >=600 chars, so 9 sem descricao",
+        "autores": "2.291 URLs — 2.063 (90%) SEM BIO; 1.418 (62%) com apenas 1 livro",
+        "listas": "743 URLs — 437 (59%) com <5 membros; TODAS as 743 com introducao <200 chars",
+        "categorias": "127 URLs — saudaveis, 129 das 174 com 20+ livros",
+        "faixa_fina": "1.855 URLs = 22,4% do sitemap (437 listas + 1.418 autores)",
+        "thin_affiliate_restante": "861 de 5.186 livros (17%) tem preco; 4.325 ainda oferecem link sem preco"
+      },
+      "achado_que_contraria_a_intuicao": "Num catalogo de 5 mil livros, a leitura intuitiva de 'scaled content abuse' aponta as paginas de livro. NAO sao elas: 97% tem descricao densa. O fino esta em AUTORES e LISTAS — e isso bate com o sinal que o GSC deu em agosto, quando /listas/ caiu de 21% para 6,7% da fatia de impressoes. O Google ja comecou a rebaixar exatamente a faixa que a medicao mostra ser fina.",
+      "proposta": "noindex + fora do sitemap para a faixa fina, SEM 404 — a pagina segue navegavel e volta ao indice sozinha quando ganhar corpo (autor que receber bio, lista que chegar a 5 membros). Mesmo padrao do #286, sem a parte destrutiva. Nao perde trafego: essas paginas nao rankeiam.",
+      "criterios_apresentados": [
+        "A (recomendado) — autor SEM bio E com <=1 livro; lista com <5 membros. ~1.700 URLs. Autor sem bio mas com 10 livros CONTINUA indexado, porque a pagina agrega como indice.",
+        "B (agressivo) — autor com <=1 livro OU sem bio, mais listas <5. ~2.500 URLs (~30%).",
+        "C (minimo) — so as 437 listas (5,3%), que e a superficie com evidencia direta no GSC."
+      ],
+      "decisao_do_usuario": "ESPERAR. Leandro escolheu medir o GSC antes de mexer. A ultima leitura de posicao media e 56,1, de 2026-08-26; se houve recuperacao espontanea, o corte pode ser menor ou desnecessario. Mexer em 20% do sitemap sem dado atual e caro para desfazer.",
+      "proximo_passo": "Com o Chrome conectado: ler posicao media e impressoes dos ultimos 28 dias no relatorio de Desempenho e comparar com 56,1 / 52-110 impressoes-dia de 26/08. So entao escolher o criterio. A extensao so conecta depois de ABRIR O PAINEL LATERAL do Claude no Chrome — instalar e fixar nao basta (feedback_chrome_extension_gsc).",
+      "files": [
+        "app/sitemap.ts",
+        "app/(public)/autores/[slug]/page.tsx",
+        "app/(public)/listas/[slug]/page.tsx",
+        "agents/gsc/memory.md"
+      ]
+    },
     {
       "id": "TASK-TRACK-003",
       "description": "3.182 cliques de oferta em 5 dias, 86% sem referer — varredura de bot indo para a Amazon COM a tag de afiliado",
