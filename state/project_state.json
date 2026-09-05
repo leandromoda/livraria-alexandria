@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-05: migracao do is_bot APLICADA e marcacao verificada ponta a ponta (sem referer -> sem tag + is_bot=true; com referer -> com tag + is_bot=false). GSC lido: posicao 58,1 nos ultimos 7 dias contra 56,1 de 26/08 — SEM recuperacao, o corte da faixa fina se justifica, aguardando so a escolha do criterio (TASK-SEO-001).",
+    "last_updated": "2026-09-05: faixa fina fora do indice (#319) — sitemap de 8.273 para 6.504 URLs, cortando 1.333 paginas de autor sem bio/1 livro e 438 listas com <5 membros, com noindex+follow e sem 404. Verificado em producao nas duas pontas. Livros e categorias intactos.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1167,7 +1167,7 @@
       "id": "TASK-SEO-001",
       "description": "Tirar do indice a faixa fina do sitemap (1.855 URLs, 22,4%) — AGUARDANDO leitura atual do GSC antes de decidir o corte",
       "priority": "high",
-      "status": "open",
+      "status": "resolved",
       "registered_on": "2026-09-05",
       "bloqueada_por": "falta o dado atual do GSC (extensao do Chrome nao conectou)",
       "origem": "Pedido do Leandro: 'vamos atuar na resolucao do mergulho'.",
@@ -1190,7 +1190,7 @@
         "C (minimo) — so as 437 listas (5,3%), que e a superficie com evidencia direta no GSC."
       ],
       "decisao_do_usuario": "ESPERAR. Leandro escolheu medir o GSC antes de mexer. A ultima leitura de posicao media e 56,1, de 2026-08-26; se houve recuperacao espontanea, o corte pode ser menor ou desnecessario. Mexer em 20% do sitemap sem dado atual e caro para desfazer.",
-      "proximo_passo": "Com o Chrome conectado: ler posicao media e impressoes dos ultimos 28 dias no relatorio de Desempenho e comparar com 56,1 / 52-110 impressoes-dia de 26/08. So entao escolher o criterio. A extensao so conecta depois de ABRIR O PAINEL LATERAL do Claude no Chrome — instalar e fixar nao basta (feedback_chrome_extension_gsc).",
+      "proximo_passo": "Acompanhar o GSC nas proximas semanas: posicao media (58,1 hoje) e o bucket 'Excluida pela tag noindex', que VAI CRESCER de proposito — 1.771 URLs novas nele nao e regressao, e o efeito pretendido. Nao resubmeter validacao daquele bucket por causa disso.",
       "files": [
         "app/sitemap.ts",
         "app/(public)/autores/[slug]/page.tsx",
@@ -1205,6 +1205,17 @@
         "conclusao": "NAO HOUVE RECUPERACAO. Contra 56,1 de 26/08, a posicao esta em 58,1 — piorou marginalmente. Tres semanas de piso estavel: nao e queda continua, mas tambem nao ha recuperacao espontanea. O dado que faltava para decidir o corte agora existe, e ele sustenta agir.",
         "sinal_lateral": "Consultas do topo seguem fora de intencao comercial: 'rule 34 unidade' com 89 impressoes, 'blindsight' com 145, 'livraria de alexandria' com 141 (biblioteca historica). Isso pressiona o CTR para baixo e reforca o perfil de conteudo em escala.",
         "status_da_decisao": "AGUARDANDO escolha do criterio de corte — nao proceder sem ela."
+      },
+      "resolved_on": "2026-09-05",
+      "pr": 319,
+      "criterio_escolhido": "'Sem conteudo proprio': autor indexavel se tem bio (>=200 chars) OU >=2 livros; lista indexavel se tem >=5 membros PUBLICAVEIS. Autor sem bio mas com 10 livros CONTINUA indexado — reunir varios livros ja e servico prestado, a pagina vale como indice. Foi o que separou este criterio do agressivo, que tirava justamente as paginas com chance de rankear.",
+      "resolution": "lib/indexavel.ts concentra a regra e e usada nos DOIS lugares que precisam concordar: o sitemap (o que e anunciado) e o generateMetadata de cada pagina (o noindex). Divergir entre eles e pior que qualquer um sozinho — anunciar no sitemap uma URL com noindex foi exatamente o alerta 'Excluida pela tag noindex' de agosto. O corte e noindex+follow, NUNCA 404: a pagina segue navegavel, passa link equity e volta ao indice sozinha quando ganhar corpo.",
+      "verificado_em_producao": {
+        "data": "2026-09-05",
+        "sitemap": "8.273 -> 6.504 URLs (previsto 6.502)",
+        "por_secao": "/autores 2.292 -> 960 (previsto 959) | /listas 743 -> 306 (previsto 305) | /livros 5.095 e /categorias 127 INTACTOS",
+        "as_duas_pontas": "chris-anderson (excluido): HTTP 200, robots='noindex, follow', e FORA do sitemap. a-j-finn (mantido): HTTP 200, SEM meta robots. Sitemap e pagina concordam.",
+        "metodo": "simulacao da mesma regra contra o Supabase ANTES de buildar, depois conferencia do sitemap.xml de producao e do meta robots das paginas apos o deploy"
       }
     },
     {

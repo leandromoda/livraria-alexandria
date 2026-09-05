@@ -28,6 +28,12 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 ---
 
 ## Conhecido-esperado — NÃO é bug (não "corrigir")
+> ⚠️ **O bucket "Excluída pela tag noindex" VAI CRESCER — e isso é o efeito
+> pretendido, não regressão.** O #319 acrescentou 1.771 URLs a ele de propósito.
+> **Não resubmeter a validação daquele bucket por causa disso**, e não tratar o
+> crescimento como bug numa próxima seção. O que acompanhar é a **posição
+> média** (58,1 em 05/09) e o volume de impressões.
+
 
 | Item | Por quê é esperado |
 |------|--------------------|
@@ -191,6 +197,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-09-05 | indexação | **Faixa fina fora do índice**: autor sem bio E com <2 livros, e lista com <5 membros publicáveis, passam a `noindex, follow` e saem do sitemap. Sitemap de **8.273 para 6.504** URLs (−1.333 autores, −438 listas); `/livros` e `/categorias` intactos. Regra única em `lib/indexavel.ts`, usada pelo sitemap E pelo `generateMetadata` — divergir entre os dois foi o alerta de agosto. **Não é 404**: a página volta ao índice sozinha quando ganhar corpo | #319 |
 | 2026-08-30 | tracking | **Cliques de oferta não eram gravados desde 18/03**: o `INSERT` em `oferta_clicks` mandava `utm_medium`, coluna inexistente → 400 PGRST204, erro não conferido, redirect 302 normal. Payload alinhado ao schema, erro logado na Vercel, e a auditoria passou a verificar se a linha ENTROU (não só o status do redirect). Migração opcional de paridade em `scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql` | #312 |
 | 2026-08-21 | dados estruturados | **"Valor ISBN13 invalido para `isbn`"** (Listagens do comerciante, `[WNC-10030322]`): `livros/[slug]` e `ofertas` emitiam `livro.isbn` cru no JSON-LD, e o `gtin13` so contava digitos. Novo `lib/isbn.ts` valida o digito verificador e converte ISBN-10 → ISBN-13 (prefixo 978 + checksum); `isbn`/`gtin13` so saem quando o ISBN e valido, `sku` segue o valor do banco. Afetava 2 dos 9 livros publicados com ISBN | #289 |
 | 2026-08-20 | noindex/404 | **`/categorias/[slug]` sem livro publicavel: 200 + `noindex` → 404** (espelha o #263, que fez o mesmo para autor). Era o que reprovava a validacao do bucket "Excluida pela tag noindex" (604): das 604 URLs, 594 sao `/autores/*` obsoletas (nenhuma rastreada apos 08/08) e o unico exemplo pos-fix era `/categorias/mentalidade-financeira` (14/08), ainda 200 + `noindex`. Sao **6 de 170** categorias afetadas (medido 2026-08-20 via PostgREST), ja fora do sitemap e do indice. Inclui o guard `livrosQueryFailed` para nao transformar falha transitoria do Supabase em 404 cacheado por 24h | #286 |
