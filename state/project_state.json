@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-05: pegada indexavel medida — 8.273 URLs no sitemap, das quais 1.855 (22,4%) sao finas, e NAO sao as paginas de livro (97% densas) e sim autores (90% sem bio) e listas (59% com <5 membros). Corte proposto e ADIADO ate ler o GSC atual (TASK-SEO-001).",
+    "last_updated": "2026-09-05: migracao do is_bot APLICADA e marcacao verificada ponta a ponta (sem referer -> sem tag + is_bot=true; com referer -> com tag + is_bot=false). GSC lido: posicao 58,1 nos ultimos 7 dias contra 56,1 de 26/08 — SEM recuperacao, o corte da faixa fina se justifica, aguardando so a escolha do criterio (TASK-SEO-001).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1196,7 +1196,16 @@
         "app/(public)/autores/[slug]/page.tsx",
         "app/(public)/listas/[slug]/page.tsx",
         "agents/gsc/memory.md"
-      ]
+      ],
+      "gsc_lido": {
+        "data": "2026-09-05",
+        "ultimos_7_dias": "28/08 a 03/09 — janela inteiramente pos-update: 3 cliques, 631 impressoes (~90/dia), CTR 0,5%, POSICAO MEDIA 58,1",
+        "ultimos_28_dias": "07/08 a 03/09: 179 cliques, 12,2 mil impressoes, CTR 1,5%, posicao 21,9 — a media sobe so porque metade da janela e ANTERIOR ao update. A janela limpa e a de 7 dias.",
+        "tres_meses": "04/06 a 03/09: 466 cliques, 30,1 mil impressoes, CTR 1,5%, posicao 19,9",
+        "conclusao": "NAO HOUVE RECUPERACAO. Contra 56,1 de 26/08, a posicao esta em 58,1 — piorou marginalmente. Tres semanas de piso estavel: nao e queda continua, mas tambem nao ha recuperacao espontanea. O dado que faltava para decidir o corte agora existe, e ele sustenta agir.",
+        "sinal_lateral": "Consultas do topo seguem fora de intencao comercial: 'rule 34 unidade' com 89 impressoes, 'blindsight' com 145, 'livraria de alexandria' com 141 (biblioteca historica). Isso pressiona o CTR para baixo e reforca o perfil de conteudo em escala.",
+        "status_da_decisao": "AGUARDANDO escolha do criterio de corte — nao proceder sem ela."
+      }
     },
     {
       "id": "TASK-TRACK-003",
@@ -1237,6 +1246,14 @@
         "com_referer_do_site": "HTTP 302 para a MESMA url + &tag=livrariaalexa-20 — a tag sobrevive para quem veio de pagina do site",
         "o_retry_do_PGRST204_funcionou": "A coluna is_bot ainda NAO existe (migracao nao aplicada), e as duas batidas de teste foram gravadas assim mesmo (09:07:41 ref=None e 09:07:46 ref=/livros/dom-casmurro). Sem o retry, esses dois cliques teriam sumido em silencio — exatamente o bug de 5 meses da TASK-TRACK-002. A trava fez o trabalho dela na primeira oportunidade real.",
         "linhas_sinteticas": "As duas linhas de 2026-09-05T09:07 sao da verificacao, nao cliques reais. Somadas as de 30/08 (AlexandriaVerify), sao 3 sinteticas no historico."
+      },
+      "migracao_aplicada": {
+        "data": "2026-09-05",
+        "como": "SQL Editor do Supabase (auth via GitHub), 'Success. No rows returned'",
+        "confirmado": "is_bot presente nas tres tabelas pelo OpenAPI do PostgREST",
+        "marcacao_verificada_ponta_a_ponta": "sem referer -> 302 SEM tag= e linha gravada com is_bot=true; com referer do site -> 302 COM tag= e is_bot=false. As duas pontas fazem o que devem.",
+        "historico": "3.338 linhas anteriores ficam com is_bot NULL, como o .sql previu — nao preencher retroativo por heuristica; o dado bruto (user_agent, referer) continua la.",
+        "linhas_sinteticas_desta_sessao": "As batidas de verificacao de 2026-09-05 (09:07 e 10:27-10:32) sao minhas, nao cliques reais. Somadas a de 30/08, sao ~6 no historico. Descontar em analise futura."
       }
     },
     {
