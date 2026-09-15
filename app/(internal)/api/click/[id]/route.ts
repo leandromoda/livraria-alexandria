@@ -97,10 +97,14 @@ export async function GET(
    * aparecer no log da Vercel. O redirect NUNCA é bloqueado por erro de
    * tracking — perder a métrica é ruim, perder o clique do usuário é pior.
    */
+  // Classificação pelo Fetch Metadata do navegador, NÃO pelo Referer: estes
+  // links levam rel="noreferrer", então clique real nunca traz Referer — e um
+  // Referer do próprio site aqui só pode ser forjado. A primeira versão (#315)
+  // confiava no Referer e ficou invertida. Medição em lib/afiliado.ts.
   const { url: destino, humano } = urlDeRedirect(
     oferta.url_afiliada,
-    userAgent,
-    referer
+    request.headers,
+    { linkSemReferer: true }
   );
 
   const base = {

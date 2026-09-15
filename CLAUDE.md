@@ -563,10 +563,21 @@ OLLAMA_BASE_URL=http://localhost:11434  # opcional — LLM local
 
 1. Busca `ofertas` pelo `id`
 2. Faz hash SHA-256 do IP (`x-forwarded-for`)
-3. Insere em `oferta_clicks` (oferta_id, livro_id, user_agent, referer, ip_hash)
-4. Retorna `302` para `url_afiliada`
+3. Insere em `oferta_clicks` (oferta_id, livro_id, user_agent, referer, ip_hash, is_bot)
+4. Retorna `302` para `url_afiliada` — **com a tag de afiliado só para clique
+   humano**; bot é redirecionado igual, mas sem a tag (`lib/afiliado.ts`).
 
 Não adicionar auth a essa rota — precisa ser pública para os redirecionamentos funcionarem.
+
+> ⚠️ **Não classificar humano por Referer.** Os links de oferta de livro levam
+> `rel="noopener noreferrer …"` (ver "Segurança — target=\"_blank\" sempre com
+> rel", em Convenções), então clique real **nunca** chega com Referer. A
+> primeira versão do classificador (#315) confiava no Referer e ficou
+> invertida: tirava a tag de quem clicava de verdade e dava a tag a bots que
+> forjavam Referer da home (841 de 1.010 "humanos", medido em 2026-09-15). O
+> sinal é o **Fetch Metadata** (`Sec-Fetch-User: ?1` + `Sec-Fetch-Site:
+> same-origin`); um Referer do próprio site num link `noreferrer` é sinal de
+> **bot**. Medição completa em `lib/afiliado.ts`.
 
 ---
 

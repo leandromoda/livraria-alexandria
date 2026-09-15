@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-05: faixa fina fora do indice (#319) — sitemap de 8.273 para 6.504 URLs, cortando 1.333 paginas de autor sem bio/1 livro e 438 listas com <5 membros, com noindex+follow e sem 404. Verificado em producao nas duas pontas. Livros e categorias intactos.",
+    "last_updated": "2026-09-15: classificador de clique do #315 estava INVERTIDO — links de livro sao noreferrer, entao humano perdia a tag e bot com Referer forjado ganhava (~114/dia com tag no painel da Amazon). Trocado por Fetch Metadata (TASK-TRACK-004). Experimento do corte: posicao 58,1 -> 52,9 mas impressoes 631 -> 446, efeito de composicao ate prova em contrario.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1164,6 +1164,36 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-TRACK-004",
+      "description": "Classificador de clique do #315 estava INVERTIDO (links noreferrer) — trocado por Fetch Metadata (Sec-Fetch-User + Sec-Fetch-Site)",
+      "priority": "high",
+      "status": "implemented",
+      "registered_on": "2026-09-15",
+      "origem": "Leitura do 'depois' do experimento de 05-15/09: 1.010 cliques marcados humanos em 10 dias, contra ~3 cliques de busca POR SEMANA no GSC.",
+      "medicao": {
+        "data": "2026-09-15",
+        "base": "4.366 cliques em oferta_clicks desde a migracao is_bot (05/09 10:33)",
+        "is_bot_true": 3353,
+        "is_bot_false": 1010,
+        "referer_dos_humanos": "841 home (sem link de oferta) | 169 /api/click | 0 /livros/X",
+        "livros_distintos_humanos": 462,
+        "markup": "livros/[slug] e ofertas: rel='noopener noreferrer nofollow sponsored'; jogos e infantis: rel='nofollow sponsored' (sem noreferrer)",
+        "painel_associados": "3.789 cliques em 06/08-04/09 -> 3.421 em 16/08-14/09 (~114/dia), 0 pedidos, 0,00% de conversao"
+      },
+      "decisao_do_usuario": "Leandro escolheu em 2026-09-15 usar Sec-Fetch-User, entre tres opcoes. Descartadas: tirar o noreferrer dos links (muda convencao do CLAUDE.md) e parar de mandar a tag (enterra as 10 vendas da Creators API).",
+      "resolution": "lib/afiliado.ts: humano = UA nao-bot E Sec-Fetch-User '?1' E Sec-Fetch-Site 'same-origin'; nos links com noreferrer (livros), Referer do proprio site vira sinal de BOT (forjado). urlDeRedirect passou a receber request.headers + {linkSemReferer} — true na rota de livros, false em jogos e infantis.",
+      "falha_segura": "Se um proxy removesse Sec-Fetch-*, tudo viraria bot e nenhum clique levaria tag — perda de comissao, nunca risco de conta.",
+      "nao_medido": "Que os bots atuais nao mandam Sec-Fetch-*: a tabela nao grava esses cabecalhos. O que se sabe e que forjam Referer, o que ja os derruba.",
+      "verificar": "Pos-deploy: clique REAL no Chrome numa pagina de livro -> linha com is_bot=false e destino COM tag; curl imitando o bot (Referer da home) -> is_bot=true e SEM tag. Depois, painel de Associados deve cair abaixo de ~114 cliques/dia.",
+      "files": [
+        "lib/afiliado.ts",
+        "app/(internal)/api/click/[id]/route.ts",
+        "app/(internal)/api/click-jogo/[id]/route.ts",
+        "app/(internal)/api/click-infantil/[id]/route.ts",
+        "CLAUDE.md"
+      ]
+    },
+    {
       "id": "TASK-SEO-001",
       "description": "Tirar do indice a faixa fina do sitemap (1.855 URLs, 22,4%) — AGUARDANDO leitura atual do GSC antes de decidir o corte",
       "priority": "high",
@@ -1216,6 +1246,15 @@
         "por_secao": "/autores 2.292 -> 960 (previsto 959) | /listas 743 -> 306 (previsto 305) | /livros 5.095 e /categorias 127 INTACTOS",
         "as_duas_pontas": "chris-anderson (excluido): HTTP 200, robots='noindex, follow', e FORA do sitemap. a-j-finn (mantido): HTTP 200, SEM meta robots. Sitemap e pagina concordam.",
         "metodo": "simulacao da mesma regra contra o Supabase ANTES de buildar, depois conferencia do sitemap.xml de producao e do meta robots das paginas apos o deploy"
+      },
+      "experimento_depois": {
+        "data": "2026-09-15",
+        "gsc_7_dias": "06/09-12/09: 3 cliques | 446 impressoes | CTR 0,7% | POSICAO 52,9 — contra 28/08-03/09: 3 | 631 | 0,5% | 58,1",
+        "leitura": "Posicao melhorou ~5 e impressoes CAIRAM 29%: o esperado de simplesmente tirar paginas que rankeavam no fundo — a media do que sobra sobe, o volume desce. E EFEITO DE COMPOSICAO, nao recuperacao demonstrada. n=446 impressoes.",
+        "sinal_qualitativo": "Consultas fora de intencao ('rule 34 unidade', 'blindsight') sairam do topo, agora so titulos de livro (O Senhor dos Aneis, Olhos de Cao Azul, Austerlitz). Consultas distintas: ~1.000 -> 259. Pista, nao prova.",
+        "janela": "O G rodou 05/09 10:07 a 06/09 09:21 (commit ced2090): 4 publicados, 4 despublicados, ZERO bios, 120 migrados ao ML — neutro para o indice. Sitemap seguiu em 6.504 exatos. Janela limpa: 06/09 -> 15/09.",
+        "relatorio_de_indexacao": "Ultima atualizacao 03/09 — ANTERIOR ao corte, entao nao diz nada sobre ele. Mostra o dano do update entre 20/08 e 03/09: indexadas 8,97 mil -> 7,3 mil; 'Rastreada, mas nao indexada' 110 -> 1.588.",
+        "proxima_leitura": "Quando o relatorio de indexacao passar de 05/09: conferir o bucket 'Excluida pela tag noindex' (+~1.771 esperado) e se as indexadas caem no mesmo tanto. E repetir o GSC 7 dias com n maior."
       }
     },
     {
@@ -1265,7 +1304,8 @@
         "marcacao_verificada_ponta_a_ponta": "sem referer -> 302 SEM tag= e linha gravada com is_bot=true; com referer do site -> 302 COM tag= e is_bot=false. As duas pontas fazem o que devem.",
         "historico": "3.338 linhas anteriores ficam com is_bot NULL, como o .sql previu — nao preencher retroativo por heuristica; o dado bruto (user_agent, referer) continua la.",
         "linhas_sinteticas_desta_sessao": "As batidas de verificacao de 2026-09-05 (09:07 e 10:27-10:32) sao minhas, nao cliques reais. Somadas a de 30/08, sao ~6 no historico. Descontar em analise futura."
-      }
+      },
+      "CORRECAO_2026-09-15": "A 'verificacao em producao' de 05/09 exercitou so requisicoes curl com Referer montado a mao — provou os dois ramos do redirect, NAO a classificacao do trafego real. Com trafego real a regra estava INVERTIDA: os links de oferta de livro levam rel=noreferrer, entao clique humano chegava sem Referer e perdia a tag, enquanto os 1.010 'humanos' eram bots forjando Referer (841 da home, 169 da propria rota /api/click, ZERO de /livros/X). O painel de Associados confirmou por fonte independente: ~114 cliques/dia com tag, 0 pedidos. Substituida pela TASK-TRACK-004."
     },
     {
       "id": "TASK-TRACK-002",

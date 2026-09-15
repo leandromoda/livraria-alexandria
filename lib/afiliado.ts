@@ -5,30 +5,60 @@
  * voltar a gravar (#312).
  *
  * A tabela `oferta_clicks` acumulou **3.182 cliques em 5 dias**, contra os
- * **518 que o GSC registra em 5 MESES**. O perfil não é de audiência:
+ * **518 que o GSC registra em 5 MESES**. O perfil não era de audiência: 86%
+ * sem referer, 2.191 livros distintos para 3.182 cliques (varredura de
+ * catálogo), 732 `ip_hash` com o maior fazendo 78 cliques em intervalos de
+ * 1-3 min, user-agents repetidos. O `robots.txt` bloqueia `/api/click/`, mas
+ * esse tráfego não obedece — e cada requisição ia para a Amazon COM a tag.
  *
- *   - 2.746 de 3.182 (86%) **sem referer nenhum**, batendo em `/api/click/`
- *     direto, sem vir de página alguma;
- *   - **2.191 livros distintos** para 3.182 cliques — varredura de catálogo,
- *     não interesse por título;
- *   - 732 `ip_hash`, o maior com **78 cliques em intervalos de 1-3 min**
- *     madrugada adentro;
- *   - 1.107 cliques com exatamente o mesmo user-agent de Mac;
- *   - um referer `m.baidu.com/s?wd=unlesso42`.
+ * O contrato de Associados proíbe clique artificial, e milhares deles com
+ * conversão zero é o padrão que encerra conta. Decisão do Leandro em
+ * 2026-09-04: **redirecionar mesmo assim, mas sem a tag**. Nada quebra para
+ * quem for classificado errado — a pessoa chega ao produto normalmente, só não
+ * gera comissão naquele clique.
  *
- * O `robots.txt` bloqueia `/api/click/`, mas esse tráfego não obedece.
+ * ---------------------------------------------------------------------------
+ * ⚠ A PRIMEIRA VERSÃO DA REGRA (#315) ESTAVA INVERTIDA — corrigida em 2026-09-15
+ * ---------------------------------------------------------------------------
  *
- * **O que isso custava:** cada uma dessas requisições era redirecionada para a
- * Amazon **com a tag de afiliado**, ou seja, o site gerava clique artificial em
- * volume MAIOR que o pipeline gerava antes do #311 (3.182 em 5 dias contra
- * 3.402 em 30 dias). O contrato de Associados proíbe clique artificial, e
- * milhares deles com conversão zero é o padrão que encerra conta — o que
- * também eliminaria a chance de qualificar para a Creators API.
+ * Ela classificava como humano quem chegasse com Referer do próprio site. Só
+ * que os links de oferta de livro (`livros/[slug]`, `ofertas`) levam
+ * `rel="noopener noreferrer nofollow sponsored"` — e `noreferrer` faz o
+ * navegador NÃO enviar Referer. Medido em 2026-09-15, sobre os 4.366 cliques
+ * gravados desde a migração `is_bot` (05/09 10:33):
  *
- * Decisão do Leandro em 2026-09-04: **redirecionar mesmo assim, mas sem a
- * tag**. Nada quebra para quem for classificado errado — a pessoa chega à
- * página do produto normalmente, só não gera comissão naquele clique. É a
- * mesma solução do #311, agora do lado do site.
+ *   - clique humano de verdade chegava SEM referer → marcado bot → tag removida;
+ *   - os 1.010 marcados "humanos" eram bots forjando referer:
+ *       841 com Referer = home, onde NÃO existe link de oferta (conferido no
+ *           código: `/api/click` só aparece em livros/[slug], ofertas, jogos
+ *           e infantis);
+ *       169 com Referer = a própria rota `/api/click`;
+ *       ZERO vindos de `/livros/<slug>`;
+ *       462 livros distintos, user-agents rotativos;
+ *   - o painel de Associados, fonte independente, confirmava: 3.789 cliques em
+ *     06/08–04/09 contra 3.421 em 16/08–14/09 (~114/dia), 0 pedidos — o
+ *     vazamento seguia praticamente no mesmo ritmo depois do #315.
+ *
+ * Ou seja: o risco de conta que o #315 deveria fechar seguia aberto, e ainda
+ * cortava a comissão de quem clicava de verdade.
+ *
+ * O SINAL CERTO é o que o navegador manda numa navegação ativada pelo usuário
+ * e que sobrevive ao `noreferrer`: o Fetch Metadata — `Sec-Fetch-User: ?1`
+ * (a navegação foi disparada por gesto do usuário) + `Sec-Fetch-Site:
+ * same-origin` (a partir de uma página deste mesmo site). Chrome, Edge,
+ * Firefox e Safari 16.4+ enviam esses cabeçalhos.
+ *
+ * E o Referer, que não servia como sinal de humano, vira sinal de BOT onde o
+ * link é `noreferrer`: ali, um Referer do próprio site só pode ser forjado.
+ *
+ * Suposto, não medido: que os bots atuais não mandam `Sec-Fetch-*`. A tabela
+ * não grava esses cabeçalhos, então não há como afirmar hoje — o que se sabe é
+ * que eles forjam Referer, o que já os derruba pela regra acima.
+ *
+ * FALHA SEGURA: se algum proxy no caminho (Cloudflare → Vercel Edge) removesse
+ * `Sec-Fetch-*`, tudo viraria "bot" e nenhum clique levaria tag — perda de
+ * comissão, nunca risco de conta. O teste pós-deploy com clique real no Chrome
+ * é o que confirma que os cabeçalhos chegam.
  */
 
 /** Bots que se identificam no user-agent. */
@@ -60,19 +90,29 @@ export function veioDoSite(referer: string | null): boolean {
 }
 
 /**
- * Uma requisição só conta como humana se veio de uma página do próprio site
- * E o user-agent não é de bot conhecido.
- *
- * O referer é o sinal forte: os links de oferta só existem dentro do site, e
- * navegador manda referer em navegação normal (a política padrão
- * `strict-origin-when-cross-origin` preserva a origem). Quem chega sem ele
- * não passou por página nenhuma.
+ * Navegação disparada por gesto do usuário, a partir de uma página deste mesmo
+ * site — segundo o próprio navegador (Fetch Metadata).
  */
-export function pareceHumano(
-  userAgent: string | null,
-  referer: string | null
-): boolean {
-  return veioDoSite(referer) && !ehBot(userAgent);
+export function cliqueDeUsuario(h: Headers): boolean {
+  return (
+    h.get("sec-fetch-user") === "?1" &&
+    h.get("sec-fetch-site") === "same-origin"
+  );
+}
+
+export type OpcoesClique = {
+  /**
+   * O link de origem leva `rel="noreferrer"`? Livros (`livros/[slug]`,
+   * `ofertas`): sim. Jogos e infantis (`rel="nofollow sponsored"`): não.
+   * Quando leva, um Referer do próprio site é impossível num clique real.
+   */
+  linkSemReferer: boolean;
+};
+
+export function pareceHumano(h: Headers, opts: OpcoesClique): boolean {
+  if (ehBot(h.get("user-agent"))) return false;
+  if (opts.linkSemReferer && veioDoSite(h.get("referer"))) return false; // forjado
+  return cliqueDeUsuario(h);
 }
 
 /** Remove os parâmetros de afiliado. Devolve a URL intacta se não houver. */
@@ -97,9 +137,9 @@ export function semTagAfiliado(url: string): string {
  */
 export function urlDeRedirect(
   urlAfiliada: string,
-  userAgent: string | null,
-  referer: string | null
+  h: Headers,
+  opts: OpcoesClique
 ): { url: string; humano: boolean } {
-  const humano = pareceHumano(userAgent, referer);
+  const humano = pareceHumano(h, opts);
   return { url: humano ? urlAfiliada : semTagAfiliado(urlAfiliada), humano };
 }

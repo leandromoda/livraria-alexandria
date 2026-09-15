@@ -312,12 +312,55 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-09-15 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | — | — | 107 |  ← relatório PRÉ-corte; linhas 11-12 não lidas
 | 2026-08-30 | — | — | — | — | — | — | — | — | — |  ← seção de DESEMPENHO, não de indexação
 | 2026-08-20 | 4.235 | 1.277 | 410 | 22 | 2 | 110 | 1.444 | 604 ⚠️ | 108 |
 | 2026-08-09 | 3.926 | 1.260 | 278 | 23 | 2 | 74 | 15 | 580 | 107 |
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-09-15 — o "depois" do corte (#319), após 10 dias
+
+**Desempenho, janela de 7 dias:**
+
+| | 28/08–03/09 (antes) | 06/09–12/09 (depois) |
+|---|---|---|
+| posição média | 58,1 | **52,9** |
+| impressões | 631 | **446** |
+| cliques | 3 | 3 |
+| CTR | 0,5% | 0,7% |
+| consultas distintas | ~1.000 | 259 |
+
+> ⚠️ **Não chamar isto de recuperação.** A posição melhorou e as impressões
+> **caíram 29%** — é exatamente o que acontece ao tirar páginas que rankeavam
+> no fundo: a média do que sobra sobe e o volume desce. **Efeito de composição**
+> até prova em contrário. n=446 impressões.
+
+**Sinal qualitativo:** as consultas fora de intenção (`rule 34 unidade`,
+`blindsight`) saíram do topo; agora é só título de livro — *O Senhor dos Anéis*,
+*Olhos de Cão Azul*, *Austerlitz*, *A Porta*. Pista, não prova.
+
+**A janela é limpa do lado do índice:** o G rodou de 05/09 10:07 a 06/09 09:21
+(4 publicados, 4 despublicados, **zero bios**, 120 migrados ao ML) e o sitemap
+seguiu em **6.504 exatos**. Nenhum autor voltou ao índice.
+
+**O relatório de indexação está em 03/09 — ANTERIOR ao corte**, então não diz
+nada sobre o #319. O que ele mostra é o dano do update entre 20/08 e 03/09:
+indexadas **8,97 mil → 7,3 mil**, e **"Rastreada, mas não indexada" 110 →
+1.588** — o Google rastreando páginas e recusando indexar.
+
+**Próxima leitura útil:** quando o relatório de indexação passar de 05/09 —
+conferir se "Excluída pela tag noindex" sobe ~1.771 e se as indexadas caem no
+mesmo tanto. E repetir o Desempenho de 7 dias com n maior.
+
+> 🔴 **Achado lateral da mesma leitura — o classificador de cliques do #315
+> estava invertido.** Os links de oferta de livro são `noreferrer`, então
+> clique humano chegava sem Referer e perdia a tag, enquanto 1.010 cliques
+> "humanos" eram bots forjando Referer (841 da home, onde não há link de
+> oferta). O painel de Associados seguia em ~114 cliques/dia com tag, 0
+> pedidos. Corrigido com Fetch Metadata — ver TASK-TRACK-004 e
+> `lib/afiliado.ts`.
 
 ### Seção 2026-09-05 — a pegada indexável, medida por espessura
 
