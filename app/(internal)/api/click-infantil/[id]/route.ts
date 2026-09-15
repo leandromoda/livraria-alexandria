@@ -66,10 +66,12 @@ export async function GET(
   /**
    * 4) Insert tracking
    */
+  // O link de infantis NÃO leva noreferrer (rel="nofollow sponsored"), então
+  // aqui um Referer do site é legítimo — o sinal de humano é o Fetch Metadata.
   const { url: destino, humano } = urlDeRedirect(
     livro.url_afiliada,
-    userAgent,
-    referer
+    request.headers,
+    { linkSemReferer: false }
   );
 
   // Bot leva redirect igual, mas SEM a tag de afiliado. Ver lib/afiliado.ts:
