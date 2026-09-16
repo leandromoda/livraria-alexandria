@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { toIsbn13 } from "@/lib/isbn";
+import { slugCanonicoLivro } from "@/lib/duplicatas";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
 import Link from "next/link";
@@ -101,7 +102,8 @@ export async function generateMetadata({
   return {
     title: livro.titulo,
     description,
-    alternates: { canonical: `/livros/${slug}` },
+    // Duplicata aponta a canonical para a página mantida — ver lib/duplicatas.ts.
+    alternates: { canonical: `/livros/${slugCanonicoLivro(slug)}` },
     openGraph: {
       title: livro.titulo,
       description,
