@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-15: classificador por Fetch Metadata (#321) VERIFICADO em producao com clique real no Chrome — referer nulo (noreferrer), is_bot=false e destino com os parametros de afiliado; bot com Referer forjado da home vai sem tag (TASK-TRACK-004).",
+    "last_updated": "2026-09-16: ofertas antigas de outro marketplace desativadas (570 livros, #327 + backfill), reparo de ofertas a cada janela do G com anti-laco na fila do monitor (#328), TASK-SEO-017 com canonical feito e Guerra dos Tronos corrigida.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1167,7 +1167,7 @@
       "id": "TASK-SEO-017",
       "description": "Livro publicado em duplicata: mesma obra em 2-3 paginas indexaveis (121 com o original tambem no ar, 75 do mesmo autor)",
       "priority": "medium",
-      "status": "open",
+      "status": "in_progress",
       "registered_on": "2026-09-16",
       "origem": "/analise_gsc de 2026-09-16: drilldown de 'Rastreada, mas nao indexada' (dados de 03/09). Das 58 /livros/* do apex na amostra, 5 tinham sufixo -2.",
       "medicao": {
@@ -1230,6 +1230,12 @@
         "produtos_diferentes_conferidos": "3 dos 6 sao OBRAS DIFERENTES com o mesmo titulo: electra (Sofocles) x electra-2 (Euripides), inferno (Dan Brown) x inferno-2 (Patricia Melo), blade-runner (Philip K. Dick) x blade-runner-2 (K. W. Jeter). Os outros sao edicoes da mesma obra (ensaio-sobre-a-cegueira, as-cronicas-de-narnia).",
         "conclusao": "Nenhuma heuristica sozinha serve. O sufixo -N inclui obras diferentes (Electra, Inferno, Blade Runner) e nao ve duplicatas de titulo com grafia distinta (cartas persas, o amor nos tempos do colera). O /p/ do ML e objetivo mas cobre 16% do catalogo, e mesmo produto pode significar oferta errada (Guerra dos Tronos). Decidivel hoje com seguranca: 13 paginas. Os outros 106 pares de slug seguem sem criterio ate migrarem para o ML.",
         "achado_lateral": "Alguns grupos tem preco alto para livro comum (as-cronicas-de-narnia R$ 395, o-espiao-que-saiu-do-frio R$ 399): o casamento pode estar caindo em box ou edicao de colecionador. Nao investigado — mesma classe do caso Guerra dos Tronos."
+      },
+      "executado_2026_09_16": {
+        "canonical": "13 duplicatas confirmadas com canonical para a pagina mantida e fora do sitemap (lib/duplicatas.ts, #325); verificado em producao: sitemap 6.491 URLs sem nenhuma duplicata.",
+        "a_guerra_dos_tronos": "As duas paginas apontavam para MLB22219446 (cadastro vago, anuncios de R$ 380,60 e R$ 1.200). Edicao comum corrigida para MLB19910462 a R$ 78,29 (books.db + Supabase). A ilustrada (MLB22836637) nao tem anuncio ativo: ficou com busca do ML sem preco e a linha Amazon desativada.",
+        "achado_empate_de_pontuacao": "buscar_livro fica com o primeiro candidato em empate de pontuacao, que pode ser produto mal cadastrado a preco de colecionador: Guerra dos Tronos R$ 380, As Cronicas de Narnia R$ 395, O Espiao que Saiu do Frio R$ 399, 1Q84 R$ 599 (caixa). Nao corrigido.",
+        "achado_paginas_orfas": "Medido em 2026-09-16 no backfill de ofertas: 21 livros do Supabase com oferta nao tem linha no books.db (supabase_id ausente), entre eles paginas MANTIDAS pelo canonical do #325 (pais-e-filhos, cem-anos-de-solidao, as-cronicas-de-narnia). O pipeline nao mantem preco nem oferta dessas paginas. Nao investigado."
       }
     },
     {
@@ -3376,6 +3382,31 @@
         "scripts/main.py",
         "scripts/tests/test_isbn_backfill.py"
       ]
+    },
+    {
+      "id": "TASK-OFERTAS-011",
+      "description": "Oferta antiga de outro marketplace continuava ativa ao lado da nova",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-16",
+      "causa": "publish_ofertas faz upsert por (livro_id, marketplace). Migracao (step 31), resgate e religacao de seed mudam o marketplace e o upsert insere linha nova sem desativar a antiga. A pagina do livro exibe todas as ofertas ativas e as poe no JSON-LD.",
+      "medicao": "Supabase em 2026-09-16 (ofertas paginada x livros.is_publishable): 570 livros publicaveis com >1 oferta ativa; 500 com busca da Amazon sem preco + deep link do ML com preco. Havia ainda grafias legadas 'Amazon' e 'mercadolivre'.",
+      "correcao": "publish_ofertas.desativar_outras: PATCH ativa=false em toda oferta do livro com marketplace != publicado, apos upsert bem-sucedido; falha nao marca publicado (#327). tests/test_publish_ofertas_unica.py.",
+      "backfill": "2026-09-16: 577 linhas com ativa=false (verdade = marketplace do books.db; 21 livros sem linha local mantiveram o deep link /p/MLB). Releitura: 0 livros com >1 oferta ativa, 0 publicaveis sem oferta ativa; ofertas ativas 5.762 -> 5.185. Reversivel (nada apagado)."
+    },
+    {
+      "id": "TASK-PIPE-036",
+      "description": "Reparo de ofertas rodava uma vez por passe do G, fora do loop multijanela",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-16",
+      "medicao": "pipeline_2026-09-05_13-55-27 (~17h40, 2 janelas LLM): monitor e step 31 uma vez cada, 150 + 150 livros. Monitor 15 min (9/150 ativos), step 31 9 min (67/150). books.db 2026-09-16: fila do step 31 com 1.397 nunca-tentados + 485 tentados; 2.205 publicados com busca do ML sem preco.",
+      "correcao": "main._reparo_ofertas() roda tambem ao fim de cada janela do loop (#328). Cotas PRECO_POR_CICLO/MIGRAR_ML_POR_CICLO passam a valer por janela.",
+      "travas": [
+        "preco_tentativa_em: falha de resolucao carimba a tentativa; os 141 erros do passe de 05/09 eram os 141 primeiros da fila em 16/09 (fila deterministica). Carimbados retroativamente com a data do passe.",
+        "LimiteML interrompe o lote do monitor (antes: ~100 s de espera por livro sob 429 persistente)."
+      ],
+      "a_medir": "Aproveitamento por janela na primeira rodada longa (rodada de 2 dias iniciada apos 2026-09-16). Estimativa, nao medicao: ~9 janelas -> step 31 ~1.350 livros a 35-49% e monitor ~1.350 a ~6%."
     }
   ],
   "qa_remediation_loop": {
