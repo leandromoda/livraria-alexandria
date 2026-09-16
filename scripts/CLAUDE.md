@@ -57,6 +57,28 @@ fix_affiliate_urls + publish_ofertas.run_repair).
 > monitor é capturada em `try` próprio — bloqueio de marketplace é transitório e
 > não pode derrubar o reparo de ofertas.
 
+> **⚠ "A cada passe" era uma vez por rodada — corrigido em 2026-09-16.** O
+> bloco de ofertas (pré-voo do ML → monitor → step 31 → fix de URLs →
+> `run_repair`) rodava só no início do passe, antes do loop multijanela. No log
+> `pipeline_2026-09-05_13-55-27` (~17h40, 2 janelas LLM) o monitor e a migração
+> aparecem **uma vez cada**: 150 + 150 livros na rodada inteira, com a API do
+> ML ociosa em todo o cooldown. Hoje `main._reparo_ofertas()` roda também **ao
+> fim de cada janela** do loop. As cotas (`PRECO_POR_CICLO`,
+> `MIGRAR_ML_POR_CICLO`) passam a valer por janela.
+>
+> Duas travas vieram junto, porque rodar mais vezes amplifica laço:
+>
+> - **`preco_tentativa_em`** — a falha de resolução não grava
+>   `preco_updated_at`, então a fila era determinística: os **141 erros** do
+>   passe de 05/09 (`0772_audit_prices.json`) eram **os 141 primeiros** da fila
+>   em 16/09. A tentativa falha agora carimba essa coluna, e o livro vai para o
+>   fim da faixa "sem preço" (sem sair dela).
+> - **Limite da API do ML para o lote do monitor**, como já parava o do step
+>   31: sob 429 persistente cada livro custaria ~100 s de espera sem avaliar
+>   nada (`_resolve_stats["ml_api_limite"]`).
+>
+> Testes em `tests/test_produto_2saltos.py`.
+
 ### ⚠ O monitor lia o preço da página de BUSCA — corrigido em 2026-08-23
 
 O `offer_price_monitor` tinha `PRICE_SELECTORS` próprios, de **página de

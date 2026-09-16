@@ -151,6 +151,14 @@ def fetch_pending(conn, limit, priorizar_ml=None):
     Contrapartida aceita: enquanto houver ML pendente, o preço dos livros da
     Amazon não é reconferido. Como 100% deles está sem preço nenhum hoje, não
     há dado fresco a perder.
+
+    ⚠ **`preco_tentativa_em` é o anti-laço (desde 2026-09-16).** Falha de
+    resolução não grava `preco_updated_at` (ver `process_book`), então a ordem
+    acima era determinística e os mesmos livros voltavam no topo a cada passe:
+    os 141 erros do passe de 05/09 eram os 141 primeiros da fila em 16/09. Com
+    o monitor rodando a cada janela do G, isso seria o laço do #307. A
+    tentativa falha carimba `preco_tentativa_em`: o livro continua na faixa
+    "sem preço", só vai para o fim dela.
     """
     if priorizar_ml is None:
         priorizar_ml = PRIORIZAR_ML
@@ -169,6 +177,7 @@ def fetch_pending(conn, limit, priorizar_ml=None):
           AND offer_url != ''
         ORDER BY (preco_atual IS NOT NULL) ASC,
                  {ordem_ml}
+                 preco_tentativa_em ASC NULLS FIRST,
                  preco_updated_at ASC NULLS FIRST
         LIMIT ?
     """, (limit,))
@@ -310,8 +319,9 @@ def process_book(conn, row, dry_run=False):
         if not dry_run:
             conn.execute("""
                 UPDATE livros
-                SET offer_status = 'error',
-                    updated_at   = CURRENT_TIMESTAMP
+                SET offer_status       = 'error',
+                    preco_tentativa_em = CURRENT_TIMESTAMP,
+                    updated_at         = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (livro_id,))
             conn.commit()
@@ -440,6 +450,14 @@ def process_book(conn, row, dry_run=False):
 # RUN
 # =========================
 
+def _limite_ml_atingido():
+    try:
+        from steps.marketplace_scraper import _resolve_stats
+        return _resolve_stats.get("ml_api_limite", 0) > 0
+    except Exception:
+        return False
+
+
 def run(limit=50, dry_run=False):
 
     log(f"Offer Price Monitor iniciado (limit={limit}, dry_run={dry_run})…")
@@ -482,6 +500,13 @@ def run(limit=50, dry_run=False):
             "slug": (row["slug"] if "slug" in row.keys() else None),
             "status": status,
         })
+
+        # 429 persistente (10+30+60 s já esperados dentro do ml_api): seguir
+        # custaria ~100 s por livro sem avaliar nenhum. Mesmo critério do step 31.
+        if _limite_ml_atingido():
+            log(f"[MONITOR] Limite da API do ML persistiu — lote interrompido "
+                f"em {i}/{total}")
+            break
 
         time.sleep(1)
 

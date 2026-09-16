@@ -53,6 +53,7 @@ _resolve_stats = {
     "ml_api_miss":   0,   # API consultada, não confirmou — cai no scraping
     "ml_api_off":    0,   # sem credencial / módulo ausente — nem tentou
     "ml_api_erro":   0,   # exceção na chamada da API
+    "ml_api_limite": 0,   # 429 persistiu (LimiteML) — o monitor para o lote
     "scrape_sem_pagina": 0,  # fetch_page devolveu None (bot wall, timeout)
     "scrape_sem_card":   0,  # página veio, nenhum card casou título+autor
     "scrape_ok":     0,   # scraping resolveu o produto
@@ -543,6 +544,11 @@ def _resolve_produto_ml_api(titulo, autor=None, isbn=None):
         return None
     try:
         achado = ml_api.buscar_livro(titulo, autor, isbn)
+    except ml_api.LimiteML:
+        # 429 persistente: conta à parte para o monitor interromper o lote.
+        _resolve_stats["ml_api_erro"] += 1
+        _resolve_stats["ml_api_limite"] += 1
+        raise
     except ml_api.ErroAPIML:
         # Sobe para `_resolve_produto`, que NÃO cai no scraping neste caso: o
         # scraping do ML bate no muro de login ("Para continuar, acesse sua

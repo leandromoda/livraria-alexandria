@@ -1051,72 +1051,7 @@ def _run_gargalo(idioma: str):
     # run_repair reseta status_publish_oferta=0 e re-upserta lendo
     # COALESCE(preco_atual, preco). Invertido, o preço novo só chegaria ao site
     # no ciclo seguinte.
-    log("[G] ── Reparo de ofertas (preços → URLs afiliadas → republicar) ──")
-    try:
-        if PRECO_POR_CICLO > 0:
-            # Pré-voo da API do ML — mesma ideia do pré-voo da sessão do claude
-            # CLI logo acima: uma chamada trivial ANTES de gastar o passe.
-            #
-            # Sem isso, o monitor tentaria a API livro a livro, falharia em
-            # todos e cairia no scraping — que sob bot wall custa até ~25 s de
-            # backoff POR LIVRO. Com a cota em 50, é um passe inteiro perdido
-            # descobrindo o que uma chamada responde em 1 s.
-            #
-            # Falha do pré-voo NÃO bloqueia: o scraping continua sendo o
-            # caminho válido para a Amazon (que não tem API acessível — ver
-            # TASK-OFERTAS-005) e o fallback para o ML.
-            try:
-                from core import ml_api
-                _ml, _ml_det = ml_api.status()
-                if _ml == "ok":
-                    log(f"[G] Pré-voo da API do ML: OK — {_ml_det}")
-                elif _ml in ("sem_credencial", "auth"):
-                    # Avisar no log não resolve numa rodada de madrugada: abre a
-                    # página onde a credencial se resolve. Não bloqueia — ver
-                    # core/auth_prompt.py.
-                    from core import auth_prompt
-                    auth_prompt.pedir(
-                        servico="API do Mercado Livre",
-                        url="https://developers.mercadolivre.com.br/devcenter",
-                        motivo=(f"{_ml_det}. Sem ela o preço do ML sai só por "
-                                "scraping — medido: ~8% sob bot wall, contra 37% "
-                                "pela API."),
-                        como_resolver=("DevCenter → sua aplicação → copiar "
-                                       "Client ID e Secret para ML_CLIENT_ID / "
-                                       "ML_CLIENT_SECRET em scripts/.env"))
-                else:
-                    log(f"[G] ⚠ Pré-voo da API do ML falhou ({_ml}): {_ml_det}")
-                    log("[G]    Segue com scraping; o ML deve render pouco neste passe.")
-            except Exception as e_mlp:
-                log(f"[G] ⚠ Pré-voo da API do ML não pôde rodar: {e_mlp}")
-
-            log(f"[G] Monitor de preços — cota do ciclo: {PRECO_POR_CICLO} livros")
-            try:
-                offer_price_monitor.run(limit=PRECO_POR_CICLO, dry_run=False)
-            except Exception as e_pm:
-                # Não deixa o scraping de preço derrubar o reparo de ofertas:
-                # bloqueio do marketplace é transitório e esperado.
-                log(f"[G] AVISO: monitor de preços falhou: {e_pm}")
-
-        # Migração do passivo Amazon → ML (step 31). Vem DEPOIS do monitor e
-        # ANTES do run_repair pela mesma razão de ordem já documentada acima: o
-        # deep link e o preço obtidos aqui saem republicados no mesmo ciclo.
-        #
-        # Roda no mesmo `try` do pré-voo porque depende da API do ML, mas em
-        # `try` próprio: indisponibilidade da API não pode derrubar o
-        # fix_affiliate_urls nem o run_repair, que são locais e sempre válidos.
-        if MIGRAR_ML_POR_CICLO > 0:
-            log(f"[G] Migração Amazon → ML — cota do ciclo: "
-                f"{MIGRAR_ML_POR_CICLO} livros")
-            try:
-                migrar_ofertas_ml.run(limit=MIGRAR_ML_POR_CICLO, dry_run=False)
-            except Exception as e_mg:
-                log(f"[G] AVISO: migração Amazon → ML falhou: {e_mg}")
-
-        fix_affiliate_urls.run()
-        publish_ofertas.run_repair()
-    except Exception as e_of:
-        log(f"[G] AVISO: reparo de ofertas falhou: {e_of}")
+    _reparo_ofertas()
 
     # ── Executa steps auto-executáveis ────────────────────────
     for step in auto_steps:
@@ -1251,6 +1186,10 @@ def _run_gargalo(idioma: str):
                 llm_orchestrator.run(idioma, wait_for_reset=False)
                 autopilot.run(idioma, 100, manter_batch=False)
 
+                # Ofertas a cada janela, não só no início do passe — ver
+                # _reparo_ofertas. Antes do guard: a última janela também conta.
+                _reparo_ofertas()
+
                 # 3) Guard anti-giro: se a janela não reduziu o backlog, para
                 #    (evita loop infinito quando o conteúdo restante não é gerável).
                 backlog_depois = llm_orchestrator._content_backlog(idioma)
@@ -1289,6 +1228,89 @@ def _run_gargalo(idioma: str):
     _print_gargalo_report(idioma)
 
     log(f"[G] Passe concluído. v{get_version()}")
+
+
+def _reparo_ofertas():
+    """Reparo de ofertas do G: pré-voo da API do ML → monitor de preços →
+    migração Amazon → ML → fix de URLs afiliadas → republicação.
+
+    Roda no passe do G **e a cada janela do loop multijanela**. Até 2026-09-16
+    rodava só uma vez por passe, antes do loop: no log
+    `pipeline_2026-09-05_13-55-27` (~17h40, 2 janelas LLM) o monitor e a
+    migração aparecem **uma vez cada** — 150 + 150 livros num passe inteiro,
+    com a API do ML ociosa nas horas de cooldown. Com a fila do step 31 em
+    1.397 nunca-tentados (books.db, 2026-09-16), uma rodada de 2 dias drenava
+    ~10% dela; por janela, drena a fila inteira.
+
+    Nunca levanta (exceto Ctrl+C): cada parte tem `try` próprio, e bloqueio de
+    marketplace ou limite da API não podem derrubar o loop.
+    """
+    log("[G] ── Reparo de ofertas (preços → URLs afiliadas → republicar) ──")
+    try:
+        if PRECO_POR_CICLO > 0:
+            # Pré-voo da API do ML — mesma ideia do pré-voo da sessão do claude
+            # CLI em _run_gargalo: uma chamada trivial ANTES de gastar o passe.
+            #
+            # Sem isso, o monitor tentaria a API livro a livro, falharia em
+            # todos e cairia no scraping — que sob bot wall custa até ~25 s de
+            # backoff POR LIVRO. Com a cota em 50, é um passe inteiro perdido
+            # descobrindo o que uma chamada responde em 1 s.
+            #
+            # Falha do pré-voo NÃO bloqueia: o scraping continua sendo o
+            # caminho válido para a Amazon (que não tem API acessível — ver
+            # TASK-OFERTAS-005) e o fallback para o ML.
+            try:
+                from core import ml_api
+                _ml, _ml_det = ml_api.status()
+                if _ml == "ok":
+                    log(f"[G] Pré-voo da API do ML: OK — {_ml_det}")
+                elif _ml in ("sem_credencial", "auth"):
+                    # Avisar no log não resolve numa rodada de madrugada: abre a
+                    # página onde a credencial se resolve. Não bloqueia — ver
+                    # core/auth_prompt.py.
+                    from core import auth_prompt
+                    auth_prompt.pedir(
+                        servico="API do Mercado Livre",
+                        url="https://developers.mercadolivre.com.br/devcenter",
+                        motivo=(f"{_ml_det}. Sem ela o preço do ML sai só por "
+                                "scraping — medido: ~8% sob bot wall, contra 37% "
+                                "pela API."),
+                        como_resolver=("DevCenter → sua aplicação → copiar "
+                                       "Client ID e Secret para ML_CLIENT_ID / "
+                                       "ML_CLIENT_SECRET em scripts/.env"))
+                else:
+                    log(f"[G] ⚠ Pré-voo da API do ML falhou ({_ml}): {_ml_det}")
+                    log("[G]    Segue com scraping; o ML deve render pouco neste passe.")
+            except Exception as e_mlp:
+                log(f"[G] ⚠ Pré-voo da API do ML não pôde rodar: {e_mlp}")
+
+            log(f"[G] Monitor de preços — cota do ciclo: {PRECO_POR_CICLO} livros")
+            try:
+                offer_price_monitor.run(limit=PRECO_POR_CICLO, dry_run=False)
+            except Exception as e_pm:
+                # Não deixa o scraping de preço derrubar o reparo de ofertas:
+                # bloqueio do marketplace é transitório e esperado.
+                log(f"[G] AVISO: monitor de preços falhou: {e_pm}")
+
+        # Migração do passivo Amazon → ML (step 31). Vem DEPOIS do monitor e
+        # ANTES do run_repair pela mesma razão de ordem já documentada acima: o
+        # deep link e o preço obtidos aqui saem republicados no mesmo ciclo.
+        #
+        # Roda no mesmo `try` do pré-voo porque depende da API do ML, mas em
+        # `try` próprio: indisponibilidade da API não pode derrubar o
+        # fix_affiliate_urls nem o run_repair, que são locais e sempre válidos.
+        if MIGRAR_ML_POR_CICLO > 0:
+            log(f"[G] Migração Amazon → ML — cota do ciclo: "
+                f"{MIGRAR_ML_POR_CICLO} livros")
+            try:
+                migrar_ofertas_ml.run(limit=MIGRAR_ML_POR_CICLO, dry_run=False)
+            except Exception as e_mg:
+                log(f"[G] AVISO: migração Amazon → ML falhou: {e_mg}")
+
+        fix_affiliate_urls.run()
+        publish_ofertas.run_repair()
+    except Exception as e_of:
+        log(f"[G] AVISO: reparo de ofertas falhou: {e_of}")
 
 
 def _run_secoes_paralelas():

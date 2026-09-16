@@ -209,6 +209,7 @@ CREATE TABLE livros (
     titulo TEXT, autor TEXT, isbn TEXT, slug TEXT, offer_url TEXT,
     supabase_id TEXT,
     preco_atual REAL, preco_updated_at TEXT, offer_status TEXT,
+    preco_tentativa_em TEXT, updated_at TEXT,
     status_publish INTEGER DEFAULT 0
 );
 """
@@ -272,7 +273,89 @@ def test_fila_prioriza_mercado_livre():
     print("[OK] ML vem antes da Amazon, e PRIORIZAR_ML=0 reverte")
 
 
+def test_fila_roda_quem_falhou():
+    """Falha de resolucao nao pode prender o topo da fila (2026-09-16).
+
+    Os 141 erros do passe de 05/09 eram os 141 primeiros da fila em 16/09: sem
+    carimbo, a ordem era deterministica. Com o monitor a cada janela do G, o
+    mesmo lote seria reconsultado 10x em 2 dias.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(DDL)
+    conn.executemany(
+        "INSERT INTO livros (id, titulo, offer_url, preco_atual, preco_tentativa_em,"
+        " status_publish) VALUES (?, ?, 'https://lista.mercadolivre.com.br/x', ?, ?, 1)",
+        [
+            ("falhou", "Tentado e nao resolvido", None, "2026-09-05 21:00:00"),
+            ("novo",   "Nunca tentado",           None, None),
+            ("preco",  "Ja tem preco",            9.9,  None),
+        ],
+    )
+    conn.commit()
+    assert [r["id"] for r in opm.fetch_pending(conn, 10)] == ["novo", "falhou", "preco"]
+
+    # process_book com falha carimba a tentativa, NAO o preco_updated_at
+    orig = opm.resolve_produto
+    opm.resolve_produto = lambda *a, **k: (None, None, None)
+    try:
+        row = conn.execute("SELECT * FROM livros WHERE id='novo'").fetchone()
+        assert opm.process_book(conn, row) == "error"
+    finally:
+        opm.resolve_produto = orig
+    r = conn.execute("SELECT preco_tentativa_em, preco_updated_at FROM livros "
+                     "WHERE id='novo'").fetchone()
+    assert r["preco_tentativa_em"] and r["preco_updated_at"] is None, dict(r)
+    assert [x["id"] for x in opm.fetch_pending(conn, 10)][:2] == ["falhou", "novo"]
+    conn.close()
+    print("[OK] falha carimba preco_tentativa_em e vai para o fim da faixa sem preco")
+
+
+def test_limite_ml_interrompe_o_lote():
+    """429 persistente custa ~100 s por livro — o monitor para, como o step 31."""
+    from steps import marketplace_scraper as ms
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(DDL)
+    conn.executemany(
+        "INSERT INTO livros (id, titulo, offer_url, status_publish) "
+        "VALUES (?, ?, 'https://lista.mercadolivre.com.br/x', 1)",
+        [("a", "A", ), ("b", "B"), ("c", "C")],
+    )
+    conn.commit()
+
+    visitados = []
+
+    def _resolve(offer_url, titulo, autor=None, isbn=None):
+        visitados.append(titulo)
+        if titulo == "B":
+            ms._resolve_stats["ml_api_limite"] += 1
+        return None, None, None
+
+    class _Aberta:
+        def __init__(self, c): self._c = c
+        def close(self): pass
+        def __getattr__(self, n): return getattr(self._c, n)
+
+    orig = (opm.resolve_produto, opm.get_conn, opm.time.sleep)
+    opm.resolve_produto, opm.get_conn = _resolve, (lambda: _Aberta(conn))
+    opm.time.sleep = lambda s: None
+    import core.audit_report as ar
+    orig_save = ar.save_audit_report
+    ar.save_audit_report = lambda *a, **k: None
+    try:
+        opm.run(limit=10, dry_run=True)
+    finally:
+        opm.resolve_produto, opm.get_conn, opm.time.sleep = orig
+        ar.save_audit_report = orig_save
+    assert visitados == ["A", "B"], visitados
+    conn.close()
+    print("[OK] limite persistente da API do ML interrompe o lote do monitor")
+
+
 if __name__ == "__main__":
+    test_fila_roda_quem_falhou()
+    test_limite_ml_interrompe_o_lote()
     test_serie_nao_casa_no_regime_estrito()
     test_edicao_do_mesmo_livro_casa()
     test_autor_diferente_rejeita()
