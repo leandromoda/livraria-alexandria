@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { supabase } from "@/lib/supabase";
 import { autorIndexavel, listaIndexavel } from "@/lib/indexavel";
+import { livroEhDuplicata } from "@/lib/duplicatas";
 
 const base = "https://livrariaalexandria.com.br";
 
@@ -124,12 +125,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ),
   ]);
 
-  const livroPages: MetadataRoute.Sitemap = livros.map((l) => ({
-    url: `${base}/livros/${l.slug}`,
-    lastModified: l.updated_at ?? undefined,
-    changeFrequency: "monthly",
-    priority: 0.9,
-  }));
+  // Duplicata sai do sitemap: a canonical dela aponta para a página mantida, e
+  // anunciar as duas seria sinal contraditório — ver lib/duplicatas.ts.
+  const livroPages: MetadataRoute.Sitemap = livros
+    .filter((l) => !livroEhDuplicata(l.slug))
+    .map((l) => ({
+      url: `${base}/livros/${l.slug}`,
+      lastModified: l.updated_at ?? undefined,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    }));
 
   const listaPages: MetadataRoute.Sitemap = listas
     .filter((l) => listaIndexavel(l.lista_livros?.length ?? 0))
