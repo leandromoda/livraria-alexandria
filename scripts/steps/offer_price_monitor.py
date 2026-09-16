@@ -242,10 +242,12 @@ def _resgatar_no_ml(conn, livro_id, titulo, autor, isbn, supabase_id, dry_run):
         return None
     if not ml_api.configurado():
         return None
-    try:
-        achado = ml_api.buscar_livro(titulo, autor, isbn)
-    except Exception:
-        return None
+    # ⚠ `ErroAPIML` NÃO é capturado aqui de propósito (desde 2026-09-16). Antes,
+    # qualquer falha virava `None` = "não resgatou", e o fluxo seguia para a
+    # contagem de indisponibilidade — um 429 contava como detecção a caminho de
+    # despublicar. Propagando, o `run()` registra `error` para o livro e nenhuma
+    # detecção é contada: a API não avaliou, então nada foi decidido.
+    achado = ml_api.buscar_livro(titulo, autor, isbn)
     if not achado or not achado.get("preco"):
         return None
 

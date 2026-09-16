@@ -83,11 +83,103 @@ def _post_form(url, dados):
         return json.loads(r.read().decode())
 
 
+# =========================
+# ERRO QUE NÃO É "NÃO ACHOU"
+# =========================
+#
+# ⚠ BUG CORRIGIDO EM 2026-09-16. `_produtos` e `_preco` engoliam QUALQUER
+# exceção e devolviam vazio, então `buscar_livro` respondia `None` — o mesmo
+# valor de "a API avaliou e o livro não está no catálogo". Um 429 virava
+# "não confirmado".
+#
+# O `migrar_ofertas_ml` (step 31) tinha sido escrito para NÃO carimbar livro em
+# falha de API — `except Exception` com o comentário "o livro não foi realmente
+# avaliado". Nunca disparou: todas as execuções nos logs de 30/08 a 03/09
+# registram `Erros: 0`, porque a exceção morria aqui dentro. O livro era
+# carimbado e ia para o fim da fila como se tivesse sido avaliado.
+#
+# Contrato agora:
+#   - `buscar_livro` devolve `None`  → a API AVALIOU e não confirmou.
+#   - `buscar_livro` levanta `ErroAPIML` → a API NÃO avaliou. Não carimbar.
+
+
+class ErroAPIML(Exception):
+    """A API não avaliou a consulta: rede, 5xx ou limite de requisições.
+
+    Nunca tratar como "livro não encontrado".
+    """
+
+
+class LimiteML(ErroAPIML):
+    """HTTP 429 que persistiu depois das esperas. Parar o lote é o certo."""
+
+
+# Ritmo entre chamadas. Medido em 2026-09-16 contra a /products/search:
+#   - 36 chamadas espaçadas em 6 s, 3 s e 1,5 s (12 cada) → 0 × 429;
+#   - chamada imediata depois de uma rajada de ~20 sem pausa → 429, sem
+#     `Retry-After` nem cabeçalho de limite na resposta (n=2 episódios).
+# O limiar entre 0 e 1,5 s NÃO foi medido; 1,5 s é o menor valor comprovado.
+# `ML_INTERVALO_MIN` sobrescreve.
+INTERVALO_MIN = float(os.getenv("ML_INTERVALO_MIN", "1.5"))
+
+# Espera antes de cada nova tentativa após um 429. Não há `Retry-After` para
+# seguir; no teste, 90 s de pausa bastaram para voltar a 200. Soma ~100 s antes
+# de desistir e levantar `LimiteML`.
+ESPERAS_429 = (10, 30, 60)
+
+_ultima_chamada = {"t": 0.0}
+
+
+def _ritmo():
+    falta = INTERVALO_MIN - (time.monotonic() - _ultima_chamada["t"])
+    if falta > 0:
+        time.sleep(falta)
+    _ultima_chamada["t"] = time.monotonic()
+
+
 def _get(url, token):
-    req = urllib.request.Request(url, headers={
-        "Authorization": f"Bearer {token}", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-        return json.loads(r.read().decode())
+    """GET com ritmo mínimo entre chamadas e espera escalonada em 429.
+
+    Devolve o JSON. Em 429 persistente levanta `LimiteML`. Os demais
+    `HTTPError` sobem sem tratamento — quem chama decide se é "não achou"
+    (4xx determinístico) ou "não avaliou" (5xx, rede).
+    """
+    for n, espera in enumerate((0,) + ESPERAS_429):
+        if espera:
+            log(f"[ML_API] HTTP 429 — aguardando {espera}s "
+                f"(tentativa {n + 1} de {len(ESPERAS_429) + 1})")
+            time.sleep(espera)
+        _ritmo()
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"Bearer {token}", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code != 429:
+                raise
+    raise LimiteML(f"HTTP 429 persistiu após {sum(ESPERAS_429)}s de espera")
+
+
+def _get_avaliado(url, token, vazio):
+    """`_get` com a classificação de erro que define o contrato do módulo.
+
+    - 429 persistente, 5xx, falha de rede → `ErroAPIML` (não avaliou).
+    - Outro 4xx (400, 404…) → devolve `vazio`. É determinístico: repetir a
+      mesma consulta dá o mesmo erro, então tratá-lo como "não avaliou" deixaria
+      o livro eternamente no topo da fila sem carimbo — o laço que o #307
+      corrigiu na categorização.
+    """
+    try:
+        return _get(url, token)
+    except ErroAPIML:
+        raise
+    except urllib.error.HTTPError as e:
+        if 400 <= e.code < 500:
+            return vazio
+        raise ErroAPIML(f"HTTP {e.code} em {url[:80]}") from e
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        raise ErroAPIML(f"{type(e).__name__}: {e}") from e
 
 
 def token(forcar=False):
@@ -191,23 +283,22 @@ def _autor_confere(autor_nosso, autor_ml):
 # =========================
 
 def _produtos(consulta, tk):
+    """Candidatos MLB-BOOKS. Levanta `ErroAPIML` se a API não avaliou."""
     url = (f"{API}/products/search?status=active&site_id={SITE}"
            f"&q={urllib.parse.quote(str(consulta))}")
-    try:
-        d = _get(url, tk)
-    except Exception:
-        return []
+    d = _get_avaliado(url, tk, vazio={})
     return [p for p in d.get("results", [])
             if p.get("domain_id") == DOMINIO_LIVRO]
 
 
 def _preco(produto_id, tk):
     """Preço do anúncio vencedor. `/items/{id}` está fechado, mas o preço já
-    vem em `/products/{id}/items` — não precisamos daquele."""
-    try:
-        d = _get(f"{API}/products/{produto_id}/items", tk)
-    except Exception:
-        return None, None
+    vem em `/products/{id}/items` — não precisamos daquele.
+
+    Produto sem anúncio ativo é "sem preço" (404 ou lista vazia), não erro.
+    Levanta `ErroAPIML` se a API não avaliou.
+    """
+    d = _get_avaliado(f"{API}/products/{produto_id}/items", tk, vazio={})
     itens = d.get("results") or []
     if not itens:
         return None, None
@@ -218,6 +309,10 @@ def buscar_livro(titulo, autor=None, isbn=None):
     """Resolve um livro no catálogo do ML.
 
     Retorna dict com produto_id, preco, url e autor_ml — ou None.
+
+    ⚠ `None` significa "a API avaliou e não confirmou". Se a API NÃO avaliou
+    (429 persistente, 5xx, rede), levanta `ErroAPIML` — ver o bloco de erro no
+    topo do módulo. Quem chama não pode tratar as duas coisas igual.
 
     REJEITA quando o autor não confere. Medido em 2026-08-29: sem esse portão,
     19 de 68 resultados eram livro errado. Falso negativo aqui é barato (o item

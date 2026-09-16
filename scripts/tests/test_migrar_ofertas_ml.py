@@ -75,6 +75,7 @@ _stub("bs4", _bs4)
 _stub("dotenv", _dotenv)
 
 from steps import migrar_ofertas_ml as mig  # noqa: E402
+from core import ml_api as _ml_api_real  # noqa: E402  (so stdlib: urllib/json)
 
 DDL = """
 CREATE TABLE livros (
@@ -128,8 +129,19 @@ def _rodar(conn, resposta, dry_run=False, limit=50, book_ids=None):
     fake_api = types.ModuleType("core.ml_api")
     fake_api.configurado = lambda: True
     fake_api.buscar_livro = resposta
+    # As classes de erro sao as REAIS: o step as referencia em `except`, e um
+    # stub sem elas quebraria no primeiro livro que levantasse.
+    fake_api.ErroAPIML = _ml_api_real.ErroAPIML
+    fake_api.LimiteML = _ml_api_real.LimiteML
     salvo = sys.modules.get("core.ml_api")
     sys.modules["core.ml_api"] = fake_api
+    # `from core import ml_api` le PRIMEIRO o atributo do pacote `core`, e so
+    # depois `sys.modules`. Como o modulo real ja foi importado neste arquivo
+    # (para as classes de erro), o atributo existe — trocar so sys.modules
+    # deixaria o step usando a API real.
+    import core as _core
+    salvo_attr = getattr(_core, "ml_api", None)
+    _core.ml_api = fake_api
 
     fake_res = types.ModuleType("steps.offer_resolver")
     fake_res.inject_ml_affiliate = lambda u: u + "?matt_tool=TESTE"
@@ -142,6 +154,8 @@ def _rodar(conn, resposta, dry_run=False, limit=50, book_ids=None):
                        book_ids=book_ids, conn=conn)
     finally:
         mig.get_conn = orig_conn
+        if salvo_attr is not None:
+            _core.ml_api = salvo_attr
         if salvo is not None:
             sys.modules["core.ml_api"] = salvo
         else:
@@ -231,6 +245,34 @@ def test_fila_poe_nunca_tentado_primeiro():
     print("OK  fila: nunca-tentado, depois o carimbo mais antigo")
 
 
+def test_limite_interrompe_o_lote_sem_carimbar():
+    """429 persistente: parar o lote e nao carimbar ninguem que nao foi avaliado.
+
+    Ate 2026-09-16 o ml_api engolia o 429 e devolvia None, entao este caso
+    nunca chegava aqui: o livro caia em "nao confirmado" e era CARIMBADO. Todas
+    as execucoes de 30/08 a 03/09 nos logs registram `Erros: 0`.
+    """
+    chamadas = []
+
+    def resposta(titulo, *_a, **_k):
+        chamadas.append(titulo)
+        if titulo == "A":
+            return ACHOU()
+        raise _ml_api_real.LimiteML("429 persistiu")
+
+    conn = _db([
+        {"id": "a", "titulo": "A", "offer_url": BUSCA_AMZ},
+        {"id": "b", "titulo": "B", "offer_url": BUSCA_AMZ},
+        {"id": "c", "titulo": "C", "offer_url": BUSCA_AMZ},
+    ])
+    mig_, nao, err = _rodar(conn, resposta)
+    assert (mig_, nao, err) == (1, 0, 1), (mig_, nao, err)
+    assert chamadas == ["A", "B"], f"deveria parar no limite, chamou {chamadas}"
+    assert _row(conn, "b")["ml_migracao_em"] is None, "limite nao carimba"
+    assert _row(conn, "c")["ml_migracao_em"] is None, "nao avaliado nao carimba"
+    print("OK  limite da API interrompe o lote e nao carimba quem nao foi avaliado")
+
+
 def test_erro_de_api_nao_carimba():
     """Falha de rede != livro avaliado. Carimbar mandaria ao fim da fila a toa."""
     def explode(*_a, **_k):
@@ -315,6 +357,7 @@ if __name__ == "__main__":
     test_confirmado_migra_com_preco_e_reabre_republicacao()
     test_fila_poe_nunca_tentado_primeiro()
     test_erro_de_api_nao_carimba()
+    test_limite_interrompe_o_lote_sem_carimbar()
     test_dry_run_nao_escreve()
     test_so_publicados()
     test_book_ids_alcanca_nao_publicado()

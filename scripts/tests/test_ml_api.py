@@ -95,4 +95,76 @@ assert ml_api.URL_PRODUTO.format(produto_id="MLB20090573") == \
     "https://www.mercadolivre.com.br/p/MLB20090573"
 print("[OK] URL_PRODUTO monta a forma canonica /p/<catalog_product_id>")
 
+# ── 10-14. Erro da API NAO e "nao achou" (bug corrigido em 2026-09-16) ──────
+# `_produtos`/`_preco` engoliam qualquer excecao e `buscar_livro` devolvia None,
+# o mesmo valor de "avaliou e nao confirmou". O step 31 carimbava o livro como
+# avaliado. Estes casos exercitam o MODULO REAL, com urlopen trocado — nao um
+# stub do contrato, que foi justamente o que deixou o bug passar: o teste do
+# step 31 simulava uma excecao que o ml_api de verdade nunca levantava.
+import io as _io  # noqa: E402
+import urllib.error as _uerr  # noqa: E402
+
+_orig_urlopen = ml_api.urllib.request.urlopen
+_orig_sleep = ml_api.time.sleep
+_dormiu = []
+ml_api.time.sleep = lambda s: _dormiu.append(s)
+
+
+def _http(code):
+    def _abrir(req, timeout=None):
+        raise _uerr.HTTPError(req.full_url, code, "x", {}, _io.BytesIO(b"{}"))
+    return _abrir
+
+
+try:
+    # 10. 429 persistente: espera escalonada e LimiteML, nunca None
+    _dormiu.clear()
+    ml_api.urllib.request.urlopen = _http(429)
+    try:
+        ml_api._get("https://api.mercadolibre.com/x", "tk")
+        raise AssertionError("429 persistente deveria levantar LimiteML")
+    except ml_api.LimiteML:
+        pass
+    esperas = [s for s in _dormiu if s >= 10]
+    assert esperas == list(ml_api.ESPERAS_429), esperas
+    print("[OK] 429 persistente espera 10/30/60 s e levanta LimiteML")
+
+    # 11. buscar_livro PROPAGA o limite — nao devolve None
+    _orig_tk = ml_api.token
+    ml_api.token = lambda forcar=False: "tk"
+    try:
+        ml_api.buscar_livro("Dom Casmurro", "Machado de Assis")
+        raise AssertionError("buscar_livro engoliu o limite")
+    except ml_api.ErroAPIML:
+        pass
+    print("[OK] buscar_livro levanta ErroAPIML em vez de devolver None")
+
+    # 12. 5xx tambem e "nao avaliou"
+    ml_api.urllib.request.urlopen = _http(503)
+    try:
+        ml_api._produtos("dom casmurro", "tk")
+        raise AssertionError("503 deveria virar ErroAPIML")
+    except ml_api.ErroAPIML:
+        pass
+    print("[OK] 5xx vira ErroAPIML")
+
+    # 13. 4xx deterministico e "nao achou" — senao vira laco de fila sem carimbo
+    ml_api.urllib.request.urlopen = _http(400)
+    assert ml_api._produtos("consulta estranha", "tk") == []
+    ml_api.urllib.request.urlopen = _http(404)
+    assert ml_api._preco("MLB0", "tk") == (None, None)
+    assert ml_api.buscar_livro("Titulo", "Autor") is None
+    ml_api.token = _orig_tk
+    print("[OK] 400/404 sao 'nao achou' (determinsticos), nao erro de avaliacao")
+
+    # 14. ritmo minimo entre chamadas
+    _dormiu.clear()
+    ml_api._ultima_chamada["t"] = ml_api.time.monotonic()
+    ml_api._ritmo()
+    assert _dormiu and 0 < _dormiu[0] <= ml_api.INTERVALO_MIN, _dormiu
+    print(f"[OK] _ritmo espera ate {ml_api.INTERVALO_MIN}s entre chamadas")
+finally:
+    ml_api.urllib.request.urlopen = _orig_urlopen
+    ml_api.time.sleep = _orig_sleep
+
 print("\nTodos os testes passaram.")

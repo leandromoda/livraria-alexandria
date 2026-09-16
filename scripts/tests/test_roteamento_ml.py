@@ -160,4 +160,28 @@ finally:
     r()
 print("[OK] sem achado, ou achado sem preco, o resgate devolve None")
 
+
+# ── 7. API que NAO avaliou nao pode virar "nao resgatou" ───────────────────
+# Ate 2026-09-16 o `except Exception: return None` do resgate transformava 429
+# em "nao resgatou", e o fluxo seguia para a contagem de indisponibilidade —
+# um limite de requisicoes contava como deteccao a caminho de despublicar.
+orig_cfg, orig_busca = ml_api.configurado, ml_api.buscar_livro
+ml_api.configurado = lambda: True
+
+
+def _limite(*_a, **_k):
+    raise ml_api.LimiteML("429 persistiu")
+
+
+ml_api.buscar_livro = _limite
+try:
+    try:
+        opm._resgatar_no_ml(conn, "x", "T", "A", None, "sb-1", False)
+        raise AssertionError("o resgate engoliu o limite da API")
+    except ml_api.ErroAPIML:
+        pass
+finally:
+    ml_api.configurado, ml_api.buscar_livro = orig_cfg, orig_busca
+print("[OK] limite da API no resgate propaga — nao conta como deteccao")
+
 print("\nTodos os testes passaram.")
