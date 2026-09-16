@@ -520,6 +520,27 @@ oferta é refeita ali e o livro **segue publicado**, agora com preço e deep lin
 A ordem importa: despublicar e republicar depois deixaria a página fora do ar no
 intervalo, e num site sob rebaixamento de spam update é o que menos se quer.
 
+#### ⚠ Trocar de marketplace deixava a oferta antiga ATIVA (corrigido em 2026-09-16)
+
+O upsert do `publish_ofertas` é por `(livro_id, marketplace)`. Migração (step
+31), resgate e religação de seed mudam o marketplace do livro — e aí o upsert
+**insere** uma linha nova, sem tocar na antiga. A página do livro exibe todas as
+ofertas ativas e as põe no JSON-LD.
+
+Medido no Supabase em 2026-09-16 (`ofertas` inteira paginada, cruzada com
+`livros.is_publishable`): **570 livros publicáveis com mais de uma oferta
+ativa** — 500 com a busca da Amazon **sem preço** ao lado do deep link do ML
+**com preço**. Ou seja, o link fino que a migração tirava do `books.db`
+continuava na página. Havia ainda linhas com as grafias legadas `Amazon` e
+`mercadolivre`.
+
+Hoje `publish_ofertas.desativar_outras` roda depois de cada upsert bem-sucedido
+e põe `ativa=false` em toda oferta do livro com `marketplace` diferente do
+publicado — o `books.db` guarda **uma** oferta por livro e é a verdade.
+Desativa, não apaga (`oferta_clicks.oferta_id` aponta para as linhas). Se o
+PATCH falhar, o livro não é marcado publicado e o próximo passe tenta de novo.
+Testes em `tests/test_publish_ofertas_unica.py`.
+
 ### Gargalo de publicação — o autopilot é o único caminho
 
 **Fato estrutural (medido):** publicar um livro exige, no Quality Gate, uma
