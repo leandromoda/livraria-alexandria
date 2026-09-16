@@ -543,6 +543,13 @@ def _resolve_produto_ml_api(titulo, autor=None, isbn=None):
         return None
     try:
         achado = ml_api.buscar_livro(titulo, autor, isbn)
+    except ml_api.ErroAPIML:
+        # Sobe para `_resolve_produto`, que NÃO cai no scraping neste caso: o
+        # scraping do ML bate no muro de login ("Para continuar, acesse sua
+        # conta", medido 2026-08-24) e só gastaria tempo. A API não avaliou, e
+        # o chamador registra `error` sem carimbar.
+        _resolve_stats["ml_api_erro"] += 1
+        raise
     except Exception as e:
         _resolve_stats["ml_api_erro"] += 1
         log(f"[SCRAPER] API do ML falhou ({type(e).__name__}) — caindo no scraping")
@@ -595,7 +602,16 @@ def _resolve_produto(search_url, titulo, autor=None, estrito=False, isbn=None):
     marketplace = detect_marketplace(search_url)
 
     if marketplace == "mercadolivre":
-        via_api = _resolve_produto_ml_api(titulo, autor, isbn)
+        try:
+            via_api = _resolve_produto_ml_api(titulo, autor, isbn)
+        except Exception as e:
+            # `ErroAPIML` (429, 5xx, rede): a API não avaliou. Não raspar o ML
+            # — cairia no muro de login. Devolve "não resolvido"; no monitor
+            # isso vira `offer_status='error'` SEM `preco_updated_at`, e o
+            # livro volta na próxima passada.
+            log(f"[SCRAPER] API do ML não avaliou ({type(e).__name__}) — "
+                f"sem fallback de scraping para o ML")
+            return None, None
         if via_api:
             return via_api
 

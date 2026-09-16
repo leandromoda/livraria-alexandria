@@ -65,7 +65,10 @@ def verificar(titulo, autor, offer_url, isbn=None):
     from core import ml_api
 
     if detect_marketplace(offer_url) == "mercadolivre" and ml_api.configurado():
-        achado = ml_api.buscar_livro(titulo, autor, isbn)
+        try:
+            achado = ml_api.buscar_livro(titulo, autor, isbn)
+        except ml_api.ErroAPIML:
+            return None, None          # não avaliou — "não verificável", não mexe
         if achado:
             return True, achado["preco"]
 

@@ -211,9 +211,22 @@ def run(limit=None, dry_run=False, book_ids=None, conn=None):
         livro_id = row["id"]
         try:
             achado = ml_api.buscar_livro(row["titulo"], row["autor"], row["isbn"])
+        except ml_api.LimiteML as e:
+            # Limite de requisições depois das esperas: seguir o lote só colhe
+            # mais 429. Os livros restantes ficam sem carimbo e voltam na
+            # próxima passada, no mesmo lugar da fila.
+            erros += 1
+            log(f"[MIGRA_ML] Limite da API do ML — interrompendo o lote após "
+                f"{migrados + nao_conf + erros} de {len(rows)} | {e}")
+            break
         except Exception as e:
             # Falha de rede/API não pode carimbar: o livro não foi realmente
             # avaliado, e carimbar o mandaria para o fim da fila à toa.
+            #
+            # ⚠ Até 2026-09-16 este ramo NUNCA disparava: o `ml_api` engolia a
+            # exceção e devolvia `None`, que cai no `if not achado` abaixo e
+            # CARIMBA. Todas as execuções de 30/08 a 03/09 nos logs registram
+            # `Erros: 0`. Ver o bloco "ERRO QUE NÃO É NÃO ACHOU" em core/ml_api.py.
             log(f"[MIGRA_ML] ERRO na API → {row['titulo']} | {e}")
             erros += 1
             continue

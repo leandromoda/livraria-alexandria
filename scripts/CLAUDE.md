@@ -291,6 +291,40 @@ pré-voo **não** bloqueia: o scraping segue válido para a Amazon e como fallba
 
 Credenciais em `scripts/.env`: `ML_CLIENT_ID`, `ML_CLIENT_SECRET`.
 
+#### ⚠ `None` ≠ erro — o contrato do `buscar_livro` (corrigido em 2026-09-16)
+
+`_produtos` e `_preco` engoliam **qualquer** exceção e o `buscar_livro`
+devolvia `None` — o mesmo valor de "a API avaliou e o livro não está no
+catálogo". Um **HTTP 429** virava "não confirmado".
+
+O step 31 tinha sido escrito para **não** carimbar livro em falha de API (`except
+Exception` com o comentário "o livro não foi realmente avaliado"). **Nunca
+disparou**: todas as execuções nos logs de 30/08 a 03/09 registram `Erros: 0`. O
+livro era carimbado e ia para o fim da fila como se tivesse sido avaliado — o
+que põe em dúvida parte dos "não confirmados" que formaram a taxa de 49%.
+
+E o teste que cobria esse caminho **passava**: ele usava um stub que levantava
+exceção, e o módulo real nunca levantava. Teste de stub prova o contrato do
+stub, não o do módulo.
+
+Contrato agora:
+
+| `buscar_livro` | significa | quem chama |
+|---|---|---|
+| devolve dict | confirmou | migra / resolve |
+| devolve `None` | **avaliou** e não confirmou (inclui 4xx determinístico) | carimba |
+| levanta `ErroAPIML` | **não avaliou** (5xx, rede) | não carimba, tenta depois |
+| levanta `LimiteML` | 429 persistiu após 10+30+60 s | **para o lote** |
+
+4xx que não é 429 conta como "avaliou": é determinístico, e tratá-lo como erro
+deixaria o livro eternamente no topo da fila sem carimbo — o laço do #307.
+
+**Ritmo:** `ML_INTERVALO_MIN` (padrão **1,5 s**) entre chamadas. Medido em
+2026-09-16 contra a `/products/search`: **36 chamadas** espaçadas em 6 s, 3 s e
+1,5 s → **0 × 429**; chamada imediata depois de rajada de ~20 sem pausa → 429,
+**sem `Retry-After`** nem cabeçalho de limite. O limiar abaixo de 1,5 s não foi
+medido.
+
 #### O pré-voo ABRE a janela — avisar no log não resolve
 
 Pedido do Leandro em 2026-08-29: *"não adianta o G só avisar, tem que abrir uma
@@ -1534,6 +1568,9 @@ ML_CLIENT_SECRET=...
 
 # Pre-voo abre o navegador quando falta credencial. 0 desliga (headless/CI).
 ABRIR_LOGIN=1
+
+# Espacamento minimo entre chamadas a API do ML (ver "None != erro").
+ML_INTERVALO_MIN=1.5
 
 # Google Books (step 2/auditoria de títulos — opcional, sem chave usa quota pública)
 GOOGLE_BOOKS_API_KEY=...
