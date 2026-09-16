@@ -13,6 +13,7 @@ import time
 
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 from dotenv import load_dotenv
@@ -103,6 +104,50 @@ def upsert(url, payload, headers):
             log(f"RETRY → {e}")
             time.sleep(2)
 
+    return False
+
+
+def desativar_outras(supabase_url, headers, livro_id, marketplace):
+    """Desativa (`ativa=false`) as ofertas do livro em OUTRO marketplace.
+
+    O upsert é por `(livro_id, marketplace)`. Quando a oferta de um livro muda
+    de marketplace — step 31, resgate do monitor, religação de seed —, o upsert
+    INSERE uma linha nova e a antiga continua ativa. A página do livro exibe
+    todas as ofertas ativas e as põe no JSON-LD.
+
+    Medido no Supabase em 2026-09-16: **570 livros publicáveis com mais de uma
+    oferta ativa**, 500 deles com o link de BUSCA da Amazon, sem preço, ao lado
+    da oferta do ML com deep link e preço — o link fino que a migração existia
+    para tirar do ar continuava na página.
+
+    O `books.db` guarda UMA oferta por livro, então ela é a verdade: tudo com
+    `marketplace` diferente do publicado sai de cena. Isso inclui as grafias
+    legadas (`Amazon`, `mercadolivre`) que ainda existem no Supabase. Não apaga
+    — `oferta_clicks.oferta_id` aponta para essas linhas.
+
+    Só roda depois do upsert bem-sucedido: o livro nunca fica sem oferta ativa.
+    Devolve True se o PATCH foi aceito.
+    """
+    if not livro_id or not marketplace:
+        return True          # sem marketplace local não há o que afirmar
+
+    url = (f"{supabase_url}/rest/v1/ofertas"
+           f"?livro_id=eq.{quote(str(livro_id))}"
+           f"&marketplace=neq.{quote(str(marketplace))}"
+           f"&ativa=eq.true")
+    h = {k: v for k, v in headers.items() if k != "Prefer"}
+    h["Prefer"] = "return=minimal"
+
+    for _ in range(MAX_RETRIES):
+        try:
+            res = requests.patch(url, headers=h, json={"ativa": False},
+                                 timeout=TIMEOUT)
+            if res.status_code in (200, 204):
+                return True
+            log(f"SUPABASE ERRO {res.status_code} (desativar outras) → {res.text[:200]}")
+        except Exception as e:
+            log(f"RETRY (desativar outras) → {e}")
+        time.sleep(2)
     return False
 
 
@@ -316,6 +361,14 @@ def run(pacote=100):
         if not ok:
             failed += 1
             log(f"[OFERTAS][{i:03d}/{total:03d}] FALHA → {titulo}")
+            continue
+
+        # Sem isto, trocar de marketplace deixava a oferta antiga ativa ao lado
+        # da nova (ver desativar_outras). Falhou? Não marca publicado: o
+        # próximo passe refaz o upsert (idempotente) e tenta de novo.
+        if not desativar_outras(supabase_url, headers, supabase_id, marketplace):
+            failed += 1
+            log(f"[OFERTAS][{i:03d}/{total:03d}] FALHA ao desativar oferta antiga → {titulo}")
             continue
 
         mark_published(conn, local_id, _payload_hash(marketplace, offer_url, preco))
