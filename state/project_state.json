@@ -1185,11 +1185,52 @@
       "cuidado": "Os 46 restantes dos 121 tem autor com grafia diferente (ex.: sapiens-2) ou sao obra diferente de verdade (rule x rule-34). Nao tratar os 121 em bloco sem conferir.",
       "causa": "Lacuna do dedup do pipeline (scripts/steps/dedup.py) — nao pega a mesma obra quando titulo/autor variam minimamente entre seeds.",
       "opcoes": [
-        "canonical da duplicata apontando para a original: URL segue viva, sinal consolida, reversivel",
-        "despublicar a duplicata: mais limpo, mas escolher a 'original' e decisao de conteudo",
-        "atacar a causa no dedup para parar de gerar novas"
+        "13 duplicatas confirmadas: canonical da duplicata para a pagina mantida (URL viva, sinal consolidado, reversivel). Regra de escolha sugerida: manter o slug sem sufixo; sem sufixo nos dois, manter o que casa com o BOOK_TITLE do ML.",
+        "a-guerra-dos-tronos: nao consolidar — corrigir a oferta da edicao comum, que aponta para a ilustrada",
+        "106 pares restantes: nao agir em bloco; o criterio cresce conforme o step 31 migra para o ML",
+        "atacar a causa no dedup do pipeline para parar de gerar novas"
       ],
-      "decisao_pendente": "Nao corrigido de proposito: escolher qual pagina e a original e decisao de conteudo da mesma classe do corte do #319, que o Leandro preferiu decidir. Tamanho: 75-121 paginas (1,5-2,4% dos publicaveis)."
+      "decisao_pendente": "Nao corrigido de proposito: escolher qual pagina e a original e decisao de conteudo da mesma classe do corte do #319, que o Leandro preferiu decidir. Tamanho: 75-121 paginas (1,5-2,4% dos publicaveis).",
+      "medicao_por_catalogo_ml": {
+        "medido_em": "2026-09-16",
+        "metodo": "PostgREST de producao: livros is_publishable=true (5.094) cruzados com ofertas ativa=true cuja url_afiliada contem /p/MLB (833 ofertas, 829 livros publicaveis). Mesmo /p/MLB em duas paginas = a API do ML resolveu as duas para o MESMO produto (portao autor+titulo). Script em scratchpad, somente leitura.",
+        "cobertura_do_criterio": "829 de 5.094 publicaveis (16%) tem oferta /p/ — o criterio so decide onde os dois lados ja migraram para o ML.",
+        "grupos_mesmo_produto": 14,
+        "paginas_envolvidas": 28,
+        "titulos_divergentes_nos_grupos": 0,
+        "duplicatas_confirmadas": {
+          "grupos": 13,
+          "paginas_a_consolidar": 13,
+          "lista": [
+            "as-cronicas-de-narnia-2 / -3",
+            "it-a-coisa / -2",
+            "cem-anos-de-solidao / -2",
+            "os-tres-mosqueteiros / -2",
+            "o-morro-dos-ventos-uivantes / -2",
+            "pais-e-filhos / -2",
+            "as-cartas-persas / cartas-persas",
+            "amor-nos-tempos-do-colera / o-amor-nos-tempos-do-colera",
+            "o-rei-amarelo / o-rei-de-amarelo",
+            "mrs-dalloway / -2",
+            "o-espiao-que-saiu-do-frio / -2",
+            "crime-e-castigo / -2",
+            "os-miseraveis / -2"
+          ],
+          "invisiveis_a_heuristica_de_slug": "4 grupos nao tem sufixo -N: cartas persas, amor nos tempos do colera, o rei (de) amarelo e guerra dos tronos"
+        },
+        "falso_duplicado": "a-guerra-dos-tronos (1996) e a-guerra-dos-tronos---edicao-ilustrada (2016) apontam para o MESMO /p/MLB22219446 a R$ 380,60. Nao sao a mesma pagina: sao edicoes distintas, e a pagina da edicao comum recebeu a oferta da ilustrada. E oferta errada, nao duplicata — consolidar seria o fix errado.",
+        "pares_de_slug_vistos_pelo_catalogo": {
+          "pares_slug_base_publicaveis": 121,
+          "os_dois_lados_com_p": 15,
+          "mesmo_produto": 9,
+          "produtos_diferentes": 6,
+          "so_um_lado_com_p": 57,
+          "nenhum_lado_com_p": 49
+        },
+        "produtos_diferentes_conferidos": "3 dos 6 sao OBRAS DIFERENTES com o mesmo titulo: electra (Sofocles) x electra-2 (Euripides), inferno (Dan Brown) x inferno-2 (Patricia Melo), blade-runner (Philip K. Dick) x blade-runner-2 (K. W. Jeter). Os outros sao edicoes da mesma obra (ensaio-sobre-a-cegueira, as-cronicas-de-narnia).",
+        "conclusao": "Nenhuma heuristica sozinha serve. O sufixo -N inclui obras diferentes (Electra, Inferno, Blade Runner) e nao ve duplicatas de titulo com grafia distinta (cartas persas, o amor nos tempos do colera). O /p/ do ML e objetivo mas cobre 16% do catalogo, e mesmo produto pode significar oferta errada (Guerra dos Tronos). Decidivel hoje com seguranca: 13 paginas. Os outros 106 pares de slug seguem sem criterio ate migrarem para o ML.",
+        "achado_lateral": "Alguns grupos tem preco alto para livro comum (as-cronicas-de-narnia R$ 395, o-espiao-que-saiu-do-frio R$ 399): o casamento pode estar caindo em box ou edicao de colecionador. Nao investigado — mesma classe do caso Guerra dos Tronos."
+      }
     },
     {
       "id": "TASK-TRACK-004",
