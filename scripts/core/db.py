@@ -141,6 +141,12 @@ def ensure_schema(conn):
         # confirma seriam reconsultados a cada passe do G — o mesmo laço que o
         # #307 corrigiu na categorização.
         ("ml_migracao_em",        "TEXT"),
+        # Última tentativa do offer_price_monitor que NÃO resolveu o produto.
+        # Só ordena a fila — não é `preco_updated_at`, que continua significando
+        # "leu preço". Sem ela, os livros que a API não confirma ficavam no topo
+        # da fila para sempre: medido em 2026-09-16, os 141 erros do último passe
+        # (0772_audit_prices.json) eram exatamente os 141 primeiros da fila atual.
+        ("preco_tentativa_em",    "TEXT"),
         # Motivo textual da rejeição do agente de classificação. É o que torna
         # `status_categorize = 2` legível sem abrir log — e a base factual para
         # decidir a ampliação da taxonomia (TASK-TAX-001).
