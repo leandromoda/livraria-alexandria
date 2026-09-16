@@ -45,6 +45,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 | **"Cópia sem página canônica selecionada pelo usuário"** — URLs `www.*` | Artefato transitório da migração www→apex: www crawleado antes do 308 virar efetivo. Resolve sozinho no recrawl. |
 | 404 de `/livros/<slug>` cujo registro está com `status: "blacklisted"` no banco | Livro despublicado de propósito. Já foi indexado antes; 404 é o correto. **Conferir no banco antes de tratar 404 de livro como bug.** |
 | **"Cópia, o Google e o usuário selecionaram uma canônica diferente"** — URLs `www.*` | Mesma origem da linha acima de "Cópia sem canônica": o Google crawleou `www` e escolheu o apex. Em 2026-08-09 eram **265 de 270** (livros 197, autores 35, listas 27, categorias 6). Resolve no recrawl. |
+| **"Rastreada, mas não indexada"** — URLs `www.*` | O Google avaliou o **alias que redireciona**, não a página. Amostra de 1.000 das 1.588 URLs em 2026-09-16: **920 (92%) `www`**. Não é veredito sobre conteúdo. **Só as do apex dizem algo** — ver seção 2026-09-16. |
 | E-mail **"Os seus produtos não se encontram no separador Compras"** (2026-08-08, [WNC-20286279]) | Promocional, **não é apontamento**. Exige Google Merchant Center e, pelo próprio texto, "apenas suportado para Shopify e WooCommerce". O site é afiliado, não loja. **Não aplicável — não reabrir.** |
 
 ---
@@ -248,6 +249,33 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   (TASK-PIPE-033) — casa prefixo de grupo de ISBN-10 com `startswith`, então
   `8532305547` → `PT` mas `9788532305541` → `None`. Não corrigido de propósito:
   mexer nisso reclassifica idioma e mexe no filtro da sinopse.
+- 🆕 **Livro publicado em duplicata — mesma obra em 2 ou 3 páginas** (medido
+  2026-09-16). Veio do drilldown de "Rastreada, mas não indexada": das 58
+  `/livros/*` do apex, 5 tinham sufixo `-2`. Dimensionado no Supabase
+  (PostgREST, `is_publishable=true`):
+  - **301 de 5.094** livros publicáveis têm slug com sufixo `-N`;
+  - **121** deles têm o slug base **também publicável** (duplicata no ar);
+  - **75** com o **mesmo autor** — *Ensaio sobre a Cegueira* ×3, *Memórias do
+    Subsolo*, *O Jogador*, *Gente Pobre*, *Conversa na Catedral* ×2;
+  - só **1** par com descrição ≥50% igual e **2** com ISBN diferente — ou seja,
+    **não é cópia literal nem edição distinta**: é a mesma obra com sinopses de
+    LLM geradas independentemente. O Google escolhe uma e ignora as outras.
+  Os outros 46 dos 121 têm autor com grafia diferente (ex.: `sapiens-2`) ou são
+  obra diferente de verdade (`rule` × `rule-34`) — **não dá para tratar os 121
+  em bloco sem conferir**.
+  **Causa:** lacuna do dedup do pipeline (a mesma que alimenta "Cópia c/
+  canônica diferente" no apex). **Não corrigido nesta seção**: escolher qual das
+  páginas é a "original" é decisão de conteúdo, da mesma classe do corte do #319
+  que o Leandro preferiu decidir. Opções: `canonical` da duplicata apontando para
+  a original (mantém a URL viva, consolida sinal) ou despublicar a duplicata.
+  Ver TASK-SEO-017.
+- **"Cópia c/ canônica diferente" no apex: 14 → 30** (2026-08-20 → 2026-09-16,
+  dados de 03/09). Bucket total **426 → 916**, dos quais **886 (96,7%) `www`**
+  (autores 147, listas 148, categorias 27, livros 564) — esperado. Os 30 do apex
+  são 26 livros + 4 listas. Mesma lacuna de dedup do item acima; reconferir junto.
+- ✅ **"Detectada, mas não indexada" DRENANDO como previsto: 1.444 → 912**
+  (2026-08-20 → dados de 03/09). A regra era "só virar tarefa se não cair em 2–3
+  seções" — caiu. Registro histórico abaixo.
 - **"Detectada, mas não indexada": 15 → 1.444** (2026-08-09 → 2026-08-20).
   Era a previsão registrada em 08-09 e **se confirmou**: as 6,6 mil URLs que o
   #259 pôs no sitemap entraram na fila de crawl de uma vez. É **esperado e
@@ -312,6 +340,7 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-09-16 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | 912 | 628 | 107 |  ← MESMO relatório de 15/09 (congelado); completa as colunas
 | 2026-09-15 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | — | — | 107 |  ← relatório PRÉ-corte; linhas 11-12 não lidas
 | 2026-08-30 | — | — | — | — | — | — | — | — | — |  ← seção de DESEMPENHO, não de indexação
 | 2026-08-20 | 4.235 | 1.277 | 410 | 22 | 2 | 110 | 1.444 | 604 ⚠️ | 108 |
@@ -319,6 +348,50 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-09-16 — relatório de indexação ainda congelado em 03/09
+
+**O relatório de indexação NÃO avançou**: segue em **03/09**, 13 dias parado,
+com os mesmos números de 15/09. O efeito do #319 (esperado: "Excluída pela tag
+noindex" subir ~1.771) **continua ilegível** por ele. A validação desse bucket
+segue "Iniciado" desde 20/08 — **não resubmeter**.
+
+Esta seção completou as colunas que 15/09 deixou em branco — **Detectada ñ
+indexada 912**, **Excluída noindex 628** — e as de fora da tabela:
+Redirecionamento **2.192**, Cópia sem canônica do usuário **50**, Cópia c/
+canônica diferente **916**, Erro de redirecionamento **1**. Indexadas **7,3 mil**
+/ não indexadas **12,5 mil**.
+
+**Desempenho, dados até 13/09** (posição ponderada por impressão):
+
+| janela de 7 dias | impressões | cliques | posição |
+|---|---|---|---|
+| 28/08–03/09 (antes do corte) | 631 | 3 | 58,1 |
+| 06/09–12/09 (leitura de 15/09) | 446 | 3 | 52,9 |
+| **07/09–13/09** | **513** | 3 | **50,9** |
+
+Diário pós-corte: 84, 70, 54, 40, 35, 68, 95, **151** (13/09, maior desde
+31/08). Direção certa nos dois eixos desde 15/09, **mas n=513 e dois dias de
+alta não fazem tendência**. Continua valendo o aviso de 15/09: não chamar de
+recuperação até ter volume e posição melhorando juntos por mais tempo.
+
+**E-mails do GSC desde 20/08: nenhum apontamento novo.** Resumo mensal de
+agosto (08/09: 253 cliques, 15,7 mil impressões), marco de 300 cliques/28 dias
+(24/08, com dados até 19/08 — **anterior** ao mergulho), o ISBN13 inválido já
+corrigido no #289 e o início da validação do noindex.
+
+**Sitemap de produção: 6.504 exatos** — livros 5.095, autores 960, listas 306,
+categorias 127, jogos 12, infantis 2, home + ofertas. Nenhum autor ou lista
+voltou ao índice; 5 hubs em 200 para UA Googlebot.
+⚠️ **Armadilha do comando de auditoria:** `grep -c '//www\.'` no sitemap dá **1**
+e não é URL — é o namespace `http://www.sitemaps.org/schemas/sitemap/0.9`. Para
+contar `www` de verdade: `grep -o '<loc>https\?://www\.' | wc -l`.
+
+**O achado da seção** veio de abrir "Rastreada, mas não indexada" e olhar **só o
+apex** (92% da amostra é `www`, que não diz nada): livros duplicados — ver o
+item novo em "Itens em aberto" e TASK-SEO-017.
+
+Nenhuma correção de código nesta seção.
 
 ### Seção 2026-09-15 — o "depois" do corte (#319), após 10 dias
 

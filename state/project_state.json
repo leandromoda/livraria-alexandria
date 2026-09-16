@@ -1164,6 +1164,34 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-SEO-017",
+      "description": "Livro publicado em duplicata: mesma obra em 2-3 paginas indexaveis (121 com o original tambem no ar, 75 do mesmo autor)",
+      "priority": "medium",
+      "status": "open",
+      "registered_on": "2026-09-16",
+      "origem": "/analise_gsc de 2026-09-16: drilldown de 'Rastreada, mas nao indexada' (dados de 03/09). Das 58 /livros/* do apex na amostra, 5 tinham sufixo -2.",
+      "medicao": {
+        "medido_em": "2026-09-16",
+        "metodo": "PostgREST, is_publishable=true, slug casando -[0-9]+$; slug base consultado em lotes; comparacao de autor, ISBN e sobreposicao de palavras da descricao",
+        "publicaveis": 5094,
+        "com_sufixo_numerico": 301,
+        "original_tambem_publicavel": 121,
+        "mesmo_autor": 75,
+        "mesmo_autor_isbn_diferente": 2,
+        "mesmo_autor_descricao_50pct_igual": 1,
+        "exemplos": "ensaio-sobre-a-cegueira (-2, -3), memorias-do-subsolo-2, o-jogador-2, gente-pobre-2, conversa-na-catedral-2"
+      },
+      "leitura": "Nao e copia literal (so 1 par com descricao >=50% igual) nem edicao distinta (so 2 com ISBN diferente): e a MESMA OBRA com sinopses de LLM geradas independentemente. O Google escolhe uma e ignora as outras — daqui saem parte de 'Rastreada, mas nao indexada' e 'Copia c/ canonica diferente' no apex (14 -> 30). No contexto do spam update de agosto, N paginas para 1 livro e o perfil de conteudo em escala.",
+      "cuidado": "Os 46 restantes dos 121 tem autor com grafia diferente (ex.: sapiens-2) ou sao obra diferente de verdade (rule x rule-34). Nao tratar os 121 em bloco sem conferir.",
+      "causa": "Lacuna do dedup do pipeline (scripts/steps/dedup.py) — nao pega a mesma obra quando titulo/autor variam minimamente entre seeds.",
+      "opcoes": [
+        "canonical da duplicata apontando para a original: URL segue viva, sinal consolida, reversivel",
+        "despublicar a duplicata: mais limpo, mas escolher a 'original' e decisao de conteudo",
+        "atacar a causa no dedup para parar de gerar novas"
+      ],
+      "decisao_pendente": "Nao corrigido de proposito: escolher qual pagina e a original e decisao de conteudo da mesma classe do corte do #319, que o Leandro preferiu decidir. Tamanho: 75-121 paginas (1,5-2,4% dos publicaveis)."
+    },
+    {
       "id": "TASK-TRACK-004",
       "description": "Classificador de clique do #315 estava INVERTIDO (links noreferrer) — trocado por Fetch Metadata (Sec-Fetch-User + Sec-Fetch-Site)",
       "priority": "high",
