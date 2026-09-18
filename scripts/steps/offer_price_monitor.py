@@ -17,6 +17,8 @@
 import time
 import requests
 
+from urllib.parse import quote
+
 from core.db import get_conn
 from core.logger import log
 
@@ -169,7 +171,7 @@ def fetch_pending(conn, limit, priorizar_ml=None):
     cur = conn.cursor()
     cur.execute(f"""
         SELECT
-            id, titulo, autor, isbn, slug, offer_url, supabase_id,
+            id, titulo, autor, isbn, slug, offer_url, supabase_id, marketplace,
             preco_atual, offer_status
         FROM livros
         WHERE status_publish = 1
@@ -200,12 +202,27 @@ def supabase_patch(supabase_id, payload):
         return False
 
 
-def supabase_patch_oferta(supabase_id, payload):
-    """PATCH na tabela ofertas filtrando por livro_id."""
+def supabase_patch_oferta(supabase_id, payload, marketplace=None):
+    """PATCH na tabela ofertas filtrando por livro_id — e por `marketplace`.
+
+    ⚠ Sem o filtro de marketplace, `{"ativa": True}` reativava TODAS as ofertas
+    do livro, inclusive as de outro marketplace que o
+    `publish_ofertas.desativar_outras` (#327) tinha desativado. Achado no log
+    `pipeline_2026-09-16_12-31-25` (rodada de 2 dias): ali não deixou rastro
+    porque todo acerto do monitor mudava o hash e o `run_repair` desativava de
+    novo no mesmo passe. No refresh de quem já tem preço (hash igual), a
+    duplicata voltaria e ficaria.
+
+    `marketplace` é o valor LOCAL (`livros.marketplace`, ex. 'mercado_livre'),
+    não o de `detect_marketplace` ('mercadolivre'). Sem ele, o PATCH é amplo —
+    certo só para DESATIVAR (livro indisponível sai do ar inteiro).
+    """
     if not supabase_id:
         return False
     try:
         url  = f"{SUPABASE_URL}/rest/v1/ofertas?livro_id=eq.{supabase_id}"
+        if marketplace:
+            url += f"&marketplace=eq.{quote(str(marketplace))}"
         resp = requests.patch(url, headers=HEADERS_SUPABASE, json=payload, timeout=30)
         return resp.status_code in [200, 204]
     except Exception as e:
@@ -284,7 +301,8 @@ def _resgatar_no_ml(conn, livro_id, titulo, autor, isbn, supabase_id, dry_run):
     # mas o livro pode estar com is_publishable=false no Supabase de uma
     # despublicação anterior — então o PATCH é explícito.
     supabase_patch(supabase_id, {"is_publishable": True, "offer_status": "active"})
-    supabase_patch_oferta(supabase_id, {"preco": achado["preco"], "ativa": True})
+    supabase_patch_oferta(supabase_id, {"preco": achado["preco"], "ativa": True},
+                          marketplace="mercado_livre")
     return achado
 
 
@@ -303,6 +321,9 @@ def process_book(conn, row, dry_run=False):
     preco_ant    = row["preco_atual"]
     cur_status   = row["offer_status"] or "active"
     marketplace  = detect_marketplace(offer_url)
+    # Valor gravado no books.db ('mercado_livre'/'amazon') — é o que está na
+    # coluna `ofertas.marketplace` do Supabase. Ver supabase_patch_oferta.
+    mkt_local    = (row["marketplace"] if "marketplace" in row.keys() else None)
 
     preco_novo, disponivel, url_produto = resolve_produto(offer_url, titulo, autor, isbn)
 
@@ -413,6 +434,12 @@ def process_book(conn, row, dry_run=False):
         delta = abs(preco_novo - preco_ant) / max(preco_ant, 0.01)
         new_status = "price_changed" if delta >= PRICE_THRESHOLD else "active"
 
+    # `price_changed` é o RETORNO (contagem e offer_price_log), não um estado
+    # da oferta: gravado em `offer_status`, tirava o livro de toda
+    # republicação — publish_ofertas exige offer_status IN ('1','active').
+    # Medido em 2026-09-18: 6 livros presos assim desde 17-23/08.
+    status_oferta = "active"
+
     # Verificar se estava unavailable antes → marcar reactivation_pending
     reactivation = 1 if cur_status == "unavailable" else 0
 
@@ -426,22 +453,25 @@ def process_book(conn, row, dry_run=False):
                 reactivation_pending = CASE WHEN ? = 1 THEN 1 ELSE reactivation_pending END,
                 updated_at        = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (preco_novo, new_status, reactivation, livro_id))
+        """, (preco_novo, status_oferta, reactivation, livro_id))
         conn.commit()
 
         if new_status == "price_changed" and preco_novo:
             supabase_patch(supabase_id, {
                 "preco_atual":  preco_novo,
-                "offer_status": new_status,
+                "offer_status": status_oferta,
             })
-            supabase_patch_oferta(supabase_id, {"preco": preco_novo})
+            supabase_patch_oferta(supabase_id, {"preco": preco_novo},
+                                  marketplace=mkt_local)
             log_price_change(conn, livro_id, preco_ant, preco_novo, new_status, marketplace)
         elif new_status == "active" and preco_novo:
             supabase_patch(supabase_id, {"preco_atual": preco_novo, "offer_status": "active"})
-            supabase_patch_oferta(supabase_id, {"preco": preco_novo, "ativa": True})
+            supabase_patch_oferta(supabase_id, {"preco": preco_novo, "ativa": True},
+                                  marketplace=mkt_local)
         elif new_status == "active" and reactivation:
             # Reativação sem preço novo conhecido — garante ativa=True
-            supabase_patch_oferta(supabase_id, {"ativa": True})
+            supabase_patch_oferta(supabase_id, {"ativa": True},
+                                  marketplace=mkt_local)
 
     return new_status
 

@@ -175,6 +175,11 @@ def fix_offer_status(conn=None):
     ~metade das ofertas ativas), normalizar 'error' → 1 as devolve ao fluxo de
     publicação. NÃO toca em 'unavailable' (indisponibilidade real, com
     is_publishable=0).
+
+    'price_changed' também é recuperado (desde 2026-09-18): o monitor gravava
+    esse valor em `offer_status` ao ver o preço variar >=5%, e o livro ficava
+    fora de toda republicação — 6 livros presos desde 17-23/08. O monitor não
+    grava mais; isto limpa o legado.
     """
     from core.db import get_conn as _get_conn
     close_conn = conn is None
@@ -190,7 +195,7 @@ def fix_offer_status(conn=None):
         SET offer_status         = 1,
             status_publish_oferta = 0,
             updated_at           = CURRENT_TIMESTAMP
-        WHERE offer_status IN ('active', 'error')
+        WHERE offer_status IN ('active', 'error', 'price_changed')
           AND offer_url IS NOT NULL
     """)
     conn.commit()

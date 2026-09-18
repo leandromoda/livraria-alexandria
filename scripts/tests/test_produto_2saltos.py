@@ -206,7 +206,8 @@ def test_reconhece_url_de_busca():
 DDL = """
 CREATE TABLE livros (
     id TEXT PRIMARY KEY,
-    titulo TEXT, autor TEXT, isbn TEXT, slug TEXT, offer_url TEXT,
+    titulo TEXT, autor TEXT, isbn TEXT, slug TEXT, offer_url TEXT, marketplace TEXT,
+    preco_anterior REAL, reactivation_pending INTEGER DEFAULT 0,
     supabase_id TEXT,
     preco_atual REAL, preco_updated_at TEXT, offer_status TEXT,
     preco_tentativa_em TEXT, updated_at TEXT,
@@ -353,7 +354,46 @@ def test_limite_ml_interrompe_o_lote():
     print("[OK] limite persistente da API do ML interrompe o lote do monitor")
 
 
+def test_refresh_nao_reativa_outro_marketplace():
+    """Refresh de preco nao pode reativar a oferta de OUTRO marketplace (2026-09-18).
+
+    O PATCH filtrava so por livro_id: `ativa: True` religava a oferta da Amazon
+    que o publish_ofertas.desativar_outras (#327) tinha desligado. E variacao
+    >=5% gravava offer_status='price_changed', estado que o publish_ofertas
+    ignora — 6 livros presos desde agosto.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(DDL)
+    conn.execute(
+        "INSERT INTO livros (id, titulo, offer_url, marketplace, preco_atual, offer_status,"
+        " supabase_id, status_publish) VALUES ('x', 'X', "
+        "'https://www.mercadolivre.com.br/p/MLB1', 'mercado_livre', 50.0, '1', 'sb-x', 1)")
+    conn.execute("CREATE TABLE offer_price_log (id TEXT, livro_id TEXT, preco_anterior REAL,"
+                 " preco_novo REAL, offer_status TEXT, marketplace TEXT, captured_at TEXT)")
+    conn.commit()
+
+    chamadas = []
+    orig = (opm.resolve_produto, opm.supabase_patch, opm.supabase_patch_oferta)
+    opm.supabase_patch = lambda sid, p: True
+    opm.supabase_patch_oferta = lambda sid, p, marketplace=None:         chamadas.append((p, marketplace)) or True
+    try:
+        for preco in (50.0, 80.0):          # igual, depois +60%
+            opm.resolve_produto = lambda *a, **k: (preco, True, None)
+            row = opm.fetch_pending(conn, 1)[0]
+            opm.process_book(conn, row)
+    finally:
+        opm.resolve_produto, opm.supabase_patch, opm.supabase_patch_oferta = orig
+
+    assert chamadas and all(m == "mercado_livre" for _, m in chamadas), chamadas
+    st = conn.execute("SELECT offer_status, preco_atual FROM livros").fetchone()
+    assert st["offer_status"] == "active" and st["preco_atual"] == 80.0, dict(st)
+    conn.close()
+    print("[OK] refresh filtra o PATCH pelo marketplace e nao grava 'price_changed'")
+
+
 if __name__ == "__main__":
+    test_refresh_nao_reativa_outro_marketplace()
     test_fila_roda_quem_falhou()
     test_limite_ml_interrompe_o_lote()
     test_serie_nao_casa_no_regime_estrito()
