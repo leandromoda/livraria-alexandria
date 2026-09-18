@@ -126,7 +126,8 @@ conn.commit()
 
 _patches = []
 opm.supabase_patch = lambda sid, p: _patches.append(("livros", p)) or True
-opm.supabase_patch_oferta = lambda sid, p: _patches.append(("ofertas", p)) or True
+opm.supabase_patch_oferta = lambda sid, p, marketplace=None: \
+    _patches.append(("ofertas", p, marketplace)) or True
 
 r = _com_api(ACHADO)
 try:
@@ -143,6 +144,9 @@ assert row["preco_atual"] == 24.9, row["preco_atual"]
 assert row["status_publish"] == 1, "o livro NAO pode sair do ar durante o resgate"
 assert row["is_publishable"] == 1
 assert ("livros", {"is_publishable": True, "offer_status": "active"}) in _patches
+# Reativa SÓ a oferta do ML: sem o filtro, reativaria a da Amazon que o
+# publish_ofertas.desativar_outras (#327) tinha desativado.
+assert ("ofertas", {"preco": 24.9, "ativa": True}, "mercado_livre") in _patches, _patches
 print("[OK] resgate troca a oferta para o ML e mantem o livro publicado")
 
 
