@@ -429,6 +429,18 @@ saem republicados no mesmo ciclo. Menu 31 é a entrada manual, com dry-run.
 >
 > Para seed **novo** o degrau 2 continua certo: lá não há nada a perder.
 
+> ⚠ **Conta Amazon Associados ENCERRADA em 2026-09-18 — o aviso acima foi
+> invertido.** E-mail de associates@amazon.com.br: `livrariaalexa-20` encerrada
+> pela regra de 3 compras qualificadas em 180 dias. Link da Amazon passou a
+> render zero, com ou sem preço. Com `AMAZON_AFILIADO_ATIVO=0` (padrão desde
+> então) o step 31 leva o **não confirmado ao degrau 2** — busca do ML com
+> `preco_atual` **NULL**, o que elimina o risco 2 — e deixa de proteger o
+> `/dp/` com preço. O risco 1 (busca vazia) foi aceito pelo Leandro: é trocar
+> link sem receita por link que pode ter. O deep link segue possível depois,
+> pelo monitor (livro do ML sem preço é o topo da fila dele).
+> `AMAZON_AFILIADO_ATIVO=1` restaura o comportamento anterior, para quando a
+> conta for reaplicada.
+
 > ⚠ **A fila não pode virar laço.** Livro que a API não confirma segue
 > elegível — o catálogo do ML muda —, mas reconsultá-lo a cada passe repetiria
 > o laço de categorização do #307 (547 rejeições para 32 livros). A trava é a
@@ -1600,6 +1612,7 @@ PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
 PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
 FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o seed
 MIGRAR_ML_POR_CICLO=150          # step 31: passivo Amazon -> ML por passe do G
+AMAZON_AFILIADO_ATIVO=0          # conta Associados encerrada em 18/09/2026; 1 = step 31 volta a so migrar confirmado
 
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote

@@ -72,6 +72,12 @@ _stub("bs4", _bs4)
 _stub("dotenv", _dotenv)
 
 from steps import offer_seed as osd  # noqa: E402
+from steps import migrar_ofertas_ml as _mig  # noqa: E402
+
+# Fixa o comportamento com a conta de Associados ATIVA (nao confirmado = nada
+# muda). O degrau 2 da conta encerrada (2026-09-18) e testado em
+# tests/test_migrar_ofertas_ml.py.
+_mig.AMAZON_AFILIADO_ATIVO = True
 
 BUSCA_AMZ = "https://www.amazon.com.br/s?k=dom+casmurro&tag=livrariaalexa-20"
 
@@ -126,6 +132,7 @@ def _com_api(resposta):
     api.buscar_livro = resposta
     res = types.ModuleType("steps.offer_resolver")
     res.inject_ml_affiliate = lambda u: u + "?matt_tool=TESTE"
+    res.build_mercadolivre_url = lambda q: "https://lista.mercadolivre.com.br/" + q
     salvos = {k: sys.modules.get(k) for k in ("core.ml_api", "steps.offer_resolver")}
     sys.modules["core.ml_api"] = api
     sys.modules["steps.offer_resolver"] = res
