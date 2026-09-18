@@ -62,8 +62,31 @@ from core.logger import log
 MIGRAR_ML_POR_CICLO = int(os.getenv("MIGRAR_ML_POR_CICLO", "150"))
 
 # Padrão de URL da Amazon que indica oferta JÁ BOA: deep link de produto.
-# Combinado com preço, é oferta que funciona — não se mexe.
+# Combinado com preço, é oferta que funciona — não se mexe (enquanto a conta
+# de Associados existir; ver AMAZON_AFILIADO_ATIVO).
 _DEEP_LINK_AMZ = "%/dp/%"
+
+# ⚠ A CONTA AMAZON ASSOCIADOS FOI ENCERRADA EM 2026-09-18
+# -------------------------------------------------------
+# E-mail de associates@amazon.com.br: conta livrariaalexa-20 encerrada pela
+# regra de 3 compras qualificadas em 180 dias. Link da Amazon passou a render
+# ZERO, com ou sem preço — e o ML é o único programa de afiliado vivo.
+#
+# Isso inverte as duas proteções escritas acima, que só faziam sentido com a
+# Amazon pagando comissão:
+#
+# 1. **Não confirmado deixa de ser "não toca em nada".** Vai para o degrau 2:
+#    URL de BUSCA do ML, com `preco_atual` NULL. O risco 2 do topo (preço da
+#    Amazon colado numa URL do ML) não existe porque o preço é zerado junto.
+#    O risco 1 (busca vazia para livro fora do catálogo do ML) é aceito: é a
+#    troca de um link sem receita por um que pode ter. Decisão do Leandro em
+#    2026-09-18. O monitor de preços segue tentando o deep link pela API
+#    (livro do ML sem preço é o topo da fila dele).
+# 2. **Deep link + preço da Amazon deixa de ser oferta boa** e entra na fila.
+#
+# `AMAZON_AFILIADO_ATIVO=1` restaura o comportamento anterior (para quando a
+# conta for reaplicada — a Amazon recomenda só com tráfego consistente).
+AMAZON_AFILIADO_ATIVO = os.getenv("AMAZON_AFILIADO_ATIVO", "0").strip() in ("1", "true", "yes")
 
 
 def fetch_pending(conn, limit, book_ids=None):
@@ -91,31 +114,31 @@ def fetch_pending(conn, limit, book_ids=None):
         ph = ",".join("?" * len(book_ids))
         cur.execute(
             f"""
-            SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id
+            SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id, lookup_query
             FROM livros
             WHERE id IN ({ph})
               AND LOWER(COALESCE(offer_url, '')) LIKE '%amazon%'
-              AND NOT (offer_url LIKE ? AND preco_atual IS NOT NULL)
+              AND NOT (? AND offer_url LIKE ? AND preco_atual IS NOT NULL)
               AND blacklist_reason IS NULL
               AND COALESCE(qa_quarantine, 0) = 0
             ORDER BY (ml_migracao_em IS NOT NULL), ml_migracao_em ASC, titulo ASC
             LIMIT ?
             """,
-            (*book_ids, _DEEP_LINK_AMZ, limit),
+            (*book_ids, int(AMAZON_AFILIADO_ATIVO), _DEEP_LINK_AMZ, limit),
         )
         return cur.fetchall()
 
     cur.execute(
         """
-        SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id
+        SELECT id, titulo, autor, isbn, offer_url, preco_atual, supabase_id, lookup_query
         FROM livros
         WHERE status_publish = 1
           AND LOWER(COALESCE(offer_url, '')) LIKE '%amazon%'
-          AND NOT (offer_url LIKE ? AND preco_atual IS NOT NULL)
+          AND NOT (? AND offer_url LIKE ? AND preco_atual IS NOT NULL)
         ORDER BY (ml_migracao_em IS NOT NULL), ml_migracao_em ASC, titulo ASC
         LIMIT ?
         """,
-        (_DEEP_LINK_AMZ, limit),
+        (int(AMAZON_AFILIADO_ATIVO), _DEEP_LINK_AMZ, limit),
     )
     return cur.fetchall()
 
@@ -179,7 +202,7 @@ def run(limit=None, dry_run=False, book_ids=None, conn=None):
         log("[MIGRA_ML] Sem ML_CLIENT_ID/ML_CLIENT_SECRET — pulando.")
         return 0, 0, 0
 
-    from steps.offer_resolver import inject_ml_affiliate
+    from steps.offer_resolver import inject_ml_affiliate, build_mercadolivre_url
 
     fechar = conn is None
     conn = get_conn() if fechar else conn
@@ -196,16 +219,16 @@ def run(limit=None, dry_run=False, book_ids=None, conn=None):
         SELECT COUNT(*) FROM livros
         WHERE status_publish = 1
           AND LOWER(COALESCE(offer_url, '')) LIKE '%amazon%'
-          AND NOT (offer_url LIKE ? AND preco_atual IS NOT NULL)
+          AND NOT (? AND offer_url LIKE ? AND preco_atual IS NOT NULL)
         """,
-        (_DEEP_LINK_AMZ,),
+        (int(AMAZON_AFILIADO_ATIVO), _DEEP_LINK_AMZ),
     ).fetchone()[0]
 
     origem = "seed" if book_ids else "passe do G"
     log(f"[MIGRA_ML] {len(rows)} livro(s) ({origem}) | {restantes} no passivo "
         f"| dry_run={dry_run}")
 
-    migrados = nao_conf = erros = 0
+    migrados = nao_conf = erros = busca_ml = 0
 
     for row in rows:
         livro_id = row["id"]
@@ -233,10 +256,18 @@ def run(limit=None, dry_run=False, book_ids=None, conn=None):
 
         if not achado:
             # O portão de duas folhas (autor E título) reprovou. Não é erro —
-            # é a API funcionando. Só carimba e segue.
+            # é a API funcionando.
             nao_conf += 1
+            if AMAZON_AFILIADO_ATIVO:
+                if not dry_run:
+                    _carimbar(conn, livro_id)
+                continue
+            # Degrau 2 (conta Amazon encerrada): busca do ML, preço NULL.
+            consulta = (row["lookup_query"] or
+                        f"{row['titulo']} {row['autor'] or ''} livro").strip()
             if not dry_run:
-                _carimbar(conn, livro_id)
+                _migrar(conn, livro_id, build_mercadolivre_url(consulta), None)
+            busca_ml += 1
             continue
 
         if not dry_run:
@@ -249,6 +280,9 @@ def run(limit=None, dry_run=False, book_ids=None, conn=None):
 
     log(f"[MIGRA_ML] Migrados: {migrados} | Não confirmados: {nao_conf} | "
         f"Erros: {erros} | Total: {len(rows)}")
+    if busca_ml:
+        log(f"[MIGRA_ML] Não confirmados → busca do ML (conta Amazon encerrada): "
+            f"{busca_ml}")
     if dry_run:
         log("[MIGRA_ML] dry-run ativo — nenhuma alteração foi salva.")
 

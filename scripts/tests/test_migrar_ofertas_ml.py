@@ -77,6 +77,10 @@ _stub("dotenv", _dotenv)
 from steps import migrar_ofertas_ml as mig  # noqa: E402
 from core import ml_api as _ml_api_real  # noqa: E402  (so stdlib: urllib/json)
 
+# Os testes abaixo fixam o comportamento COM a conta de Associados ativa; o
+# degrau 2 (conta encerrada em 2026-09-18) tem testes proprios no fim.
+mig.AMAZON_AFILIADO_ATIVO = True
+
 DDL = """
 CREATE TABLE livros (
     id                    TEXT PRIMARY KEY,
@@ -94,6 +98,7 @@ CREATE TABLE livros (
     blacklist_reason      TEXT,
     qa_quarantine         INTEGER DEFAULT 0,
     ml_migracao_em        TEXT,
+    lookup_query          TEXT,
     updated_at            TEXT
 );
 """
@@ -145,6 +150,7 @@ def _rodar(conn, resposta, dry_run=False, limit=50, book_ids=None):
 
     fake_res = types.ModuleType("steps.offer_resolver")
     fake_res.inject_ml_affiliate = lambda u: u + "?matt_tool=TESTE"
+    fake_res.build_mercadolivre_url =         lambda q: "https://lista.mercadolivre.com.br/" + q.replace(" ", "-") + "?matt_tool=TESTE"
     salvo_res = sys.modules.get("steps.offer_resolver")
     sys.modules["steps.offer_resolver"] = fake_res
 
@@ -350,6 +356,47 @@ def test_conn_externa_nao_e_fechada():
     print("OK  conexao do chamador segue utilizavel")
 
 
+def test_amazon_encerrada_nao_confirmado_vai_para_busca_do_ml():
+    """Conta Amazon encerrada (2026-09-18): nao confirmado vira busca do ML SEM preco."""
+    mig.AMAZON_AFILIADO_ATIVO = False
+    try:
+        conn = _db([
+            {"id": "x", "titulo": "Sob a Roda", "autor": "Hesse",
+             "offer_url": BUSCA_AMZ, "marketplace": "amazon", "preco_atual": 55.0,
+             "status_publish_oferta": 1, "lookup_query": "sob a roda hesse livro"},
+            {"id": "boa", "titulo": "Livro Bom", "offer_url": DP_AMZ,
+             "marketplace": "amazon", "preco_atual": 42.0, "status_publish_oferta": 1},
+        ])
+        assert {r["id"] for r in mig.fetch_pending(conn, 50)} == {"x", "boa"},             "com a conta encerrada, /dp/ + preco da Amazon tambem migra"
+        mig_, nao, err = _rodar(conn, NAO_ACHOU)
+        assert (mig_, nao, err) == (0, 2, 0), (mig_, nao, err)
+        r = _row(conn, "x")
+        assert r["offer_url"].startswith("https://lista.mercadolivre.com.br/sob-a-roda-hesse-livro"), r["offer_url"]
+        assert r["marketplace"] == "mercado_livre"
+        assert r["preco_atual"] is None, "preco da Amazon NAO pode ficar colado na URL do ML"
+        assert r["status_publish_oferta"] == 0, "reabre a republicacao"
+        assert r["ml_migracao_em"] is not None
+        r = _row(conn, "boa")   # sem lookup_query: titulo + autor
+        assert r["offer_url"].startswith("https://lista.mercadolivre.com.br/Livro-Bom"), r["offer_url"]
+        assert r["preco_atual"] is None
+    finally:
+        mig.AMAZON_AFILIADO_ATIVO = True
+    print("OK  conta Amazon encerrada: nao confirmado vai para a busca do ML, sem preco")
+
+
+def test_amazon_encerrada_confirmado_segue_com_deep_link():
+    mig.AMAZON_AFILIADO_ATIVO = False
+    try:
+        conn = _db([{"id": "x", "titulo": "Dom Casmurro", "autor": "Machado",
+                     "offer_url": BUSCA_AMZ, "marketplace": "amazon"}])
+        assert _rodar(conn, ACHOU) == (1, 0, 0)
+        r = _row(conn, "x")
+        assert "/p/MLB123" in r["offer_url"] and r["preco_atual"] == 39.9
+    finally:
+        mig.AMAZON_AFILIADO_ATIVO = True
+    print("OK  conta Amazon encerrada: confirmado continua indo ao deep link com preco")
+
+
 if __name__ == "__main__":
     test_oferta_boa_da_amazon_nao_entra_na_fila()
     test_dp_sem_preco_entra()
@@ -364,4 +411,6 @@ if __name__ == "__main__":
     test_book_ids_nao_ressuscita_blacklist()
     test_book_ids_vazio_e_noop()
     test_conn_externa_nao_e_fechada()
+    test_amazon_encerrada_nao_confirmado_vai_para_busca_do_ml()
+    test_amazon_encerrada_confirmado_segue_com_deep_link()
     print("\nTodos os testes passaram.")
