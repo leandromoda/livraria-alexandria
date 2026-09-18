@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-16: ofertas antigas de outro marketplace desativadas (570 livros, #327 + backfill), reparo de ofertas a cada janela do G com anti-laco na fila do monitor (#328), TASK-SEO-017 com canonical feito e Guerra dos Tronos corrigida.",
+    "last_updated": "2026-09-18: conta Amazon Associados encerrada e passivo Amazon convertido para o ML (#331, 1.341 livros); monitor nao reativa mais oferta de outro marketplace (#330); rodada de 2 dias do G medida (monitor 44%, step 31 41%).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -1235,7 +1235,7 @@
         "canonical": "13 duplicatas confirmadas com canonical para a pagina mantida e fora do sitemap (lib/duplicatas.ts, #325); verificado em producao: sitemap 6.491 URLs sem nenhuma duplicata.",
         "a_guerra_dos_tronos": "As duas paginas apontavam para MLB22219446 (cadastro vago, anuncios de R$ 380,60 e R$ 1.200). Edicao comum corrigida para MLB19910462 a R$ 78,29 (books.db + Supabase). A ilustrada (MLB22836637) nao tem anuncio ativo: ficou com busca do ML sem preco e a linha Amazon desativada.",
         "achado_empate_de_pontuacao": "buscar_livro fica com o primeiro candidato em empate de pontuacao, que pode ser produto mal cadastrado a preco de colecionador: Guerra dos Tronos R$ 380, As Cronicas de Narnia R$ 395, O Espiao que Saiu do Frio R$ 399, 1Q84 R$ 599 (caixa). Nao corrigido.",
-        "achado_paginas_orfas": "Medido em 2026-09-16 no backfill de ofertas: 21 livros do Supabase com oferta nao tem linha no books.db (supabase_id ausente), entre eles paginas MANTIDAS pelo canonical do #325 (pais-e-filhos, cem-anos-de-solidao, as-cronicas-de-narnia). O pipeline nao mantem preco nem oferta dessas paginas. Nao investigado."
+        "achado_paginas_orfas": "Medido em 2026-09-16 no backfill de ofertas: 21 livros do Supabase com oferta nao tem linha no books.db (supabase_id ausente), entre eles paginas MANTIDAS pelo canonical do #325 (pais-e-filhos, cem-anos-de-solidao, as-cronicas-de-narnia). O pipeline nao mantem preco nem oferta dessas paginas. Nao investigado. Atualizado 2026-09-18: 78 livros publicaveis no Supabase sem linha local ainda exibem oferta Amazon (conta encerrada) — o pipeline nao os alcanca."
       }
     },
     {
@@ -3407,6 +3407,30 @@
         "LimiteML interrompe o lote do monitor (antes: ~100 s de espera por livro sob 429 persistente)."
       ],
       "a_medir": "Aproveitamento por janela na primeira rodada longa (rodada de 2 dias iniciada apos 2026-09-16). Estimativa, nao medicao: ~9 janelas -> step 31 ~1.350 livros a 35-49% e monitor ~1.350 a ~6%."
+    },
+    {
+      "id": "TASK-OFERTAS-012",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-18",
+      "description": "Conta Amazon Associados encerrada — passivo Amazon convertido para o ML",
+      "origem": "E-mail de associates@amazon.com.br em 2026-09-18 04:26: conta livrariaalexa-20 encerrada pela regra de 3 compras qualificadas em 180 dias (nao cita violacao de politica). Pode reaplicar com trafego consistente.",
+      "decisao": "Leandro, 2026-09-18: trocar as ofertas Amazon pela busca do ML (opcao recomendada entre manter sem tag, tirar do ar ou nao mexer).",
+      "correcao": "#331: AMAZON_AFILIADO_ATIVO (padrao 0) — step 31 leva nao confirmado ao degrau 2 (busca do ML, preco_atual NULL) e deixa de proteger /dp/ + preco. =1 restaura.",
+      "execucao": "2026-09-18: step 31 sobre os 1.341 publicados na Amazon (17:54-20:03, API reconsultada): 32 com deep link + preco, 1.309 para a busca do ML; republicacao 1.341 ofertas, 0 falhas. books.db: 4.943 publicados, todos no ML (2.001 /p/ com preco, 2.916 busca sem preco). Supabase: 0 livros com >1 oferta ativa, 0 publicaveis sem oferta.",
+      "resta": "134 ofertas Amazon ativas no Supabase: 78 de livros publicaveis SEM linha no books.db (paginas orfas: memorias-do-subsolo, senhora, o-crime-do-padre-amaro...) — ver TASK-SEO-017; 52 de livros nao publicaveis; 4 publicaveis no Supabase mas status_publish=0 local.",
+      "nota": "Achado no caminho: publish_ofertas.run le NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY do ambiente, que o G obtem do ../.env.local (core/export_for_audit); fora do G o run_repair falha com 'nao configurados' sem republicar."
+    },
+    {
+      "id": "TASK-OFERTAS-013",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-18",
+      "description": "Monitor reativava oferta de outro marketplace; offer_status=price_changed era estado morto",
+      "origem": "/analise-logs de pipeline_2026-09-16_12-31-25 (rodada de 2 dias)",
+      "causa": "supabase_patch_oferta filtrava so por livro_id: ativa=True (resgate, refresh, reativacao) religava a oferta que o #327 desativa. Invisivel na rodada porque todo acerto mudava o hash e o run_repair desativava de novo; no refresh de quem ja tem preco a duplicata ficaria. E price_changed gravado em offer_status tirava o livro de toda republicacao (6 livros desde 17-23/08).",
+      "correcao": "#330: PATCH filtrado pelo livros.marketplace local; monitor grava 'active'; fix_offer_status normaliza 'price_changed' legado.",
+      "medicao_da_rodada": "16-18/09, 8 janelas + passe inicial: monitor 597/1.350 (44%, era 6%), step 31 550/1.350 (41%), 1.902 ofertas publicadas 0 falhas, 62 HTTP 429 todos recuperados."
     }
   ],
   "qa_remediation_loop": {
