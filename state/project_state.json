@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-18: conta Amazon Associados encerrada e passivo Amazon convertido para o ML (#331, 1.341 livros); monitor nao reativa mais oferta de outro marketplace (#330); rodada de 2 dias do G medida (monitor 44%, step 31 41%).",
+    "last_updated": "2026-09-19: livro sem oferta com preco sai do indice (#334, sitemap 6.491 -> 3.426); validacao do bucket noindex reprovada em 16/09 e esperada (#333).",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -3431,6 +3431,17 @@
       "causa": "supabase_patch_oferta filtrava so por livro_id: ativa=True (resgate, refresh, reativacao) religava a oferta que o #327 desativa. Invisivel na rodada porque todo acerto mudava o hash e o run_repair desativava de novo; no refresh de quem ja tem preco a duplicata ficaria. E price_changed gravado em offer_status tirava o livro de toda republicacao (6 livros desde 17-23/08).",
       "correcao": "#330: PATCH filtrado pelo livros.marketplace local; monitor grava 'active'; fix_offer_status normaliza 'price_changed' legado.",
       "medicao_da_rodada": "16-18/09, 8 janelas + passe inicial: monitor 597/1.350 (44%, era 6%), step 31 550/1.350 (41%), 1.902 ofertas publicadas 0 falhas, 62 HTTP 429 todos recuperados."
+    },
+    {
+      "id": "TASK-SEO-018",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-09-19",
+      "description": "Livro sem oferta com preco fora do indice (afiliado fino)",
+      "medicao": "Supabase 2026-09-19: 5.093 livros publicaveis, 2.029 com oferta ativa com preco, 3.064 so com busca do ML sem preco (~2.200 ja avaliados pela API do ML sem confirmacao).",
+      "decisao": "Leandro, 2026-09-19, entre tres (noindex / manter indexada trocando o bloco de compra / medir cobertura da API antes): noindex.",
+      "correcao": "#334: livroIndexavel em lib/indexavel.ts, usada pelo sitemap e pelo generateMetadata; noindex, follow, nunca 404; volta sozinho quando o monitor confirmar. Verificado em producao: sitemap 6.491 -> 3.426 (livros 2.016); pagina sem oferta com preco com robots noindex, follow.",
+      "a_medir": "GSC quando o relatorio descongelar: bucket 'Excluida pela tag noindex' deve subir ~3 mil (esperado); acompanhar posicao media e impressoes. Paginas voltando ao indice conforme o monitor confirma produtos."
     }
   ],
   "qa_remediation_loop": {
