@@ -20,6 +20,7 @@ import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { toIsbn13 } from "@/lib/isbn";
 import { slugCanonicoLivro } from "@/lib/duplicatas";
+import { livroIndexavel, robotsSeNaoIndexavel } from "@/lib/indexavel";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
 import Link from "next/link";
@@ -94,6 +95,9 @@ export async function generateMetadata({
 
   if (!livro) return {};
 
+  // Mesma leitura (memoizada) que a página usa — sem query extra.
+  const ofertas = await getOfertas(livro.id);
+
   // No Supabase, `descricao` já contém a sinopse editorial gerada (publish.py
   // envia o campo `sinopse` do SQLite para a coluna `descricao`).
   const description = livro.descricao?.slice(0, 160)
@@ -104,6 +108,9 @@ export async function generateMetadata({
     description,
     // Duplicata aponta a canonical para a página mantida — ver lib/duplicatas.ts.
     alternates: { canonical: `/livros/${slugCanonicoLivro(slug)}` },
+    // Sem oferta com preço = link de busca apenas: fora do índice até o
+    // monitor confirmar o produto — ver livroIndexavel em lib/indexavel.ts.
+    ...robotsSeNaoIndexavel(livroIndexavel(ofertas)),
     openGraph: {
       title: livro.titulo,
       description,
