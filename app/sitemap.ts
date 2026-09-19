@@ -47,6 +47,8 @@ async function fetchAll<T>(
 }
 
 type SlugComData = { slug: string; updated_at: string | null };
+type LivroSitemap = { id: string; slug: string; updated_at: string | null };
+type OfertaComPreco = { livro_id: string };
 type Slug = { slug: string };
 type ListaComMembros = { slug: string; lista_livros: unknown[] | null };
 type AutorComLivros = {
@@ -56,16 +58,29 @@ type AutorComLivros = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [livros, listas, categorias, autores, jogos, infantis] = await Promise.all([
+  const [livros, comOferta, listas, categorias, autores, jogos, infantis] = await Promise.all([
     // `is_publishable` — mesmo critério que app/(public)/livros/[slug]/page.tsx
     // usa para decidir o notFound(). Filtrar por `status = "publish"` incluía 5
     // livros que respondiam 404 (4.691 vs 4.686 em 2026-08-06).
-    fetchAll<SlugComData>("livros", (from, to) =>
+    fetchAll<LivroSitemap>("livros", (from, to) =>
       supabase
         .from("livros")
-        .select("slug, updated_at")
+        .select("id, slug, updated_at")
         .eq("is_publishable", true)
         .order("slug")
+        .range(from, to),
+    ),
+
+    // Livros com oferta ativa COM PREÇO — o mesmo critério do `generateMetadata`
+    // da página (livroIndexavel). Sem isto, o sitemap anunciaria ~3 mil URLs
+    // marcadas `noindex`, a contradição de agosto de novo.
+    fetchAll<OfertaComPreco>("ofertas com preço", (from, to) =>
+      supabase
+        .from("ofertas")
+        .select("livro_id")
+        .eq("ativa", true)
+        .gt("preco", 0)
+        .order("id")
         .range(from, to),
     ),
 
@@ -127,8 +142,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Duplicata sai do sitemap: a canonical dela aponta para a página mantida, e
   // anunciar as duas seria sinal contraditório — ver lib/duplicatas.ts.
+  // E livro sem oferta com preço também sai — ver livroIndexavel.
+  const idsComOferta = new Set(comOferta.map((o) => o.livro_id));
   const livroPages: MetadataRoute.Sitemap = livros
-    .filter((l) => !livroEhDuplicata(l.slug))
+    .filter((l) => !livroEhDuplicata(l.slug) && idsComOferta.has(l.id))
     .map((l) => ({
       url: `${base}/livros/${l.slug}`,
       lastModified: l.updated_at ?? undefined,

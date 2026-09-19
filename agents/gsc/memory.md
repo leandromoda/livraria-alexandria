@@ -33,6 +33,14 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 > **Não resubmeter a validação daquele bucket por causa disso**, e não tratar o
 > crescimento como bug numa próxima seção. O que acompanhar é a **posição
 > média** (58,1 em 05/09) e o volume de impressões.
+>
+> ⚠️ **Segundo corte, 2026-09-19 (#334): livro sem oferta com preço também sai
+> do índice.** 3.064 dos 5.093 livros publicáveis tinham só link de BUSCA do ML
+> ("Consulte o site") — afiliado fino. `noindex, follow` + fora do sitemap
+> (regra `livroIndexavel` em `lib/indexavel.ts`); voltam sozinhos quando o
+> monitor confirmar o produto. Sitemap **6.491 → 3.411** (livros ~5.080 →
+> 2.016). O bucket "Excluída pela tag noindex" vai subir mais ~3 mil — de novo
+> **esperado**, não resubmeter validação.
 
 
 | Item | Por quê é esperado |
@@ -198,6 +206,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-09-19 | indexação | **Livro sem oferta com preço fora do índice**: 3.064 de 5.093 livros publicáveis tinham só busca do ML, sem preço (conta Amazon encerrada em 18/09; ~2.200 já avaliados pela API do ML sem confirmação). `noindex, follow` + fora do sitemap via `livroIndexavel` (mesma regra no sitemap e no `generateMetadata`); volta ao índice quando o monitor confirmar. Sitemap **6.491 → 3.411** | #334 |
 | 2026-09-05 | indexação | **Faixa fina fora do índice**: autor sem bio E com <2 livros, e lista com <5 membros publicáveis, passam a `noindex, follow` e saem do sitemap. Sitemap de **8.273 para 6.504** URLs (−1.333 autores, −438 listas); `/livros` e `/categorias` intactos. Regra única em `lib/indexavel.ts`, usada pelo sitemap E pelo `generateMetadata` — divergir entre os dois foi o alerta de agosto. **Não é 404**: a página volta ao índice sozinha quando ganhar corpo | #319 |
 | 2026-08-30 | tracking | **Cliques de oferta não eram gravados desde 18/03**: o `INSERT` em `oferta_clicks` mandava `utm_medium`, coluna inexistente → 400 PGRST204, erro não conferido, redirect 302 normal. Payload alinhado ao schema, erro logado na Vercel, e a auditoria passou a verificar se a linha ENTROU (não só o status do redirect). Migração opcional de paridade em `scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql` | #312 |
 | 2026-08-21 | dados estruturados | **"Valor ISBN13 invalido para `isbn`"** (Listagens do comerciante, `[WNC-10030322]`): `livros/[slug]` e `ofertas` emitiam `livro.isbn` cru no JSON-LD, e o `gtin13` so contava digitos. Novo `lib/isbn.ts` valida o digito verificador e converte ISBN-10 → ISBN-13 (prefixo 978 + checksum); `isbn`/`gtin13` so saem quando o ISBN e valido, `sku` segue o valor do banco. Afetava 2 dos 9 livros publicados com ISBN | #289 |

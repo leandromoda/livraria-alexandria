@@ -77,6 +77,36 @@ export function listaIndexavel(qtdMembros: number): boolean {
   return qtdMembros >= MIN_MEMBROS_LISTA;
 }
 
+/**
+ * Livro entra no índice só com OFERTA CONFIRMADA: ao menos uma oferta ativa com
+ * preço. (Sem preço, o JSON-LD já omitia o Offer — ver livros/[slug]/page.tsx.)
+ *
+ * ⚠ POR QUE — medido em 2026-09-19, segundo corte depois do #319.
+ *
+ * Com a conta Amazon Associados encerrada (18/09) todo o catálogo foi para o
+ * Mercado Livre. Dos 5.093 livros publicáveis no Supabase, **2.029** têm
+ * oferta com preço (página de produto confirmada pela API do ML) e **3.064**
+ * não têm: a "oferta" é um link de BUSCA do ML exibido como "Consulte o site /
+ * Ver oferta". É a definição de página afiliada fina — o alvo do August 2026
+ * spam update — e era 60% das páginas de livro do sitemap.
+ *
+ * Esperar o monitor não resolvia: dos 2.916 livros nessa condição no books.db,
+ * ~2.200 já tinham sido avaliados pela API do ML (894 pelo monitor, 1.309 pelo
+ * step 31 em 18/09) e o produto não foi confirmado.
+ *
+ * Mesmo desenho do corte de 05/09: `noindex, follow` e fora do sitemap, NUNCA
+ * 404. A página segue no ar para quem navega, e volta ao índice sozinha quando
+ * o monitor de preços confirmar o produto (ele continua tentando em
+ * round-robin). Critério escolhido pelo Leandro em 2026-09-19, entre três:
+ * noindex (este), manter indexada trocando o bloco de compra, ou medir a
+ * cobertura da API antes.
+ */
+export function livroIndexavel(
+  ofertas: ReadonlyArray<{ preco: unknown }> | null | undefined,
+): boolean {
+  return (ofertas ?? []).some((o) => Number(o.preco) > 0);
+}
+
 /** Açúcar para o `generateMetadata`: espalha `robots` só quando é para excluir. */
 export function robotsSeNaoIndexavel(indexavel: boolean) {
   return indexavel ? {} : { robots: { index: false, follow: true } };
