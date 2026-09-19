@@ -356,6 +356,16 @@ com os mesmos números de 15/09. O efeito do #319 (esperado: "Excluída pela tag
 noindex" subir ~1.771) **continua ilegível** por ele. A validação desse bucket
 segue "Iniciado" desde 20/08 — **não resubmeter**.
 
+> **Atualização 2026-09-19 — a validação REPROVOU (e-mail WNC-10031170 de
+> 16/09 20:35 UTC):** "Não foi possível corrigir alguns problemas… Excluída
+> pela tag noindex. Algumas das suas páginas ainda estão afetadas." **Esperado,
+> não bug:** a validação aberta em 20/08 cobria as 5 categorias vazias do #286,
+> mas desde o #319 (05/09) o bucket contém de propósito ~1.771 URLs `noindex,
+> follow` (autor sem bio com <2 livros, lista com <5 membros). A validação
+> sempre vai reprovar enquanto houver noindex intencional. **Não resubmeter.**
+> Único outro e-mail desde 05/09: o resumo de agosto (08/09) — 253 cliques,
+> 15,7 mil impressões no mês, quase tudo antes do spam update de 18–21/08.
+
 Esta seção completou as colunas que 15/09 deixou em branco — **Detectada ñ
 indexada 912**, **Excluída noindex 628** — e as de fora da tabela:
 Redirecionamento **2.192**, Cópia sem canônica do usuário **50**, Cópia c/
