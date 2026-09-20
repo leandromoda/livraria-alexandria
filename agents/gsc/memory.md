@@ -357,6 +357,7 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-09-20 (dados de **13/09**) | 4.452 | 980 | 692 | 21 | 2 | 1.209 | 765 | **947** | 108 |  ← relatório DESCONGELOU (13 dias parado em 03/09)
 | 2026-09-16 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | 912 | 628 | 107 |  ← MESMO relatório de 15/09 (congelado); completa as colunas
 | 2026-09-15 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | — | — | 107 |  ← relatório PRÉ-corte; linhas 11-12 não lidas
 | 2026-08-30 | — | — | — | — | — | — | — | — | — |  ← seção de DESEMPENHO, não de indexação
@@ -365,6 +366,53 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-09-20 — o relatório descongelou; apontamento novo é de ISBN
+
+**O relatório saiu de 03/09 e agora traz 13/09** — 10 dias de avanço depois de
+13 parados. Indexadas **7,35 mil** (era 7,3 mil), não indexadas **12,6 mil**.
+
+**Variação vs. a leitura de 16/09 (dados de 03/09):**
+
+| Bucket | 03/09 | 13/09 | Leitura |
+|---|---|---|---|
+| Excluída pela tag `noindex` | 628 | **947** | **+319 — o #319 começando a aparecer.** Esperado; faltam ~1.450 do corte de 05/09, e o #334 (19/09, +3.064) nem entrou nestes dados |
+| Rastreada ñ indexada | 1.588 | 1.209 | −379, drenando (a maioria era `www`) |
+| Detectada ñ indexada | 912 | 765 | −147, drenando |
+| Não encontrado (404) | 563 | **692** | +129 — **conferido, é migração esperada** (ver abaixo) |
+| Cópia c/ canônica diferente | 916 | 980 | +64, `www` (esperado) |
+| Bloqueada pelo robots.txt | 4.395 | 4.452 | +57, `/api/click/*` (esperado) |
+| Redirecionamento | 2.192 | 2.354 | +162, `www` 308 (esperado) |
+| 5xx / soft 404 / Indexada mas bloq. | 22 / 2 / 107 | 21 / 2 / 108 | estáveis |
+
+**404 (692) — drilldown agrupado, nenhum bug:** `/autores/*` **532** (224 apex +
+308 `www`), `/livros/*` **117**, `/listas/*` 26, `(root)` 10, `/categorias/*` 3,
+lixo de crawl 4. Os autores são o #263 migrando do bucket `noindex` para o 404,
+como esta memória previa. Amostra de **25 slugs de livro** conferida no
+`books.db`: **22 blacklisted**, 1 `is_publishable=0`, 2 ausentes do banco local
+(`grande-sertao-veredas`, `a-cidade-e-a-cidade` — dedup). 404 é o correto nos 25.
+
+**Validação de `noindex` = Falha** — já registrado na seção anterior (e-mail de
+16/09). Segue **esperado** enquanto houver noindex intencional. Não resubmeter.
+
+**Desempenho (dados até 17/09):** 28 dias (21/08–17/09) = **20 cliques, 2,24 mil
+impressões, posição média 52,3**. Janela de 7 dias 11–17/09: **636 impressões, 2
+cliques** — contra 513 em 07–13/09 e 631 em 28/08–03/09. ⚠️ A posição por dia
+não foi extraída nesta seção (o card de métrica não abriu por clique
+sintético), então **52,3 é de 28 dias**, não da janela de 7 — não comparar
+direto com os 50,9 da seção anterior.
+
+**Bug real da seção: ISBN.** Ver a linha de 2026-09-20 em "Fixes aplicados"
+(#336) — checksum válido não basta, o prefixo tem de ser 978/979. Além do
+código, **28 registros ruins foram zerados** no `books.db` e no Supabase (18
+EAN do Google Books + 10 de seed com checksum errado, incluindo o
+`pai-rico-pai-pobre` da TASK-PIPE-034). Auditoria final pela regra do próprio
+site: **2.799 publicáveis com ISBN, 0 inválidos**.
+⚠️ Erro de método cometido aqui, para não repetir: ao varrer o Supabase usei uma
+checagem que só aceitava 13 dígitos e ela marcou `8131803015`
+(`industrial-economics-and-management-principles`) como inválido — é **ISBN-10
+válido**, que o site converte. O PATCH apagou o valor e ele foi **restaurado**.
+Auditar sempre com `normalize_isbn13`/`toIsbn13`, nunca com regra improvisada.
 
 ### Seção 2026-09-16 — relatório de indexação ainda congelado em 03/09
 
