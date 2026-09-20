@@ -178,6 +178,13 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
   inválido**, e-mail de 21/08 (`[WNC-10030322]`) → **bug do site**, corrigido no
   #289. O título do e-mail é quase idêntico nos dois casos; **ler a linha do
   problema antes de dispensar como "já conhecido"**.
+- **Nem checksum é validar ISBN — o prefixo também conta.** ISBN-13 é o EAN-13
+  do "Bookland": só `978` e `979`. Um EAN-13 de outro domínio tem checksum
+  válido e passa por qualquer validação que só olhe o dígito verificador. Foi o
+  que trouxe o aviso de volta em 20/09, depois de o backfill de ISBN (#293)
+  multiplicar por 300 a população de livros com identificador. **Medição antes
+  de concluir:** 2.818 publicáveis com ISBN, 2.798 válidos, 18 EAN fora do
+  Bookland, 1 com checksum errado (`pai-rico-pai-pobre`, o antigo).
 - **Contar dígitos não é validar ISBN.** O `gtin13` do #259 usava
   `isbnDigitos.length === 13`, o que deixa passar checksum errado, e o `isbn`
   saía cru, sem checagem nenhuma. Medido em 2026-08-21 (PostgREST,
@@ -206,6 +213,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-09-20 | dados estruturados | **"Valor ISBN13 inválido para `isbn`" VOLTOU** ([WNC-10030322], e-mail de 20/09 08:47) — e a causa é nova: o backfill do #293 levou os livros com ISBN de 9 para **2.818**, e **18 publicáveis** têm 13 dígitos com checksum VÁLIDO mas prefixo fora do Bookland (`4064066106690`, `3410007589793`, `8596547414988`…). São EAN-13 de outro domínio. `toIsbn13`/`normalize_isbn13` passam a exigir prefixo **978/979** | #336 |
 | 2026-09-19 | indexação | **Livro sem oferta com preço fora do índice**: 3.064 de 5.093 livros publicáveis tinham só busca do ML, sem preço (conta Amazon encerrada em 18/09; ~2.200 já avaliados pela API do ML sem confirmação). `noindex, follow` + fora do sitemap via `livroIndexavel` (mesma regra no sitemap e no `generateMetadata`); volta ao índice quando o monitor confirmar. Sitemap **6.491 → 3.411** | #334 |
 | 2026-09-05 | indexação | **Faixa fina fora do índice**: autor sem bio E com <2 livros, e lista com <5 membros publicáveis, passam a `noindex, follow` e saem do sitemap. Sitemap de **8.273 para 6.504** URLs (−1.333 autores, −438 listas); `/livros` e `/categorias` intactos. Regra única em `lib/indexavel.ts`, usada pelo sitemap E pelo `generateMetadata` — divergir entre os dois foi o alerta de agosto. **Não é 404**: a página volta ao índice sozinha quando ganhar corpo | #319 |
 | 2026-08-30 | tracking | **Cliques de oferta não eram gravados desde 18/03**: o `INSERT` em `oferta_clicks` mandava `utm_medium`, coluna inexistente → 400 PGRST204, erro não conferido, redirect 302 normal. Payload alinhado ao schema, erro logado na Vercel, e a auditoria passou a verificar se a linha ENTROU (não só o status do redirect). Migração opcional de paridade em `scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql` | #312 |

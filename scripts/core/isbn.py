@@ -15,6 +15,13 @@
 # nulo, n=9): 7 ISBN-13 validos, 1 com 13 digitos e checksum ERRADO
 # (`pai-rico-pai-pobre` -> 9788576849943) e 1 ISBN-10
 # (`industrial-economics-and-management-principles` -> 8131803015).
+#
+# ⚠ 2026-09-20 — CHECKSUM CERTO NAO BASTA: TEM DE SER BOOKLAND (978/979).
+# O aviso voltou ([WNC-10030322], 20/09) depois que o backfill do #293 levou os
+# livros com ISBN de 9 para 2.818. Medido no Supabase nesse dia: 18 publicaveis
+# com 13 digitos, checksum VALIDO e prefixo que nao e de ISBN (4064066106690,
+# 3410007589793, 8596547414988...). Sao EAN-13 de outro dominio. ISBN-13 e o
+# EAN-13 do "Bookland": so 978 e 979.
 # ============================================================
 
 import re
@@ -42,7 +49,7 @@ def _isbn10_valido(corpo):
 def normalize_isbn13(bruto):
     """Devolve o ISBN-13 canonico (13 digitos, sem hifen) ou None.
 
-    - ISBN-13 com checksum correto: devolve normalizado (sem hifen/espaco).
+    - ISBN-13 (prefixo 978/979) com checksum correto: devolve normalizado.
     - ISBN-10 valido: converte (prefixo 978 + checksum recalculado). E a
       conversao canonica, nao heuristica.
     - Qualquer outra coisa (checksum errado, tamanho estranho, lixo): None.
@@ -57,6 +64,8 @@ def normalize_isbn13(bruto):
     if len(limpo) == 13:
         if not limpo.isdigit():
             return None  # `X` so existe em ISBN-10
+        if limpo[:3] not in ("978", "979"):
+            return None  # EAN-13 fora do Bookland — nao e ISBN
         return limpo if _checksum13(limpo[:12]) == int(limpo[12]) else None
 
     if len(limpo) == 10:

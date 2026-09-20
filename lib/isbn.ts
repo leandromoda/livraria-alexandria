@@ -15,6 +15,15 @@
  * O Google valida `isbn` das Listagens do comerciante como ISBN-13, então
  * ISBN-10 é convertido (prefixo `978` + dígito verificador recalculado) em vez
  * de descartado — é a conversão canônica, não uma heurística.
+ *
+ * ⚠ 2026-09-20 — CHECKSUM CERTO NÃO BASTA: TEM DE SER BOOKLAND (978/979).
+ * O mesmo aviso voltou ([WNC-10030322], e-mail de 20/09) depois que o backfill
+ * do #293 levou os livros com ISBN de 9 para **2.818**. Medido no Supabase
+ * nesse dia: **18 publicáveis** têm 13 dígitos com checksum VÁLIDO e prefixo
+ * que não é de ISBN — `4064066106690` (35-sonnets), `3410007589793`
+ * (a-guerra-dos-judeus), `8596547414988` (beatrice)… São EAN-13 de outro
+ * domínio, provavelmente do Google Books; passavam na checagem antiga e saíam
+ * como `isbn`/`gtin13`. ISBN-13 é o EAN-13 do "Bookland": só `978` e `979`.
  */
 
 function checksum13(twelveDigits: string): number {
@@ -47,6 +56,7 @@ export function toIsbn13(bruto: string | null | undefined): string | null {
 
   if (limpo.length === 13) {
     if (!/^\d{13}$/.test(limpo)) return null; // `X` só existe em ISBN-10
+    if (!/^97[89]/.test(limpo)) return null;  // EAN-13 fora do Bookland
     return checksum13(limpo.slice(0, 12)) === Number(limpo[12]) ? limpo : null;
   }
 
