@@ -45,6 +45,25 @@ print("[OK] 13 digitos com checksum errado e rejeitado")
 
 
 # ==========================================================
+# 2026-09-20: checksum certo, prefixo que NAO e de ISBN
+# ==========================================================
+
+# O aviso do GSC voltou depois que o backfill do #293 levou os livros com ISBN
+# de 9 para 2.818. Dos publicaveis, 18 tinham 13 digitos com checksum VALIDO e
+# prefixo fora do Bookland — EAN-13 de outro dominio, nao ISBN. Valores reais
+# do Supabase em 2026-09-20:
+assert normalize_isbn13("4064066106690") is None   # 35-sonnets
+assert normalize_isbn13("3410007589793") is None   # a-guerra-dos-judeus
+assert normalize_isbn13("8596547414988") is None   # beatrice
+assert normalize_isbn13("2200000107497") is None   # lorna-doone
+print("[OK] EAN-13 com checksum valido fora do Bookland (978/979) e rejeitado")
+
+# E o 979 continua valendo — ISBN-13 moderno usa os dois prefixos.
+assert normalize_isbn13("9791234567896") == "9791234567896"
+print("[OK] prefixo 979 continua aceito")
+
+
+# ==========================================================
 # ISBN-10 e convertido, nao descartado
 # ==========================================================
 
