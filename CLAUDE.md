@@ -513,27 +513,64 @@ Tipografia:
 
 ---
 
-## Schema do banco (principais tabelas)
+## Schema do banco — Supabase (produção)
+
+> **Este bloco é o schema REMOTO**, lido do OpenAPI do PostgREST
+> (`GET /rest/v1/`) em **2026-09-30**. O SQLite local tem colunas que o Supabase
+> **não** tem (todos os `status_*` do pipeline, `idioma`, `cluster`, `sinopse`,
+> `seed_id`, `priority_score`…) — ver `data_layer.staging` em
+> `state/project_state.json`. Não deduza uma do outro: **mandar coluna que só
+> existe no SQLite faz o PostgREST devolver 400 PGRST204 e perder o insert
+> inteiro.** Já custou caro três vezes — `status_publish` em
+> `autores`/`categorias`/`listas` (#32, #40, #57) e `utm_medium` em
+> `oferta_clicks`, que derrubou **5 meses** de tracking em silêncio (2026-03-18
+> a 2026-08-30). Ao mexer em payload de publish, reconfira contra o OpenAPI.
 
 ```
 livros          id, titulo, slug, autor, descricao, isbn, ano_publicacao,
-                imagem_url, idioma, cluster
-                status: slug | dedup | synopsis | review | cover | publish
+                imagem_url, status, is_book, is_publishable, quality_score,
+                publish_blockers, last_quality_check, offer_status,
+                preco_atual, preco_updated_at, created_at, updated_at
+                -- ⚠ UMA coluna `status` (texto); publicado = status='publish'.
+                --   Os status_slug/dedup/synopsis/review/cover/publish são do
+                --   SQLite e NÃO existem aqui.
+                -- ⚠ NÃO tem `idioma` nem `cluster` (ambos só no SQLite).
 
-ofertas         id, livro_id, preco, marketplace, url_afiliada, ativa
+ofertas         id, livro_id, preco, marketplace, url_afiliada, ativa,
+                created_at
 
 oferta_clicks   id, oferta_id, livro_id, user_agent, referer, ip_hash,
-                utm_source, utm_medium, session_id, created_at
+                utm_source, utm_campaign, is_bot, session_id, created_at
+                -- ⚠ NÃO tem `utm_medium`. As irmãs `jogo_clicks` e
+                --   `livro_infantil_clicks` TÊM — não copie payload entre elas.
+                --   Para capturar utm_medium aqui, aplicar antes
+                --   scripts/sql/2026-08-30_oferta_clicks_utm_medium.sql.
+                -- `is_bot` existe desde scripts/sql/2026-09-04_click_is_bot.sql.
 
-autores         id, nome, slug, nacionalidade, status_publish
-categorias      id, nome, slug, status_publish
-listas          id, titulo, slug, introducao, status_publish
+autores         id, nome, slug, nacionalidade, descricao, created_at
+                -- ⚠ NÃO tem `status_publish` (é flag interna do SQLite).
+categorias      id, nome, slug, descricao, status_publish, created_at
+                -- esta É a única das três que tem status_publish.
+listas          id, titulo, slug, introducao, tema, tipo,
+                created_at, updated_at
+                -- ⚠ NÃO tem `status_publish`.
 
 -- junction
 livros_autores          livro_id, autor_id
-livros_categorias       livro_id, categoria_id
-lista_livros            lista_id, livro_id, posicao
-livros_categorias_tematicas  livro_id, categoria_id, confianca
+livros_categorias       id, livro_id, categoria_id, weight, created_at
+lista_livros            id, lista_id, livro_id, posicao, nota_editorial,
+                        created_at
+listas_categorias       id, lista_id, categoria_id, weight, created_at
+listas_relacionadas     id, lista_origem_id, lista_destino_id, created_at
+
+-- seções paralelas (pipelines isolados — ver project_state.json)
+jogos / jogo_clicks                     oferta embutida no registro
+livros_infantis / livro_infantil_clicks oferta embutida no registro
+
+-- ⚠ `livros_categorias_tematicas` NÃO existe no Supabase — é tabela só do
+--   SQLite local. Constava neste bloco por engano até 2026-09-30.
+-- ⚠ `clicks` (id, oferta_id, user_agent, created_at) existe no remoto, mas é
+--   legado morto: o tracking vivo é `oferta_clicks`.
 ```
 
 ---

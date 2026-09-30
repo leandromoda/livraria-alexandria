@@ -3,7 +3,7 @@
     "project_name": "Livraria Alexandria",
     "description": "Plataforma de livraria afiliada baseada em SEO programático, listas de decisão e páginas de livros, com monetização via redirecionamento afiliado.",
     "current_phase": "pilot_functional_production_publishing",
-    "last_updated": "2026-09-19: livro sem oferta com preco sai do indice (#334, sitemap 6.491 -> 3.426); validacao do bucket noindex reprovada em 16/09 e esperada (#333).",
+    "last_updated": "2026-09-30: schema do CLAUDE.md corrigido contra o OpenAPI real (mentia em oferta_clicks, autores, listas, livros e citava livros_categorias_tematicas, que nao existe no remoto); metricas do Supabase remedidas; funil de receita registrado em tracking.funil_medido (5 cliques humanos em 15 dias) e GSC em 9 cliques/28d com posicao 49,1 — colapso de ~95% pos spam update. TASK-TRACK-005 aberta.",
     "owner": "Leandro Moda",
     "environment": "production_live",
     "runtime_stack": {
@@ -242,13 +242,28 @@
     "status": "implemented_production",
     "table": "oferta_clicks",
     "deduplication": "pending",
+    "funil_medido": {
+      "medido_em": "2026-09-30",
+      "metodo": "contagens exatas no PostgREST (Prefer: count=exact) + GSC via navegador",
+      "oferta_clicks_total": 16135,
+      "classificados_humano": 1024,
+      "classificados_bot": 11773,
+      "sem_classificacao": 3338,
+      "share_bot_entre_classificados": "92%",
+      "janela_confiavel": "a partir de 2026-09-16 — o classificador do #315 estava INVERTIDO e so foi corrigido em 15/09 pelo #321 (Fetch Metadata). Os 959 'humanos' de 06-15/09 sao artefato e NAO devem ser usados.",
+      "cliques_humanos_16_a_30_09": 5,
+      "detalhe": "21/09: 2; 23/09, 28/09 e 29/09: 1 cada. Zero nos demais dias.",
+      "gsc_mesmo_periodo": "28d (01-28/09): 9 cliques, 2.050 impressoes, CTR 0,4%, posicao media 49,1",
+      "conclusao": "com n=5 e n=9 NAO ha amostra para medir CTR de saida nem conversao. Qualquer projecao de receita a partir daqui e premissa declarada, nao medicao. Ver TASK-TRACK-005.",
+      "denominador_existe_mas_nao_e_lido": "o Vercel Analytics CONTINUA coletando (<Analytics /> em app/layout.tsx:88, @vercel/analytics ^2.0.1), entao os pageviews existem no dashboard da Vercel. O que quebrou e a LEITURA: nenhum arquivo em app/ referencia VERCEL_ACCESS_TOKEN (o painel /admin perdeu a integracao do PR #31) e os endpoints /api/web-analytics/* e /stats/visitors devolvem 404 com o token atual. Buscar os pageviews no dashboard fecharia o CTR de saida — ver TASK-TRACK-005."
+    },
     "analytics": {
       "provider": "Vercel Analytics",
-      "status": "active",
+      "status": "coletando_mas_nao_lido (verificado 2026-09-30)",
       "env_var": "VERCEL_ACCESS_TOKEN",
       "team_slug": "leandro-modas-projects",
       "project": "livraria-alexandria",
-      "admin_integration": "fixed_pr31",
+      "admin_integration": "REGREDIU — o PR #31 corrigiu a leitura, mas em 2026-09-30 nenhum arquivo em app/ referencia VERCEL_ACCESS_TOKEN nem api.vercel.com; a coleta segue viva via <Analytics /> em app/layout.tsx:88. Ver tracking.funil_medido.",
       "known_bugs_fixed": [
         "campos errados na resposta da API (d.date→d.key, d.count→d.total)",
         "teamId incorreto para conta pessoal Vercel (accountId→team.id)",
@@ -1102,7 +1117,7 @@
     }
   },
   "pipeline_metrics": {
-    "last_measured": "2026-08-29",
+    "last_measured": "2026-09-30 (bloco supabase; o bloco sqlite segue de 2026-08-29)",
     "sqlite_db": "scripts/data/books.db",
     "sqlite": {
       "livros_total": 17861,
@@ -1123,17 +1138,22 @@
       "aproveitamento_monitor_precos": "24% no passe de 2026-08-29 (12/50), contra 6-8% nas duas rodadas so-scraping (24/08 e 27/08). Os 12 vieram TODOS da API do ML."
     },
     "supabase": {
-      "livros": 4562,
-      "ofertas_ativas": 4579,
-      "livros_com_oferta_ativa": 4562,
-      "autores": 8399,
-      "autores_com_bio": 308,
-      "listas": 667,
-      "ofertas_com_preco": 2,
-      "autores_sem_livro": 6248,
-      "autores_com_livro": 2151
+      "medido_em": "2026-09-30",
+      "livros": 5186,
+      "ofertas_total": 7653,
+      "ofertas_ativas": 5185,
+      "livros_com_oferta_ativa": 5185,
+      "ofertas_com_preco": 2431,
+      "ofertas_ativas_amazon": 133,
+      "ofertas_ativas_mercado_livre": 5051,
+      "ofertas_ativas_ml_com_preco": 2222,
+      "autores": 8440,
+      "autores_com_bio": 633,
+      "autores_com_livro": 2291,
+      "autores_sem_livro": 6149,
+      "listas": 743
     },
-    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. | 2026-08-07: ISR Writes estourou (100% de 200K). O driver e deploy x paginas, nao TTL — ver TASK-PERF-017. 6.248 dos 8.399 autores nao tem livro nenhum. | 2026-08-23: releitura apos o mergulho do GSC (TASK-SEO-016). Precos: 553 de 4.856 publicados ja visitados pelo monitor (11%) e 219 desses com preco (40% de aproveitamento) - mas o preco vem do 1o card da pagina de BUSCA, entao pode ser de outro livro (TASK-OFERTAS-004). Bios: 7.884 dos 8.342 autores sem bio, e 5.793 deles (73% da fila) nao tem livro publicado, ou seja, a pagina responde 404 (TASK-AUTORES-005).",
+    "nota": "Cobertura de oferta e de 100% (4562 livros distintos com oferta ativa = total publicado). O painel /admin reportava 999 por nao paginar - ver TASK-ADMIN-002. 60% dos publicados (2620/4403) seguem sem categoria tematica: a fila de categorizacao ficava atras da sinopse e nunca era alcancada - mitigado pela rotacao (TASK-LLM-017). | 2026-07-26: das 4.579 ofertas ativas, apenas 2 tinham preco (4.577 NULL) - 3 defeitos no pipeline, corrigidos nos PRs #241/#242, falta confirmar em execucao real do G (TASK-OFERTAS-002). | 2026-07-28: o campo idioma era 'PT' em 100% do banco (17.727), entao o check_language do quality_gate nunca reprovou nada — ver TASK-PIPE-024. Backfill via Google Books nos 368 travados: PT 221, EN 132, UNKNOWN 12, ES 3. | 2026-08-07: ISR Writes estourou (100% de 200K). O driver e deploy x paginas, nao TTL — ver TASK-PERF-017. 6.248 dos 8.399 autores nao tem livro nenhum. | 2026-08-23: releitura apos o mergulho do GSC (TASK-SEO-016). Precos: 553 de 4.856 publicados ja visitados pelo monitor (11%) e 219 desses com preco (40% de aproveitamento) - mas o preco vem do 1o card da pagina de BUSCA, entao pode ser de outro livro (TASK-OFERTAS-004). Bios: 7.884 dos 8.342 autores sem bio, e 5.793 deles (73% da fila) nao tem livro publicado, ou seja, a pagina responde 404 (TASK-AUTORES-005). | 2026-09-30: releitura do remoto para projecao de desempenho/receita. (a) TRAFEGO COLAPSOU: GSC 28d (01-28/09) = 9 cliques / 2.050 impressoes / CTR 0,4% / posicao 49,1, contra 6,58 cliques-dia e 420 impressoes-dia em 29/06-31/08 (derivado de 3m=430 cliques/28,9k impressoes menos os 28d). Queda de ~95% em cliques-dia e ~27 posicoes — e o spam update de agosto. NAO extrapolar a curva de Conquistas do GSC: ela e janela movel de 28d e seguiu subindo semanas depois de o trafego diario ja ter virado. (b) Ofertas com preco: 2.431 de 7.653 (era 2 em 26/07) — os fixes #241/#242/#296 funcionaram; entre as ATIVAS do ML, 2.222 de 5.051 (44%). (c) O encerramento da Amazon (18/09) atinge pouco: so 133 das 5.185 ofertas ATIVAS sao Amazon (2,6%) — o roteamento ao ML do project_ml_api_catalogo ja tinha migrado o catalogo vivo. Contar as 2.594 ofertas Amazon do total (34%) superestima o dano, porque a maioria esta inativa. (d) Receita projetada out/26-mar/27: R$ 1 a R$ 22 em tres cenarios (sem intervencao / poda de qualidade / recuperacao total ao patamar de agosto) — imaterial em todos. O gargalo deixou de ser tamanho de acervo; ver tracking.funil_medido e TASK-TRACK-005.",
     "vercel_free_tier": {
       "medido_em": "2026-08-07",
       "janela": "30 dias DESLIZANTES — o Hobby nao tem ciclo de faturamento, entao nao ha reset no dia 1",
@@ -3442,6 +3462,19 @@
       "decisao": "Leandro, 2026-09-19, entre tres (noindex / manter indexada trocando o bloco de compra / medir cobertura da API antes): noindex.",
       "correcao": "#334: livroIndexavel em lib/indexavel.ts, usada pelo sitemap e pelo generateMetadata; noindex, follow, nunca 404; volta sozinho quando o monitor confirmar. Verificado em producao: sitemap 6.491 -> 3.426 (livros 2.016); pagina sem oferta com preco com robots noindex, follow.",
       "a_medir": "GSC quando o relatorio descongelar: bucket 'Excluida pela tag noindex' deve subir ~3 mil (esperado); acompanhar posicao media e impressoes. Paginas voltando ao indice conforme o monitor confirma produtos."
+    },
+    {
+      "id": "TASK-TRACK-005",
+      "priority": "medium",
+      "status": "open",
+      "registered_on": "2026-09-30",
+      "description": "Funil de receita ainda nao e mensuravel: falta o denominador (pageviews) e a amostra e minuscula",
+      "medicao": "2026-09-30: janela confiavel do classificador (a partir de 16/09, pos-#321) tem 5 cliques humanos em 15 dias. GSC 28d (01-28/09): 9 cliques. Com n=5 e n=9 nao se calcula CTR de saida nem conversao.",
+      "o_defeito": "O Vercel Analytics COLETA (<Analytics /> em app/layout.tsx:88) mas ninguem LE: nenhum arquivo em app/ referencia VERCEL_ACCESS_TOKEN — a integracao do painel /admin do PR #31 regrediu em algum momento. Os endpoints tentados (/api/web-analytics/timeseries, /stats/visitors) devolvem 404 com o token atual, ou seja, a rota da API mudou.",
+      "por_que_importa": "Sem pageviews nao ha denominador para o CTR de saida, que e o elo mais sensivel do EPC. Toda projecao de receita fica premissa: em 2026-09-30 o intervalo estimado para out/26-mar/27 ficou em R$ 1 a R$ 22 justamente por isso.",
+      "proximo_passo": "Descobrir a rota atual da Vercel Web Analytics API (ou ler os pageviews no dashboard) e religar a leitura no /admin. So depois vale recalcular EPC.",
+      "nao_fazer_ainda": "Nao recalibrar premissas de receita com a amostra atual — 5 cliques nao sustentam taxa. E nao usar os 959 'humanos' de 06-15/09: sao artefato do classificador invertido do #315 (TASK-TRACK-004).",
+      "ressalva": "Com posicao media em 49,1 e 9 cliques/28d, medir o funil melhor nao muda a receita — muda so a confianca no numero. A prioridade e media, nao alta, por isso."
     }
   ],
   "qa_remediation_loop": {
