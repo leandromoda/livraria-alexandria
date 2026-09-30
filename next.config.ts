@@ -13,6 +13,21 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "m.media-amazon.com" },
     ],
   },
+  async rewrites() {
+    // O Catálogo de Arte Greco-Romana é um projeto separado, publicado na
+    // Vercel, servido aqui como página anexa em /catalogo. Ele gera todas as
+    // URLs internas já com esse prefixo, então o caminho passa inteiro.
+    return [
+      {
+        source: "/catalogo",
+        destination: "https://catalogoartegrecoromana.vercel.app/catalogo",
+      },
+      {
+        source: "/catalogo/:path*",
+        destination: "https://catalogoartegrecoromana.vercel.app/catalogo/:path*",
+      },
+    ];
+  },
   async redirects() {
     return [
       {

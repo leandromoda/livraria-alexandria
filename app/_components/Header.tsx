@@ -29,6 +29,9 @@ export default function Header() {
     if (q) router.push(`/busca?q=${encodeURIComponent(q)}`);
   }
 
+  // `externo: true` = rota servida por rewrite para outro projeto da Vercel.
+  // Precisa de <a> comum: o <Link> tentaria navegacao client-side e buscaria
+  // um payload de rota que nao existe deste lado.
   const nav = [
     { href: "/listas", label: "Listas" },
     { href: "/livros", label: "Livros" },
@@ -37,6 +40,7 @@ export default function Header() {
     { href: "/autores", label: "Autores" },
     { href: "/categorias", label: "Categorias" },
     { href: "/ofertas", label: "Ofertas" },
+    { href: "/catalogo", label: "Arte Antiga", externo: true },
   ];
 
   return (
@@ -66,14 +70,18 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {nav.map((item) => {
             const active = pathname.startsWith(item.href);
+            const classe = `relative transition-colors ${
+              active ? "text-[#C9A84C]" : "hover:text-[#C9A84C]"
+            }`;
+            if (item.externo) {
+              return (
+                <a key={item.href} href={item.href} className={classe}>
+                  {item.label}
+                </a>
+              );
+            }
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative transition-colors ${
-                  active ? "text-[#C9A84C]" : "hover:text-[#C9A84C]"
-                }`}
-              >
+              <Link key={item.href} href={item.href} className={classe}>
                 {item.label}
                 {active && (
                   <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[#C9A84C]" />
@@ -143,16 +151,18 @@ export default function Header() {
 
           {nav.map((item) => {
             const active = pathname.startsWith(item.href);
+            const classe = `block py-2 text-sm font-medium transition-colors ${
+              active ? "text-[#C9A84C]" : "text-[#F5F0E8] hover:text-[#C9A84C]"
+            }`;
+            if (item.externo) {
+              return (
+                <a key={item.href} href={item.href} className={classe}>
+                  {item.label}
+                </a>
+              );
+            }
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`block py-2 text-sm font-medium transition-colors ${
-                  active
-                    ? "text-[#C9A84C]"
-                    : "text-[#F5F0E8] hover:text-[#C9A84C]"
-                }`}
-              >
+              <Link key={item.href} href={item.href} className={classe}>
                 {item.label}
               </Link>
             );
