@@ -116,6 +116,15 @@ export async function generateMetadata({
       description,
       ...(livro.imagem_url ? { images: [{ url: livro.imagem_url }] } : {}),
     },
+    // Sem twitter:card o X monta o card pequeno (ou nenhum) — a capa só
+    // aparece grande com summary_large_image. Usado pelo "livro do dia"
+    // (scripts/steps/social_x.py).
+    twitter: {
+      card: livro.imagem_url ? "summary_large_image" : "summary",
+      title: livro.titulo,
+      description,
+      ...(livro.imagem_url ? { images: [livro.imagem_url] } : {}),
+    },
   };
 }
 
