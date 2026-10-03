@@ -46,6 +46,57 @@ async function fetchAll<T>(
   return all;
 }
 
+// O Catálogo de Arte Greco-Romana é outro projeto, servido em /catalogo por
+// rewrite (next.config.ts) — este app não tem as rotas nem os dados dele, e o
+// projeto não publica sitemap próprio (/sitemap.xml e /catalogo/sitemap.xml
+// davam 404 em 2026-10-03). As URLs saem dos próprios links do catálogo: as
+// páginas de navegação são lidas e as de obra (folhas) só são anotadas.
+// Medido em 2026-10-03: 45 URLs (31 obras, 7 períodos, 5 categorias,
+// cronologia e a entrada). Falha de rede deixa a seção de fora — nunca derruba
+// o sitemap do resto do site.
+const CATALOGO_ORIGEM = "https://catalogoartegrecoromana.vercel.app";
+const CATALOGO_MAX_PAGINAS = 500;
+
+async function catalogoUrls(): Promise<string[]> {
+  const vistas = new Set<string>(["/catalogo"]);
+  let fila = ["/catalogo"];
+
+  while (fila.length && vistas.size < CATALOGO_MAX_PAGINAS) {
+    const htmls = await Promise.all(
+      fila.map(async (path) => {
+        try {
+          const res = await fetch(`${CATALOGO_ORIGEM}${path}`, {
+            signal: AbortSignal.timeout(10_000),
+          });
+          if (!res.ok) {
+            console.error(`[sitemap] catálogo ${path}: HTTP ${res.status}`);
+            return "";
+          }
+          return await res.text();
+        } catch (e) {
+          console.error(`[sitemap] catálogo ${path}: ${(e as Error).message}`);
+          return "";
+        }
+      }),
+    );
+
+    const novas: string[] = [];
+    for (const html of htmls) {
+      for (const [, href] of html.matchAll(/href="(\/catalogo(?:\/[^"#?]*)?)"/g)) {
+        const path = href.replace(/\/$/, "");
+        // Ativos (estilo.css, imagens) não são página.
+        if (/\.[a-z0-9]+$/i.test(path) || vistas.has(path)) continue;
+        vistas.add(path);
+        // Obra é folha: anunciada, mas não lida — não traz link novo.
+        if (!path.startsWith("/catalogo/obra/")) novas.push(path);
+      }
+    }
+    fila = novas;
+  }
+
+  return [...vistas].sort();
+}
+
 type SlugComData = { slug: string; updated_at: string | null };
 type LivroSitemap = { id: string; slug: string; updated_at: string | null };
 type OfertaComPreco = { livro_id: string };
@@ -58,7 +109,7 @@ type AutorComLivros = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [livros, comOferta, listas, categorias, autores, jogos, infantis] = await Promise.all([
+  const [livros, comOferta, listas, categorias, autores, jogos, infantis, catalogo] = await Promise.all([
     // `is_publishable` — mesmo critério que app/(public)/livros/[slug]/page.tsx
     // usa para decidir o notFound(). Filtrar por `status = "publish"` incluía 5
     // livros que respondiam 404 (4.691 vs 4.686 em 2026-08-06).
@@ -138,6 +189,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .order("slug")
         .range(from, to),
     ),
+
+    catalogoUrls(),
   ]);
 
   // Duplicata sai do sitemap: a canonical dela aponta para a página mantida, e
@@ -189,6 +242,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const catalogoPages: MetadataRoute.Sitemap = catalogo.map((path) => ({
+    url: `${base}${path}`,
+    changeFrequency: "monthly",
+    priority: path.startsWith("/catalogo/obra/") ? 0.7 : 0.6,
+  }));
+
   // `/jogos` e `/infantis` emitem `robots: noindex` quando a seção está vazia
   // (jogos/page.tsx, infantis/page.tsx). Anunciar no sitemap uma URL noindex é
   // contradição — foi o alerta "Excluída pela tag noindex" que o Search Console
@@ -220,5 +279,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...autorPages,
     ...jogoPages,
     ...infantilPages,
+    ...catalogoPages,
   ];
 }
