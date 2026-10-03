@@ -176,6 +176,22 @@ def ensure_schema(conn):
         except Exception:
             pass  # coluna já existe
 
+    # Marcador de idempotência do apply_blacklist: gravado só depois de SQLite
+    # E PATCH do Supabase OK. Sem ele, cada passe do G reaplicava a blacklist
+    # inteira — ver o topo de steps/apply_blacklist.py.
+    # O backfill roda UMA vez, só no passe que cria a coluna: os três passes
+    # medidos (19/09, 26/09, 03/10) reportaram "Supabase atualizado" igual a
+    # "SQLite despublicado" (2.225) ao menos uma vez para cada livro, então quem
+    # já tem blacklist_reason já foi aplicado dos dois lados.
+    try:
+        cur.execute("ALTER TABLE livros ADD COLUMN blacklist_aplicada_em TEXT")
+        cur.execute("""
+            UPDATE livros SET blacklist_aplicada_em = COALESCE(updated_at, CURRENT_TIMESTAMP)
+            WHERE blacklist_reason IS NOT NULL
+        """)
+    except Exception:
+        pass  # coluna já existe
+
     # Normaliza idioma para uppercase (dados legados podem ter "pt" minúsculo)
     try:
         cur.execute("UPDATE livros SET idioma = UPPER(idioma) WHERE idioma != UPPER(idioma)")
