@@ -571,7 +571,8 @@ def demote_untitled_published(conn, limit: int = 500) -> dict:
     despublicados = 0
     for slug in slugs:
         local_id = _despublish_sqlite(
-            conn, slug, dry_run=False, reason="Título vazio", severity="high"
+            conn, slug, dry_run=False, reason="Título vazio", severity="high",
+            forcar=True,
         )
         if not local_id:
             continue

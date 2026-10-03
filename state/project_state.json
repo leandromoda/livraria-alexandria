@@ -1184,6 +1184,24 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-QA-BL-001",
+      "description": "apply_blacklist reaplicava a blacklist inteira a cada passe do G (~32 min) e desfazia a recuperacao do reprocess_blacklist, levando todo recuperavel a quarentena por max-retry",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-10-03",
+      "resolved_on": "2026-10-03",
+      "origem": "/analise-logs de 2026-10-03 (logs pipeline_2026-09-19_07-21-14, 2026-09-26_06-08-39, 2026-10-03_06-56-31): o passe de QA do G gastava 31-35 min em 2.225 UPDATEs + 2.225 PATCHes, sem livro novo; os dois ultimos logs do dia terminam interrompidos dentro desse step.",
+      "como_foi_provado": "books.db lido em 2026-10-03 (somente leitura): 2.631 livros com blacklist_reason, 2.631 com qa_quarantine=1, 22 com qa_retry=2 (quarentena por MAX_QA_RETRY). Das 2.265 entradas validas do blacklist.json, 24 tem causa recuperavel (classify_cause='synopsis') — nenhuma se recuperou. Mecanismo: _recover zera status_synopsis/status_categorize (4->0) e soma qa_retry; o apply do passe seguinte regravava 4; o reprocess recuperava de novo ate bater max-retry.",
+      "resolution": "Coluna livros.blacklist_aplicada_em, gravada so apos UPDATE local E PATCH no Supabase OK; entrada ja aplicada e pulada. PATCH falho deixa NULL e e retentado sem regravar os sentinelas (blacklist_reason ja presente). Backfill unico na criacao da coluna para quem ja tem blacklist_reason. qa_remediation.demote_untitled_published usa forcar=True (despublica livro publicado agora). Testes em scripts/tests/test_apply_blacklist_idempotente.py.",
+      "verificar_depois": "Proximo log do G: o bloco [BLACKLIST] deve ir de ~32 min para segundos, com 'Ja aplicadas antes' ~2.225. Os 2.631 ja em quarentena NAO voltam sozinhos — a recuperacao so passa a funcionar para entradas novas; reabrir os 22 de max-retry seria decisao a parte.",
+      "files": [
+        "scripts/steps/apply_blacklist.py",
+        "scripts/core/db.py",
+        "scripts/steps/qa_remediation.py",
+        "scripts/tests/test_apply_blacklist_idempotente.py"
+      ]
+    },
+    {
       "id": "TASK-SEO-017",
       "description": "Livro publicado em duplicata: mesma obra em 2-3 paginas indexaveis (121 com o original tambem no ar, 75 do mesmo autor)",
       "priority": "medium",
