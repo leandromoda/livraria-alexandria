@@ -357,6 +357,7 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-10-03 (dados de **20/09**) | 4.572 | 1.021 | 935 | 21 | 2 | 759 | 659 | **1.522** | 111 |  ← "Canônica dup." = Cópia c/ canônica diferente (Página alternativa 1.099 à parte)
 | 2026-09-20 (dados de **13/09**) | 4.452 | 980 | 692 | 21 | 2 | 1.209 | 765 | **947** | 108 |  ← relatório DESCONGELOU (13 dias parado em 03/09)
 | 2026-09-16 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | 912 | 628 | 107 |  ← MESMO relatório de 15/09 (congelado); completa as colunas
 | 2026-09-15 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | — | — | 107 |  ← relatório PRÉ-corte; linhas 11-12 não lidas
@@ -366,6 +367,45 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-10-03 — dados de 20/09; nenhum bug, só cortes intencionais aparecendo
+
+Relatório em **20/09** (7 dias de avanço). Indexadas **7,35 mil → 7,18 mil**,
+não indexadas **12,6 mil → 12,9 mil**.
+
+| Bucket | 13/09 | 20/09 | Leitura |
+|---|---|---|---|
+| Excluída pela tag `noindex` | 947 | **1.522** | +575: #319 seguindo e #334 (19/09) começando. Esperado; validação segue **Falha** — **não resubmeter** |
+| Não encontrado (404) | 692 | **935** | +243 — conferido, esperado (abaixo) |
+| Rastreada ñ indexada | 1.209 | 759 | −450, drenando |
+| Detectada ñ indexada | 765 | 659 | −106, drenando |
+| Cópia c/ canônica diferente | 980 | 1.021 | +41 (`www`, esperado) |
+| Bloqueada pelo robots.txt | 4.452 | 4.572 | `/api/click/*`, esperado |
+| Redirecionamento / Página alternativa | 2.354 / — | 2.314 / 1.099 | esperado |
+| 5xx / soft 404 / Indexada mas bloq. | 21 / 2 / 108 | 21 / 2 / 111 | estáveis |
+
+**404 (935), drilldown agrupado** (`td` da tabela, não `innerText` da linha — a
+data cola no slug e quebra o regex): `/autores/*` **764** (307 apex + 457
+`www`, 523 slugs distintos), `/livros/*` **135** (79 distintos), `/listas/*` 26
+(todas com slug acentuado — conhecido-esperado), `/categorias/*` 6, lixo 4.
+Conferido no `books.db`:
+- **79 livros:** 70 `blacklisted`, 5 ausentes do banco local (dedup), 2
+  `is_publishable=0`, **1 publicável** (`21-licoes-para-o-seculo-21`) → hoje
+  responde **200** por `curl`.
+- **41 autores (1 a cada 13):** 39 com **0 livros publicáveis** (todos os livros
+  blacklistados → #263 404a, correto), 1 ausente, **1 com 3 publicáveis**
+  (`charlie-donlea`) → hoje **200**.
+- Os dois 200 são rastreio num momento em que o livro estava fora; somem no
+  recrawl. **O crescimento do 404 de autor acompanha o auditor despublicando
+  livros** — cada livro blacklistado pode levar o último livro de um autor.
+
+⚠️ **Método:** `urllib` do Python deu `URLError` em **todas** as 119 URLs
+(Cloudflare/TLS) — não é queda do site. Usar `curl` pelo Bash para status.
+
+**E-mails do GSC desde 19/09:** só o `[WNC-10030322]` de 20/09 (ISBN), já
+corrigido no #336. Nenhum apontamento novo.
+
+Nenhuma correção de código nesta seção.
 
 ### Seção 2026-09-20 — o relatório descongelou; apontamento novo é de ISBN
 
