@@ -1184,6 +1184,36 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-SEO-019",
+      "description": "Paginas mais ricas sem LLM: fatos do Wikidata (titulo original, idioma, 1a publicacao, genero, serie, premios, adaptacoes, Wikipedia/Open Library) em livros e autores indexaveis, pelo autopilot",
+      "priority": "high",
+      "status": "in_progress",
+      "registered_on": "2026-10-05",
+      "por_que": "A frente de scaled content e a mais pesada que sobra apos o spam update de agosto: o corpo da pagina de livro e uma sinopse de LLM. Mais LLM reforca o padrao e copiar a Wikipedia vira duplicata; fato estruturado de fonte publica, exibido so quando existe, e informacao nova a custo zero de quota.",
+      "cobertura_medida": "2026-10-05, sonda so-leitura, n=50 livros indexaveis sorteados (seed fixa) de 2.213: casou 21 (42%), 0 falso positivo conferido a mao. Dry-run do step nos 30 primeiros da fila (mais populares): 20/30. n pequeno, margem ~±14 pontos.",
+      "decisoes": [
+        "Casamento com duas folhas: autor (P50) E titulo (similaridade_titulo do isbn_backfill, >=0,6). Sem P50 = rejeitado.",
+        "Sem busca por ISBN: P212 e hifenizado no Wikidata e edicoes sao raras la.",
+        "QID do autor vem da obra casada, nunca de busca por nome.",
+        "Rotulos de substantivo comum (genero, premio, idioma, pais, tipo) so em pt-br/pt; nome proprio aceita en. pt-br antes de pt.",
+        "So livros indexaveis (status_publish=1 + preco_atual>0, espelho local de livroIndexavel).",
+        "Fora de proposito: analises por LLM, copia de texto da Wikipedia, resenhas externas."
+      ],
+      "fases": {
+        "1_pipeline": "steps/wikidata_enrich.py + hook no autopilot (fase de manutencao, apos ISBN) + colunas wiki/wiki_qid/wiki_checado_em/wiki_sync_em",
+        "2_migracao": "scripts/sql/2026-10-05_wiki.sql (livros.wiki, autores.wiki jsonb) — sem ela o dado fica local e sobe sozinho depois",
+        "3_site": "secao 'Sobre a obra' + 'Para saber mais' + sameAs no JSON-LD; autor com datas/pais/Wikipedia",
+        "4_medicao": "coorte enriquecida vs indexavel sem match, Desempenho > Paginas no GSC, +4 e +8 semanas"
+      },
+      "files": [
+        "scripts/steps/wikidata_enrich.py",
+        "scripts/tests/test_wikidata_enrich.py",
+        "scripts/steps/autopilot.py",
+        "scripts/core/db.py",
+        "scripts/sql/2026-10-05_wiki.sql"
+      ]
+    },
+    {
       "id": "TASK-QA-BL-001",
       "description": "apply_blacklist reaplicava a blacklist inteira a cada passe do G (~32 min) e desfazia a recuperacao do reprocess_blacklist, levando todo recuperavel a quarentena por max-retry",
       "priority": "high",

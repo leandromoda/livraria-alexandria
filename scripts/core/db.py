@@ -170,6 +170,13 @@ def ensure_schema(conn):
         # `isbn_fonte`: 'google_books' | 'nao_encontrado'.
         ("isbn_checado_em",       "TEXT"),
         ("isbn_fonte",            "TEXT"),
+        # Wikidata (steps/wikidata_enrich.py): `wiki` é o JSON publicado;
+        # `wiki_checado_em` carimba também quem NÃO casou (não volta à fila);
+        # `wiki_sync_em` NULL = ainda não subiu ao Supabase.
+        ("wiki",                  "TEXT"),
+        ("wiki_qid",              "TEXT"),
+        ("wiki_checado_em",       "TEXT"),
+        ("wiki_sync_em",          "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
@@ -227,6 +234,11 @@ def ensure_schema(conn):
         # do primeiro publish zera nada aqui (fica 0) e é reenviada pelo
         # resync em publish_autores.run(). Ver "publicação one-shot" no CLAUDE.md.
         ("status_publish_bio", "INTEGER DEFAULT 0"),
+        # Wikidata — mesmo contrato das colunas de livros (wikidata_enrich.py).
+        ("wiki",            "TEXT"),
+        ("wiki_qid",        "TEXT"),
+        ("wiki_checado_em", "TEXT"),
+        ("wiki_sync_em",    "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE autores ADD COLUMN {col} {definition}")
