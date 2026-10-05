@@ -54,6 +54,7 @@ from steps import (
     batch_export,
     batch_import,
     isbn_backfill,
+    wikidata_enrich,
     qa_remediation,
     qa,
 )
@@ -138,6 +139,11 @@ def _topup_batch(idioma: str, target: int = 10):
 # pendentes (medido 2026-08-21), o passivo drena em poucos dias sem que o
 # backfill domine nenhum ciclo.
 ISBN_PACOTE_MAX = 25
+
+# Wikidata: livros por ciclo. Medido no dry-run de 2026-10-05: 30 livros em
+# 2m30s (~5 s/livro, 4–6 chamadas cada). 50 = ~4 min por ciclo; os ~2.213
+# indexáveis drenam em ~45 ciclos. 0 desliga.
+WIKI_PACOTE_MAX = int(_os.getenv("WIKI_POR_CICLO", "50"))
 
 
 STEP_PACOTES = {
@@ -821,6 +827,16 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     isbn_backfill.run(pacote=min(pacote, ISBN_PACOTE_MAX))
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: backfill de ISBN falhou: {e}")
+
+            # Wikidata: mesma categoria do ISBN — manutenção fora do accounting
+            # de progresso (preenche coluna que `count_pending` não conta) e
+            # autolimitada (para o lote sozinho em 429/503 persistente).
+            if WIKI_PACOTE_MAX > 0:
+                try:
+                    with StepRun("Wikidata Enrich", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                        wikidata_enrich.run(pacote=WIKI_PACOTE_MAX)
+                except Exception as e:
+                    log(f"[AUTOPILOT] AVISO: enriquecimento Wikidata falhou: {e}")
 
             if _interrupt.requested():
                 log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reparo de relações de autores.")

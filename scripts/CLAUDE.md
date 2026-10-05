@@ -1614,6 +1614,10 @@ FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o s
 MIGRAR_ML_POR_CICLO=150          # step 31: passivo Amazon -> ML por passe do G
 AMAZON_AFILIADO_ATIVO=0          # conta Associados encerrada em 18/09/2026; 1 = step 31 volta a so migrar confirmado
 
+# Wikidata (steps/wikidata_enrich.py, TASK-SEO-019): livros indexáveis por
+# ciclo do autopilot. Dry-run de 2026-10-05: ~5 s/livro. 0 desliga.
+WIKI_POR_CICLO=50
+
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
 
