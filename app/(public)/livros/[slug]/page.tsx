@@ -21,6 +21,15 @@ import { supabase } from "@/lib/supabase";
 import { toIsbn13 } from "@/lib/isbn";
 import { slugCanonicoLivro } from "@/lib/duplicatas";
 import { livroIndexavel, robotsSeNaoIndexavel } from "@/lib/indexavel";
+import {
+  type WikiLivro,
+  formatAno,
+  wikipediaLink,
+  wikidataUrl,
+  openLibraryUrl,
+  sameAs,
+  tituloOriginalDiferente,
+} from "@/lib/wiki";
 import type { Metadata } from "next";
 import BookCover from "@/app/_components/BookCover";
 import Link from "next/link";
@@ -83,6 +92,23 @@ const getListasDoLivro = unstable_cache(
     return data ?? [];
   },
   ["livro-listas"],
+  { revalidate: 86400 },
+);
+
+// Outros volumes da mesma série (Wikidata P179) que existem no catálogo. É
+// link interno entre páginas que de fato se relacionam — o oposto do link de
+// template. Filtra pelo JSON: `wiki->serie->>qid`.
+const getVolumesDaSerie = unstable_cache(
+  async (serieQid: string) => {
+    const { data } = await supabase
+      .from("livros")
+      .select("titulo, slug, wiki")
+      .eq("is_publishable", true)
+      .eq("wiki->serie->>qid", serieQid)
+      .limit(30);
+    return data ?? [];
+  },
+  ["livro-serie"],
   { revalidate: 86400 },
 );
 
@@ -158,10 +184,63 @@ export default async function LivroPage({ params }: PageProps) {
   /**
    * Ofertas + listas relacionadas (independentes → em paralelo)
    */
-  const [ofertas, listasPivot] = await Promise.all([
+  const wiki = (livro.wiki ?? null) as WikiLivro | null;
+
+  const [ofertas, listasPivot, volumesPivot] = await Promise.all([
     getOfertas(livro.id),
     getListasDoLivro(livro.id),
+    wiki?.serie?.qid ? getVolumesDaSerie(wiki.serie.qid) : Promise.resolve([]),
   ]);
+
+  // Volumes da série, sem o próprio livro, na ordem do Wikidata (P1545);
+  // quem não tem ordem vai para o fim, por título.
+  const ordemNum = (o?: string) => (o && /^\d+$/.test(o) ? Number(o) : Infinity);
+  const outrosVolumes = volumesPivot
+    .filter((v) => v.slug !== slug)
+    .sort(
+      (a, b) =>
+        ordemNum((a.wiki as WikiLivro | null)?.serie?.ordem) -
+          ordemNum((b.wiki as WikiLivro | null)?.serie?.ordem) ||
+        a.titulo.localeCompare(b.titulo, "pt-BR"),
+    );
+
+  // Linhas de "Sobre a obra". Cada uma só entra com dado — nunca "não
+  // informado" (ver lib/wiki.ts).
+  const sobreAObra: { rotulo: string; valor: string }[] = [];
+  if (wiki) {
+    const original = tituloOriginalDiferente(wiki.titulo_original, livro.titulo);
+    if (original) sobreAObra.push({ rotulo: "Título original", valor: original });
+    if (wiki.idioma_original) sobreAObra.push({ rotulo: "Idioma original", valor: wiki.idioma_original });
+    if (wiki.publicacao != null) sobreAObra.push({ rotulo: "Primeira publicação", valor: formatAno(wiki.publicacao) });
+    if (wiki.generos?.length) sobreAObra.push({ rotulo: wiki.generos.length > 1 ? "Gêneros" : "Gênero", valor: wiki.generos.join(", ") });
+    if (wiki.serie) {
+      sobreAObra.push({
+        rotulo: "Série",
+        valor: wiki.serie.ordem ? `${wiki.serie.nome} (volume ${wiki.serie.ordem})` : wiki.serie.nome,
+      });
+    }
+    if (wiki.premios?.length) sobreAObra.push({ rotulo: wiki.premios.length > 1 ? "Prêmios" : "Prêmio", valor: wiki.premios.join("; ") });
+    if (wiki.adaptacoes?.length) {
+      sobreAObra.push({
+        rotulo: wiki.adaptacoes.length > 1 ? "Adaptações" : "Adaptação",
+        valor: wiki.adaptacoes
+          .map((a) => {
+            const extra = [a.tipo, a.ano != null ? formatAno(a.ano) : null].filter(Boolean).join(", ");
+            return extra ? `${a.titulo} (${extra})` : a.titulo;
+          })
+          .join("; "),
+      });
+    }
+  }
+
+  const wikipedia = wikipediaLink(wiki?.wikipedia);
+  const fontes = wiki
+    ? [
+        ...(wikipedia ? [wikipedia] : []),
+        { url: wikidataUrl(wiki.qid), rotulo: "Wikidata" },
+        ...(wiki.openlibrary ? [{ url: openLibraryUrl(wiki.openlibrary), rotulo: "Open Library" }] : []),
+      ]
+    : [];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const listas = listasPivot?.map((l: any) => l.listas).filter(Boolean) ?? [];
@@ -198,6 +277,9 @@ export default async function LivroPage({ params }: PageProps) {
     ...(livro.isbn ? { sku: livro.isbn } : {}),
     ...(isbn13 ? { isbn: isbn13, gtin13: isbn13 } : {}),
     ...(livro.autor?.trim() ? { brand: { "@type": "Brand", name: livro.autor.trim().substring(0, 70) } } : {}),
+    // A mesma obra em fontes de referência (Wikipedia/Wikidata), quando o
+    // pipeline casou o livro no Wikidata.
+    ...(sameAs(wiki).length ? { sameAs: sameAs(wiki) } : {}),
     additionalProperty: [
       {
         "@type": "PropertyValue",
@@ -363,6 +445,75 @@ export default async function LivroPage({ params }: PageProps) {
           <p className="text-[#4A4A4A] leading-relaxed text-base">
             {livro.descricao}
           </p>
+
+        </section>
+      )}
+
+      {/* =========================
+          SOBRE A OBRA (Wikidata)
+          Só renderiza com dado — ver lib/wiki.ts.
+      ========================== */}
+      {(sobreAObra.length > 0 || outrosVolumes.length > 0 || fontes.length > 0) && (
+        <section className="bg-white border border-[#E6DED3] rounded-2xl px-8 py-7 space-y-6">
+
+          {sobreAObra.length > 0 && (
+            <div>
+              <h2 className="text-lg font-serif font-semibold text-[#0D1B2A] mb-4">
+                Sobre a obra
+              </h2>
+              <dl className="grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+                {sobreAObra.map((linha) => (
+                  <div key={linha.rotulo} className="contents">
+                    <dt className="text-[#7B5E3A] font-medium">{linha.rotulo}</dt>
+                    <dd className="text-[#4A4A4A] mb-2 sm:mb-0">{linha.valor}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {outrosVolumes.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-[#0D1B2A] mb-2">
+                Outros volumes da série no catálogo
+              </h3>
+              <ul className="flex flex-wrap gap-2">
+                {outrosVolumes.map((v) => (
+                  <li key={v.slug}>
+                    <Link
+                      href={`/livros/${v.slug}`}
+                      className="inline-block text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#4A1628] px-3 py-1 rounded-full hover:border-[#C9A84C] transition-colors"
+                    >
+                      {v.titulo}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {fontes.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-[#0D1B2A] mb-2">
+                Para saber mais
+              </h3>
+              {/* Citação editorial, não afiliado: sem nofollow/sponsored. */}
+              <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                {fontes.map((f) => (
+                  <li key={f.url}>
+                    <a
+                      href={f.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#4A1628] underline decoration-[#C9A84C] underline-offset-2 hover:text-[#C9A84C] transition-colors"
+                    >
+                      {f.rotulo} ↗
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
         </section>
       )}

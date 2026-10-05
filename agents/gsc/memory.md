@@ -213,6 +213,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-10-05 | conteúdo | **Experimento "Sobre a obra" (TASK-SEO-019)**: fatos do Wikidata (título original, idioma, 1ª publicação, gênero, série, prêmios, adaptações) + "Para saber mais" (Wikipedia/Wikidata/Open Library, `noopener noreferrer`, SEM nofollow — citação editorial) + `sameAs` no JSON-LD; autor com datas/país/Wikipedia. Sem LLM, pelo autopilot (~50 livros/ciclo). Cada linha só renderiza com dado. **Não mexe em `livroIndexavel`**, para não confundir a medição. Cobertura medida: 42% (n=50) | #343 (pipeline) + PR do site |
 | 2026-10-03 | canônica | **Catálogo de Arte Greco-Romana** (repo `catalogo_arte_greco_romana`): o mesmo HTML respondia em `livrariaalexandria.com.br/catalogo` e em `catalogoartegrecoromana.vercel.app/catalogo`, sem canonical nem noindex. Toda página agora emite canonical para a livraria (conferido nos dois hosts em produção). **Sem noindex por host, de propósito:** pelo rewrite a requisição chega ao catálogo com o host `vercel.app` também quando vem da livraria | catalogo#1 |
 | 2026-10-03 | sitemap | **`/catalogo` entra no sitemap: 45 URLs** (31 obras, 7 períodos, 5 categorias, cronologia, entrada). O catálogo é outro projeto, servido por rewrite e sem sitemap próprio; `app/sitemap.ts` segue os links dele no build. Falha de rede tira só essa seção. Obra nova só entra no próximo deploy da livraria | #341 |
 | 2026-09-20 | dados estruturados | **"Valor ISBN13 inválido para `isbn`" VOLTOU** ([WNC-10030322], e-mail de 20/09 08:47) — e a causa é nova: o backfill do #293 levou os livros com ISBN de 9 para **2.818**, e **18 publicáveis** têm 13 dígitos com checksum VÁLIDO mas prefixo fora do Bookland (`4064066106690`, `3410007589793`, `8596547414988`…). São EAN-13 de outro domínio. `toIsbn13`/`normalize_isbn13` passam a exigir prefixo **978/979** | #336 |
@@ -238,6 +239,18 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 ---
 
 ## Itens em aberto
+
+- 🧪 **Experimento Wikidata (desde 2026-10-05) — medir em +4 e +8 semanas
+  (~02/11 e ~30/11).** Coorte = livros com `wiki_qid` preenchido no
+  `books.db`; controle = indexáveis com `wiki_checado_em` preenchido e
+  `wiki_qid` NULL (checados, sem match). A designação NÃO é aleatória — a
+  fila vai por `priority_score`, e o Wikidata cobre melhor livro famoso —,
+  então comparar **variação** (antes × depois em cada grupo), nunca o nível
+  absoluto entre grupos. Métricas no Desempenho → Páginas: impressões/página,
+  consultas distintas, posição. Sinal precoce esperado: consultas de cauda
+  longa novas ("título original", "série", "adaptação"). Linha de base: a
+  janela de 28 dias anterior a 05/10 (set/26: 9 cliques, 2.050 impressões,
+  posição 49,1 no site inteiro — ver project_funil_receita_medido).
 
 - **ISBN ausente em ~99% dos livros** (amostra de 300 publicados em 2026-08-06:
   297 sem `isbn`; só 3 com ISBN de 13 dígitos). É a causa raiz do aviso

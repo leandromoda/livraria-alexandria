@@ -17,6 +17,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { isOptimizableImage } from "@/lib/images";
 import Link from "next/link";
+import { type WikiAutor, formatAno, wikipediaLink, wikidataUrl } from "@/lib/wiki";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -29,7 +30,7 @@ const getAutor = unstable_cache(
   async (slug: string) => {
     const { data } = await supabase
       .from("autores")
-      .select("id, nome, slug, nacionalidade, descricao, livros_autores(livro_id)")
+      .select("id, nome, slug, nacionalidade, descricao, wiki, livros_autores(livro_id)")
       .eq("slug", slug)
       .single();
     return data;
@@ -113,6 +114,19 @@ export default async function AutorPage({ params }: PageProps) {
   // caso nao 404a, para nao cachear um 404 de 24h em cima de erro transitorio.
   if (livrosPivot !== null && livros.length === 0) return notFound();
 
+  // Fatos do Wikidata (scripts/steps/wikidata_enrich.py) — só o que existe.
+  const wiki = (autor.wiki ?? null) as WikiAutor | null;
+  const vida =
+    wiki?.nascimento != null
+      ? wiki.morte != null
+        ? `${formatAno(wiki.nascimento)}–${formatAno(wiki.morte)}`
+        : `n. ${formatAno(wiki.nascimento)}`
+      : null;
+  // `nacionalidade` vem do pipeline de autores; o país do Wikidata só cobre a
+  // lacuna, para não exibir os dois.
+  const pais = autor.nacionalidade ? null : wiki?.pais ?? null;
+  const wikipedia = wikipediaLink(wiki?.wikipedia);
+
   return (
     <div className="space-y-10">
 
@@ -147,11 +161,47 @@ export default async function AutorPage({ params }: PageProps) {
               </span>
             )}
 
+            {pais && (
+              <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+                {pais}
+              </span>
+            )}
+
+            {vida && (
+              <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
+                {vida}
+              </span>
+            )}
+
             <span className="text-xs bg-[#F5F0E8] border border-[#E6DED3] text-[#7B5E3A] px-3 py-1 rounded-full">
               {livros.length} {livros.length === 1 ? "livro" : "livros"}
             </span>
 
           </div>
+
+          {wiki && (
+            <p className="text-xs text-[#7B5E3A] mt-3 flex flex-wrap gap-x-4">
+              {/* Citação editorial, não afiliado: sem nofollow/sponsored. */}
+              {wikipedia && (
+                <a
+                  href={wikipedia.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#4A1628] underline decoration-[#C9A84C] underline-offset-2 hover:text-[#C9A84C] transition-colors"
+                >
+                  {wikipedia.rotulo} ↗
+                </a>
+              )}
+              <a
+                href={wikidataUrl(wiki.qid)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#4A1628] underline decoration-[#C9A84C] underline-offset-2 hover:text-[#C9A84C] transition-colors"
+              >
+                Wikidata ↗
+              </a>
+            </p>
+          )}
 
         </div>
 
