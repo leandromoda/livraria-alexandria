@@ -125,6 +125,12 @@ import os
 # 0 volta ao round-robin puro.
 PRIORIZAR_ML = os.getenv("PRIORIZAR_ML", "1").strip() not in ("0", "false", "no")
 
+# Livro SEM preço que a API já avaliou só volta à fila depois deste intervalo.
+# O catálogo do ML muda, então ele não sai de vez — mas reconsultar todo passe
+# era o que travava o monitor (ver `fetch_pending`). 30 dias é escolha, não
+# medição: o ritmo de mudança do catálogo do ML não foi medido. 0 desliga.
+RETRY_SEM_PRECO_DIAS = int(os.getenv("MONITOR_RETRY_SEM_PRECO_DIAS", "30"))
+
 
 def fetch_pending(conn, limit, priorizar_ml=None):
     """Fila do monitor: COBERTURA antes de refresh, e ML antes de Amazon.
@@ -161,12 +167,40 @@ def fetch_pending(conn, limit, priorizar_ml=None):
     o monitor rodando a cada janela do G, isso seria o laço do #307. A
     tentativa falha carimba `preco_tentativa_em`: o livro continua na faixa
     "sem preço", só vai para o fim dela.
+
+    ⚠ **Ir para o fim não bastava: a faixa "sem preço" nunca esvazia
+    (2026-10-10).** Nos 4 passes do log `pipeline_2026-10-08_21-21-25` o
+    monitor rendeu **1, 0, 4 e 1 preço em 150** (`ml_api_miss` 146–150), contra
+    ~30% em agosto. Medido no `books.db`: 2.593 livros do ML sem preço, quase
+    todos já rejeitados pela API — 642 deles "nunca tentados" pelo monitor
+    vieram do step 31 de 2026-09-18 (`ml_migracao_em`), que já tinha consultado
+    a mesma API para o mesmo livro. E como essa faixa vem primeiro e não acaba,
+    o refresh de quem TEM preço nunca era alcançado: dos 2.347 publicados com
+    preço, **522 tinham preço de abril a agosto**, e esse preço velho é o que
+    vai para o `Offer` do JSON-LD da página indexável.
+
+    Agora o livro sem preço só entra se a última avaliação pela API — do
+    monitor (`preco_tentativa_em`) ou do step 31 (`ml_migracao_em`) — tiver
+    mais de `RETRY_SEM_PRECO_DIAS`. As visitas liberadas vão para o refresh,
+    na ordem de `preco_updated_at`. Testes em `tests/test_produto_2saltos.py`.
     """
     if priorizar_ml is None:
         priorizar_ml = PRIORIZAR_ML
 
     ordem_ml = ("(offer_url LIKE '%mercadolivre%') DESC,"
                 if priorizar_ml else "")
+
+    # `ml_migracao_em` existe a partir do step 31; banco/teste sem a coluna
+    # cai só no carimbo do próprio monitor.
+    colunas = {r[1] for r in conn.execute("PRAGMA table_info(livros)")}
+    ultima_avaliacao = ("COALESCE(preco_tentativa_em, ml_migracao_em)"
+                        if "ml_migracao_em" in colunas else "preco_tentativa_em")
+    # julianday() entende os dois formatos gravados ('YYYY-MM-DD HH:MM:SS' do
+    # CURRENT_TIMESTAMP e o ISO com 'T' do Python); comparar string não.
+    filtro_retry = (f"""AND NOT (preco_atual IS NULL
+                   AND {ultima_avaliacao} IS NOT NULL
+                   AND julianday({ultima_avaliacao}) > julianday('now') - {RETRY_SEM_PRECO_DIAS})"""
+                    if RETRY_SEM_PRECO_DIAS > 0 else "")
 
     cur = conn.cursor()
     cur.execute(f"""
@@ -177,6 +211,7 @@ def fetch_pending(conn, limit, priorizar_ml=None):
         WHERE status_publish = 1
           AND offer_url IS NOT NULL
           AND offer_url != ''
+          {filtro_retry}
         ORDER BY (preco_atual IS NOT NULL) ASC,
                  {ordem_ml}
                  preco_tentativa_em ASC NULLS FIRST,

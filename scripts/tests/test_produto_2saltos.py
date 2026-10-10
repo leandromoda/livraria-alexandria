@@ -13,6 +13,7 @@ de produto. Medido no books.db: 4.849 dos 4.856 livros publicados (99,9%) tem
 import os
 import sqlite3
 import sys
+from datetime import datetime, timedelta, timezone
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -284,11 +285,15 @@ def test_fila_roda_quem_falhou():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.executescript(DDL)
+    # Data RELATIVA e alem da janela de retry: com data fixa, o teste mudaria de
+    # resultado conforme o dia em que roda (o filtro usa julianday('now')).
+    antiga = (datetime.now(timezone.utc)
+              - timedelta(days=opm.RETRY_SEM_PRECO_DIAS + 10)).strftime("%Y-%m-%d %H:%M:%S")
     conn.executemany(
         "INSERT INTO livros (id, titulo, offer_url, preco_atual, preco_tentativa_em,"
         " status_publish) VALUES (?, ?, 'https://lista.mercadolivre.com.br/x', ?, ?, 1)",
         [
-            ("falhou", "Tentado e nao resolvido", None, "2026-09-05 21:00:00"),
+            ("falhou", "Tentado e nao resolvido", None, antiga),
             ("novo",   "Nunca tentado",           None, None),
             ("preco",  "Ja tem preco",            9.9,  None),
         ],
@@ -307,9 +312,50 @@ def test_fila_roda_quem_falhou():
     r = conn.execute("SELECT preco_tentativa_em, preco_updated_at FROM livros "
                      "WHERE id='novo'").fetchone()
     assert r["preco_tentativa_em"] and r["preco_updated_at"] is None, dict(r)
-    assert [x["id"] for x in opm.fetch_pending(conn, 10)][:2] == ["falhou", "novo"]
+    # Recem-tentado sai da fila ate a janela de retry vencer (2026-10-10).
+    assert [x["id"] for x in opm.fetch_pending(conn, 10)] == ["falhou", "preco"]
     conn.close()
-    print("[OK] falha carimba preco_tentativa_em e vai para o fim da faixa sem preco")
+    print("[OK] falha carimba preco_tentativa_em e sai da fila ate a janela de retry")
+
+
+def test_sem_preco_avaliado_recente_cede_lugar_ao_refresh():
+    """A faixa 'sem preco' nao pode bloquear o refresh para sempre (2026-10-10).
+
+    Log pipeline_2026-10-08_21-21-25: 4 passes renderam 1, 0, 4 e 1 preco em
+    150; os livros eram os que o step 31 ja tinha levado a API do ML em 18/09
+    (ml_migracao_em). E 522 dos 2.347 publicados com preco tinham preco de
+    abril a agosto, porque o refresh nunca era alcancado.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(DDL)
+    conn.execute("ALTER TABLE livros ADD COLUMN ml_migracao_em TEXT")
+    agora = datetime.now(timezone.utc)
+    recente_iso = (agora - timedelta(days=5)).isoformat()            # formato do Python
+    velha = (agora - timedelta(days=90)).strftime("%Y-%m-%d %H:%M:%S")
+    conn.executemany(
+        "INSERT INTO livros (id, titulo, offer_url, preco_atual, preco_updated_at,"
+        " preco_tentativa_em, ml_migracao_em, status_publish)"
+        " VALUES (?, ?, 'https://lista.mercadolivre.com.br/x', ?, ?, ?, ?, 1)",
+        [
+            ("migrado", "Step 31 avaliou ha 5 dias", None, None, None, recente_iso),
+            ("tentado", "Monitor tentou ha 5 dias",  None, None, recente_iso, None),
+            ("vencido", "Avaliado ha 90 dias",       None, None, None, velha),
+            ("velho",   "Preco de 90 dias",          30.0, velha, None, None),
+        ],
+    )
+    conn.commit()
+    assert [r["id"] for r in opm.fetch_pending(conn, 10)] == ["vencido", "velho"]
+
+    orig = opm.RETRY_SEM_PRECO_DIAS
+    opm.RETRY_SEM_PRECO_DIAS = 0   # 0 desliga: volta ao comportamento antigo
+    try:
+        assert [r["id"] for r in opm.fetch_pending(conn, 10)][-1] == "velho"
+        assert len(opm.fetch_pending(conn, 10)) == 4
+    finally:
+        opm.RETRY_SEM_PRECO_DIAS = orig
+    conn.close()
+    print("[OK] sem preco avaliado ha pouco (monitor ou step 31) cede lugar ao refresh")
 
 
 def test_limite_ml_interrompe_o_lote():
@@ -406,4 +452,5 @@ if __name__ == "__main__":
     test_reconhece_url_de_busca()
     test_fila_prioriza_quem_nao_tem_preco()
     test_fila_prioriza_mercado_livre()
+    test_sem_preco_avaliado_recente_cede_lugar_ao_refresh()
     print("\nTodos os testes passaram.")
