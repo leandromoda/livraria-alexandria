@@ -1610,6 +1610,7 @@ CLASSIFY_POR_CICLO=25            # livros por ciclo
 # Cota não-LLM por passe do G (ver "Monitor de preços no G"). 0 desliga.
 PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
 PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
+MONITOR_RETRY_SEM_PRECO_DIAS=30  # livro sem preco ja avaliado pela API so volta apos N dias (0 desliga)
 FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o seed
 MIGRAR_ML_POR_CICLO=150          # step 31: passivo Amazon -> ML por passe do G
 AMAZON_AFILIADO_ATIVO=0          # conta Associados encerrada em 18/09/2026; 1 = step 31 volta a so migrar confirmado
