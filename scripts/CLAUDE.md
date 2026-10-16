@@ -544,6 +544,31 @@ mas o `archive.zip` em `ingested_seeds/` guarda **mais 21** `NNN_offer_seeds.jso
 — aí a chance de uma variação de caixa virar linha duplicada é bem maior. Medir
 antes de extrair.
 
+#### ⚠ O portão não olhava o que o produto tem A MAIS (corrigido em 2026-10-16)
+
+Os dois portões acima (autor e título) exigem que **todas** as palavras do
+nosso título estejam no produto — mas nada barrava produto com palavras a
+mais. Varredura de 2026-10-16 (amostra de 400 das 2.349 ofertas com link de
+produto, lida pela API e classificada à mão): **11 produtos errados (2,8%)**
+— kit e pacote com "+", mangá, graphic novel, leitura graduada, "O guia
+**definitivo** do mochileiro" para o livro 1, "Espero que sirvam cerveja no
+**inferno**" para *Inferno*. Projeção: ~65 páginas indexáveis com preço e
+foto de outro produto.
+
+`marketplace_scraper._produto_diferente` reprova marcador de pacote/adaptação
+ausente do nosso título e 4+ palavras a mais no segmento que contém o nosso
+título. Pega 7 dos 11 (+ o Mochileiro); rejeita 1 dos 383 corretos
+(*Rebelión en la granja*, importação a R$ 368). Escapam 4 casos que pedem
+outro sinal (volume errado sem número no nosso título; outro livro do mesmo
+autor com 1 palavra a mais). Vale só no regime `estrito` — jogos não mudam.
+
+As ofertas que já estavam no ar não passam de novo pelo portão (o monitor lê
+o preço direto da página do produto), então `steps/verificar_produto_ml.py`
+as reconfere pela API no G (`VERIFICA_ML_POR_CICLO`, one-shot por oferta via
+`ml_produto_verificado_em`). Reprovada volta para a busca do ML sem preço —
+a página sai do índice até o monitor achar o produto certo. Testes em
+`tests/test_produto_diferente.py`. Ver TASK-OFERTAS-015.
+
 #### Indisponível na origem → RESGATE no ML antes de despublicar
 
 "Sumiu da Amazon" não é "sumiu do mundo". `offer_price_monitor._resgatar_no_ml`
@@ -1611,6 +1636,7 @@ CLASSIFY_POR_CICLO=25            # livros por ciclo
 PRECO_POR_CICLO=150              # livros visitados pelo offer_price_monitor
 PRIORIZAR_ML=1                   # fila do monitor poe livro do ML antes do da Amazon
 MONITOR_RETRY_SEM_PRECO_DIAS=30  # livro sem preco ja avaliado pela API so volta apos N dias (0 desliga)
+VERIFICA_ML_POR_CICLO=100        # steps/verificar_produto_ml.py: ofertas /p/MLB reconferidas por ciclo (0 desliga)
 FORCAR_ML=1                      # step 3 roteia sempre para o ML, ignorando o seed
 MIGRAR_ML_POR_CICLO=150          # step 31: passivo Amazon -> ML por passe do G
 AMAZON_AFILIADO_ATIVO=0          # conta Associados encerrada em 18/09/2026; 1 = step 31 volta a so migrar confirmado

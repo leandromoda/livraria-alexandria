@@ -415,6 +415,73 @@ def _autor_compativel(autor, texto):
     return tokens_autor[-1] in set(_tokens_titulo(texto))
 
 
+# Produto que contém todas as palavras do nosso título e mesmo assim NÃO é o
+# livro: pacote, adaptação, edição que reúne a série, ou outro livro com o
+# título dentro. O portão de cobertura nunca olhava o que o produto tem A MAIS.
+#
+# Medido em 2026-10-16: amostra de 400 das 2.349 ofertas publicadas com link
+# de produto do ML (seed fixa), 398 lidas pela API e classificadas à mão — 11
+# produtos errados (2,8%), 4 ambíguos, 383 corretos. Esta regra pega 7 dos 11
+# (kit ×2, "+" ×1, mangá, graphic novel, leitura graduada, "Espero que sirvam
+# cerveja no inferno" para "Inferno") e mais o caso que motivou a varredura
+# ("O guia definitivo do mochileiro" para o livro 1). Rejeita 1 dos 383
+# corretos: "Rebelión en la granja", importação a R$ 368 cujo título no ML
+# traz "Spanish translation of Animal Farm" — perda aceita.
+#
+# Escapam 4, que pedem outro sinal: "The Boys" -> "volume 2" (nosso título
+# não tem número), "Flow" -> "Flow – Guia prático", "Atenção Plena" ->
+# "Atenção plena profunda" (outros livros do mesmo autor) e "Portugal" -> um
+# livro cujo título no ML termina em "- Portugal" (nome da editora).
+_MARCADORES_PRODUTO_DIFERENTE = (
+    ("kit",              re.compile(r"\bkit\b")),
+    ("pacote (+)",       re.compile(r"\s\+\s")),
+    ("manga",            re.compile(r"\bmanga\b")),
+    ("graphic novel",    re.compile(r"\bgraphic novel\b")),
+    ("leitura graduada", re.compile(r"\breaders?\b.*\bstage\b|\bstage \d")),
+    ("edicao definitiva", re.compile(r"\bdefinitiv[oa]\b")),
+)
+_SEGMENTO_TITULO = re.compile(r"\s*[:(|]\s*|\s+[–—-]\s+")
+# 4+ palavras a mais no segmento que contém o nosso título = outro livro.
+# Calibrado na amostra acima: o pior caso CORRETO tinha 3 ("Monções e
+# capítulos de expansão paulista" para "Monções"); o errado, 4.
+_EXTRAS_MAX = 3
+
+
+def _sem_acento(texto):
+    t = unicodedata.normalize("NFKD", (texto or "").lower())
+    return "".join(c for c in t if not unicodedata.combining(c))
+
+
+def _produto_diferente(titulo, titulo_resultado, texto_extra=None):
+    """Motivo (str) se o produto não é o livro buscado; None se pode ser.
+
+    Marcador só conta quando NÃO está no nosso título — "Kit de Primeiros
+    Socorros" pode ser o nome do livro. As palavras a mais são contadas no
+    segmento (separado por ":", "–", "(") que contém TODO o nosso título; se
+    nenhum contém, quem decide é a cobertura de `_titulo_score` — título
+    traduzido ("MaddAddam" -> "Maddaddão") casa por similaridade e não pode
+    cair aqui.
+    """
+    nosso = _sem_acento(titulo)
+    alvo = _sem_acento(f"{titulo_resultado or ''} {texto_extra or ''}")
+    for motivo, padrao in _MARCADORES_PRODUTO_DIFERENTE:
+        if padrao.search(alvo) and not padrao.search(nosso):
+            return motivo
+
+    tj = [w for w in _tokens_titulo(titulo) if len(w) > 2]
+    if not tj:
+        return None
+    extras_min = None
+    for seg in [titulo_resultado or ""] + _SEGMENTO_TITULO.split(titulo_resultado or ""):
+        ts = [w for w in _tokens_titulo(seg) if len(w) > 2]
+        if ts and all(w in ts for w in tj):
+            extras = len([w for w in ts if w not in tj])
+            extras_min = extras if extras_min is None else min(extras_min, extras)
+    if extras_min is not None and extras_min > _EXTRAS_MAX:
+        return f"{extras_min} palavras a mais no titulo"
+    return None
+
+
 def _titulo_score(titulo, titulo_resultado, autor=None, texto_card=None, estrito=False):
     """Pontua o quanto o card da busca corresponde ao item procurado.
     Devolve `(cobertura, similaridade)` — comparável entre cards — ou None
@@ -452,6 +519,9 @@ def _titulo_score(titulo, titulo_resultado, autor=None, texto_card=None, estrito
         if cobertura < 1.0 and ratio < 0.85:
             return None
         if not _autor_compativel(autor, f"{titulo_resultado} {texto_card or ''}"):
+            return None
+        # Só livros: em jogos "box/caixa" e expansão são o próprio produto.
+        if _produto_diferente(titulo, titulo_resultado, texto_card):
             return None
     else:
         if cobertura < 0.6 and ratio < 0.6:

@@ -1184,6 +1184,28 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-OFERTAS-015",
+      "description": "Ofertas apontando para produto errado no ML (kit, pacote, mangá, graphic novel, edição definitiva, outro livro): o portão só exigia as nossas palavras, nunca olhava as palavras a mais",
+      "priority": "high",
+      "status": "resolved",
+      "registered_on": "2026-10-16",
+      "resolved_on": "2026-10-16",
+      "origem": "/analise-logs de 2026-10-16: capa do Mochileiro com 502 levou a ver que a oferta era 'O guia definitivo do mochileiro das galáxias' (box da série), não o livro 1.",
+      "como_foi_provado": "Varredura só-leitura em 2026-10-16: amostra de 400 das 2.349 ofertas publicadas com link /p/MLB (seed 20261016), 398 lidas pela API de catálogo, 54 suspeitas conferidas à mão: 11 produtos errados (2,8%), 4 ambíguos, 383 corretos. Projeção ~65 páginas (≈35–115). Piso: o critério de suspeita só olhava palavras a mais e marcadores.",
+      "resolution": "marketplace_scraper._produto_diferente no regime estrito de _titulo_score (marcadores kit, '+', mangá, graphic novel, leitura graduada, definitivo ausentes do nosso título; 4+ palavras a mais no segmento que contém o nosso título); ml_api passa o nome completo do produto. steps/verificar_produto_ml.py reconfere as ofertas já publicadas no G (100/ciclo, one-shot) e devolve a reprovada para a busca do ML sem preço. Avaliado contra os 398 rotulados: pega 7/11 (+Mochileiro), rejeita 1/383 (Rebelión en la granja, importação). Dry-run real n=60: 2 reprovados, os 2 errados conhecidos.",
+      "limites": "Escapam: volume errado quando nosso título não tem número (The Boys -> vol. 2); outro livro do mesmo autor com 1 palavra a mais (Flow -> Flow – Guia prático; Atenção Plena -> Atenção plena profunda); título do ML com nome de editora casando (Portugal). Ambíguos (omnibus) passam de propósito.",
+      "verificar_depois": "Log do G: linha [VERIFICA_ML] reprovados por motivo; total esperado ~2-3% das 2.349. Depois que seca, conferir se o monitor achou o produto certo para os reprovados.",
+      "files": [
+        "scripts/steps/marketplace_scraper.py",
+        "scripts/core/ml_api.py",
+        "scripts/steps/verificar_produto_ml.py",
+        "scripts/steps/autopilot.py",
+        "scripts/core/db.py",
+        "scripts/tests/test_produto_diferente.py",
+        "scripts/CLAUDE.md"
+      ]
+    },
+    {
       "id": "TASK-OFERTAS-014",
       "description": "Monitor de precos travado na faixa 'sem preco': ~1% de aproveitamento e refresh nunca alcancado (522 precos de abril-agosto em paginas indexaveis)",
       "priority": "high",

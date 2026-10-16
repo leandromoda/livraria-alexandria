@@ -55,6 +55,7 @@ from steps import (
     batch_import,
     isbn_backfill,
     wikidata_enrich,
+    verificar_produto_ml,
     qa_remediation,
     qa,
 )
@@ -837,6 +838,16 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                         wikidata_enrich.run(pacote=WIKI_PACOTE_MAX)
                 except Exception as e:
                     log(f"[AUTOPILOT] AVISO: enriquecimento Wikidata falhou: {e}")
+
+            # Reverificação do produto do ML das ofertas já publicadas (portão de
+            # "produto diferente", 2026-10-16). Mesma categoria: manutenção fora
+            # do accounting, autolimitada (para o lote em 429 persistente) e
+            # one-shot por oferta — seca sozinha depois de ~24 ciclos.
+            try:
+                with StepRun("Verificar produto ML", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                    verificar_produto_ml.run()
+            except Exception as e:
+                log(f"[AUTOPILOT] AVISO: verificação de produto do ML falhou: {e}")
 
             if _interrupt.requested():
                 log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reparo de relações de autores.")

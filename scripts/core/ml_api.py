@@ -358,7 +358,9 @@ def buscar_livro(titulo, autor=None, isbn=None):
         if _autor_confere(autor, attrs.get("AUTHOR")) is not True:
             continue                     # inclui o indeterminado: não aprova
         titulo_ml = attrs.get("BOOK_TITLE") or p.get("name") or ""
-        score = _titulo_score(titulo, titulo_ml, estrito=True)
+        # O nome completo vai como texto do card: "graphic novel" e "mangá"
+        # costumam aparecer só nele, não no BOOK_TITLE (medido 2026-10-16).
+        score = _titulo_score(titulo, titulo_ml, texto_card=p.get("name"), estrito=True)
         if score is not None:
             aprovados.append((score, p, attrs, titulo_ml))
 
