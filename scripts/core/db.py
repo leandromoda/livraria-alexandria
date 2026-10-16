@@ -177,6 +177,9 @@ def ensure_schema(conn):
         ("wiki_qid",              "TEXT"),
         ("wiki_checado_em",       "TEXT"),
         ("wiki_sync_em",          "TEXT"),
+        # steps/verificar_produto_ml.py: produto do ML da oferta reconferido
+        # pelo portão de "produto diferente" (aprovado ou reprovado).
+        ("ml_produto_verificado_em", "TEXT"),
     ]:
         try:
             cur.execute(f"ALTER TABLE livros ADD COLUMN {col} {definition}")
