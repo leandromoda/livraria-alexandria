@@ -45,7 +45,9 @@ automaticamente ao reiniciar. Útil para deixar a máquina trabalhar sem supervi
 **Opção X** (topo, letra): "livro do dia" no X, conta da livraria
 (`steps/social_x.py`, TASK-MKT-001). **Sob demanda e fora do G**: gerar (rodízio
 por grupo da taxonomia + livro mais conhecido; redação e verificação no Opus, 2–3
-chamadas), revisar (aprovar/descartar, com as afirmações sem apoio destacadas) e
+chamadas), revisar (aprovar/descartar/**corrigir**, com as afirmações sem apoio
+destacadas — "corrigir" manda a versão atual + o que tirar ao redator, que edita
+em vez de recomeçar, e revalida; 2–3 chamadas) e
 publicar — **a publicação no X é manual**: o menu copia cada parte e baixa a capa
 para `data/social/capas/`. Formato `longo` (principal + 3–6 comentários +
 convite com link UTM, escrito pelo pipeline). Guia de estilo em
