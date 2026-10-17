@@ -1463,6 +1463,7 @@ A  → Autopilot — roda todos os steps (sem LLM) em loop até exaurir
 O  → LLM Autopilot — 7 agentes LLM em ciclo exaustivo (claude CLI local)
 M  → Manutenção — preços, conectividade, listas, bios (sem LLM)
 C  → Batch Autopilot (sinopse + categorias via Claude)
+X  → Livro do dia no X — gerar, revisar e publicar (manual) o post da livraria
 E  → Exports
 
 --- SUBMENUS ---
@@ -1499,6 +1500,11 @@ E  → Exports
         elif op.upper() == "A":
             log("Iniciando autopilot (sem LLM)...")
             autopilot.run(idioma, 100, manter_batch=True)
+
+        elif op.upper() == "X":
+            # "Livro do dia" no X — sob demanda, publicação manual (import lazy).
+            from steps import social_x
+            social_x.menu(input_safe)
 
         elif op.upper() == "I":
             # Seção Livros Infantis — pipeline paralelo (import lazy: o main

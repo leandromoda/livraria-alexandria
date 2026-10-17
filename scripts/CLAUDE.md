@@ -42,6 +42,16 @@ O topo roteia para submenus pelas teclas **1-6** (navegação) + letras de açã
 **Opção W** (topo, letra): aguarda o reset da sessão Claude PRO (cooldown) e roda o G
 automaticamente ao reiniciar. Útil para deixar a máquina trabalhar sem supervisão.
 
+**Opção X** (topo, letra): "livro do dia" no X, conta da livraria
+(`steps/social_x.py`, TASK-MKT-001). **Sob demanda e fora do G**: gerar (rodízio
+por grupo da taxonomia + livro mais conhecido; redação e verificação no Opus, 2–3
+chamadas), revisar (aprovar/descartar, com as afirmações sem apoio destacadas) e
+publicar — **a publicação no X é manual**: o menu copia cada parte e baixa a capa
+para `data/social/capas/`. Formato `longo` (principal + 3–6 comentários +
+convite com link UTM, escrito pelo pipeline). Guia de estilo em
+`agents/social_x/guia-de-estilo.md`, cópia adaptada do `conceitos-filosoficos`
+(@brazil1889) — evolui separado.
+
 **Opção G sem confirmações**: G assume plano e LLM como SIM — não pede confirmação
 interativa. Inclui: regen sinopse (antes da fase LLM) → remediação mecânica
 (ingest+capas+reconcile) → reparo de ofertas (**offer_price_monitor** +

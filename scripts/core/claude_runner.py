@@ -68,6 +68,11 @@ AGENT_MODELS = {
     "synopsis_infantis_batch": FAST_MODEL,
     "classify_batch":          FAST_MODEL,
     "author_bio":              STRONG_MODEL,
+    # "Livro do dia" no X (steps/social_x.py): afirmação sobre livro e autor
+    # reais publicada com o nome da livraria — mesmo motivo da author_bio.
+    # Volume baixo: sob demanda, 2 a 3 chamadas por post.
+    "social_x":                STRONG_MODEL,
+    "social_x_verificar":      STRONG_MODEL,
 }
 
 

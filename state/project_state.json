@@ -1184,6 +1184,37 @@
   ],
   "open_tasks": [
     {
+      "id": "TASK-MKT-001",
+      "description": "Marketing no X: 'livro do dia' em formato longo (post + comentarios), ultimo comentario leva a pagina do livro no site com UTM",
+      "priority": "medium",
+      "status": "in_progress",
+      "registered_on": "2026-10-17",
+      "decisoes": [
+        "Conta NOVA da livraria (a @brazil1889 tinha 9 seguidores e 7 impressoes/post em 16/10; linha editorial de filosofia nao comporta o catalogo nem promocao).",
+        "Publicacao manual: o menu copia as partes e baixa a capa; nada e postado pelo pipeline.",
+        "Gerador dentro deste repo (opcao X do main.py), fora do G, sob demanda.",
+        "Escolha: rodizio por grupo da taxonomia (23) + livro mais conhecido (priority_score, depois Wikipedia pt, depois Wikidata). Efemeride suspensa.",
+        "Conteudo: dados do site + conhecimento do modelo (Opus); segunda chamada confere cada afirmacao; so publica apos aprovacao.",
+        "Estilo: guia da @brazil1889 copiado e adaptado, com tolerancia de marketing (ate 2 hashtags no principal). Evolui separado.",
+        "Capa anexada ao post principal."
+      ],
+      "medido": "1o post real (2026-10-17, Alem da Ordem): 2 chamadas Opus, ~1 min, 0 problemas mecanicos, 15 afirmacoes — 13 com apoio, 2 sem apoio corretamente apontadas (enfeites do redator).",
+      "pendente": [
+        "Conta do X: criada pelo Leandro (o assistente nao cria contas).",
+        "Link para a conta no rodape/Organization sameAs do site, quando houver o @.",
+        "Medir cliques utm_source=x depois das primeiras publicacoes."
+      ],
+      "files": [
+        "scripts/steps/social_x.py",
+        "scripts/tests/test_social_x.py",
+        "agents/social_x/prompt.md",
+        "agents/social_x/guia-de-estilo.md",
+        "agents/social_x_verificar/prompt.md",
+        "scripts/main.py",
+        "scripts/core/claude_runner.py"
+      ]
+    },
+    {
       "id": "TASK-OFERTAS-015",
       "description": "Ofertas apontando para produto errado no ML (kit, pacote, mangá, graphic novel, edição definitiva, outro livro): o portão só exigia as nossas palavras, nunca olhava as palavras a mais",
       "priority": "high",
