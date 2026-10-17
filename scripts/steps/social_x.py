@@ -297,13 +297,18 @@ def _json_da_saida(saida):
     return obj
 
 
-def _redigir(dados, correcao=None):
+def _redigir(dados, correcao=None, anterior=None):
     from core.claude_runner import run_agent
     extra = ("\n\n---\n\n## Guia de estilo\n\n" + GUIA.read_text(encoding="utf-8")
              + "\n\n---\n\n## Dados do livro\n\n" + json.dumps(dados, ensure_ascii=False, indent=2))
+    if anterior:
+        extra += ("\n\n---\n\n## Versão anterior\n\nEdite ESTA versão: mantenha o que está "
+                  "certo e mude só o necessário para atender à correção.\n\n"
+                  + "\n\n".join(f"[{i}] {p}" for i, p in enumerate(anterior, 1)))
     if correcao:
-        extra += ("\n\n---\n\n## Correção pedida\n\nUma versão anterior foi reprovada pelo "
-                  "verificador mecânico. Reescreva corrigindo:\n\n" + correcao)
+        extra += ("\n\n---\n\n## Correção pedida\n\nCorrija:\n\n" + correcao
+                  + "\n\nAfirmação sem apoio: retire-a ou troque por algo que esteja nos dados. "
+                    "Não a substitua por outra afirmação nova sem apoio.")
     ok, saida = run_agent(AGENTE_REDATOR, timeout=TIMEOUT_LLM, extra_context=extra)
     if not ok:
         raise RuntimeError(f"redator falhou: {saida[:200]}")
@@ -332,6 +337,38 @@ def _agora():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _lista_mecanica(probs):
+    return "\n".join(f"- parte {k}: {', '.join(v)}" for k, v in sorted(probs.items(), key=lambda x: int(x[0])))
+
+
+def pedido_correcao(verif, probs):
+    """Texto da correção a partir da verificação de afirmações e da mecânica.
+    Vazio quando não há nada a corrigir."""
+    itens = []
+    for a in (verif or {}).get("afirmacoes", []):
+        if a.get("apoio") == "sem_apoio":
+            itens.append(f"- parte {a.get('parte')}: afirmação sem apoio — \"{a.get('texto')}\" "
+                         f"({a.get('nota')})")
+    if (verif or {}).get("spoiler"):
+        itens.append("- o post revela mais do enredo do que a sinopse: retire o spoiler")
+    if (verif or {}).get("citacao_duvidosa"):
+        itens.append("- há citação entre aspas de procedência duvidosa: troque por paráfrase declarada ou retire")
+    if probs:
+        itens.append(_lista_mecanica(probs))
+    return "\n".join(itens)
+
+
+def _redigir_validado(dados, slug, correcao=None, anterior=None):
+    """Redige (ou edita) e, se a mecânica reprovar, pede UMA correção mecânica."""
+    partes = _redigir(dados, correcao=correcao, anterior=anterior)
+    probs = problemas_mecanicos(partes, slug)
+    if probs:
+        log(f"[SOCIAL_X] Verificador mecânico pediu correção ({len(probs)} parte(s)); 1 nova tentativa.")
+        partes = _redigir(dados, correcao=_lista_mecanica(probs), anterior=partes)
+        probs = problemas_mecanicos(partes, slug)
+    return partes, probs
+
+
 def gerar():
     """Escolhe o próximo livro, redige, verifica e grava como 'aguardando'.
 
@@ -347,14 +384,7 @@ def gerar():
     dados, info = dados_do_livro(conn, livro_id)
     log(f"[SOCIAL_X] Livro escolhido: {info['titulo']} (categoria: {categoria or '—'})")
 
-    partes = _redigir(dados)
-    probs = problemas_mecanicos(partes, info["slug"])
-    if probs:
-        lista = "\n".join(f"- parte {k}: {', '.join(v)}" for k, v in sorted(probs.items()))
-        log(f"[SOCIAL_X] Verificador mecânico pediu correção ({len(probs)} parte(s)); 1 nova tentativa.")
-        partes = _redigir(dados, correcao=lista)
-        probs = problemas_mecanicos(partes, info["slug"])
-
+    partes, probs = _redigir_validado(dados, info["slug"])
     verif = _verificar(dados, partes)
     cur = conn.execute("""
         INSERT INTO social_posts (livro_id, slug, titulo, categoria, status, partes,
@@ -370,6 +400,34 @@ def gerar():
     log(f"[SOCIAL_X] Post #{post_id} aguardando revisão — {len(partes)} partes | "
         f"sem apoio: {sem_apoio} | problemas mecânicos: {len(probs)}")
     return post_id
+
+
+def corrigir(conn, post_id):
+    """Edita um post 'aguardando' tirando o que os verificadores apontaram.
+
+    Manda ao redator a versão atual + a lista do que corrigir, e revalida
+    (mecânica + afirmações). Custa 2 chamadas (+1 se a mecânica reprovar).
+    Devolve True se havia o que corrigir.
+    """
+    row = conn.execute("SELECT * FROM social_posts WHERE id=?", (post_id,)).fetchone()
+    pedido = pedido_correcao(json.loads(row["verificacao"] or "{}"),
+                             json.loads(row["problemas"] or "{}"))
+    if not pedido:
+        log(f"[SOCIAL_X] Post #{post_id}: nada a corrigir.")
+        return False
+    dados, info = dados_do_livro(conn, row["livro_id"])
+    log(f"[SOCIAL_X] Corrigindo post #{post_id} ({pedido.count(chr(10)) + 1} ponto(s))…")
+    partes, probs = _redigir_validado(dados, info["slug"], correcao=pedido,
+                                      anterior=json.loads(row["partes"]))
+    verif = _verificar(dados, partes)
+    conn.execute("UPDATE social_posts SET partes=?, verificacao=?, problemas=? WHERE id=?",
+                 (json.dumps(partes, ensure_ascii=False), json.dumps(verif, ensure_ascii=False),
+                  json.dumps(probs, ensure_ascii=False), post_id))
+    conn.commit()
+    sem_apoio = sum(1 for a in verif.get("afirmacoes", []) if a.get("apoio") == "sem_apoio")
+    log(f"[SOCIAL_X] Post #{post_id} corrigido — sem apoio: {sem_apoio} | "
+        f"problemas mecânicos: {len(probs)}")
+    return True
 
 
 def baixar_capa(slug, imagem_url):
@@ -437,16 +495,28 @@ def _revisar(conn, input_fn):
         print("Nenhum post aguardando revisão.")
         return
     for row in rows:
-        _mostrar(row, input_fn)
-        op = input_fn("\n[A]provar  [D]escartar  [Enter] pular: ").strip().upper()
-        if op == "A":
-            conn.execute("UPDATE social_posts SET status='aprovado', aprovado_em=? WHERE id=?",
-                         (_agora(), row["id"]))
-            log(f"[SOCIAL_X] Post #{row['id']} aprovado.")
-        elif op == "D":
-            conn.execute("UPDATE social_posts SET status='descartado' WHERE id=?", (row["id"],))
-            log(f"[SOCIAL_X] Post #{row['id']} descartado (o livro não volta a ser oferecido).")
-        conn.commit()
+        while True:
+            _mostrar(row, input_fn)
+            tem_o_que_corrigir = bool(pedido_correcao(json.loads(row["verificacao"] or "{}"),
+                                                      json.loads(row["problemas"] or "{}")))
+            opcoes = "[A]provar  [D]escartar  " + ("[C]orrigir (2 a 3 chamadas)  " if tem_o_que_corrigir else "")
+            op = input_fn(f"\n{opcoes}[Enter] pular: ").strip().upper()
+            if op == "C" and tem_o_que_corrigir:
+                try:
+                    corrigir(conn, row["id"])
+                except Exception as e:
+                    log(f"[SOCIAL_X] ERRO ao corrigir: {e}")
+                row = conn.execute("SELECT * FROM social_posts WHERE id=?", (row["id"],)).fetchone()
+                continue        # mostra a versão corrigida e pergunta de novo
+            if op == "A":
+                conn.execute("UPDATE social_posts SET status='aprovado', aprovado_em=? WHERE id=?",
+                             (_agora(), row["id"]))
+                log(f"[SOCIAL_X] Post #{row['id']} aprovado.")
+            elif op == "D":
+                conn.execute("UPDATE social_posts SET status='descartado' WHERE id=?", (row["id"],))
+                log(f"[SOCIAL_X] Post #{row['id']} descartado (o livro não volta a ser oferecido).")
+            conn.commit()
+            break
 
 
 def _publicar(conn, input_fn):
@@ -489,7 +559,7 @@ def menu(input_fn=input):
 aguardando revisão: {cont.get('aguardando', 0)} | aprovados: {cont.get('aprovado', 0)} | publicados: {cont.get('publicado', 0)}
 
 1 → Gerar próximo (escolhe o livro, redige e verifica — 2 a 3 chamadas LLM)
-2 → Revisar pendentes (aprovar ou descartar)
+2 → Revisar pendentes (aprovar, corrigir ou descartar)
 3 → Publicar o próximo aprovado (copiar partes + capa + registrar link)
 0 → Voltar
 """)

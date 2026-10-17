@@ -118,6 +118,49 @@ def test_rodizio_por_grupo_e_popularidade():
     print("[OK] rodízio por grupo, mais conhecido primeiro, sem repetir nem pegar sem preço")
 
 
+def test_pedido_correcao():
+    verif = {"afirmacoes": [
+        {"parte": 2, "texto": "nasceu em 1962", "apoio": "dados", "nota": ""},
+        {"parte": 5, "texto": "diálogo em quase toda página", "apoio": "sem_apoio", "nota": "não verificável"},
+    ], "spoiler": True, "citacao_duvidosa": False}
+    pedido = sx.pedido_correcao(verif, {"3": ["contém exclamação"]})
+    assert "parte 5" in pedido and "quase toda página" in pedido
+    assert "1962" not in pedido                     # o que tem apoio não entra
+    assert "spoiler" in pedido and "exclamação" in pedido
+    assert sx.pedido_correcao({"afirmacoes": [], "spoiler": False}, {}) == ""
+    print("[OK] pedido de correção lista só o que precisa sair")
+
+
+def test_corrigir_edita_a_versao_atual_e_revalida():
+    orig = (sx._redigir, sx._verificar, sx._taxonomia)
+    chamadas = {}
+
+    def redigir_falso(dados, correcao=None, anterior=None):
+        chamadas["correcao"], chamadas["anterior"] = correcao, anterior
+        return ["Principal.", "Um.", "Dois.", "Três."]
+
+    sx._redigir = redigir_falso
+    sx._verificar = lambda dados, partes: {"afirmacoes": [{"parte": 1, "apoio": "dados"}],
+                                           "spoiler": False, "citacao_duvidosa": False}
+    sx._taxonomia = lambda: {}
+    try:
+        c = _banco()
+        verif = {"afirmacoes": [{"parte": 3, "texto": "frase inventada", "apoio": "sem_apoio", "nota": "x"}]}
+        c.execute("INSERT INTO social_posts (livro_id, slug, titulo, status, partes, verificacao, problemas,"
+                  " criado_em) VALUES ('a1','a1','A1','aguardando',?,?, '{}', '2026-10-17')",
+                  (json.dumps(["P.", "x.", "frase inventada.", "y."]), json.dumps(verif)))
+        assert sx.corrigir(c, 1) is True
+        assert "frase inventada" in chamadas["correcao"]
+        assert chamadas["anterior"] == ["P.", "x.", "frase inventada.", "y."]   # edita, não recomeça
+        row = c.execute("SELECT * FROM social_posts WHERE id=1").fetchone()
+        assert json.loads(row["partes"]) == ["Principal.", "Um.", "Dois.", "Três."]
+        assert row["status"] == "aguardando"            # volta para a revisão, não aprova sozinho
+        assert sx.corrigir(c, 1) is False               # nada mais a corrigir
+    finally:
+        sx._redigir, sx._verificar, sx._taxonomia = orig
+    print("[OK] corrigir edita a versão atual, revalida e devolve para a revisão")
+
+
 if __name__ == "__main__":
     for nome, fn in list(globals().items()):
         if nome.startswith("test_") and callable(fn):
