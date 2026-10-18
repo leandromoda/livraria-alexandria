@@ -22,6 +22,19 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+// O segmento dinâmico chega percent-encoded quando o slug tem acento
+// (`ci%C3%AAncia`), e o banco guarda o slug cru (`ciência`) — sem decodificar,
+// o `.eq("slug", …)` nunca casa. Medido em 2026-10-18: o sitemap anunciava 26
+// listas acentuadas, todas existentes no Supabase e todas em 404 (curl com UA
+// Googlebot). Slug inválido como URI cai no valor original.
+function decodeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 // Leituras memoizadas no Data Cache — o fetch no-store do Supabase impediria o
 // ISR on-demand de cachear o render; unstable_cache torna o dado cacheável
 // (chave = slug/lista_id) e o render vira static-eligible → HIT no edge.
@@ -64,7 +77,7 @@ const getLivrosDaLista = unstable_cache(
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
 
   const lista = await getLista(slug);
 
@@ -92,7 +105,7 @@ export async function generateMetadata({
 }
 
 export default async function ListaPage({ params }: PageProps) {
-  const { slug } = await params;
+  const slug = decodeSlug((await params).slug);
 
   /**
    * Lista

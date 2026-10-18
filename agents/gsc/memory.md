@@ -46,7 +46,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 | Item | Por quê é esperado |
 |------|--------------------|
 | `/api/click/[uuid]` bloqueadas pelo robots.txt (centenas, crescendo) | Rota de tracking; cresce com o nº de ofertas. Correto bloquear. |
-| 404 de listas antigas com slug acentuado (`...-psicológico`) | Conteúdo removido pelo pipeline; versão sem-acento também não existe. 404 é o correto; Google descarta sozinho. |
+| ~~404 de listas antigas com slug acentuado (`...-psicológico`)~~ | ⚠️ **ERRADO — corrigido em 2026-10-18.** Não era conteúdo removido: as 26 listas acentuadas **existem no Supabase e estavam no sitemap**; a rota não decodificava o slug percent-encoded e 404ava todas. Corrigido no PR de 2026-10-18 (ver "Fixes aplicados"). **404 de lista acentuada hoje é bug, não esperado.** |
 | URLs malformadas indexadas (`/&`, `/$`) | Lixo de crawl antigo; 404 correto. |
 | **"Página com redirecionamento"** — todas as URLs `www.*` (e `http://www.*`) | É o 308 www→apex funcionando (config de 2026-07-10). O Google cataloga a origem do redirect aqui. Quanto mais ele recrawleia www, mais cresce. **Saudável.** |
 | **"Página alternativa com tag canônica adequada"** | Estado **bom**: o Google achou e aceitou a canônica do apex. Subiu junto com o fix de `metadataBase` (#209). Não é problema. |
@@ -213,6 +213,7 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 
 | Data | Área | Fix | PR |
 |------|------|-----|----|
+| 2026-10-18 | 404/sitemap | **Listas com slug acentuado 404avam estando no sitemap.** `listas/[slug]` recebia o segmento percent-encoded (`ci%C3%AAncia`) e comparava com o slug cru do banco. Medido: 26 listas acentuadas no sitemap, 26 existem no Supabase, 26 × 404 (curl, UA Googlebot); 19 delas sem gêmea sem acento, todas com 6–12 livros publicáveis. Fix: `decodeURIComponent` no slug (com fallback). Era a população que esta memória chamava de "listas removidas" | PR de 2026-10-18 |
 | 2026-10-05 | conteúdo | **Experimento "Sobre a obra" (TASK-SEO-019)**: fatos do Wikidata (título original, idioma, 1ª publicação, gênero, série, prêmios, adaptações) + "Para saber mais" (Wikipedia/Wikidata/Open Library, `noopener noreferrer`, SEM nofollow — citação editorial) + `sameAs` no JSON-LD; autor com datas/país/Wikipedia. Sem LLM, pelo autopilot (~50 livros/ciclo). Cada linha só renderiza com dado. **Não mexe em `livroIndexavel`**, para não confundir a medição. Cobertura medida: 42% (n=50) | #343 (pipeline) + PR do site |
 | 2026-10-03 | canônica | **Catálogo de Arte Greco-Romana** (repo `catalogo_arte_greco_romana`): o mesmo HTML respondia em `livrariaalexandria.com.br/catalogo` e em `catalogoartegrecoromana.vercel.app/catalogo`, sem canonical nem noindex. Toda página agora emite canonical para a livraria (conferido nos dois hosts em produção). **Sem noindex por host, de propósito:** pelo rewrite a requisição chega ao catálogo com o host `vercel.app` também quando vem da livraria | catalogo#1 |
 | 2026-10-03 | sitemap | **`/catalogo` entra no sitemap: 45 URLs** (31 obras, 7 períodos, 5 categorias, cronologia, entrada). O catálogo é outro projeto, servido por rewrite e sem sitemap próprio; `app/sitemap.ts` segue os links dele no build. Falha de rede tira só essa seção. Obra nova só entra no próximo deploy da livraria | #341 |
@@ -239,6 +240,14 @@ soft-404, e há risco de loop com o redirect do `next.config.ts`.
 ---
 
 ## Itens em aberto
+
+- 🆕 **7 listas acentuadas têm gêmea sem acento** (medido 2026-10-18, PostgREST):
+  `ficção`/`ficcao`, `finanças-pessoais`, `história`, `liderança`, `mangá`,
+  `quadrinho-autobiográfico`, `romance-histórico`. Com o fix do
+  slug elas voltam ao ar ao lado da gêmea — mesma classe de duplicata da
+  TASK-SEO-017 (escolher a "original" é decisão de conteúdo do Leandro).
+  Acompanhar em "Cópia c/ canônica diferente". Causa provável: o slugify do
+  pipeline mudou de versão (uma geração manteve acento) — não apurado.
 
 - 🧪 **Experimento Wikidata (desde 2026-10-05) — medir em +4 e +8 semanas
   (~02/11 e ~30/11).** Coorte = livros com `wiki_qid` preenchido no
@@ -382,6 +391,28 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-08-08 | — | — | — | — | — | — | — | — | — |
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
+
+### Seção 2026-10-18 — sem acesso ao GSC; auditoria do sitemap achou bug
+
+**Relatório NÃO lido:** a extensão do Chrome não conectou e o navegador
+interno pede login no Google (o assistente não digita senha). Sem linha nova
+na tabela de base. **E-mails `sc-noreply` desde 03/10: nenhum** (o último é o
+`[WNC-10030322]` de 20/09, já corrigido no #336).
+
+**Sitemap de produção: 3.729 URLs, 0 `www`** — livros **2.275** (eram 2.016
+em 19/09: monitor confirmando oferta, `livroIndexavel` devolvendo ao índice),
+autores 960, listas 306, categorias 127, catálogo 45, jogos 12, infantis 2,
+home + ofertas. Amostra de 30 (6 por seção) → 30 × 200; www→apex 308 ok.
+
+**Consistência sitemap × página (n=40 livros/autores/listas):** 39 com
+canonical = própria URL e sem `noindex`; **1 falha** — lista acentuada →
+puxou o fio das 26 listas em 404 (ver "Fixes aplicados").
+⚠️ Método: ao gravar lista de URLs com Python no Windows, o `\n` vira `\r\n`
+e o `curl` manda `%0D` no fim da URL — parece 404 do site e não é. Usar
+`tr -d '\r'` ou `newline='\n'`.
+
+**Próxima seção:** ler o relatório (conectar o Chrome antes); conferir se o
+404 de `/listas/*` (26 em 20/09) cai, e reler o experimento Wikidata (~02/11).
 
 ### Seção 2026-10-03 — dados de 20/09; nenhum bug, só cortes intencionais aparecendo
 
