@@ -393,6 +393,31 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 | 2026-07-19 | 1.726 | 759 | 294 | 23 | 1 | 192 | 31 | 18 | — |
 | 2026-06-23 | 854 | 236 | 222 | 23 | 1 | 186 | 49 | — | — |
 
+### 2026-10-18 — outros buscadores: IndexNow ligado, Bing Webmaster pendente
+
+Até aqui o site só era enviado ao Google. Pedido do Leandro: *"vamos tentar
+indexar em outros buscadores"*.
+
+- **IndexNow (#351, TASK-SEO-020):** `scripts/steps/indexnow.py` roda no G e
+  envia ao `api.indexnow.org` (→ Bing, e por tabela DuckDuckGo/Yahoo/Ecosia;
+  Yandex, Seznam, Naver) o que é novo, alterado ou saiu do **sitemap de
+  produção**. Chave em `public/068232156bc734c2b806030fe90ce5ce.txt`.
+  **Primeiro envio: 3.817 URLs aceitas (HTTP 200) em 2026-10-18.**
+  ⚠️ O POST ~1 min depois do deploy da chave voltou **403** (chave inválida),
+  com a chave já servindo 200 por `curl`; ~1 min depois, o mesmo envio passou.
+  Leitura: validação da chave propagando. O step não grava estado em falha, então
+  o ciclo seguinte reenvia sozinho — **não é bug, não "corrigir"**.
+- **Antes de enviar, conferido:** `robots.txt` de produção libera tudo exceto
+  `/admin` e `/api/` (o bloco gerenciado do Cloudflare de 08/2026 **não aparece
+  mais** no corpo); `/livros/o-hobbit` responde 200 para UA bingbot e YandexBot.
+- **Bing Webmaster Tools: NÃO cadastrado** — exige login na conta do Leandro.
+  Caminho mais curto: entrar e usar **"Importar do Google Search Console"**
+  (verifica o domínio e importa o sitemap sem DNS). É o painel onde se vê se o
+  IndexNow está chegando ("IndexNow" → URLs recebidas).
+- **Sitemap é gerado no build** (`x-vercel-cache: PRERENDER`, sem `revalidate`):
+  livro que o pipeline publica só entra no sitemap — e portanto no IndexNow —
+  no próximo deploy do site.
+
 ### Seção 2026-10-18 — sem acesso ao GSC; auditoria do sitemap achou bug
 
 **Relatório lido depois do merge do #349** (Chrome conectou no fim da seção),
