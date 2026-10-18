@@ -381,6 +381,7 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 | Data | Bloq. robots | Canônica dup. | Não encontr. 404 | 5xx | Soft 404 | Rastreada ñ indexada | Detectada ñ indexada | Excluída noindex | Indexada mas bloq. |
 |------|-------------|---------------|------------------|-----|----------|----------------------|----------------------|------------------|--------------------|
+| 2026-10-18 (dados de **11/10**) | 5.021 | 1.053 | 1.040 | **0** | 2 | 399 | 324 | **2.958** | **13** |  ← Página alternativa 983, Redirecionamento 2.342; indexadas 6,11 mil / ñ indexadas 14,2 mil
 | 2026-10-03 (dados de **20/09**) | 4.572 | 1.021 | 935 | 21 | 2 | 759 | 659 | **1.522** | 111 |  ← "Canônica dup." = Cópia c/ canônica diferente (Página alternativa 1.099 à parte)
 | 2026-09-20 (dados de **13/09**) | 4.452 | 980 | 692 | 21 | 2 | 1.209 | 765 | **947** | 108 |  ← relatório DESCONGELOU (13 dias parado em 03/09)
 | 2026-09-16 (dados de 03/09) | 4.395 | 1.231 | 563 | 22 | 2 | 1.588 | 912 | 628 | 107 |  ← MESMO relatório de 15/09 (congelado); completa as colunas
@@ -394,10 +395,25 @@ Uma coluna por seção de análise. Preencher no topo a cada `/analise_gsc`.
 
 ### Seção 2026-10-18 — sem acesso ao GSC; auditoria do sitemap achou bug
 
-**Relatório NÃO lido:** a extensão do Chrome não conectou e o navegador
-interno pede login no Google (o assistente não digita senha). Sem linha nova
-na tabela de base. **E-mails `sc-noreply` desde 03/10: nenhum** (o último é o
+**Relatório lido depois do merge do #349** (Chrome conectou no fim da seção),
+dados de **11/10**. **E-mails `sc-noreply` desde 03/10: nenhum** (o último é o
 `[WNC-10030322]` de 20/09, já corrigido no #336).
+
+| Bucket | 20/09 | 11/10 | Leitura |
+|---|---|---|---|
+| Excluída pela tag `noindex` | 1.522 | **2.958** | +1.436: o #334 (~3 mil livros sem preço) entrando. Esperado; validação **Falha** — não resubmeter |
+| Indexadas | 7,18 mil | **6,11 mil** | −1,07 mil: contrapartida do mesmo corte. Esperado |
+| Não encontrado (404) | 935 | 1.040 | +105. Amostra de 1.000: autores 867, livros 115, **listas 12 — todas acentuadas = bug do #349**, categorias 6 |
+| Indexada, mas bloqueada | 111 | **13** | ✅ o #272 (`nofollow sponsored`) finalmente drenando |
+| 5xx | 21 | **0** | sumiu |
+| Rastreada ñ indexada / Detectada ñ indexada | 759 / 659 | 399 / 324 | drenando |
+| Cópia c/ canônica diferente / Página alternativa | 1.021 / 1.099 | 1.053 / 983 | `www`, esperado |
+| Bloqueada pelo robots.txt / Redirecionamento | 4.572 / 2.314 | 5.021 / 2.342 | `/api/click/*` e `www`, esperado |
+
+As listas acentuadas no 404 foram rastreadas entre **14/07 e 08/09** — o bug
+existia pelo menos desde julho. Saem do bucket sozinhas no recrawl; **não
+submeter "Validar correção" no 404** (o bucket é ~95% autor/livro despublicado
+de propósito e reprovaria).
 
 **Sitemap de produção: 3.729 URLs, 0 `www`** — livros **2.275** (eram 2.016
 em 19/09: monitor confirmando oferta, `livroIndexavel` devolvendo ao índice),
