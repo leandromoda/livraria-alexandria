@@ -1657,6 +1657,10 @@ AMAZON_AFILIADO_ATIVO=0          # conta Associados encerrada em 18/09/2026; 1 =
 # ciclo do autopilot. Dry-run de 2026-10-05: ~5 s/livro. 0 desliga.
 WIKI_POR_CICLO=50
 
+# IndexNow (steps/indexnow.py): URLs do sitemap de produção novas, alteradas
+# ou removidas, enviadas a Bing/Yandex/Seznam/Naver por ciclo. 0 desliga.
+INDEXNOW_POR_CICLO=10000
+
 # Circuit breaker do marketplace no step 4 (ver "Ordem das fontes no step 4").
 MP_CIRCUIT_THRESHOLD=3           # falhas seguidas p/ pular o marketplace no lote
 
