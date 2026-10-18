@@ -1266,7 +1266,8 @@
         "Sitemap vazio aborta o envio (build quebrado nao pode virar aviso de remocao em massa).",
         "Chave publica em public/<KEY>.txt; o protocolo exige que seja publica."
       ],
-      "pendente": "Bing Webmaster Tools: login do Leandro e 'Importar do Google Search Console' (verifica o dominio e traz o sitemap). Yandex Webmaster opcional.",
+      "bing_webmaster": "Cadastrado em 2026-10-18 via import do GSC; sitemap enviado manualmente (o import trouxe 0). Primeiro envio IndexNow: 3.817 URLs, HTTP 200.",
+      "pendente": "Conferir no painel IndexNow do Bing se os envios aparecem; Yandex Webmaster opcional.",
       "files": [
         "scripts/steps/indexnow.py",
         "scripts/tests/test_indexnow.py",
