@@ -410,10 +410,15 @@ indexar em outros buscadores"*.
 - **Antes de enviar, conferido:** `robots.txt` de produção libera tudo exceto
   `/admin` e `/api/` (o bloco gerenciado do Cloudflare de 08/2026 **não aparece
   mais** no corpo); `/livros/o-hobbit` responde 200 para UA bingbot e YandexBot.
-- **Bing Webmaster Tools: NÃO cadastrado** — exige login na conta do Leandro.
-  Caminho mais curto: entrar e usar **"Importar do Google Search Console"**
-  (verifica o domínio e importa o sitemap sem DNS). É o painel onde se vê se o
-  IndexNow está chegando ("IndexNow" → URLs recebidas).
+- ✅ **Bing Webmaster Tools cadastrado em 2026-10-18** via "Importar do Google
+  Search Console" (OAuth do Google com escopo `webmasters.readonly` + e-mail,
+  conta leandromoda1@gmail.com; site `https://livrariaalexandria.com.br/`, papel
+  Administrator). ⚠️ O import trouxe **0 sitemaps** — propriedade `sc-domain:`
+  não repassa o sitemap — então ele foi enviado à mão em *Sitemaps → Submit
+  sitemap* (`https://livrariaalexandria.com.br/sitemap.xml`, "Processing").
+  O painel *IndexNow* ainda mostrava a página de apresentação logo após o
+  primeiro envio — **conferir na próxima seção** se as 3.817 URLs aparecem lá.
+  Painel: `bing.com/webmasters/home?siteUrl=https://livrariaalexandria.com.br/`.
 - **Sitemap é gerado no build** (`x-vercel-cache: PRERENDER`, sem `revalidate`):
   livro que o pipeline publica só entra no sitemap — e portanto no IndexNow —
   no próximo deploy do site.
