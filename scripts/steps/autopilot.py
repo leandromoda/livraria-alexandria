@@ -56,6 +56,7 @@ from steps import (
     isbn_backfill,
     wikidata_enrich,
     verificar_produto_ml,
+    indexnow,
     qa_remediation,
     qa,
 )
@@ -848,6 +849,17 @@ def run(idioma: str, pacote: int, manter_batch: bool = False, batch_target: int 
                     verificar_produto_ml.run()
             except Exception as e:
                 log(f"[AUTOPILOT] AVISO: verificação de produto do ML falhou: {e}")
+
+            # IndexNow (Bing/Yandex/Seznam/Naver): manutenção fora do accounting.
+            # Lê o sitemap de PRODUÇÃO e manda só o novo/alterado/removido, então
+            # num ciclo sem mudança custa 1 GET. O sitemap é gerado no BUILD
+            # (`x-vercel-cache: PRERENDER`, conferido 2026-10-18), então o que o
+            # pipeline publica só chega aqui depois do próximo deploy do site.
+            try:
+                with StepRun("IndexNow", idioma=idioma, pacote=pacote, invocado_por="autopilot"):
+                    indexnow.run()
+            except Exception as e:
+                log(f"[AUTOPILOT] AVISO: envio ao IndexNow falhou: {e}")
 
             if _interrupt.requested():
                 log("[AUTOPILOT] Interrupção solicitada — encerrando antes do reparo de relações de autores.")

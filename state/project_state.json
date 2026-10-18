@@ -1254,6 +1254,26 @@
       ]
     },
     {
+      "id": "TASK-SEO-020",
+      "description": "Indexacao fora do Google: IndexNow (Bing/DuckDuckGo/Yahoo/Ecosia via indice do Bing, Yandex, Seznam, Naver) pelo autopilot + cadastro no Bing Webmaster Tools",
+      "priority": "medium",
+      "status": "in_progress",
+      "registered_on": "2026-10-18",
+      "por_que": "Ate 2026-10-18 o site so existia para o Google, que o rebaixou no spam update de agosto. Outros buscadores sao trafego que nao depende dessa recuperacao, e o IndexNow custa 1 GET por ciclo.",
+      "decisoes": [
+        "Fonte = sitemap de PRODUCAO, nao o books.db: ja aplica lib/indexavel.ts, entao o IndexNow recebe exatamente o que o Google recebe.",
+        "Envia novo, lastmod alterado e removido do sitemap; estado url->lastmod em pipeline_state, gravado so apos 200/202.",
+        "Sitemap vazio aborta o envio (build quebrado nao pode virar aviso de remocao em massa).",
+        "Chave publica em public/<KEY>.txt; o protocolo exige que seja publica."
+      ],
+      "pendente": "Bing Webmaster Tools: login do Leandro e 'Importar do Google Search Console' (verifica o dominio e traz o sitemap). Yandex Webmaster opcional.",
+      "files": [
+        "scripts/steps/indexnow.py",
+        "scripts/tests/test_indexnow.py",
+        "public/068232156bc734c2b806030fe90ce5ce.txt"
+      ]
+    },
+    {
       "id": "TASK-SEO-019",
       "description": "Paginas mais ricas sem LLM: fatos do Wikidata (titulo original, idioma, 1a publicacao, genero, serie, premios, adaptacoes, Wikipedia/Open Library) em livros e autores indexaveis, pelo autopilot",
       "priority": "high",
